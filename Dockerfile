@@ -23,12 +23,24 @@ COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
-
-COPY --from=builder /app/dist/workers ./dist/workers
+COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules/bullmq ./node_modules/bullmq
 COPY --from=builder /app/node_modules/ioredis ./node_modules/ioredis
-
+COPY --from=builder /app/node_modules/semver ./node_modules/semver
+COPY --from=builder /app/node_modules/imapflow ./node_modules/imapflow
+COPY --from=builder /app/node_modules/mailparser ./node_modules/mailparser
+COPY --from=builder /app/node_modules/iconv-lite ./node_modules/iconv-lite
+COPY --from=builder /app/node_modules/he ./node_modules/he
+COPY --from=builder /app/node_modules/libmime ./node_modules/libmime
+COPY --from=builder /app/node_modules/linkify-it ./node_modules/linkify-it
+COPY --from=builder /app/node_modules/punycode.js ./node_modules/punycode.js
+COPY --from=builder /app/node_modules/html-to-text ./node_modules/html-to-text
+COPY --from=builder /app/node_modules/nodemailer ./node_modules/nodemailer
+COPY --from=builder /app/node_modules/encoding-japanese ./node_modules/encoding-japanese
+COPY --from=builder /app/node_modules/@zone-eu ./node_modules/@zone-eu
+COPY --from=builder /app/node_modules/tlds ./node_modules/tlds
 COPY --from=builder /app/prisma/seed.mjs ./prisma/seed.mjs
+COPY --from=builder /app/node_modules/bcryptjs ./node_modules/bcryptjs
 
 USER nextjs
 EXPOSE 3000

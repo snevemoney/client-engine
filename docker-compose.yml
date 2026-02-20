@@ -2,7 +2,7 @@ services:
   app:
     build: .
     ports:
-      - "127.0.0.1:3100:3000"
+      - "127.0.0.1:3200:3000"
     env_file: .env
     depends_on:
       postgres:

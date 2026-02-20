@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import crypto from "crypto";
 
+function computeHash(url: string | undefined, title: string, content: string | undefined): string {
+  const raw = [url || "", title, (content || "").slice(0, 500)].join("|");
+  return crypto.createHash("sha256").update(raw).digest("hex").slice(0, 32);
+}
+
 export async function POST(req: NextRequest) {
   const apiKey = req.headers.get("x-api-key");
   if (apiKey !== process.env.CAPTURE_API_KEY) {
@@ -9,17 +14,20 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { url, title, content, source } = body;
+  const { url, title, content, source, budget, timeline, platform, tags, contactName, contactEmail } = body;
 
   if (!title) {
     return NextResponse.json({ error: "title is required" }, { status: 400 });
   }
 
-  const hash = crypto.createHash("sha256").update(`${url || ""}:${title}`).digest("hex");
+  const hash = computeHash(url, title, content);
 
   const existing = await db.lead.findFirst({
     where: {
-      OR: [{ sourceUrl: url || undefined }, { title }],
+      OR: [
+        { contentHash: hash },
+        ...(url ? [{ sourceUrl: url }] : []),
+      ],
     },
   });
 
@@ -31,9 +39,15 @@ export async function POST(req: NextRequest) {
     data: {
       title,
       source: source || "capture",
-      sourceUrl: url,
-      description: content,
-      tags: [],
+      sourceUrl: url || null,
+      contentHash: hash,
+      description: content || null,
+      budget: budget || null,
+      timeline: timeline || null,
+      platform: platform || null,
+      contactName: contactName || null,
+      contactEmail: contactEmail || null,
+      tags: Array.isArray(tags) ? tags : [],
       techStack: [],
     },
   });

@@ -1,13 +1,31 @@
-export default function DeploysPage() {
+import { db } from "@/lib/db";
+import { DeploysTable } from "./deploys-table";
+import Link from "next/link";
+
+export const dynamic = "force-dynamic";
+
+export default async function DeploysPage() {
+  const projects = await db.project.findMany({
+    orderBy: { updatedAt: "desc" },
+    include: { lead: { select: { id: true, title: true, status: true } } },
+  });
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Deploys</h1>
-        <p className="text-sm text-neutral-400 mt-1">Deploy and manage client demos. Coming in Phase 4.</p>
+        <p className="text-sm text-neutral-400 mt-1">
+          Set demo URLs for projects. Visitors to <code className="text-neutral-500">/demos/[slug]</code> are redirected to the demo URL.
+        </p>
       </div>
-      <div className="border border-neutral-800 rounded-lg p-8 text-center text-neutral-500">
-        Demo deployment automation will be available once the build factory is configured.
-      </div>
+
+      <DeploysTable projects={projects} />
+
+      {projects.length === 0 && (
+        <div className="border border-neutral-800 rounded-lg p-8 text-center text-neutral-500">
+          No projects yet. Create a project via &quot;Start Build&quot; on a lead.
+        </div>
+      )}
     </div>
   );
 }

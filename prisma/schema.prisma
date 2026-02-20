@@ -20,6 +20,7 @@ model Lead {
   title        String
   source       String
   sourceUrl    String?
+  contentHash  String?    @unique
   status       LeadStatus @default(NEW)
   description  String?    @db.Text
   budget       String?
@@ -60,15 +61,18 @@ model Artifact {
 }
 
 model Project {
-  id          String   @id @default(cuid())
-  leadId      String?  @unique
-  lead        Lead?    @relation(fields: [leadId], references: [id])
-  slug        String   @unique
-  name        String
-  description String?  @db.Text
-  demoUrl     String?
-  repoPath    String?
-  status      String   @default("draft")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           String   @id @default(cuid())
+  leadId       String?  @unique
+  lead         Lead?    @relation(fields: [leadId], references: [id])
+  slug         String   @unique
+  name         String
+  description  String?  @db.Text
+  demoUrl      String?
+  repoUrl      String?
+  repoPath     String?
+  techStack    String[]
+  screenshots  String[]
+  status       String   @default("draft")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }

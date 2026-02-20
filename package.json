@@ -10,7 +10,8 @@
     "worker": "npx tsx src/workers/index.ts",
     "db:migrate": "npx prisma migrate dev",
     "db:seed": "node prisma/seed.mjs",
-    "db:push": "npx prisma db push"
+    "db:push": "npx prisma db push",
+    "db:seed-projects": "node prisma/seed-projects.mjs"
   },
   "prisma": {
     "seed": "node prisma/seed.mjs"
@@ -22,7 +23,9 @@
     "bullmq": "^5.69.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "imapflow": "^1.2.10",
     "lucide-react": "^0.575.0",
+    "mailparser": "^3.9.3",
     "next": "16.1.6",
     "next-auth": "^5.0.0-beta.30",
     "prisma": "^6.19.2",
@@ -33,6 +36,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/bcryptjs": "^2.4.6",
+    "@types/mailparser": "^3.4.6",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
