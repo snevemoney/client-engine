@@ -52,5 +52,14 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  void (async () => {
+    try {
+      const { runPipelineIfEligible } = await import("@/lib/pipeline/orchestrator");
+      await runPipelineIfEligible(lead.id, "manual-create");
+    } catch (err) {
+      console.error("[leads] Pipeline run failed:", err);
+    }
+  })();
+
   return NextResponse.json(lead, { status: 201 });
 }

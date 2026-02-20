@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { createRun, startStep, finishStep, finishRun } from "@/lib/pipeline-metrics";
-import { runPropose } from "@/lib/pipeline/propose";
+import { runPositioning } from "@/lib/pipeline/positioning";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -17,18 +17,18 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   const runId = await createRun(id);
-  const stepId = await startStep(runId, "propose");
+  const stepId = await startStep(runId, "position");
 
   try {
-    const { artifactId } = await runPropose(id);
+    const { artifactId } = await runPositioning(id);
     await finishStep(stepId, { success: true, outputArtifactIds: [artifactId] });
     await finishRun(runId, true);
     const artifact = await db.artifact.findUnique({ where: { id: artifactId } });
     return NextResponse.json(artifact);
   } catch (err: any) {
-    console.error("[propose] Error:", err);
-    await finishStep(stepId, { success: false, notes: err?.message ?? "Proposal generation failed" });
-    await finishRun(runId, false, err?.message ?? "Proposal generation failed");
-    return NextResponse.json({ error: err.message || "Proposal generation failed" }, { status: 500 });
+    console.error("[position] Error:", err);
+    await finishStep(stepId, { success: false, notes: err?.message ?? "Positioning failed" });
+    await finishRun(runId, false, err?.message ?? "Positioning failed");
+    return NextResponse.json({ error: err.message || "Positioning failed" }, { status: 500 });
   }
 }

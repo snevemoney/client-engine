@@ -90,6 +90,19 @@ async function ingestEmail(subject: string, text: string, html: string, from: st
   });
 
   console.log(`[email] Created lead: "${lead.title}" (${lead.id})`);
+
+  try {
+    const { runPipelineIfEligible } = await import("@/lib/pipeline/orchestrator");
+    const result = await runPipelineIfEligible(lead.id, "email-ingestion");
+    if (result.run) {
+      console.log(`[email] Pipeline run ${result.runId}: ${result.stepsRun} steps run, ${result.stepsSkipped} skipped`);
+    } else {
+      console.log(`[email] Pipeline skipped: ${result.reason}`);
+    }
+  } catch (err) {
+    console.error("[email] Pipeline run failed:", err);
+  }
+
   return lead.id;
 }
 

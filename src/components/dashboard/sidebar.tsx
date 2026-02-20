@@ -10,6 +10,7 @@ import {
   Settings,
   LayoutDashboard,
   LogOut,
+  BarChart3,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 
@@ -17,6 +18,7 @@ const navItems = [
   { href: "/dashboard", label: "Leads", icon: Inbox },
   { href: "/dashboard/proposals", label: "Proposals", icon: FileText },
   { href: "/dashboard/deploys", label: "Deploys", icon: Rocket },
+  { href: "/dashboard/metrics", label: "Metrics", icon: BarChart3 },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
 

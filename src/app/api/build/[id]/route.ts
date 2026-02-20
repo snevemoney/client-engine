@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { chat } from "@/lib/llm";
+import { createRun, startStep, finishStep, finishRun } from "@/lib/pipeline-metrics";
 
 function slugify(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
@@ -58,6 +59,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     .replace("{platform}", lead.platform || "Not specified")
     .replace("{techStack}", lead.techStack.join(", ") || "Not specified");
 
+  const runId = await createRun(id);
+  const stepId = await startStep(runId, "build");
+
   try {
     const response = await chat([
       { role: "system", content: "You are a precise technical project manager. Output clean markdown." },
@@ -93,9 +97,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       ],
     });
 
+    await finishStep(stepId, { success: true });
+    await finishRun(runId, true);
     return NextResponse.json({ project, spec: spec.slice(0, 200), tasks: tasks.slice(0, 200) });
   } catch (err: any) {
     console.error("[build] Error:", err);
+    await finishStep(stepId, { success: false, notes: err?.message ?? "Build factory failed" });
+    await finishRun(runId, false, err?.message ?? "Build factory failed");
     return NextResponse.json({ error: err.message || "Build factory failed" }, { status: 500 });
   }
 }

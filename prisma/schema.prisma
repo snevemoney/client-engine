@@ -37,6 +37,7 @@ model Lead {
   updatedAt    DateTime   @updatedAt
   artifacts    Artifact[]
   project      Project?
+  pipelineRuns PipelineRun[]
   tags         String[]
 }
 
@@ -75,4 +76,30 @@ model Project {
   status       String   @default("draft")
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+}
+
+model PipelineRun {
+  id         String   @id @default(cuid())
+  leadId     String
+  lead       Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  status     String   @default("running")
+  startedAt  DateTime @default(now())
+  finishedAt DateTime?
+  success    Boolean?
+  error      String?  @db.Text
+  steps      PipelineStepRun[]
+}
+
+model PipelineStepRun {
+  id                 String      @id @default(cuid())
+  runId              String
+  run                PipelineRun  @relation(fields: [runId], references: [id], onDelete: Cascade)
+  stepName           String
+  startedAt          DateTime    @default(now())
+  finishedAt        DateTime?
+  success           Boolean?
+  tokensUsed        Int?
+  costEstimate      Float?
+  outputArtifactIds String[]     @default([])
+  notes             String?     @db.Text
 }
