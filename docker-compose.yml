@@ -1,0 +1,48 @@
+services:
+  app:
+    build: .
+    ports:
+      - "127.0.0.1:3100:3000"
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+
+  worker:
+    build: .
+    command: node dist/workers/index.js
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: engine
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: client_engine
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U engine -d client_engine"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redisdata:/data
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  redisdata:

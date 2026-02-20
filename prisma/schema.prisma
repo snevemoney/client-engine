@@ -1,0 +1,74 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String?
+  createdAt DateTime @default(now())
+}
+
+model Lead {
+  id           String     @id @default(cuid())
+  title        String
+  source       String
+  sourceUrl    String?
+  status       LeadStatus @default(NEW)
+  description  String?    @db.Text
+  budget       String?
+  timeline     String?
+  platform     String?
+  techStack    String[]
+  contactName  String?
+  contactEmail String?
+  score        Int?
+  scoreReason  String?    @db.Text
+  enrichedAt   DateTime?
+  scoredAt     DateTime?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  artifacts    Artifact[]
+  project      Project?
+  tags         String[]
+}
+
+enum LeadStatus {
+  NEW
+  ENRICHED
+  SCORED
+  APPROVED
+  REJECTED
+  BUILDING
+  SHIPPED
+}
+
+model Artifact {
+  id        String   @id @default(cuid())
+  leadId    String
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  type      String
+  title     String
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  leadId      String?  @unique
+  lead        Lead?    @relation(fields: [leadId], references: [id])
+  slug        String   @unique
+  name        String
+  description String?  @db.Text
+  demoUrl     String?
+  repoPath    String?
+  status      String   @default("draft")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
