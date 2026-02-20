@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { chat } from "@/lib/llm";
+import { chat, type ChatUsage } from "@/lib/llm";
 
 const ENRICH_PROMPT = `You are a lead analyst for a freelance software developer. Analyze this lead and extract structured information.
 
@@ -18,7 +18,7 @@ Extract and return a JSON object with these fields:
 
 Return ONLY valid JSON, no markdown fences.`;
 
-export async function runEnrich(leadId: string): Promise<{ artifactId: string }> {
+export async function runEnrich(leadId: string): Promise<{ artifactId: string; usage?: ChatUsage }> {
   const lead = await db.lead.findUnique({ where: { id: leadId } });
   if (!lead) throw new Error("Lead not found");
 

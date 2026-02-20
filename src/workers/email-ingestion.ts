@@ -97,7 +97,8 @@ async function ingestEmail(subject: string, text: string, html: string, from: st
     if (result.run) {
       console.log(`[email] Pipeline run ${result.runId}: ${result.stepsRun} steps run, ${result.stepsSkipped} skipped`);
     } else {
-      console.log(`[email] Pipeline skipped: ${result.reason}`);
+      const reason = "reason" in result ? result.reason : "unknown";
+      console.log(`[email] Pipeline skipped: ${reason}`);
     }
   } catch (err) {
     console.error("[email] Pipeline run failed:", err);

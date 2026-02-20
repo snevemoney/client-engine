@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { chat } from "@/lib/llm";
+import { chat, type ChatUsage } from "@/lib/llm";
 import { buildProposalPrompt } from "@/lib/pipeline/prompts/buildProposalPrompt";
 
 const POSITIONING_ARTIFACT_TITLE = "POSITIONING_BRIEF";
@@ -7,7 +7,7 @@ const POSITIONING_ARTIFACT_TITLE = "POSITIONING_BRIEF";
 /**
  * Run proposal step. Requires a positioning artifact for this lead (gate: no proposal without positioning).
  */
-export async function runPropose(leadId: string): Promise<{ artifactId: string }> {
+export async function runPropose(leadId: string): Promise<{ artifactId: string; usage?: ChatUsage }> {
   const lead = await db.lead.findUnique({ where: { id: leadId } });
   if (!lead) throw new Error("Lead not found");
 

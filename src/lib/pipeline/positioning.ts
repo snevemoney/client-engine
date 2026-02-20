@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { chat } from "@/lib/llm";
+import { chat, type ChatUsage } from "@/lib/llm";
 
 const POSITIONING_PROMPT = `You are a positioning strategist for a freelance full-stack developer. Given this lead, write a short POSITIONING_BRIEF that will be used to open proposals.
 
@@ -21,7 +21,7 @@ Write 2-4 short paragraphs in markdown. No generic intros. Start with the proble
  * Run positioning for a lead; creates artifact type "positioning", title "POSITIONING_BRIEF".
  * Throws on error.
  */
-export async function runPositioning(leadId: string): Promise<{ artifactId: string }> {
+export async function runPositioning(leadId: string): Promise<{ artifactId: string; usage?: ChatUsage }> {
   const lead = await db.lead.findUnique({ where: { id: leadId } });
   if (!lead) throw new Error("Lead not found");
 
