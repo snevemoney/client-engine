@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { createRun, startStep, finishStep, finishRun } from "@/lib/pipeline-metrics";
+import { normalizeUsage } from "@/lib/pipeline/usage";
 import { runPositioning } from "@/lib/pipeline/positioning";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -20,8 +21,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const stepId = await startStep(runId, "position");
 
   try {
-    const { artifactId } = await runPositioning(id);
-    await finishStep(stepId, { success: true, outputArtifactIds: [artifactId] });
+    const { artifactId, usage } = await runPositioning(id);
+    const norm = normalizeUsage(usage, "gpt-4o-mini");
+    await finishStep(stepId, {
+      success: true,
+      outputArtifactIds: [artifactId],
+      tokensUsed: norm.tokensUsed,
+      costEstimate: norm.costEstimate,
+    });
     await finishRun(runId, true);
     const artifact = await db.artifact.findUnique({ where: { id: artifactId } });
     return NextResponse.json(artifact);

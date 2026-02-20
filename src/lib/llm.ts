@@ -6,10 +6,21 @@ interface ChatMessage {
   content: string;
 }
 
+export type ChatUsage = {
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens?: number;
+};
+
+export type ChatResult = {
+  content: string;
+  usage?: ChatUsage;
+};
+
 export async function chat(
   messages: ChatMessage[],
   opts?: { model?: string; temperature?: number; max_tokens?: number }
-) {
+): Promise<ChatResult> {
   const res = await fetch(`${OPENAI_BASE}/chat/completions`, {
     method: "POST",
     headers: {
@@ -30,5 +41,14 @@ export async function chat(
   }
 
   const data = await res.json();
-  return data.choices[0].message.content as string;
+  const content = data.choices[0].message?.content ?? "";
+  const usage = data.usage
+    ? {
+        prompt_tokens: data.usage.prompt_tokens ?? 0,
+        completion_tokens: data.usage.completion_tokens ?? 0,
+        total_tokens: data.usage.total_tokens,
+      }
+    : undefined;
+
+  return { content, usage };
 }

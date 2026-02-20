@@ -27,12 +27,15 @@ export async function runEnrich(leadId: string): Promise<{ artifactId: string }>
     .replace("{source}", lead.source)
     .replace("{description}", lead.description || "No description provided");
 
-  const response = await chat([
-    { role: "system", content: "You are a precise lead analyst. Return only valid JSON." },
-    { role: "user", content: prompt },
-  ], { temperature: 0.3, max_tokens: 1024 });
+  const { content, usage } = await chat(
+    [
+      { role: "system", content: "You are a precise lead analyst. Return only valid JSON." },
+      { role: "user", content: prompt },
+    ],
+    { temperature: 0.3, max_tokens: 1024 }
+  );
 
-  const enriched = JSON.parse(response);
+  const enriched = JSON.parse(content);
 
   await db.lead.update({
     where: { id: leadId },
@@ -67,5 +70,5 @@ export async function runEnrich(leadId: string): Promise<{ artifactId: string }>
     },
   });
 
-  return { artifactId: artifact.id };
+  return { artifactId: artifact.id, usage };
 }

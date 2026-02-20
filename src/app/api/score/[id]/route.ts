@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { createRun, startStep, finishStep, finishRun } from "@/lib/pipeline-metrics";
+import { normalizeUsage } from "@/lib/pipeline/usage";
 import { runScore } from "@/lib/pipeline/score";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -20,8 +21,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const stepId = await startStep(runId, "score");
 
   try {
-    await runScore(id);
-    await finishStep(stepId, { success: true });
+    const { usage } = await runScore(id);
+    const norm = normalizeUsage(usage, "gpt-4o-mini");
+    await finishStep(stepId, {
+      success: true,
+      tokensUsed: norm.tokensUsed,
+      costEstimate: norm.costEstimate,
+    });
     await finishRun(runId, true);
     const updated = await db.lead.findUnique({ where: { id } });
     return NextResponse.json(updated);

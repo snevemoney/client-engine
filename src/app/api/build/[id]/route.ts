@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { chat } from "@/lib/llm";
 import { createRun, startStep, finishStep, finishRun } from "@/lib/pipeline-metrics";
+import { normalizeUsage } from "@/lib/pipeline/usage";
 
 function slugify(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
@@ -63,13 +64,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const stepId = await startStep(runId, "build");
 
   try {
-    const response = await chat([
-      { role: "system", content: "You are a precise technical project manager. Output clean markdown." },
-      { role: "user", content: prompt },
-    ], { model: "gpt-4o-mini", temperature: 0.4, max_tokens: 3000 });
+    const { content, usage } = await chat(
+      [
+        { role: "system", content: "You are a precise technical project manager. Output clean markdown." },
+        { role: "user", content: prompt },
+      ],
+      { model: "gpt-4o-mini", temperature: 0.4, max_tokens: 3000 }
+    );
 
-    const parts = response.split("---SPLIT---");
-    const spec = parts[0]?.trim() || response;
+    const parts = content.split("---SPLIT---");
+    const spec = parts[0]?.trim() || content;
     const tasks = parts[1]?.trim() || "- [ ] Define project scope\n- [ ] Set up development environment\n- [ ] Build core features";
 
     const slug = slugify(lead.title);
@@ -97,7 +101,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       ],
     });
 
-    await finishStep(stepId, { success: true });
+    const norm = normalizeUsage(usage, "gpt-4o-mini");
+    await finishStep(stepId, {
+      success: true,
+      tokensUsed: norm.tokensUsed,
+      costEstimate: norm.costEstimate,
+    });
     await finishRun(runId, true);
     return NextResponse.json({ project, spec: spec.slice(0, 200), tasks: tasks.slice(0, 200) });
   } catch (err: any) {

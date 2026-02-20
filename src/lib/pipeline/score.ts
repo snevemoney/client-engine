@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { chat } from "@/lib/llm";
+import { chat, type ChatUsage } from "@/lib/llm";
 
 const SCORE_PROMPT = `You are a lead scoring engine for a freelance full-stack developer (Evens Louis).
 
@@ -35,7 +35,7 @@ Return ONLY a JSON object with:
 
 No markdown fences, just JSON.`;
 
-export async function runScore(leadId: string): Promise<void> {
+export async function runScore(leadId: string): Promise<{ usage?: ChatUsage }> {
   const lead = await db.lead.findUnique({ where: { id: leadId } });
   if (!lead) throw new Error("Lead not found");
 
@@ -48,12 +48,15 @@ export async function runScore(leadId: string): Promise<void> {
     .replace("{techStack}", lead.techStack.join(", ") || "Not specified")
     .replace("{description}", lead.description || "No description");
 
-  const response = await chat([
-    { role: "system", content: "You are a precise lead scoring engine. Return only valid JSON." },
-    { role: "user", content: prompt },
-  ], { temperature: 0.2, max_tokens: 512 });
+  const { content, usage } = await chat(
+    [
+      { role: "system", content: "You are a precise lead scoring engine. Return only valid JSON." },
+      { role: "user", content: prompt },
+    ],
+    { temperature: 0.2, max_tokens: 512 }
+  );
 
-  const scored = JSON.parse(response);
+  const scored = JSON.parse(content);
 
   const scoreReason = [
     `**Verdict:** ${scored.verdict}`,
@@ -74,4 +77,6 @@ export async function runScore(leadId: string): Promise<void> {
       scoredAt: new Date(),
     },
   });
+
+  return { usage };
 }

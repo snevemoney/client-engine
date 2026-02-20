@@ -3,14 +3,18 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { runPipelineIfEligible } from "@/lib/pipeline/runPipeline";
 
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ leadId: string }> }
-) {
+/**
+ * POST /api/pipeline/run?leadId=...
+ * Manual pipeline run (admin only). Use from lead creation or rerun button.
+ */
+export async function POST(req: NextRequest) {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { leadId } = await params;
+  const url = new URL(req.url);
+  const leadId = url.searchParams.get("leadId");
+  if (!leadId) return NextResponse.json({ error: "leadId required (query param)" }, { status: 400 });
+
   const lead = await db.lead.findUnique({ where: { id: leadId } });
   if (!lead) return NextResponse.json({ error: "Lead not found" }, { status: 404 });
 

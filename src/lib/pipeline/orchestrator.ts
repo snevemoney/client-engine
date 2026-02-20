@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { createRun, startStep, finishStep, finishRun } from "@/lib/pipeline-metrics";
 import { tryAdvisoryLock, releaseAdvisoryLock } from "@/lib/db-lock";
+import { normalizeUsage } from "@/lib/pipeline/usage";
 import { runEnrich } from "@/lib/pipeline/enrich";
 import { runScore } from "@/lib/pipeline/score";
 import { runPositioning } from "@/lib/pipeline/positioning";
@@ -85,38 +86,61 @@ export async function runPipelineIfEligible(
       try {
         if (stepName === "enrich") {
           if (hasEnrichment(current.artifacts)) {
-            await finishStep(stepId, { success: true, notes: "skipped:already_exists" });
+            await finishStep(stepId, { success: true, notes: "skipped: artifact exists" });
             stepsSkipped++;
           } else {
-            const { artifactId } = await runEnrich(leadId);
-            await finishStep(stepId, { success: true, outputArtifactIds: [artifactId] });
+            const { artifactId, usage } = await runEnrich(leadId);
+            const norm = normalizeUsage(usage, "gpt-4o-mini");
+            await finishStep(stepId, {
+              success: true,
+              outputArtifactIds: [artifactId],
+              tokensUsed: norm.tokensUsed,
+              costEstimate: norm.costEstimate,
+            });
             stepsRun++;
           }
         } else if (stepName === "score") {
           if (hasScore(current)) {
-            await finishStep(stepId, { success: true, notes: "skipped:already_exists" });
+            await finishStep(stepId, { success: true, notes: "skipped: artifact exists" });
             stepsSkipped++;
           } else {
-            await runScore(leadId);
-            await finishStep(stepId, { success: true });
+            const { usage } = await runScore(leadId);
+            const norm = normalizeUsage(usage, "gpt-4o-mini");
+            await finishStep(stepId, {
+              success: true,
+              tokensUsed: norm.tokensUsed,
+              costEstimate: norm.costEstimate,
+            });
             stepsRun++;
           }
         } else if (stepName === "position") {
           if (hasPositioning(current.artifacts)) {
-            await finishStep(stepId, { success: true, notes: "skipped:already_exists" });
+            await finishStep(stepId, { success: true, notes: "skipped: artifact exists" });
             stepsSkipped++;
           } else {
-            const { artifactId } = await runPositioning(leadId);
-            await finishStep(stepId, { success: true, outputArtifactIds: [artifactId] });
+            const { artifactId, usage } = await runPositioning(leadId);
+            const norm = normalizeUsage(usage, "gpt-4o-mini");
+            await finishStep(stepId, {
+              success: true,
+              outputArtifactIds: [artifactId],
+              tokensUsed: norm.tokensUsed,
+              costEstimate: norm.costEstimate,
+            });
             stepsRun++;
           }
         } else if (stepName === "propose") {
           if (hasProposal(current.artifacts)) {
-            await finishStep(stepId, { success: true, notes: "skipped:already_exists" });
+            await finishStep(stepId, { success: true, notes: "skipped: artifact exists" });
             stepsSkipped++;
           } else {
-            const { artifactId } = await runPropose(leadId);
-            await finishStep(stepId, { success: true, outputArtifactIds: [artifactId] });
+            const { artifactId, usage } = await runPropose(leadId);
+            const norm = normalizeUsage(usage, "gpt-4o-mini");
+            await finishStep(stepId, {
+              success: true,
+              outputArtifactIds: [artifactId],
+              tokensUsed: norm.tokensUsed,
+              costEstimate: norm.costEstimate,
+            });
             stepsRun++;
           }
         }

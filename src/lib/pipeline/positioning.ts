@@ -32,19 +32,22 @@ export async function runPositioning(leadId: string): Promise<{ artifactId: stri
     .replace("{timeline}", lead.timeline || "Not specified")
     .replace("{platform}", lead.platform || "Not specified");
 
-  const content = await chat([
-    { role: "system", content: "You write concise positioning briefs. Output markdown only." },
-    { role: "user", content: prompt },
-  ], { temperature: 0.4, max_tokens: 1024 });
+  const { content: briefContent, usage } = await chat(
+    [
+      { role: "system", content: "You write concise positioning briefs. Output markdown only." },
+      { role: "user", content: prompt },
+    ],
+    { temperature: 0.4, max_tokens: 1024 }
+  );
 
   const artifact = await db.artifact.create({
     data: {
       leadId,
       type: "positioning",
       title: "POSITIONING_BRIEF",
-      content,
+      content: briefContent,
     },
   });
 
-  return { artifactId: artifact.id };
+  return { artifactId: artifact.id, usage };
 }
