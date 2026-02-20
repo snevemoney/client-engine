@@ -37,12 +37,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     .replace("{techStack}", project.techStack.join(", ") || "React, TypeScript");
 
   try {
-    const text = await chat([
+    const { content } = await chat([
       { role: "system", content: "You write concise portfolio entries. Stay under 600 characters." },
       { role: "user", content: prompt },
     ], { temperature: 0.5, max_tokens: 300 });
 
-    const trimmed = text.trim().slice(0, 600);
+    const trimmed = (content ?? "").trim().slice(0, 600);
 
     return NextResponse.json({ text: trimmed, length: trimmed.length });
   } catch (err: any) {
