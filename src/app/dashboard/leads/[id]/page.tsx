@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, ExternalLink, Plus, FileText, X, Sparkles, Target, Send, Hammer, CheckCircle, XCircle } from "lucide-react";
+import { ArrowLeft, ExternalLink, Plus, FileText, X, Sparkles, Target, Send, Hammer, CheckCircle, XCircle, RefreshCw } from "lucide-react";
 
 interface Artifact {
   id: string;
@@ -32,6 +32,11 @@ interface Lead {
   score: number | null;
   scoreReason: string | null;
   tags: string[];
+  proposalSentAt: string | null;
+  approvedAt: string | null;
+  buildStartedAt: string | null;
+  buildCompletedAt: string | null;
+  dealOutcome: string | null;
   createdAt: string;
   artifacts: Artifact[];
 }
@@ -62,6 +67,11 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   const [rejecting, setRejecting] = useState(false);
   const [rejectNote, setRejectNote] = useState("");
   const [showRejectInput, setShowRejectInput] = useState(false);
+  const [revising, setRevising] = useState(false);
+  const [reviseInstruction, setReviseInstruction] = useState("");
+  const [markingSent, setMarkingSent] = useState(false);
+  const [settingDeal, setSettingDeal] = useState(false);
+  const [selectedProposalId, setSelectedProposalId] = useState<string | null>(null);
 
   async function enrichLead() {
     setEnriching(true);
@@ -144,6 +154,29 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
     setApproving(false);
   }
 
+  async function reviseProposal() {
+    if (!reviseInstruction.trim()) return;
+    setRevising(true);
+    try {
+      const res = await fetch(`/api/leads/${id}/proposal/revise`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ instruction: reviseInstruction.trim() }),
+      });
+      if (res.ok) {
+        const full = await fetch(`/api/leads/${id}`);
+        if (full.ok) setLead(await full.json());
+        setReviseInstruction("");
+      } else {
+        const err = await res.json();
+        alert(err.error ?? "Revise failed");
+      }
+    } catch (e) {
+      alert("Revise failed");
+    }
+    setRevising(false);
+  }
+
   async function rejectLead() {
     setRejecting(true);
     try {
@@ -163,6 +196,34 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
       }
     } catch (e) { alert("Reject failed"); }
     setRejecting(false);
+  }
+
+  async function markProposalSent() {
+    setMarkingSent(true);
+    try {
+      const res = await fetch(`/api/leads/${id}/proposal-sent`, { method: "POST" });
+      if (res.ok) {
+        const full = await fetch(`/api/leads/${id}`);
+        if (full.ok) setLead(await full.json());
+      }
+    } catch (e) { alert("Failed"); }
+    setMarkingSent(false);
+  }
+
+  async function setDealOutcome(outcome: "won" | "lost") {
+    setSettingDeal(true);
+    try {
+      const res = await fetch(`/api/leads/${id}/deal-outcome`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ outcome }),
+      });
+      if (res.ok) {
+        const full = await fetch(`/api/leads/${id}`);
+        if (full.ok) setLead(await full.json());
+      }
+    } catch (e) { alert("Failed"); }
+    setSettingDeal(false);
   }
 
   useEffect(() => {
@@ -265,14 +326,55 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
         </div>
       )}
 
-      {/* Proposal console: positioning + proposal side-by-side to spot drift */}
+      {/* Proposal console: version list + positioning + proposal side-by-side + one-click revise */}
       {(() => {
         const positioning = lead.artifacts.find((a) => a.type === "positioning" && a.title === "POSITIONING_BRIEF");
-        const proposal = lead.artifacts.find((a) => a.type === "proposal");
+        const proposalArtifacts = lead.artifacts.filter((a) => a.type === "proposal").sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        const latestProposal = proposalArtifacts[0] ?? null;
+        const proposal =
+          selectedProposalId && proposalArtifacts.some((a) => a.id === selectedProposalId)
+            ? proposalArtifacts.find((a) => a.id === selectedProposalId)!
+            : latestProposal;
         if (!positioning || !proposal) return null;
         return (
           <div className="border border-neutral-800 rounded-lg p-4">
             <h3 className="text-xs font-medium text-neutral-500 uppercase tracking-wider mb-3">Proposal review (positioning vs proposal)</h3>
+            {proposalArtifacts.length > 1 && (
+              <div className="mb-3">
+                <span className="text-xs text-neutral-500 mr-2">Version:</span>
+                <div className="flex gap-2 flex-wrap mt-1">
+                  {proposalArtifacts.map((p, idx) => {
+                    const isPrimary = idx === 0;
+                    const isSelected = p.id === proposal.id;
+                    return (
+                      <button
+                        key={p.id}
+                        onClick={() => setSelectedProposalId(p.id)}
+                        className={`flex items-center gap-2 px-2.5 py-1.5 rounded-md border text-xs transition-colors ${
+                          isSelected ? "bg-neutral-700 border-neutral-600 text-neutral-100" : "border-neutral-800 text-neutral-400 hover:border-neutral-700"
+                        }`}
+                      >
+                        <span>V{proposalArtifacts.length - idx}</span>
+                        <span className="text-neutral-500">{new Date(p.createdAt).toLocaleString()}</span>
+                        {isPrimary && <Badge variant="secondary" className="text-[10px]">PRIMARY</Badge>}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            <div className="flex gap-2 flex-wrap items-center mb-3">
+              <Input
+                placeholder="e.g. shorter, more aggressive, focus on ROI"
+                value={reviseInstruction}
+                onChange={(e) => setReviseInstruction(e.target.value)}
+                className="max-w-sm h-8 text-sm"
+                onKeyDown={(e) => e.key === "Enter" && reviseProposal()}
+              />
+              <Button variant="outline" size="sm" onClick={reviseProposal} disabled={revising || !reviseInstruction.trim()}>
+                <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${revising ? "animate-spin" : ""}`} /> {revising ? "Revising..." : "Revise proposal"}
+              </Button>
+            </div>
             <div className="grid gap-4 md:grid-cols-2">
               <div className="border border-neutral-700 rounded-md p-3 bg-neutral-900/40 max-h-[420px] overflow-y-auto">
                 <div className="text-xs font-medium text-neutral-400 mb-2">POSITIONING_BRIEF</div>
@@ -331,6 +433,25 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
             <Hammer className="w-3.5 h-3.5" /> {building ? "Building..." : "Start Build"}
           </Button>
         )}
+      </div>
+
+      {/* Conversion / outcome tracking */}
+      <div className="border border-neutral-800 rounded-lg p-4">
+        <h3 className="text-xs font-medium text-neutral-500 uppercase tracking-wider mb-3">Conversion</h3>
+        <div className="grid gap-2 text-sm">
+          {lead.proposalSentAt && <div className="text-neutral-400">Proposal sent: {new Date(lead.proposalSentAt).toLocaleString()}</div>}
+          {lead.approvedAt && <div className="text-neutral-400">Approved: {new Date(lead.approvedAt).toLocaleString()}</div>}
+          {lead.buildStartedAt && <div className="text-neutral-400">Build started: {new Date(lead.buildStartedAt).toLocaleString()}</div>}
+          {lead.buildCompletedAt && <div className="text-neutral-400">Build completed: {new Date(lead.buildCompletedAt).toLocaleString()}</div>}
+          {lead.dealOutcome && <div className="text-neutral-400">Deal: <span className={lead.dealOutcome === "won" ? "text-emerald-400" : "text-red-400"}>{lead.dealOutcome}</span></div>}
+        </div>
+        <div className="flex gap-2 flex-wrap mt-3">
+          {!lead.proposalSentAt && hasProposal && (
+            <Button variant="outline" size="sm" onClick={markProposalSent} disabled={markingSent}>{markingSent ? "..." : "Mark proposal sent"}</Button>
+          )}
+          <Button variant="outline" size="sm" onClick={() => setDealOutcome("won")} disabled={settingDeal} className="text-emerald-400 border-emerald-800">Deal won</Button>
+          <Button variant="outline" size="sm" onClick={() => setDealOutcome("lost")} disabled={settingDeal} className="text-red-400 border-red-900">Deal lost</Button>
+        </div>
       </div>
 
       {/* Two-column info */}
