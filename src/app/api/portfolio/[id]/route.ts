@@ -45,7 +45,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const trimmed = (content ?? "").trim().slice(0, 600);
 
     return NextResponse.json({ text: trimmed, length: trimmed.length });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Portfolio generation failed";
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

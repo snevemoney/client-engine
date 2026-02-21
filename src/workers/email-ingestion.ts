@@ -141,11 +141,11 @@ export async function runEmailIngestion() {
         { source: true, envelope: true }
       )) {
         if (!message.source) continue;
-        const parsed = await simpleParser(message.source as any);
-        const subject = (parsed as any).subject || "";
-        const text = (parsed as any).text || "";
-        const html = (parsed as any).html || "";
-        const from = (parsed as any).from?.text || "";
+        const parsed = await simpleParser(message.source as Buffer);
+        const subject = (parsed && typeof parsed === "object" && "subject" in parsed ? String(parsed.subject) : "") || "";
+        const text = (parsed && typeof parsed === "object" && "text" in parsed ? String(parsed.text) : "") || "";
+        const html = (parsed && typeof parsed === "object" && "html" in parsed ? String(parsed.html) : "") || "";
+        const from = (parsed && typeof parsed === "object" && parsed.from && typeof parsed.from === "object" && "text" in parsed.from ? String(parsed.from.text) : "") || "";
 
         const leadId = await ingestEmail(subject, text, html, from);
         if (leadId) count++;

@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { runPipelineIfEligible } from "@/lib/pipeline/runPipeline";
+import { rateLimit } from "@/lib/rate-limit";
+
+const LIMIT = 10;
+const WINDOW_MS = 60_000;
 
 function detailsForLead(lead: { status: string; scoredAt: Date | null; artifacts: { type: string; title: string }[] }) {
   const hasEnrich = lead.artifacts.some((a) => a.type === "notes" && a.title === "AI Enrichment Report");
@@ -29,6 +33,15 @@ export async function POST(
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  const key = `${session.user.id}:pipeline-retry`;
+  const { ok, remaining, resetAt } = rateLimit(key, LIMIT, WINDOW_MS);
+  if (!ok) {
+    return NextResponse.json(
+      { error: "Too many requests", resetAt },
+      { status: 429, headers: { "X-RateLimit-Remaining": "0", "X-RateLimit-Reset": String(resetAt) } }
+    );
+  }
+
   const { leadId } = await params;
   const lead = await db.lead.findUnique({
     where: { id: leadId },
@@ -48,11 +61,9 @@ export async function POST(
     }
     const details = detailsForLead(lead);
     return NextResponse.json({ run: false, reason: result.reason, details }, { status: 200 });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("[pipeline/retry] Error:", err);
-    return NextResponse.json(
-      { error: err?.message ?? "Pipeline retry failed" },
-      { status: 500 }
-    );
+    const msg = err instanceof Error ? err.message : "Pipeline retry failed";
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

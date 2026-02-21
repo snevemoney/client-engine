@@ -6,6 +6,7 @@ import { runEnrich } from "@/lib/pipeline/enrich";
 import { runScore } from "@/lib/pipeline/score";
 import { runPositioning } from "@/lib/pipeline/positioning";
 import { runPropose } from "@/lib/pipeline/propose";
+import { buildProvenance } from "@/lib/pipeline/provenance";
 import { isDryRun } from "@/lib/pipeline/dry-run";
 import {
   classifyPipelineError,
@@ -95,7 +96,8 @@ export async function runPipelineIfEligible(
             await finishStep(stepId, { success: true, notes: "skipped: artifact exists" });
             stepsSkipped++;
           } else {
-            const { artifactId, usage } = await runEnrich(leadId);
+            const provenance = buildProvenance(runId, "enrich", { temperature: 0.3 });
+            const { artifactId, usage } = await runEnrich(leadId, provenance);
             const norm = normalizeUsage(usage, "gpt-4o-mini");
             await finishStep(stepId, {
               success: true,
@@ -124,7 +126,8 @@ export async function runPipelineIfEligible(
             await finishStep(stepId, { success: true, notes: "skipped: artifact exists" });
             stepsSkipped++;
           } else {
-            const { artifactId, usage } = await runPositioning(leadId);
+            const provenance = buildProvenance(runId, "position", { temperature: 0.4 });
+            const { artifactId, usage } = await runPositioning(leadId, provenance);
             const norm = normalizeUsage(usage, "gpt-4o-mini");
             await finishStep(stepId, {
               success: true,
@@ -139,7 +142,8 @@ export async function runPipelineIfEligible(
             await finishStep(stepId, { success: true, notes: "skipped: artifact exists" });
             stepsSkipped++;
           } else {
-            const { artifactId, usage } = await runPropose(leadId);
+            const provenance = buildProvenance(runId, "propose", { temperature: 0.6 });
+            const { artifactId, usage } = await runPropose(leadId, provenance);
             const norm = normalizeUsage(usage, "gpt-4o-mini");
             await finishStep(stepId, {
               success: true,
@@ -150,7 +154,7 @@ export async function runPipelineIfEligible(
             stepsRun++;
           }
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         const notes = formatStepFailureNotes(err);
         await finishStep(stepId, { success: false, notes });
 

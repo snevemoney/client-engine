@@ -5,6 +5,11 @@ import { chat } from "@/lib/llm";
 import { createRun, startStep, finishStep, finishRun } from "@/lib/pipeline-metrics";
 import { normalizeUsage } from "@/lib/pipeline/usage";
 import { formatStepFailureNotes } from "@/lib/pipeline/error-classifier";
+import { buildProvenance } from "@/lib/pipeline/provenance";
+import { rateLimit } from "@/lib/rate-limit";
+
+const LIMIT = 10;
+const WINDOW_MS = 60_000;
 
 function slugify(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
@@ -40,6 +45,15 @@ Second section: DO_THIS_NEXT.md content`;
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const key = `${session.user.id}:build`;
+  const { ok, remaining, resetAt } = rateLimit(key, LIMIT, WINDOW_MS);
+  if (!ok) {
+    return NextResponse.json(
+      { error: "Too many requests", resetAt },
+      { status: 429, headers: { "X-RateLimit-Remaining": "0", "X-RateLimit-Reset": String(resetAt) } }
+    );
+  }
 
   const { id } = await params;
   const lead = await db.lead.findUnique({
@@ -88,6 +102,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const runId = await createRun(id);
   const stepId = await startStep(runId, "build");
+  await db.lead.update({ where: { id }, data: { buildStartedAt: new Date() } });
 
   try {
     const { content, usage } = await chat(
@@ -117,14 +132,30 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     await db.lead.update({
       where: { id },
-      data: { status: "BUILDING" },
+      data: { status: "BUILDING", buildCompletedAt: new Date() },
     });
 
-    await db.artifact.createMany({
-      data: [
-        { leadId: id, type: "scope", title: "PROJECT_SPEC.md", content: spec },
-        { leadId: id, type: "scope", title: "DO_THIS_NEXT.md", content: tasks },
-      ],
+    const provenance = buildProvenance(runId, "build", {
+      model: "gpt-4o-mini",
+      temperature: 0.4,
+    });
+    await db.artifact.create({
+      data: {
+        leadId: id,
+        type: "scope",
+        title: "PROJECT_SPEC.md",
+        content: spec,
+        meta: { provenance },
+      },
+    });
+    await db.artifact.create({
+      data: {
+        leadId: id,
+        type: "scope",
+        title: "DO_THIS_NEXT.md",
+        content: tasks,
+        meta: { provenance },
+      },
     });
 
     const norm = normalizeUsage(usage, "gpt-4o-mini");
@@ -135,10 +166,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     });
     await finishRun(runId, true);
     return NextResponse.json({ project, spec: spec.slice(0, 200), tasks: tasks.slice(0, 200) });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("[build] Error:", err);
     await finishStep(stepId, { success: false, notes: formatStepFailureNotes(err) });
-    await finishRun(runId, false, err?.message ?? "Build factory failed");
-    return NextResponse.json({ error: err.message || "Build factory failed" }, { status: 500 });
+    const msg = err instanceof Error ? err.message : "Build factory failed";
+    await finishRun(runId, false, msg);
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

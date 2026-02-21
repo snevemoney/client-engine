@@ -32,10 +32,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     await finishRun(runId, true);
     const updated = await db.lead.findUnique({ where: { id } });
     return NextResponse.json(updated);
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("[score] Error:", err);
+    const msg = err instanceof Error ? err.message : "Scoring failed";
     await finishStep(stepId, { success: false, notes: formatStepFailureNotes(err) });
-    await finishRun(runId, false, err?.message ?? "Scoring failed");
-    return NextResponse.json({ error: err.message || "Scoring failed" }, { status: 500 });
+    await finishRun(runId, false, msg);
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

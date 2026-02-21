@@ -17,7 +17,7 @@ export default async function WorkPage() {
           <Link href="/" className="text-lg font-semibold tracking-tight">evenslouis</Link>
           <nav className="flex items-center gap-6 text-sm text-neutral-400">
             <Link href="/work" className="text-neutral-100">Work</Link>
-            <a href="/#contact" className="hover:text-neutral-100 transition-colors">Contact</a>
+            <Link href="/#contact" className="hover:text-neutral-100 transition-colors">Contact</Link>
           </nav>
         </div>
       </header>
