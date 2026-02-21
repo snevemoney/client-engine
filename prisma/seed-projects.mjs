@@ -51,6 +51,22 @@ const projects = [
       "/screenshots/proof-qc-assist/5-report.png",
     ],
   },
+  {
+    slug: "autoflow",
+    name: "Autoflow",
+    description:
+      "Workflow and automation platform for building and running flows. Visual editor, triggers, steps, and run history — so teams can automate without writing code.",
+    repoUrl: null,
+    techStack: [],
+    status: "live",
+    screenshots: [
+      "/screenshots/autoflow/1-dashboard.png",
+      "/screenshots/autoflow/2-workflows.png",
+      "/screenshots/autoflow/3-editor.png",
+      "/screenshots/autoflow/4-runs.png",
+      "/screenshots/autoflow/5-settings.png",
+    ],
+  },
 ];
 
 async function main() {

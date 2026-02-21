@@ -11,6 +11,7 @@ import type {
   OutcomeEntry,
   RiskItem,
   ClientFeedbackEntry,
+  ReusableAssetEntry,
   ClientSuccessData,
 } from "./types";
 import { ARTIFACT_TYPES } from "./types";
@@ -32,6 +33,7 @@ export async function getClientSuccessData(leadId: string): Promise<ClientSucces
   let outcomeEntries: OutcomeEntry[] = [];
   let risks: RiskItem[] = [];
   let feedback: ClientFeedbackEntry[] = [];
+  let reusableAssets: ReusableAssetEntry[] = [];
 
   for (const a of artifacts) {
     if (a.type === ARTIFACT_TYPES.RESULT_TARGET && a.meta) {
@@ -84,6 +86,13 @@ export async function getClientSuccessData(leadId: string): Promise<ClientSucces
           (e) => e && typeof e.id === "string" && typeof e.response === "string"
         );
       }
+    } else if (a.type === ARTIFACT_TYPES.REUSABLE_ASSET_LOG && a.meta) {
+      const m = a.meta as { entries?: unknown[] };
+      if (Array.isArray(m.entries)) {
+        reusableAssets = (m.entries as ReusableAssetEntry[]).filter(
+          (e) => e && typeof e.id === "string" && typeof e.description === "string" && typeof e.kind === "string"
+        );
+      }
     }
   }
 
@@ -96,7 +105,59 @@ export async function getClientSuccessData(leadId: string): Promise<ClientSucces
     ),
     risks: risks.filter((r) => !r.resolvedAt),
     feedback,
+    reusableAssets,
   };
+}
+
+const REUSABLE_ASSET_KINDS = ["template", "component", "workflow", "playbook", "case_study", "marketing_angle", "other"] as const;
+
+export async function appendReusableAsset(
+  leadId: string,
+  entry: Omit<ReusableAssetEntry, "id" | "at">
+): Promise<void> {
+  const kind = REUSABLE_ASSET_KINDS.includes(entry.kind as (typeof REUSABLE_ASSET_KINDS)[number])
+    ? entry.kind
+    : "other";
+  const full: ReusableAssetEntry = {
+    ...entry,
+    kind,
+    id: `ra-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    at: new Date().toISOString(),
+  };
+  const data = await getClientSuccessData(leadId);
+  const entries = [...data.reusableAssets, full];
+  await saveReusableAssetLog(leadId, entries);
+}
+
+async function saveReusableAssetLog(leadId: string, entries: ReusableAssetEntry[]): Promise<void> {
+  const content =
+    "# Reusable Assets\n\n" +
+    entries
+      .map(
+        (e) =>
+          `## ${e.at}\n**${e.kind}**\n${e.description}${e.usedInProject ? `\nUsed in: ${e.usedInProject}` : ""}`
+      )
+      .join("\n\n---\n\n");
+  const existing = await db.artifact.findFirst({
+    where: { leadId, type: ARTIFACT_TYPES.REUSABLE_ASSET_LOG },
+    select: { id: true },
+  });
+  if (existing) {
+    await db.artifact.update({
+      where: { id: existing.id },
+      data: { content, meta: { entries } },
+    });
+  } else {
+    await db.artifact.create({
+      data: {
+        leadId,
+        type: ARTIFACT_TYPES.REUSABLE_ASSET_LOG,
+        title: "REUSABLE_ASSET_LOG",
+        content,
+        meta: { entries },
+      },
+    });
+  }
 }
 
 export async function upsertResultTarget(leadId: string, payload: Omit<ResultTarget, "capturedAt">): Promise<void> {

@@ -25,6 +25,21 @@ export type LearningMetaBase = {
   confidence?: number;
 };
 
+/** Build-to-revenue: what this ingestion produced (or "knowledge_only"). */
+export type ProducedAssetType =
+  | "proposal_template"
+  | "case_study"
+  | "automation"
+  | "knowledge_only";
+
+/** Meta on ENGINE_IMPROVEMENT_PROPOSAL artifact: curation and promotion. */
+export type LearningProposalMeta = {
+  promotedToPlaybook?: boolean;
+  promotedAt?: string; // ISO
+  producedAssetType?: ProducedAssetType;
+  contradictionIds?: string[]; // artifact IDs this contradicts (optional)
+};
+
 export type EngineImprovementProposal = {
   title: string;
   sourceVideo?: string;

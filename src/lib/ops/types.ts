@@ -78,6 +78,8 @@ export type MoneyScorecard = {
   followUpsDueToday?: number;
   callsBooked?: number | null; // placeholder
   revenueWon30d?: number | null;
+  /** Deals won in last 90 days (for graduation trigger). */
+  dealsWon90d?: number;
   staleOpportunitiesCount?: number;
   primaryBottleneck?: string | null;
   constraintImpactNote?: string | null;

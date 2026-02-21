@@ -11,6 +11,7 @@ import { OpportunityBriefCard } from "@/components/dashboard/leads/OpportunityBr
 import { RoiEstimateCard } from "@/components/dashboard/leads/RoiEstimateCard";
 import { FollowUpSequenceCard } from "@/components/dashboard/leads/FollowUpSequenceCard";
 import { ClientSuccessCard } from "@/components/dashboard/leads/ClientSuccessCard";
+import { ClientResultsGlance } from "@/components/dashboard/leads/ClientResultsGlance";
 
 interface Artifact {
   id: string;
@@ -312,6 +313,11 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
         </div>
       </div>
 
+      {/* Results at a glance (delivery leads) */}
+      {(lead.status === "APPROVED" || lead.status === "BUILDING" || lead.status === "SHIPPED") && (
+        <ClientResultsGlance leadId={id} />
+      )}
+
       {/* Status bar */}
       <div className="border border-neutral-800 rounded-lg p-4">
         <h3 className="text-xs font-medium text-neutral-500 uppercase tracking-wider mb-3">Pipeline Status</h3>
@@ -519,12 +525,14 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
         onSequenceGenerated={() => fetch(`/api/leads/${id}`).then((r) => r.ok && r.json()).then((d) => d && setLead(d))}
       />
 
-      {/* Client Success (baseline, interventions, outcome scorecard, proof) — after approval/build */}
+      {/* Client Success (baseline, interventions, outcome scorecard, reusable assets, proof) — after approval/build */}
       {(lead.status === "APPROVED" || lead.status === "BUILDING" || lead.status === "SHIPPED") && (
-        <ClientSuccessCard
-          leadId={id}
-          onProofGenerated={() => fetch(`/api/leads/${id}`).then((r) => r.ok && r.json()).then((d) => d && setLead(d))}
-        />
+        <div id="client-success">
+          <ClientSuccessCard
+            leadId={id}
+            onProofGenerated={() => fetch(`/api/leads/${id}`).then((r) => r.ok && r.json()).then((d) => d && setLead(d))}
+          />
+        </div>
       )}
 
       {/* Artifacts */}

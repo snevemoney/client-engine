@@ -35,6 +35,10 @@ bash logs.sh worker     # Tail worker logs
 bash logs.sh postgres   # Tail DB logs
 ```
 
+**One-command deploy from your machine:** If the server uses an SSH deploy key for GitHub, you can run `ssh root@69.62.66.78 '/root/deploy-client-engine.sh'`. Full setup: [docs/DEPLOY_SSH_SETUP.md](docs/DEPLOY_SSH_SETUP.md).
+
+**Post-deploy smoke test:** `./scripts/smoke-test.sh` (or `./scripts/smoke-test.sh https://evenslouis.ca`) — checks homepage, login, dashboard, `/api/health`, `/api/ops/command`, SSL. Exit 0 = all pass.
+
 ## URLs
 
 - **https://evenslouis.ca** — Public site
@@ -79,6 +83,8 @@ PIPELINE_DRY_RUN=1 npm run test:e2e
 ```
 
 **Production:** Use `PLAYWRIGHT_BASE_URL=https://evenslouis.ca` only after fixing redirect loops (set `NEXTAUTH_URL` and `AUTH_SECRET` on the server).
+
+**Side-panel / manual testing:** For Cursor side-panel or embedded browser: [docs/TESTING_SIDE_PANEL.md](docs/TESTING_SIDE_PANEL.md) — local vs prod, checklist, and why prod login may fail in the panel.
 
 ## Deploy from local machine
 

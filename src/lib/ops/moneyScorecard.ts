@@ -5,9 +5,11 @@
 
 import { db } from "@/lib/db";
 import { getConstraintSnapshot } from "./constraint";
+import { getOperatorSettings } from "./settings";
 import type { MoneyScorecard } from "./types";
 
 const RECENT_DAYS = 30;
+const NINETY_DAYS = 90;
 const QUALIFIED_SCORE_MIN = 6;
 const DEFAULT_DEAL_SIZE = 12000;
 const STALE_DAYS = 7;
@@ -20,8 +22,10 @@ function parseBudget(budget: string | null): number | null {
 
 export async function getMoneyScorecard(): Promise<MoneyScorecard> {
   const since = new Date(Date.now() - RECENT_DAYS * 24 * 60 * 60 * 1000);
+  const since90d = new Date(Date.now() - NINETY_DAYS * 24 * 60 * 60 * 1000);
 
-  const leads = await db.lead.findMany({
+  const [leads, dealsWon90dCount] = await Promise.all([
+  db.lead.findMany({
     where: { createdAt: { gte: since } },
     select: {
       score: true,
@@ -35,7 +39,14 @@ export async function getMoneyScorecard(): Promise<MoneyScorecard> {
       updatedAt: true,
       artifacts: { where: { type: "proposal" }, select: { id: true } },
     },
-  });
+  }),
+  db.lead.count({
+    where: {
+      dealOutcome: "won",
+      updatedAt: { gte: since90d },
+    },
+  }),
+  ]);
 
   const qualified = leads.filter((l) => (l.score ?? 0) >= QUALIFIED_SCORE_MIN);
   const withProposal = leads.filter((l) => l.artifacts.length > 0);
@@ -92,7 +103,10 @@ export async function getMoneyScorecard(): Promise<MoneyScorecard> {
   ).length;
   const revenueWon30d = won.reduce((sum, l) => sum + (parseBudget(l.budget) ?? 0), 0) || null;
 
-  const constraint = await getConstraintSnapshot();
+  const [constraint, operatorSettings] = await Promise.all([
+    getConstraintSnapshot(),
+    getOperatorSettings(),
+  ]);
   const primaryBottleneck = constraint ? `${constraint.label}: ${constraint.reason}` : null;
   const constraintImpactNote = constraint
     ? `Improving ${constraint.label.toLowerCase()} should increase throughput and reduce lead decay.`
@@ -110,7 +124,7 @@ export async function getMoneyScorecard(): Promise<MoneyScorecard> {
     avgDealSizeEstimate: avgDealSize,
     timeToProposalMedianDays,
     timeToCloseMedianDays,
-    cashCollected: null,
+    cashCollected: operatorSettings.cashCollected ?? null,
     newLeadsToday,
     newLeads7d,
     qualifiedLeads7d: qualified7d,
@@ -118,6 +132,7 @@ export async function getMoneyScorecard(): Promise<MoneyScorecard> {
     followUpsDueToday,
     callsBooked: null,
     revenueWon30d,
+    dealsWon90d: dealsWon90dCount,
     staleOpportunitiesCount,
     primaryBottleneck,
     constraintImpactNote,

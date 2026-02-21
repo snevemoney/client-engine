@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { BookMarked, Package } from "lucide-react";
 
 type Run = { id: string; content: string; meta: unknown; createdAt: string };
 type Proposal = { id: string; title: string; content: string; meta: unknown; createdAt: string };
@@ -20,6 +21,9 @@ type ProposalMeta = {
   metricToTrack?: string;
   rollbackPlan?: string;
   applyTarget?: string;
+  promotedToPlaybook?: boolean;
+  promotedAt?: string;
+  producedAssetType?: "proposal_template" | "case_study" | "automation" | "knowledge_only";
 };
 
 export function LearningPageClient({
@@ -40,6 +44,23 @@ export function LearningPageClient({
   const [summaries, setSummaries] = useState(initialSummaries);
   const [filterChannel, setFilterChannel] = useState("");
   const [filterTag, setFilterTag] = useState("");
+
+  async function updateProposalMeta(
+    artifactId: string,
+    updates: { promotedToPlaybook?: boolean; producedAssetType?: string }
+  ) {
+    const res = await fetch(`/api/learning/proposal/${artifactId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updates),
+    });
+    if (!res.ok) throw new Error("Update failed");
+    const listRes = await fetch("/api/learning?limit=30");
+    if (listRes.ok) {
+      const list = await listRes.json();
+      setProposals(list.proposals ?? []);
+    }
+  }
 
   async function handleIngest() {
     const trimmed = url.trim();
@@ -83,6 +104,8 @@ export function LearningPageClient({
   }
 
   const metaProposal = (p: Proposal): ProposalMeta | undefined => (p.meta as { proposal?: ProposalMeta })?.proposal;
+  const metaTop = (p: Proposal): { promotedToPlaybook?: boolean; promotedAt?: string; producedAssetType?: string } =>
+    (p.meta as Record<string, unknown> ?? {});
   const filteredProposals = proposals.filter((p) => {
     const prop = metaProposal(p);
     if (filterChannel && prop?.sourceChannel && !String(prop.sourceChannel).toLowerCase().includes(filterChannel.toLowerCase()))
@@ -92,8 +115,42 @@ export function LearningPageClient({
     return true;
   });
 
-  function ProposalBlock({ p }: { p: Proposal }) {
+  function ProposalBlock({
+    p,
+    onUpdate,
+  }: {
+    p: Proposal;
+    onUpdate: (artifactId: string, updates: { promotedToPlaybook?: boolean; producedAssetType?: string }) => Promise<void>;
+  }) {
     const prop = metaProposal(p);
+    const top = metaTop(p);
+    const [promoting, setPromoting] = useState(false);
+    const [produced, setProduced] = useState(top.producedAssetType ?? "");
+    const [savingProduced, setSavingProduced] = useState(false);
+    useEffect(() => {
+      setProduced(top.producedAssetType ?? "");
+    }, [top.producedAssetType]);
+
+    async function handlePromote() {
+      setPromoting(true);
+      try {
+        await onUpdate(p.id, { promotedToPlaybook: true });
+      } finally {
+        setPromoting(false);
+      }
+    }
+
+    async function handleProducedChange(value: string) {
+      setProduced(value);
+      if (!value) return;
+      setSavingProduced(true);
+      try {
+        await onUpdate(p.id, { producedAssetType: value });
+      } finally {
+        setSavingProduced(false);
+      }
+    }
+
     return (
       <li className="border border-neutral-800 rounded-lg p-4 bg-neutral-900/30 space-y-3">
         <div className="flex items-start justify-between gap-2">
@@ -107,7 +164,40 @@ export function LearningPageClient({
               {prop?.sourceChannel && ` · ${prop.sourceChannel}`}
             </p>
           </div>
-          <span className="text-xs text-neutral-500 shrink-0">{new Date(p.createdAt).toLocaleDateString()}</span>
+          <div className="flex items-center gap-2 shrink-0">
+            {top.promotedToPlaybook ? (
+              <span className="inline-flex items-center gap-1 rounded bg-emerald-900/50 text-emerald-300 text-xs px-2 py-0.5">
+                <BookMarked className="w-3 h-3" /> In playbook
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={handlePromote}
+                disabled={promoting}
+                className="inline-flex items-center gap-1 rounded border border-neutral-600 px-2 py-0.5 text-xs text-neutral-300 hover:bg-neutral-800 disabled:opacity-50"
+              >
+                <BookMarked className="w-3 h-3" /> {promoting ? "…" : "Promote to playbook"}
+              </button>
+            )}
+            <span className="text-xs text-neutral-500">{new Date(p.createdAt).toLocaleDateString()}</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs text-neutral-500 flex items-center gap-1">
+            <Package className="w-3 h-3" /> Produced:
+          </span>
+          <select
+            value={produced}
+            onChange={(e) => handleProducedChange(e.target.value)}
+            disabled={savingProduced}
+            className="rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-200 disabled:opacity-50"
+          >
+            <option value="">—</option>
+            <option value="proposal_template">Proposal template</option>
+            <option value="case_study">Case study</option>
+            <option value="automation">Automation</option>
+            <option value="knowledge_only">Knowledge only</option>
+          </select>
         </div>
         {prop && typeof prop === "object" && (
           <div className="grid gap-2 text-sm">
@@ -192,7 +282,9 @@ export function LearningPageClient({
           <p className="text-xs text-neutral-500">No improvement proposals yet. Ingest a video to generate.</p>
         ) : (
           <ul className="space-y-3">
-            {filteredProposals.map((p) => <ProposalBlock key={p.id} p={p} />)}
+            {filteredProposals.map((p) => (
+              <ProposalBlock key={p.id} p={p} onUpdate={updateProposalMeta} />
+            ))}
           </ul>
         )}
       </section>

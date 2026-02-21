@@ -20,6 +20,12 @@ export type OperatorSettings = {
   offerStatement?: string;
   buyerProfile?: string;
   promiseProblemStatement?: string;
+  /** Cash actually collected (bank) — set in Settings; revenue won is pipeline. */
+  cashCollected?: number;
+  /** Graduation: target number of repeatable wins (e.g. 10) before moving to productized. */
+  graduationTargetWins?: number;
+  /** Next milestone text (e.g. "Productized offer readiness: 60%"). */
+  graduationMilestone?: string;
 };
 
 export async function getOperatorSettings(): Promise<OperatorSettings> {

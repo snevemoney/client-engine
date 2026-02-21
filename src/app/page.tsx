@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 async function getFeaturedProjects() {
   try {
     return await db.project.findMany({
-      where: { status: "live" },
+      where: { status: { not: "archived" } },
       orderBy: { createdAt: "desc" },
       take: 3,
     });

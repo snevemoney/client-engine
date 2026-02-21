@@ -55,6 +55,15 @@ export type ClientFeedbackEntry = {
   themes?: string[]; // e.g. "slow", "confusing"
 };
 
+/** Reusable asset extracted from this project (template, component, playbook, case study). */
+export type ReusableAssetEntry = {
+  id: string;
+  at: string;
+  kind: "template" | "component" | "workflow" | "playbook" | "case_study" | "marketing_angle" | "other";
+  description: string;
+  usedInProject?: string; // e.g. "proposal opener", "ROI section"
+};
+
 export const ARTIFACT_TYPES = {
   RESULT_TARGET: "RESULT_TARGET",
   BASELINE_SNAPSHOT: "BASELINE_SNAPSHOT",
@@ -62,6 +71,7 @@ export const ARTIFACT_TYPES = {
   OUTCOME_SCORECARD: "OUTCOME_SCORECARD",
   RISK_BOTTLENECK_LOG: "RISK_BOTTLENECK_LOG",
   CLIENT_FEEDBACK_LOG: "CLIENT_FEEDBACK_LOG",
+  REUSABLE_ASSET_LOG: "REUSABLE_ASSET_LOG",
 } as const;
 
 export type ClientSuccessData = {
@@ -71,4 +81,5 @@ export type ClientSuccessData = {
   outcomeEntries: OutcomeEntry[];
   risks: RiskItem[];
   feedback: ClientFeedbackEntry[];
+  reusableAssets: ReusableAssetEntry[];
 };

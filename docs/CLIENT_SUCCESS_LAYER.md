@@ -17,6 +17,7 @@ Result-driven delivery: baseline → interventions → outcome scorecard → pro
 | **Outcome Scorecard** | `OUTCOME_SCORECARD` | Weekly KPI tracking (time saved, cost saved, throughput, etc.). |
 | **Risk / Bottleneck Tracker** | `RISK_BOTTLENECK_LOG` | What's blocking results now; can be resolved. |
 | **Client Feedback Log** | `CLIENT_FEEDBACK_LOG` | Check-ins: "What still feels slow/confusing?" |
+| **Reusable Asset Log** | `REUSABLE_ASSET_LOG` | What you extracted from this project (template, component, workflow, playbook, case study, marketing angle) for future use. |
 
 ## When it appears
 

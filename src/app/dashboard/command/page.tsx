@@ -6,6 +6,11 @@ import { getRecentOperatorFeedbackNotes } from "@/lib/ops/feedback";
 import { getLearningInboxSummary } from "@/lib/learning/ingest";
 import { getKnowledgeQueueCounts, getTopImprovementSuggestions } from "@/lib/knowledge/ingest";
 import { getMoneyScorecard } from "@/lib/ops/moneyScorecard";
+import { getFailuresAndInterventions } from "@/lib/ops/failuresInterventions";
+import { getLeverageScore } from "@/lib/ops/leverageScore";
+import { getWeeklySnapshotHistory } from "@/lib/ops/weeklySnapshot";
+import { getOperatorSettings } from "@/lib/ops/settings";
+import { getPatTomWeeklyScorecard } from "@/lib/ops/patTomWeeklyScorecard";
 import { db } from "@/lib/db";
 import { CommandHeader } from "@/components/dashboard/command/CommandHeader";
 import { WorkdayRunCard } from "@/components/dashboard/command/WorkdayRunCard";
@@ -13,7 +18,10 @@ import { BriefMeCard } from "@/components/dashboard/command/BriefMeCard";
 import { QueueSummaryCard } from "@/components/dashboard/command/QueueSummaryCard";
 import { ConstraintCard } from "@/components/dashboard/command/ConstraintCard";
 import { AiBriefCard } from "@/components/dashboard/command/AiBriefCard";
-import { RecentIssuesCard } from "@/components/dashboard/command/RecentIssuesCard";
+import { FailuresInterventionsCard } from "@/components/dashboard/command/FailuresInterventionsCard";
+import { LeverageScoreCard } from "@/components/dashboard/command/LeverageScoreCard";
+import { LeverageTrendCard } from "@/components/dashboard/command/LeverageTrendCard";
+import { GraduationTriggerCard } from "@/components/dashboard/command/GraduationTriggerCard";
 import { QuickActionsCard } from "@/components/dashboard/command/QuickActionsCard";
 import { TodaysFlowCard } from "@/components/dashboard/command/TodaysFlowCard";
 import { FeedbackCard } from "@/components/dashboard/command/FeedbackCard";
@@ -23,11 +31,12 @@ import { LearningInboxCard } from "@/components/dashboard/command/LearningInboxC
 import { KnowledgeQueueCard } from "@/components/dashboard/command/KnowledgeQueueCard";
 import { TopSuggestionsCard } from "@/components/dashboard/command/TopSuggestionsCard";
 import { MoneyScorecardCard } from "@/components/dashboard/command/MoneyScorecardCard";
+import { PatTomWeeklyScorecardCard } from "@/components/dashboard/command/PatTomWeeklyScorecardCard";
 
 export const dynamic = "force-dynamic";
 
 export default async function CommandCenterPage() {
-  const [brief, queue, constraint, lastRunReport, latestBrief, recentErrors, feedbackNotes, learningInbox, knowledgeQueue, topSuggestions, moneyScorecard] = await Promise.all([
+  const [brief, queue, constraint, lastRunReport, latestBrief, failuresInterventions, leverageScore, weeklyTrend, operatorSettings, patTomScorecard, feedbackNotes, learningInbox, knowledgeQueue, topSuggestions, moneyScorecard] = await Promise.all([
     buildBrief(),
     getQueueSummary(),
     getConstraintSnapshot(),
@@ -40,12 +49,11 @@ export default async function CommandCenterPage() {
       select: { createdAt: true, content: true },
     }),
     getLatestOperatorBrief(),
-    db.pipelineRun.findMany({
-      where: { success: false },
-      orderBy: { lastErrorAt: "desc" },
-      take: 5,
-      include: { lead: { select: { title: true } } },
-    }),
+    getFailuresAndInterventions(),
+    getLeverageScore(),
+    getWeeklySnapshotHistory(8),
+    getOperatorSettings(),
+    getPatTomWeeklyScorecard(),
     getRecentOperatorFeedbackNotes(5),
     getLearningInboxSummary(),
     getKnowledgeQueueCounts(),
@@ -59,20 +67,28 @@ export default async function CommandCenterPage() {
     createdAt: n.createdAt.toISOString(),
   }));
 
-  const errorItems = recentErrors.map((r) => ({
-    leadId: r.leadId,
-    leadTitle: r.lead.title,
-    code: r.lastErrorCode,
-    at: r.lastErrorAt?.toISOString() ?? null,
-  }));
-
   return (
     <div className="space-y-6">
       <CommandHeader />
 
       <MoneyScorecardCard data={moneyScorecard} />
 
-      <TodaysFlowCard queue={queue} />
+      <FailuresInterventionsCard data={failuresInterventions} />
+
+      <PatTomWeeklyScorecardCard data={patTomScorecard} />
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <LeverageScoreCard data={leverageScore} />
+        <TodaysFlowCard queue={queue} />
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <LeverageTrendCard history={weeklyTrend} />
+        <GraduationTriggerCard
+          dealsWon90d={moneyScorecard.dealsWon90d ?? 0}
+          targetWins={operatorSettings.graduationTargetWins ?? null}
+          milestone={operatorSettings.graduationMilestone ?? null}
+        />
+      </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <WorkdayRunCard lastRunAt={lastRunReport?.createdAt?.toISOString() ?? null} />
@@ -92,7 +108,6 @@ export default async function CommandCenterPage() {
       <QueueSummaryCard queue={queue} />
       <ConstraintCard constraint={constraint} />
       <AiBriefCard latestBrief={latestBrief} />
-      <RecentIssuesCard errors={errorItems} />
       <LearningInboxCard proposalCount={learningInbox.proposalCount} latestSource={learningInbox.latestSource} />
       <div className="grid gap-4 sm:grid-cols-2">
         <KnowledgeQueueCard

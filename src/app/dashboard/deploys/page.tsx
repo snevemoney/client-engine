@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { DeploysTable } from "./deploys-table";
-import Link from "next/link";
+import { ProductionDeployCard } from "@/components/dashboard/deploys/ProductionDeployCard";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +18,8 @@ export default async function DeploysPage() {
           Set demo URLs for projects. Visitors to <code className="text-neutral-500">/demos/[slug]</code> are redirected to the demo URL.
         </p>
       </div>
+
+      <ProductionDeployCard />
 
       <DeploysTable projects={projects} />
 

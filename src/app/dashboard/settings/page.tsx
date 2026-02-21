@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { getOperatorSettings } from "@/lib/ops/settings";
 import { getMonetizationMap } from "@/lib/ops/monetization";
 import { MonetizationMapSection } from "@/components/dashboard/settings/MonetizationMapSection";
+import { CashAndGraduationSection } from "@/components/dashboard/settings/CashAndGraduationSection";
 
 export const dynamic = "force-dynamic";
 
@@ -125,6 +126,42 @@ export default async function SettingsPage() {
           </div>
         </div>
       </section>
+
+      <section className="border border-amber-900/40 rounded-lg p-6 space-y-4 bg-amber-950/10">
+        <h2 className="text-sm font-medium text-amber-200/90">Autopilot guardrails</h2>
+        <div className="grid gap-3 text-sm">
+          <div className="flex justify-between items-center">
+            <span className="text-neutral-400">Last workday run status</span>
+            <span className={
+              !lastWorkdayRun?.createdAt
+                ? "text-amber-400"
+                : (Date.now() - new Date(lastWorkdayRun.createdAt).getTime() > 24 * 60 * 60 * 1000)
+                  ? "text-amber-400"
+                  : "text-emerald-400"
+            }>
+              {!lastWorkdayRun?.createdAt
+                ? "Never run"
+                : (Date.now() - new Date(lastWorkdayRun.createdAt).getTime() > 24 * 60 * 60 * 1000)
+                  ? "No run in 24h — check cron"
+                  : "OK"}
+            </span>
+          </div>
+          <div>
+            <div className="text-neutral-500 text-xs mb-1">Human-only (never automated)</div>
+            <ul className="text-neutral-300 text-sm list-disc list-inside space-y-0.5">
+              <li>Final proposal send</li>
+              <li>Build start</li>
+              <li>Positioning / offer changes</li>
+              <li>Approve / reject lead</li>
+            </ul>
+          </div>
+        </div>
+        <p className="text-xs text-neutral-500">
+          Automation runs research and pipeline only. Money-path steps always require your approval.
+        </p>
+      </section>
+
+      <CashAndGraduationSection initialSettings={operatorSettings} />
 
       <section className="border border-neutral-800 rounded-lg p-6 space-y-4">
         <h2 className="text-sm font-medium text-neutral-300">Business settings</h2>

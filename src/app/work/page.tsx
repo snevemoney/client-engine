@@ -6,10 +6,15 @@ import { LeadCaptureForm } from "@/components/site/LeadCaptureForm";
 export const dynamic = "force-dynamic";
 
 export default async function WorkPage() {
-  const projects = await db.project.findMany({
-    where: { status: "live" },
-    orderBy: { createdAt: "desc" },
-  });
+  let projects: Awaited<ReturnType<typeof db.project.findMany>> = [];
+  try {
+    projects = await db.project.findMany({
+      where: { status: { not: "archived" } },
+      orderBy: { createdAt: "desc" },
+    });
+  } catch (err) {
+    console.error("[work] Failed to load projects:", err);
+  }
 
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-100">

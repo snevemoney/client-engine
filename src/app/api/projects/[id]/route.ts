@@ -33,7 +33,7 @@ export async function PATCH(
   const data: { demoUrl?: string | null; repoUrl?: string | null; status?: string } = {};
   if (demoUrl !== undefined) data.demoUrl = demoUrl === "" || demoUrl === null ? null : String(demoUrl);
   if (repoUrl !== undefined) data.repoUrl = repoUrl === "" || repoUrl === null ? null : String(repoUrl);
-  if (typeof status === "string" && ["draft", "shipped", "archived"].includes(status)) data.status = status;
+  if (typeof status === "string" && ["draft", "live", "shipped", "archived"].includes(status)) data.status = status;
 
   const updated = await db.project.update({
     where: { id },

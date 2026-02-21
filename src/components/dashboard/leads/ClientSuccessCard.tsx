@@ -14,6 +14,7 @@ import {
   FileText,
   Plus,
   Check,
+  Package,
 } from "lucide-react";
 
 type ResultTarget = {
@@ -61,6 +62,14 @@ type ClientFeedbackEntry = {
   themes?: string[];
 };
 
+type ReusableAssetEntry = {
+  id: string;
+  at: string;
+  kind: string;
+  description: string;
+  usedInProject?: string;
+};
+
 type ClientSuccessData = {
   resultTarget: ResultTarget | null;
   baseline: BaselineSnapshot | null;
@@ -68,6 +77,7 @@ type ClientSuccessData = {
   outcomeEntries: OutcomeEntry[];
   risks: RiskItem[];
   feedback: ClientFeedbackEntry[];
+  reusableAssets?: ReusableAssetEntry[];
 };
 
 const INTERVENTION_CATEGORIES = ["automation", "workflow", "tool_stack", "process", "other"] as const;
@@ -98,6 +108,9 @@ export function ClientSuccessCard({
   const [riskDesc, setRiskDesc] = useState("");
   const [feedbackResponse, setFeedbackResponse] = useState("");
   const [feedbackQuestion, setFeedbackQuestion] = useState("What still feels slow or confusing?");
+  const [assetKind, setAssetKind] = useState<"template" | "component" | "workflow" | "playbook" | "case_study" | "marketing_angle" | "other">("template");
+  const [assetDesc, setAssetDesc] = useState("");
+  const [assetUsedIn, setAssetUsedIn] = useState("");
 
   function fetchData() {
     fetch(`/api/leads/${leadId}/client-success`)
@@ -135,6 +148,8 @@ export function ClientSuccessCard({
         setOutMetrics("");
         setRiskDesc("");
         setFeedbackResponse("");
+        setAssetDesc("");
+        setAssetUsedIn("");
       }
     } finally {
       setSaving(false);
@@ -203,6 +218,16 @@ export function ClientSuccessCard({
   async function addFeedback() {
     if (!feedbackResponse.trim()) return;
     await post("feedback", { question: feedbackQuestion.trim() || undefined, response: feedbackResponse.trim() });
+  }
+
+  const ASSET_KINDS = ["template", "component", "workflow", "playbook", "case_study", "marketing_angle", "other"] as const;
+  async function addReusableAsset() {
+    if (!assetDesc.trim()) return;
+    await post("reusable_asset", {
+      kind: assetKind,
+      description: assetDesc.trim(),
+      usedInProject: assetUsedIn.trim() || undefined,
+    });
   }
 
   async function generateProof() {
@@ -380,6 +405,38 @@ export function ClientSuccessCard({
           <ul className="mt-2 space-y-1 text-xs text-neutral-400">
             {data.feedback.slice(-3).reverse().map((f) => (
               <li key={f.id}>{f.response.slice(0, 80)}{f.response.length > 80 ? "…" : ""}</li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {/* Reusable Assets */}
+      <div>
+        <h4 className="text-xs font-medium text-neutral-500 uppercase tracking-wider mb-2 flex items-center gap-1">
+          <Package className="w-3 h-3" /> Reusable assets
+        </h4>
+        <p className="text-xs text-neutral-500 mb-2">What you extracted from this project for future use.</p>
+        <div className="flex gap-2 flex-wrap mb-2">
+          {ASSET_KINDS.map((k) => (
+            <button
+              key={k}
+              type="button"
+              onClick={() => setAssetKind(k)}
+              className={`rounded px-2 py-1 text-xs ${assetKind === k ? "bg-neutral-700 text-neutral-100" : "bg-neutral-800/50 text-neutral-400"}`}
+            >
+              {k.replace("_", " ")}
+            </button>
+          ))}
+        </div>
+        <Input placeholder="Description (e.g. Proposal opener for SaaS)" value={assetDesc} onChange={(e) => setAssetDesc(e.target.value)} className="mb-1 bg-neutral-900 border-neutral-700 text-sm" />
+        <Input placeholder="Used in (e.g. ROI section)" value={assetUsedIn} onChange={(e) => setAssetUsedIn(e.target.value)} className="mb-2 bg-neutral-900 border-neutral-700 text-sm" />
+        <Button size="sm" variant="outline" onClick={addReusableAsset} disabled={saving || !assetDesc.trim()}>
+          <Plus className="w-3 h-3 mr-1" /> Log reusable asset
+        </Button>
+        {data?.reusableAssets && data.reusableAssets.length > 0 && (
+          <ul className="mt-2 space-y-1 text-xs text-neutral-400">
+            {data.reusableAssets.map((a) => (
+              <li key={a.id}>[{a.kind}] {a.description}{a.usedInProject ? ` — ${a.usedInProject}` : ""}</li>
             ))}
           </ul>
         )}

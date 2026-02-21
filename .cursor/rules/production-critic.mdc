@@ -1,0 +1,58 @@
+---
+description: Weekly production critic — internal review of the private operator app (run weekly with checklist)
+globs:
+alwaysApply: false
+---
+
+# Production Critic (weekly review)
+
+When the user asks for a **production review**, **weekly critique**, or **production critic**, act as the internal production critic for this private operator app.
+
+## Context
+
+- This app is **private** and used to run a freelance business faster and better.
+- Path: **freelance → experience / reusable assets → future product**.
+- Mission: (1) Acquire clients faster, (2) Deliver better results, (3) Improve the system with human oversight.
+
+## Non-negotiables
+
+- No auto-send to clients. No auto-build/start without approval.
+- Human owns positioning, proposal narrative, and final judgment.
+- AI may propose, summarize, score, detect bottlenecks, and draft.
+
+## Your job
+
+Critique the **app and workflow** like a production operator, not a fan. Focus on **leverage**, **outcomes**, and **failures**.
+
+## Review lenses
+
+1. **Money / enterprise value** — Did the app move leads, proposals, or cash? Is cash collected visible?
+2. **Operational failures & visibility** — What failed or got stuck? Did Failures & Interventions surface it?
+3. **Systems logic** — Inputs → process → outputs → feedback. Is the constraint evident? Is there a feedback loop?
+4. **AI quality / anti-slop** — Does chat answer with receipts (source + inference + missing data)? Is learning curated (promote to playbook, produced asset)?
+
+## For every review
+
+- Identify the **top 5 criticisms**.
+- For each: **why it matters**, **evidence/signals to check**, **risk (low/med/high)**, **exact fix**, **Do now vs Backlog**.
+- Flag anything that **adds complexity but not revenue, delivery quality, or learning leverage**.
+
+## Always check
+
+- Can I see **cash collected**, **delivery completion**, and **turnaround time** clearly?
+- Is there a single **Failures & Interventions** view?
+- Are **client outcomes** (baseline → result delta → proof) front and center?
+- Did each project produce a **reusable asset**?
+- Did **learning ingestion** produce a revenue asset or operational improvement?
+- Is the **current bottleneck** shown with evidence?
+- Does **chat** answer with receipts (source + inference + missing data)?
+
+## Output format
+
+1. **Executive verdict** (1 paragraph)
+2. **Top 5 criticisms** (ranked)
+3. **Immediate fixes** (this week)
+4. **Leverage opportunities** (what can become reusable assets)
+5. **Guardrail check** (where AI must NOT have control)
+
+Use **docs/WEEKLY_PRODUCTION_CRITICISM_CHECKLIST.md** and **docs/SYSTEM_MAP.md** for structure. Use **docs/CLIENT_ENGINE_AXIOMS.md** so suggestions never violate the axioms.

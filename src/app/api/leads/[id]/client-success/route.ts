@@ -13,8 +13,9 @@ import {
   addRisk,
   resolveRisk,
   appendClientFeedback,
+  appendReusableAsset,
 } from "@/lib/client-success";
-import type { InterventionEntry, OutcomeEntry, RiskItem, ClientFeedbackEntry } from "@/lib/client-success/types";
+import type { InterventionEntry, OutcomeEntry, RiskItem, ClientFeedbackEntry, ReusableAssetEntry } from "@/lib/client-success/types";
 
 export const dynamic = "force-dynamic";
 
@@ -49,7 +50,8 @@ export async function POST(
       | "outcome_entry"
       | "risk"
       | "resolve_risk"
-      | "feedback";
+      | "feedback"
+      | "reusable_asset";
     payload?: Record<string, unknown>;
     riskId?: string;
   };
@@ -137,6 +139,20 @@ export async function POST(
         question: p.question,
         response: p.response,
         themes: p.themes,
+      });
+      const data = await getClientSuccessData(leadId);
+      return NextResponse.json(data);
+    }
+
+    if (body.type === "reusable_asset" && body.payload) {
+      const p = body.payload as { kind: ReusableAssetEntry["kind"]; description: string; usedInProject?: string };
+      if (!p.kind || !p.description) {
+        return NextResponse.json({ error: "kind and description required" }, { status: 400 });
+      }
+      await appendReusableAsset(leadId, {
+        kind: p.kind,
+        description: p.description,
+        usedInProject: p.usedInProject,
       });
       const data = await getClientSuccessData(leadId);
       return NextResponse.json(data);
