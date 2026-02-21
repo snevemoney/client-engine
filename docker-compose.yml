@@ -1,6 +1,8 @@
 services:
   app:
-    build: .
+    build:
+      context: .
+      target: runner
     ports:
       - "127.0.0.1:3200:3000"
     env_file: .env
