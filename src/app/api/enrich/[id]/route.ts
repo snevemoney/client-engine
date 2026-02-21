@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { createRun, startStep, finishStep, finishRun } from "@/lib/pipeline-metrics";
 import { normalizeUsage } from "@/lib/pipeline/usage";
 import { runEnrich } from "@/lib/pipeline/enrich";
+import { formatStepFailureNotes } from "@/lib/pipeline/error-classifier";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -34,7 +35,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json(updated);
   } catch (err: any) {
     console.error("[enrich] Error:", err);
-    await finishStep(stepId, { success: false, notes: err?.message ?? "Enrichment failed" });
+    await finishStep(stepId, { success: false, notes: formatStepFailureNotes(err) });
     await finishRun(runId, false, err?.message ?? "Enrichment failed");
     return NextResponse.json({ error: err.message || "Enrichment failed" }, { status: 500 });
   }

@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { chat, type ChatUsage } from "@/lib/llm";
+import { isDryRun } from "@/lib/pipeline/dry-run";
 
 const POSITIONING_PROMPT = `You are a positioning strategist for a freelance full-stack developer. Given this lead, write a short POSITIONING_BRIEF that will be used to open proposals.
 
@@ -24,6 +25,18 @@ Write 2-4 short paragraphs in markdown. No generic intros. Start with the proble
 export async function runPositioning(leadId: string): Promise<{ artifactId: string; usage?: ChatUsage }> {
   const lead = await db.lead.findUnique({ where: { id: leadId } });
   if (!lead) throw new Error("Lead not found");
+
+  if (isDryRun()) {
+    const artifact = await db.artifact.create({
+      data: {
+        leadId,
+        type: "positioning",
+        title: "POSITIONING_BRIEF",
+        content: "**[DRY RUN]** Placeholder positioning brief.",
+      },
+    });
+    return { artifactId: artifact.id };
+  }
 
   const prompt = POSITIONING_PROMPT
     .replace("{title}", lead.title)

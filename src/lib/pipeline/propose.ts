@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { chat, type ChatUsage } from "@/lib/llm";
 import { buildProposalPrompt } from "@/lib/pipeline/prompts/buildProposalPrompt";
+import { isDryRun } from "@/lib/pipeline/dry-run";
 
 const POSITIONING_ARTIFACT_TITLE = "POSITIONING_BRIEF";
 
@@ -23,6 +24,18 @@ export async function runPropose(leadId: string): Promise<{ artifactId: string; 
     throw new Error(
       "Proposal requires POSITIONING_BRIEF. Run position step first."
     );
+  }
+
+  if (isDryRun()) {
+    const artifact = await db.artifact.create({
+      data: {
+        leadId,
+        type: "proposal",
+        title: `Proposal: ${lead.title}`,
+        content: "**[DRY RUN]** Placeholder proposal.",
+      },
+    });
+    return { artifactId: artifact.id };
   }
 
   const prompt = buildProposalPrompt(

@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { chat, type ChatUsage } from "@/lib/llm";
+import { isDryRun } from "@/lib/pipeline/dry-run";
 
 const SCORE_PROMPT = `You are a lead scoring engine for a freelance full-stack developer (Evens Louis).
 
@@ -38,6 +39,19 @@ No markdown fences, just JSON.`;
 export async function runScore(leadId: string): Promise<{ usage?: ChatUsage }> {
   const lead = await db.lead.findUnique({ where: { id: leadId } });
   if (!lead) throw new Error("Lead not found");
+
+  if (isDryRun()) {
+    await db.lead.update({
+      where: { id: leadId },
+      data: {
+        score: 50,
+        scoreReason: "**[DRY RUN]** Placeholder score.",
+        status: lead.status === "NEW" || lead.status === "ENRICHED" ? "SCORED" : lead.status,
+        scoredAt: new Date(),
+      },
+    });
+    return {};
+  }
 
   const prompt = SCORE_PROMPT
     .replace("{title}", lead.title)

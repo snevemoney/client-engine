@@ -6,13 +6,14 @@
 Build a lead → proposal → build pipeline with hard gates so money path is safe:
 ACCEPT → PROPOSE → BUILD. Nothing ships unless explicitly allowed.
 
+**Baseline updated.** main = deployable truth (auth/schema/API hardening, health, retry, dry-run, error classifier, E2E scaffold).
+
 ## What is already implemented (confirmed)
 ### Money Path Locks
-- Prisma schema: `Lead.verdict` enum: ACCEPT | MAYBE | REJECT
-- Artifact flags: `Artifact.proposalReady` (bool), `Artifact.proposalSentAt` (datetime)
-- Score API: reads LLM verdict, stores to `Lead.verdict`
-- Propose API: only runs if lead is SCORED or APPROVED AND verdict in (ACCEPT, MAYBE); else 400
-- Build API: only runs if verdict === ACCEPT OR status === APPROVED AND at least one proposal artifact exists; else 400 with clear message
+- Lead status: `LeadStatus` (NEW, ENRICHED, SCORED, APPROVED, REJECTED, BUILDING, SHIPPED).
+- Propose: requires positioning artifact (POSITIONING_BRIEF); shared `buildProposalPrompt`; pipeline + manual both use `runPropose`.
+- Build API: server-side gate — requires `lead.status === "APPROVED"`, at least one proposal artifact, and no existing project; else 403 with requiredStatus/currentStatus or "No proposal artifact" message.
+- Error classifier: step failure notes use codes (OPENAI_429, GATE, VALIDATION, etc.) via `formatStepFailureNotes` in orchestrator and all step routes.
 
 ### Proposal Console
 Route: `/dashboard/proposals/[id]`
@@ -77,6 +78,57 @@ Hard gates remain in place.
 ## Current unknowns
 - Which steps actually "work" (macro vs micro): use Metrics page and RUN_REPORT artifacts to inspect.
 - Per-step quality (positioning clarity, proposal length, snippet chars, verdict distribution) can be added next.
+
+---
+
+## Phases & roadmap (canonical map)
+
+### Phases completed
+
+- **Phase 0 — Baseline + context:** PROJECT_CONTEXT.md + SYSTEM_MANIFEST.md; “read context first” for Cursor; baseline on main.
+- **Phase 1 — Metrics:** PipelineRun, PipelineStepRun, pipeline-metrics.ts, RUN_REPORT, /dashboard/metrics.
+- **Phase 2 — Positioning:** runPositioning, artifact type `positioning` title POSITIONING_BRIEF, gate “Propose requires positioning”, orchestrator order Enrich → Score → Position → Propose.
+- **Phase 3 — Safety hardening:** Build gate (APPROVED + proposal artifact + no project); error classifier + step notes; idempotent steps; single entrypoint runPipelineIfEligible used by all triggers.
+
+**Result:** Coherent pipeline core with observability, positioning gate, and money-path gates.
+
+### Phases intentionally skipped (deferred)
+
+- **Skip A — Positioning meta validation:** No Zod schema for POSITIONING_BRIEF; today LLM output is stored as-is.
+- **Skip B — Rate limiting:** Auth only; no per-route throttling.
+- **Skip C — Artifact provenance:** No promptVersion, model, pipelineRunId, stepName on artifacts.
+- **Skip D — Retries:** No retryCount or auto-retry for retryable errors (e.g. OPENAI_429).
+- **Skip E — Migrations:** Using db push; no prisma/migrations history yet.
+
+### Phase we’re in now: Phase 4 — E2E confidence + production readiness
+
+Focus: repeatable green E2E (local + VPS), minimal ops scaffolding, predictable triggers.
+
+**Done so far:** Health endpoint, dry-run E2E, env hardening (AUTH_SECRET, NEXTAUTH_URL, Playwright cwd/env).
+
+**Phase 4 ends when:** /api/health green on prod; login works (no redirect loop); create lead → run + steps on /dashboard/metrics; dry-run E2E passes locally.
+
+### What’s next (recommended order)
+
+1. **Positioning contract + validation** — Zod schema for positioning; validate before save; VALIDATION failure + NEEDS_REVIEW if invalid. (Quality.)
+2. **Retry policy** — Use error codes: OPENAI_429/5XX/NETWORK = retryable; add retryCount and optional nextRetryAt. (Uptime.)
+3. **Rate limiting** — Protect /api/pipeline/*, /api/propose/*, /api/position/*, /api/build/*. (Safety.)
+4. **Artifact provenance** — pipelineRunId, stepName, model, promptVersion (or equivalent) on artifacts. (Debuggability.)
+5. **Migrations** — Switch from db push to prisma migrate once prod data matters.
+
+### Next 3 commits (choose one track)
+
+**Quality-first**
+
+1. Add Zod schema for positioning brief content/meta; validate in runPositioning before db.artifact.create; on failure call finishStep with VALIDATION and throw.
+2. Add optional meta field or JSON column on Artifact; write pipelineRunId, stepName, model in positioning + propose + build steps.
+3. Document the positioning contract in PROJECT_CONTEXT (expected shape, validation rules).
+
+**Uptime-first**
+
+1. Add retryCount (and optionally lastErrorCode) to PipelineRun or step notes; in orchestrator catch, if classifyPipelineError returns retryable, increment and re-throw or schedule retry instead of finishRun(false).
+2. Add simple rate limit (in-memory or DB) for POST /api/pipeline/*, /api/propose/*, /api/position/*, /api/build/*; 429 with Retry-After when over limit.
+3. Add nextRetryAt or “retry this run” manual action that re-calls runPipelineIfEligible for the same lead with reason "retry".
 
 ---
 

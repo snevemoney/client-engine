@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { chat, type ChatUsage } from "@/lib/llm";
+import { isDryRun } from "@/lib/pipeline/dry-run";
 
 const ENRICH_PROMPT = `You are a lead analyst for a freelance software developer. Analyze this lead and extract structured information.
 
@@ -21,6 +22,29 @@ Return ONLY valid JSON, no markdown fences.`;
 export async function runEnrich(leadId: string): Promise<{ artifactId: string; usage?: ChatUsage }> {
   const lead = await db.lead.findUnique({ where: { id: leadId } });
   if (!lead) throw new Error("Lead not found");
+
+  if (isDryRun()) {
+    await db.lead.update({
+      where: { id: leadId },
+      data: {
+        budget: lead.budget || "Not specified",
+        timeline: lead.timeline || "Not specified",
+        platform: lead.platform || "web",
+        techStack: lead.techStack?.length ? lead.techStack : ["React", "Node.js"],
+        status: "ENRICHED",
+        enrichedAt: new Date(),
+      },
+    });
+    const artifact = await db.artifact.create({
+      data: {
+        leadId,
+        type: "notes",
+        title: "AI Enrichment Report",
+        content: "**[DRY RUN]** Placeholder enrichment. Set PIPELINE_DRY_RUN=0 and OPENAI_API_KEY for real run.",
+      },
+    });
+    return { artifactId: artifact.id };
+  }
 
   const prompt = ENRICH_PROMPT
     .replace("{title}", lead.title)

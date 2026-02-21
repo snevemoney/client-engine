@@ -89,6 +89,9 @@ function buildRunReport(run: {
   finishedAt: Date | null;
   success: boolean | null;
   error: string | null;
+  retryCount?: number;
+  lastErrorCode?: string | null;
+  lastErrorAt?: Date | null;
   lead: { id: string; title: string };
   steps: Array<{
     stepName: string;
@@ -103,6 +106,13 @@ function buildRunReport(run: {
   const durationMs = run.finishedAt
     ? run.finishedAt.getTime() - run.startedAt.getTime()
     : null;
+
+  const failedSteps = run.steps.filter((s) => s.success === false);
+  failedSteps.sort((a, b) => (b.finishedAt?.getTime() ?? 0) - (a.finishedAt?.getTime() ?? 0));
+  const lastFailed = failedSteps[0];
+  const lastFailedStep = lastFailed?.stepName ?? null;
+  const lastFailedNotes = lastFailed?.notes?.slice(0, 150) ?? null;
+
   const lines = [
     `# Pipeline Run Report`,
     ``,
@@ -114,6 +124,11 @@ function buildRunReport(run: {
     `- **Finished:** ${run.finishedAt?.toISOString() ?? "—"}`,
     durationMs != null ? `- **Duration:** ${durationMs}ms` : "",
     run.error ? `- **Error:** ${run.error}` : "",
+    run.retryCount != null && run.retryCount > 0 ? `- **Retry count:** ${run.retryCount}` : "",
+    run.lastErrorCode ? `- **Last error code:** ${run.lastErrorCode}` : "",
+    run.lastErrorAt ? `- **Last error at:** ${run.lastErrorAt.toISOString()}` : "",
+    lastFailedStep ? `- **Last failed step:** ${lastFailedStep}` : "",
+    lastFailedNotes ? `- **Last failed notes:** ${lastFailedNotes}` : "",
     ``,
     `## Steps`,
     ``,

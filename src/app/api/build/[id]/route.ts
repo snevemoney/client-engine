@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { chat } from "@/lib/llm";
 import { createRun, startStep, finishStep, finishRun } from "@/lib/pipeline-metrics";
 import { normalizeUsage } from "@/lib/pipeline/usage";
+import { formatStepFailureNotes } from "@/lib/pipeline/error-classifier";
 
 function slugify(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
@@ -41,11 +42,36 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
-  const lead = await db.lead.findUnique({ where: { id }, include: { project: true } });
+  const lead = await db.lead.findUnique({
+    where: { id },
+    include: { project: true, artifacts: { where: { type: "proposal" }, take: 1 } },
+  });
   if (!lead) return NextResponse.json({ error: "Lead not found" }, { status: 404 });
 
   if (lead.project) {
     return NextResponse.json({ error: "Project already exists for this lead", project: lead.project }, { status: 409 });
+  }
+
+  // Approval gate: Build is only allowed when lead is explicitly approved
+  if (lead.status !== "APPROVED") {
+    return NextResponse.json(
+      {
+        error: "Lead not approved for build",
+        requiredStatus: "APPROVED",
+        currentStatus: lead.status,
+      },
+      { status: 403 }
+    );
+  }
+
+  // Require at least one proposal artifact (positioning gate implies proposal exists for approved flow)
+  if (!lead.artifacts?.length) {
+    return NextResponse.json(
+      {
+        error: "No proposal artifact for this lead. Run propose step first.",
+      },
+      { status: 403 }
+    );
   }
 
   if (!process.env.OPENAI_API_KEY) {
@@ -111,7 +137,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ project, spec: spec.slice(0, 200), tasks: tasks.slice(0, 200) });
   } catch (err: any) {
     console.error("[build] Error:", err);
-    await finishStep(stepId, { success: false, notes: err?.message ?? "Build factory failed" });
+    await finishStep(stepId, { success: false, notes: formatStepFailureNotes(err) });
     await finishRun(runId, false, err?.message ?? "Build factory failed");
     return NextResponse.json({ error: err.message || "Build factory failed" }, { status: 500 });
   }

@@ -11,7 +11,9 @@
     "db:migrate": "npx prisma migrate dev",
     "db:seed": "node prisma/seed.mjs",
     "db:push": "npx prisma db push",
-    "db:seed-projects": "node prisma/seed-projects.mjs"
+    "db:seed-projects": "node prisma/seed-projects.mjs",
+    "test:e2e": "playwright test",
+    "test:e2e:dry": "PIPELINE_DRY_RUN=1 playwright test"
   },
   "prisma": {
     "seed": "node prisma/seed.mjs"
@@ -33,6 +35,7 @@
     "tailwind-merge": "^3.5.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@tailwindcss/postcss": "^4",
     "@types/bcryptjs": "^2.4.6",
     "@types/mailparser": "^3.4.6",

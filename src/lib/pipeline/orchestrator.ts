@@ -6,6 +6,12 @@ import { runEnrich } from "@/lib/pipeline/enrich";
 import { runScore } from "@/lib/pipeline/score";
 import { runPositioning } from "@/lib/pipeline/positioning";
 import { runPropose } from "@/lib/pipeline/propose";
+import { isDryRun } from "@/lib/pipeline/dry-run";
+import {
+  classifyPipelineError,
+  formatStepFailureNotes,
+  isRetryableError,
+} from "@/lib/pipeline/error-classifier";
 
 const PIPELINE_STEPS = ["enrich", "score", "position", "propose"] as const;
 
@@ -67,7 +73,7 @@ export async function runPipelineIfEligible(
       return { run: false, reason: "not_eligible" };
     }
 
-    if (!process.env.OPENAI_API_KEY) {
+    if (!isDryRun() && !process.env.OPENAI_API_KEY) {
       return { run: false, reason: "openai_not_configured" };
     }
 
@@ -145,10 +151,26 @@ export async function runPipelineIfEligible(
           }
         }
       } catch (err: any) {
-        await finishStep(stepId, {
-          success: false,
-          notes: `skipped:blocked_by_gate|${err?.message ?? "error"}`,
+        const notes = formatStepFailureNotes(err);
+        await finishStep(stepId, { success: false, notes });
+
+        const { code } = classifyPipelineError(err);
+        const run = await db.pipelineRun.findUnique({
+          where: { id: runId },
+          select: { status: true },
         });
+        // Only update retry/error fields once per run (guard for future parallel steps)
+        if (run?.status === "running") {
+          await db.pipelineRun.update({
+            where: { id: runId },
+            data: {
+              lastErrorCode: code,
+              lastErrorAt: new Date(),
+              ...(isRetryableError(code) ? { retryCount: { increment: 1 } } : {}),
+            },
+          });
+        }
+
         await finishRun(runId, false, err?.message ?? stepName + " failed");
         throw err;
       }

@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { createRun, startStep, finishStep, finishRun } from "@/lib/pipeline-metrics";
 import { normalizeUsage } from "@/lib/pipeline/usage";
 import { runPositioning } from "@/lib/pipeline/positioning";
+import { formatStepFailureNotes } from "@/lib/pipeline/error-classifier";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -34,7 +35,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json(artifact);
   } catch (err: any) {
     console.error("[position] Error:", err);
-    await finishStep(stepId, { success: false, notes: err?.message ?? "Positioning failed" });
+    await finishStep(stepId, { success: false, notes: formatStepFailureNotes(err) });
     await finishRun(runId, false, err?.message ?? "Positioning failed");
     return NextResponse.json({ error: err.message || "Positioning failed" }, { status: 500 });
   }

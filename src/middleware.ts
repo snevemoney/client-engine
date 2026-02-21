@@ -22,6 +22,7 @@ export default auth((req) => {
   return NextResponse.next();
 });
 
+// Only dashboard and login — /api/auth/* is intentionally excluded so NextAuth handles sign-in
 export const config = {
   matcher: ["/dashboard/:path*", "/login"],
 };

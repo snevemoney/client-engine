@@ -8,6 +8,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     signIn: "/login",
   },
   session: { strategy: "jwt" },
+  trustHost: true, // required when behind reverse proxy (e.g. production)
   providers: [
     Credentials({
       credentials: {

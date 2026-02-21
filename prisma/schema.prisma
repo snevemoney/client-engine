@@ -79,15 +79,18 @@ model Project {
 }
 
 model PipelineRun {
-  id         String   @id @default(cuid())
-  leadId     String
-  lead       Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
-  status     String   @default("running")
-  startedAt  DateTime @default(now())
-  finishedAt DateTime?
-  success    Boolean?
-  error      String?  @db.Text
-  steps      PipelineStepRun[]
+  id            String    @id @default(cuid())
+  leadId        String
+  lead          Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  status        String    @default("running")
+  startedAt     DateTime  @default(now())
+  finishedAt    DateTime?
+  success       Boolean?
+  error         String?   @db.Text
+  retryCount    Int       @default(0)
+  lastErrorCode String?
+  lastErrorAt   DateTime?
+  steps         PipelineStepRun[]
 }
 
 model PipelineStepRun {
