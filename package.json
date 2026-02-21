@@ -10,10 +10,14 @@
     "worker": "npx tsx src/workers/index.ts",
     "db:migrate": "npx prisma migrate dev",
     "db:seed": "node prisma/seed.mjs",
+    "reset-auth": "node prisma/reset-auth.mjs",
     "db:push": "npx prisma db push",
     "db:seed-projects": "node prisma/seed-projects.mjs",
+    "test": "vitest run",
     "test:e2e": "playwright test",
-    "test:e2e:dry": "PIPELINE_DRY_RUN=1 playwright test"
+    "test:e2e:dry": "PIPELINE_DRY_RUN=1 playwright test",
+    "script:research-lead": "node scripts/create-research-lead.mjs",
+    "research:run": "npx tsx scripts/research-run.ts"
   },
   "prisma": {
     "seed": "node prisma/seed.mjs"
@@ -32,7 +36,8 @@
     "next-auth": "^5.0.0-beta.30",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "tailwind-merge": "^3.5.0"
+    "tailwind-merge": "^3.5.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",
@@ -42,10 +47,12 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "dotenv": "^16.6.1",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "prisma": "^6.19.2",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.0.18"
   }
 }

@@ -11,14 +11,20 @@ import {
   LayoutDashboard,
   LogOut,
   BarChart3,
+  TrendingUp,
+  Quote,
+  ClipboardList,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 
 const navItems = [
   { href: "/dashboard", label: "Leads", icon: Inbox },
   { href: "/dashboard/proposals", label: "Proposals", icon: FileText },
+  { href: "/dashboard/proof", label: "Proof", icon: Quote },
+  { href: "/dashboard/checklist", label: "Checklist", icon: ClipboardList },
   { href: "/dashboard/deploys", label: "Deploys", icon: Rocket },
   { href: "/dashboard/metrics", label: "Metrics", icon: BarChart3 },
+  { href: "/dashboard/conversion", label: "Conversion", icon: TrendingUp },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
 
