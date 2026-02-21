@@ -175,7 +175,8 @@ export async function runPipelineIfEligible(
           });
         }
 
-        await finishRun(runId, false, err?.message ?? stepName + " failed");
+        const errMsg = err instanceof Error ? err.message : stepName + " failed";
+        await finishRun(runId, false, errMsg);
         throw err;
       }
     }
