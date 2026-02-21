@@ -27,12 +27,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const email = String(credentials.email).trim().toLowerCase();
         const password = String(credentials.password);
 
-        // AUTH_DEV_PASSWORD: only in development. Ignored otherwise; warn if set in non-dev.
-        if (process.env.AUTH_DEV_PASSWORD && process.env.NODE_ENV !== "development") {
-          console.warn("[auth] AUTH_DEV_PASSWORD is set but NODE_ENV is not development; ignoring.");
+        const devPassword = process.env.AUTH_DEV_PASSWORD;
+        if (devPassword && process.env.NODE_ENV === "development" && password === devPassword) {
+          return { id: "dev-admin", email, name: "Dev Admin" };
         }
-        if (process.env.NODE_ENV === "development" && process.env.AUTH_DEV_PASSWORD && password === process.env.AUTH_DEV_PASSWORD) {
-          return { id: "dev", email, name: "Dev User" };
+        if (devPassword && process.env.NODE_ENV !== "development") {
+          console.warn("AUTH_DEV_PASSWORD is set but ignored because NODE_ENV is not 'development'");
         }
 
         const user = await db.user.findFirst({

@@ -1,10 +1,12 @@
 import { db } from "@/lib/db";
 import Link from "next/link";
+import { getConstraintSnapshot } from "@/lib/ops/constraint";
+import { getScorecardSnapshot } from "@/lib/ops/scorecard";
 
 export const dynamic = "force-dynamic";
 
 export default async function MetricsPage() {
-  const [runs, stepCounts] = await Promise.all([
+  const [runs, stepCounts, constraint, scorecard, lastRunReport, recentFailures] = await Promise.all([
     db.pipelineRun.findMany({
       orderBy: { startedAt: "desc" },
       take: 50,
@@ -17,7 +19,30 @@ export default async function MetricsPage() {
       by: ["stepName", "success"],
       _count: true,
     }),
+    getConstraintSnapshot(),
+    getScorecardSnapshot(),
+    db.artifact.findFirst({
+      where: {
+        lead: { source: "system", title: "Research Engine Runs" },
+        title: "WORKDAY_RUN_REPORT",
+      },
+      orderBy: { createdAt: "desc" },
+      select: { content: true, createdAt: true },
+    }),
+    db.pipelineRun.findMany({
+      where: { success: false },
+      orderBy: { lastErrorAt: "desc" },
+      take: 20,
+      include: { steps: { where: { success: false }, select: { stepName: true } }, lead: { select: { title: true } } },
+    }),
   ]);
+
+  const failureByStep: Record<string, number> = {};
+  for (const run of recentFailures) {
+    for (const s of run.steps) {
+      failureByStep[s.stepName] = (failureByStep[s.stepName] ?? 0) + 1;
+    }
+  }
 
   const byStep = stepCounts.reduce(
     (acc, { stepName, success, _count }) => {
@@ -34,30 +59,122 @@ export default async function MetricsPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Pipeline metrics</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Scorecard &amp; bottleneck</h1>
         <p className="text-sm text-neutral-400 mt-1">
-          What’s working: step volume and success rate. Macro = funnel; micro = per-step quality.
+          INPUT → PROCESS → OUTPUT → FEEDBACK. One constraint to fix at a time.
         </p>
       </div>
 
+      {constraint && (
+        <section className="border border-amber-900/50 rounded-lg p-4 bg-amber-950/20">
+          <h2 className="text-sm font-medium text-amber-200 mb-2">Current constraint</h2>
+          <p className="text-sm text-amber-100/90 mb-2">{constraint.reason}</p>
+          <ul className="text-xs text-amber-100/80 list-disc list-inside">
+            {constraint.recommendedActions.map((a, i) => (
+              <li key={i}>{a}</li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       <section className="border border-neutral-800 rounded-lg p-6">
-        <h2 className="text-sm font-medium text-neutral-300 mb-4">Step success (macro)</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+        <h2 className="text-sm font-medium text-neutral-300 mb-3">1) INPUT scorecard</h2>
+        <p className="text-xs text-neutral-500 mb-3">Leads discovered, created, source mix, enrichment coverage.</p>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+          <div className="rounded border border-neutral-800 p-3">
+            <div className="text-neutral-500 text-xs">Leads created</div>
+            <div className="font-semibold">{scorecard.inputs.created}</div>
+          </div>
+          <div className="rounded border border-neutral-800 p-3">
+            <div className="text-neutral-500 text-xs">By source</div>
+            <div className="font-semibold text-xs">
+              {Object.entries(scorecard.inputs.bySource)
+                .map(([k, v]) => `${k}: ${v}`)
+                .join(" · ") || "—"}
+            </div>
+          </div>
+          <div className="rounded border border-neutral-800 p-3">
+            <div className="text-neutral-500 text-xs">Enrichment coverage</div>
+            <div className="font-semibold">{scorecard.inputs.enrichmentCoveragePct ?? 0}%</div>
+          </div>
+        </div>
+      </section>
+
+      <section className="border border-neutral-800 rounded-lg p-6">
+        <h2 className="text-sm font-medium text-neutral-300 mb-3">2) PROCESS scorecard</h2>
+        <p className="text-xs text-neutral-500 mb-3">Pipeline step success, avg time, retries.</p>
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-sm mb-3">
           {stepOrder.map((name) => {
             const s = byStep[name] ?? { total: 0, ok: 0 };
             const pct = s.total ? Math.round((s.ok / s.total) * 100) : 0;
             return (
-              <div key={name} className="bg-neutral-900/50 rounded-lg p-3 border border-neutral-800">
-                <div className="text-xs uppercase tracking-wider text-neutral-500">{name}</div>
-                <div className="mt-1 text-lg font-semibold text-neutral-100">
-                  {s.ok}/{s.total}
-                </div>
-                <div className="text-xs text-neutral-400">{pct}% success</div>
+              <div key={name} className="rounded border border-neutral-800 p-2">
+                <div className="text-neutral-500 text-xs">{name}</div>
+                <div className="font-semibold">{s.ok}/{s.total} ({pct}%)</div>
               </div>
             );
           })}
         </div>
+        <div className="text-xs text-neutral-500">
+          Retries (period): {scorecard.process.retryCounts} · Avg time in stage: enrichment/scoring only.
+        </div>
       </section>
+
+      <section className="border border-neutral-800 rounded-lg p-6">
+        <h2 className="text-sm font-medium text-neutral-300 mb-3">3) OUTPUT scorecard</h2>
+        <p className="text-xs text-neutral-500 mb-3">Proposals, approvals, builds, outcomes.</p>
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-sm">
+          <div className="rounded border border-neutral-800 p-2">
+            <div className="text-neutral-500 text-xs">Proposals</div>
+            <div className="font-semibold">{scorecard.outputs.proposalsGenerated}</div>
+          </div>
+          <div className="rounded border border-neutral-800 p-2">
+            <div className="text-neutral-500 text-xs">Approved</div>
+            <div className="font-semibold">{scorecard.outputs.approvals}</div>
+          </div>
+          <div className="rounded border border-neutral-800 p-2">
+            <div className="text-neutral-500 text-xs">Builds</div>
+            <div className="font-semibold">{scorecard.outputs.buildsCreated}</div>
+          </div>
+          <div className="rounded border border-neutral-800 p-2">
+            <div className="text-neutral-500 text-xs">Projects</div>
+            <div className="font-semibold">{scorecard.outputs.projectsCreated}</div>
+          </div>
+          <div className="rounded border border-neutral-800 p-2">
+            <div className="text-neutral-500 text-xs">Won / Lost</div>
+            <div className="font-semibold">{scorecard.outputs.won} / {scorecard.outputs.lost}</div>
+          </div>
+        </div>
+      </section>
+
+      <section className="border border-neutral-800 rounded-lg p-6">
+        <h2 className="text-sm font-medium text-neutral-300 mb-3">4) FEEDBACK scorecard</h2>
+        <p className="text-xs text-neutral-500 mb-3">Failure types, current constraint (above).</p>
+        {Object.keys(failureByStep).length > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            {Object.entries(failureByStep).map(([step, count]) => (
+              <span key={step} className="rounded bg-red-950/30 border border-red-800/50 px-2 py-1 text-sm">
+                {step}: {count}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <p className="text-xs text-neutral-500">No recent failures by step.</p>
+        )}
+      </section>
+
+      {lastRunReport && (
+        <section className="border border-neutral-800 rounded-lg p-4">
+          <h2 className="text-sm font-medium text-neutral-300 mb-2">What changed since last run</h2>
+          <p className="text-xs text-neutral-500 mb-2">
+            {new Date(lastRunReport.createdAt).toLocaleString()}
+          </p>
+          <pre className="text-xs text-neutral-400 whitespace-pre-wrap font-sans">
+            {lastRunReport.content?.slice(0, 600)}
+            {lastRunReport.content && lastRunReport.content.length > 600 ? "…" : ""}
+          </pre>
+        </section>
+      )}
 
       <section>
         <h2 className="text-sm font-medium text-neutral-300 mb-3">Recent runs</h2>

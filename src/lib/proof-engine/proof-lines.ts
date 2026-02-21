@@ -28,6 +28,15 @@ export const HYPE_PATTERNS = [
   /\bexclusive\b/i,
 ];
 
+/** Observational only: no superiority or prescriptive tone (axioms §8). */
+export const FORBIDDEN_SUPERIORITY_PATTERNS = [
+  /\byou\s+should\s+have\b/i,
+  /\bobviously\s+you\b/i,
+  /\bI\s+know\s+better\b/i,
+  /\byou\s+need\s+to\s+/i,
+  /\bshould\s+have\s+done\b/i,
+];
+
 /**
  * Build proof lines from structured input. No invented metrics; cost only from totalCost.
  * Throws if output would contain hype language.
@@ -80,6 +89,9 @@ export function buildProofLines(input: ProofInput): string[] {
   const out = lines.join("\n");
   for (const pat of HYPE_PATTERNS) {
     if (pat.test(out)) throw new Error(`Proof output must not contain hype/urgency: ${pat.source}`);
+  }
+  for (const pat of FORBIDDEN_SUPERIORITY_PATTERNS) {
+    if (pat.test(out)) throw new Error(`Proof must be observational, not prescriptive: ${pat.source}`);
   }
   return lines;
 }

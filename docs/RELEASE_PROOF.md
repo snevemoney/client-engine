@@ -1,5 +1,14 @@
 # Release proof — production readiness
 
+## Schema inventory (Prisma)
+
+- **Lead:** status (LeadStatus), proposalSentAt, approvedAt, buildStartedAt, buildCompletedAt, dealOutcome; relations: artifacts, project, pipelineRuns.
+- **Artifact:** type, title, content, meta (Json); leadId.
+- **PipelineRun:** leadId, status, startedAt, finishedAt, success, error, retryCount, lastErrorCode, lastErrorAt; steps (PipelineStepRun[]).
+- **PipelineStepRun:** runId, stepName, startedAt, finishedAt, success, tokensUsed, costEstimate, outputArtifactIds, notes.
+- **Project:** leadId (unique), slug, name, description, demoUrl, repoUrl, techStack, screenshots, status.
+- **User:** credentials auth (email, password).
+
 ## A) What was broken
 
 - **Build:** TypeScript error in `src/app/api/checklist/generate/route.ts` — `requestSource` inferred as `string`, not assignable to `ChecklistOptions`; artifact `meta` type not assignable to Prisma `InputJsonValue`. Same `meta` type issue in `src/app/api/proof/generate/route.ts`.
@@ -23,7 +32,9 @@
    - `src/workers/email-ingestion.ts`: removed `as any` from simpleParser result; used type guards for parsed fields.
    - `src/workers/monitor.ts`: `res.socket as any` → typed as `{ getPeerCertificate?: () => ... }`.
 
-3. **chore(smoke): single-command E2E proof**
+3. **fix(orchestrator): err.message on unknown in catch** — `src/lib/pipeline/orchestrator.ts`: use `err instanceof Error ? err.message : stepName + " failed"` so build passes.
+
+4. **chore(smoke): single-command E2E proof**
    - `scripts/smoke-health.mjs`: Node script that GETs `/api/health` and exits 0 iff `ok === true`.
    - `tests/e2e/smoke.spec.ts`: Playwright test for GET /api/health, assert ok true.
    - `package.json`: added script `"smoke": "PIPELINE_DRY_RUN=1 playwright test tests/e2e/smoke.spec.ts tests/e2e/full-flow.spec.ts tests/e2e/proof-api.spec.ts"`.

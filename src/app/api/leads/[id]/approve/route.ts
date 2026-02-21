@@ -25,7 +25,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const updated = await db.lead.update({
     where: { id },
-    data: { status: "APPROVED" },
+    data: { status: "APPROVED", approvedAt: new Date() },
   });
 
   return NextResponse.json(updated);

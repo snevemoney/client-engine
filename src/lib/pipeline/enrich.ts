@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { chat, type ChatUsage } from "@/lib/llm";
 import { isDryRun } from "@/lib/pipeline/dry-run";
+import type { Provenance } from "@/lib/pipeline/provenance";
 
 const ENRICH_PROMPT = `You are a lead analyst for a freelance software developer. Analyze this lead and extract structured information.
 
@@ -19,10 +20,11 @@ Extract and return a JSON object with these fields:
 
 Return ONLY valid JSON, no markdown fences.`;
 
-export async function runEnrich(leadId: string): Promise<{ artifactId: string; usage?: ChatUsage }> {
+export async function runEnrich(leadId: string, provenance?: Provenance): Promise<{ artifactId: string; usage?: ChatUsage }> {
   const lead = await db.lead.findUnique({ where: { id: leadId } });
   if (!lead) throw new Error("Lead not found");
 
+  const meta = provenance ? { provenance } : undefined;
   if (isDryRun()) {
     await db.lead.update({
       where: { id: leadId },
@@ -41,6 +43,7 @@ export async function runEnrich(leadId: string): Promise<{ artifactId: string; u
         type: "notes",
         title: "AI Enrichment Report",
         content: "**[DRY RUN]** Placeholder enrichment. Set PIPELINE_DRY_RUN=0 and OPENAI_API_KEY for real run.",
+        ...(meta ? { meta } : {}),
       },
     });
     return { artifactId: artifact.id };
@@ -78,6 +81,7 @@ export async function runEnrich(leadId: string): Promise<{ artifactId: string; u
       leadId,
       type: "notes",
       title: "AI Enrichment Report",
+      ...(meta ? { meta } : {}),
       content: [
         `**Category:** ${enriched.category}`,
         `**Budget:** ${enriched.budget}`,

@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowLeft, ExternalLink, Github } from "lucide-react";
+import { ArrowLeft, ArrowRight, ExternalLink, Github } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +23,8 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
       </header>
 
       <main className="mx-auto max-w-5xl px-6 py-12">
+        <div className="flex flex-col lg:flex-row lg:gap-12">
+          <div className="flex-1 min-w-0">
         <Link href="/work" className="inline-flex items-center gap-1.5 text-sm text-neutral-400 hover:text-neutral-200 mb-8 transition-colors">
           <ArrowLeft className="w-4 h-4" /> Back to Work
         </Link>
@@ -89,6 +91,26 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
             </div>
           </div>
         )}
+
+            <div className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-4 mb-8">
+              <h3 className="text-sm font-medium text-neutral-300 mb-2">Next step</h3>
+              <p className="text-neutral-400 text-sm mb-3">Want similar outcomes for your business? Request a workflow audit.</p>
+              <a href="/#contact" className="inline-flex items-center gap-2 bg-white text-neutral-900 px-4 py-2 rounded-lg text-sm font-medium hover:bg-neutral-200 transition-colors">
+                Request audit <ArrowRight className="w-3.5 h-3.5" />
+              </a>
+            </div>
+          </div>
+
+          <aside className="lg:w-64 flex-shrink-0">
+            <div className="lg:sticky lg:top-24 rounded-lg border border-neutral-800 bg-neutral-900/50 p-4">
+              <h3 className="text-sm font-medium text-neutral-300 mb-2">Want this for your business?</h3>
+              <p className="text-neutral-400 text-xs mb-4">Request a workflow audit or book a strategy call.</p>
+              <a href="/#contact" className="block w-full text-center bg-white text-neutral-900 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-neutral-200 transition-colors">
+                Request a workflow audit
+              </a>
+            </div>
+          </aside>
+        </div>
       </main>
 
       <footer className="border-t border-neutral-800/50 py-8">

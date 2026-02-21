@@ -42,4 +42,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     include: { artifacts: { orderBy: { createdAt: "desc" } } },
   });
 
-  return NextResponse.json(withArtifacts ?? updated);
+  const payload = withArtifacts ?? updated;
+  return NextResponse.json(payload);
+}

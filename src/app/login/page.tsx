@@ -19,19 +19,27 @@ function LoginForm() {
     setError("");
 
     const formData = new FormData(e.currentTarget);
+    const email = String(formData.get("email") ?? "").trim();
+    const password = String(formData.get("password") ?? "");
+
+    if (!email || !password) {
+      setError("Email and password required");
+      setLoading(false);
+      return;
+    }
 
     const result = await signIn("credentials", {
-      email: formData.get("email"),
-      password: formData.get("password"),
+      email,
+      password,
       redirect: false,
     });
 
     if (result?.error) {
       setError("Invalid credentials");
       setLoading(false);
-    } else {
-      router.push(callbackUrl);
+      return;
     }
+    router.push(callbackUrl);
   }
 
   return (

@@ -16,7 +16,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   return NextResponse.json(lead);
 }
 
-const PATCH_ALLOWED_KEYS = [
+// Money-path lock: only these fields are patchable. status, approvedAt, build*,
+// proposalSentAt, dealOutcome, score, enrichedAt, scoredAt are set only by
+// approve/reject, build, and outcome endpoints — never via PATCH.
+const ALLOWED_PATCH_FIELDS = new Set([
   "title",
   "source",
   "sourceUrl",
@@ -28,46 +31,50 @@ const PATCH_ALLOWED_KEYS = [
   "contactName",
   "contactEmail",
   "tags",
-] as const;
+]);
+
+function pickAllowedLeadPatch(body: Record<string, unknown>): Record<string, unknown> {
+  const updates: Record<string, unknown> = {};
+  for (const key of Object.keys(body)) {
+    if (!ALLOWED_PATCH_FIELDS.has(key)) {
+      const err = new Error(`Field '${key}' cannot be updated via PATCH /api/leads/[id]`);
+      (err as Error & { code?: string }).code = "GATE";
+      throw err;
+    }
+    updates[key] = body[key];
+  }
+  return updates;
+}
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
-  let body: Record<string, unknown>;
-  try {
-    body = await req.json();
-  } catch {
+  const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
+  if (!body || typeof body !== "object") {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
-  if (typeof body !== "object" || body === null) {
-    return NextResponse.json({ error: "Body must be a JSON object" }, { status: 400 });
-  }
 
-  const forbidden = Object.keys(body).filter((k) => !PATCH_ALLOWED_KEYS.includes(k as (typeof PATCH_ALLOWED_KEYS)[number]));
-  if (forbidden.length > 0) {
-    const msg =
-      forbidden.length === 1
-        ? `Field '${forbidden[0]}' cannot be updated via PATCH /leads`
-        : `Fields '${forbidden.join("', '")}' cannot be updated via PATCH /leads`;
-    return NextResponse.json({ error: msg }, { status: 400 });
-  }
+  try {
+    const data = pickAllowedLeadPatch(body);
 
-  const data: Record<string, unknown> = {};
-  for (const k of PATCH_ALLOWED_KEYS) {
-    if (k in body) data[k] = body[k];
-  }
-  if (Object.keys(data).length === 0) {
-    return NextResponse.json({ error: "No allowed fields to update" }, { status: 400 });
-  }
+    if (Object.keys(data).length === 0) {
+      const lead = await db.lead.findUnique({ where: { id } });
+      return NextResponse.json(lead);
+    }
 
-  const lead = await db.lead.update({
-    where: { id },
-    data,
-  });
+    const lead = await db.lead.update({
+      where: { id },
+      data,
+    });
 
-  return NextResponse.json(lead);
+    return NextResponse.json(lead);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Bad Request";
+    const status = msg.includes("cannot be updated") ? 400 : 500;
+    return NextResponse.json({ error: msg }, { status });
+  }
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

@@ -17,14 +17,17 @@ export default defineConfig({
     screenshot: "only-on-failure",
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
-  webServer: baseURL.startsWith("http://localhost")
-    ? {
-        command: "npm run dev",
-        url: baseURL,
-        reuseExistingServer: !process.env.CI,
-        timeout: 60_000,
-        cwd: projectRoot,
-        env: { ...process.env },
-      }
-    : undefined,
+  webServer:
+    baseURL.startsWith("http://localhost") && !process.env.USE_EXISTING_SERVER
+      ? {
+          command: "npm run dev",
+          url: baseURL,
+          reuseExistingServer: !process.env.CI,
+          timeout: 60_000,
+          cwd: projectRoot,
+          env: Object.fromEntries(
+            Object.entries(process.env).filter(([, v]) => v !== undefined)
+          ) as Record<string, string>,
+        }
+      : undefined,
 });

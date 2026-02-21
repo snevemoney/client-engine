@@ -7,6 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, ExternalLink, Plus, FileText, X, Sparkles, Target, Send, Hammer, CheckCircle, XCircle, RefreshCw } from "lucide-react";
+import { OpportunityBriefCard } from "@/components/dashboard/leads/OpportunityBriefCard";
+import { RoiEstimateCard } from "@/components/dashboard/leads/RoiEstimateCard";
+import { FollowUpSequenceCard } from "@/components/dashboard/leads/FollowUpSequenceCard";
 
 interface Artifact {
   id: string;
@@ -229,7 +232,14 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   useEffect(() => {
     fetch(`/api/leads/${id}`)
       .then((res) => (res.ok ? res.json() : null))
-      .then((data) => { setLead(data); setLoading(false); });
+      .then((data) => {
+        setLead(data);
+        if (data?.artifacts) {
+          const proposals = data.artifacts.filter((a: Artifact) => a.type === "proposal").sort((a: Artifact, b: Artifact) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          setSelectedProposalId(proposals[0]?.id ?? null);
+        }
+        setLoading(false);
+      });
   }, [id]);
 
   async function updateStatus(status: string) {
@@ -327,42 +337,48 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
       )}
 
       {/* Proposal console: version list + positioning + proposal side-by-side + one-click revise */}
+      <div id="proposal-review">
       {(() => {
         const positioning = lead.artifacts.find((a) => a.type === "positioning" && a.title === "POSITIONING_BRIEF");
-        const proposalArtifacts = lead.artifacts.filter((a) => a.type === "proposal").sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        const latestProposal = proposalArtifacts[0] ?? null;
-        const proposal =
-          selectedProposalId && proposalArtifacts.some((a) => a.id === selectedProposalId)
-            ? proposalArtifacts.find((a) => a.id === selectedProposalId)!
-            : latestProposal;
-        if (!positioning || !proposal) return null;
+        const proposals = lead.artifacts.filter((a) => a.type === "proposal").sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        const latestProposalId = proposals[0]?.id ?? null;
+        const selectedProposal = proposals.find((p) => p.id === selectedProposalId) ?? proposals[0];
+        const proposal = selectedProposal ?? null;
+        if (!positioning && proposals.length === 0) return null;
         return (
           <div className="border border-neutral-800 rounded-lg p-4">
             <h3 className="text-xs font-medium text-neutral-500 uppercase tracking-wider mb-3">Proposal review (positioning vs proposal)</h3>
-            {proposalArtifacts.length > 1 && (
-              <div className="mb-3">
-                <span className="text-xs text-neutral-500 mr-2">Version:</span>
-                <div className="flex gap-2 flex-wrap mt-1">
-                  {proposalArtifacts.map((p, idx) => {
-                    const isPrimary = idx === 0;
-                    const isSelected = p.id === proposal.id;
-                    return (
-                      <button
-                        key={p.id}
-                        onClick={() => setSelectedProposalId(p.id)}
-                        className={`flex items-center gap-2 px-2.5 py-1.5 rounded-md border text-xs transition-colors ${
-                          isSelected ? "bg-neutral-700 border-neutral-600 text-neutral-100" : "border-neutral-800 text-neutral-400 hover:border-neutral-700"
-                        }`}
-                      >
-                        <span>V{proposalArtifacts.length - idx}</span>
-                        <span className="text-neutral-500">{new Date(p.createdAt).toLocaleString()}</span>
-                        {isPrimary && <Badge variant="secondary" className="text-[10px]">PRIMARY</Badge>}
-                      </button>
-                    );
-                  })}
+            <div className="space-y-2 mb-4">
+              <div className="text-sm font-semibold">Proposal versions</div>
+              {proposals.length === 0 ? (
+                <div className="text-sm text-neutral-500">No proposals yet.</div>
+              ) : (
+                <div className="space-y-1">
+                  {proposals.map((p, idx) => (
+                    <button
+                      key={p.id}
+                      onClick={() => setSelectedProposalId(p.id)}
+                      className={`w-full rounded-md border p-2 text-left transition-colors ${
+                        p.id === selectedProposalId ? "bg-neutral-800 border-neutral-600" : "border-neutral-800 hover:border-neutral-700"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="text-sm font-medium">Proposal v{proposals.length - idx}</div>
+                        <div className="flex items-center gap-2">
+                          {p.id === latestProposalId && (
+                            <span className="rounded bg-green-600 px-2 py-0.5 text-xs text-white">Latest</span>
+                          )}
+                          <span className="text-xs text-neutral-500">{new Date(p.createdAt).toLocaleString()}</span>
+                        </div>
+                      </div>
+                      <div className="text-xs text-neutral-500 mt-0.5">{p.title ?? "PROPOSAL"}</div>
+                    </button>
+                  ))}
                 </div>
-              </div>
-            )}
+              )}
+            </div>
+            {positioning && proposal && (
+              <>
             <div className="flex gap-2 flex-wrap items-center mb-3">
               <Input
                 placeholder="e.g. shorter, more aggressive, focus on ROI"
@@ -385,9 +401,12 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                 <pre className="text-sm text-neutral-300 whitespace-pre-wrap font-sans">{proposal.content}</pre>
               </div>
             </div>
+              </>
+            )}
           </div>
         );
       })()}
+      </div>
 
       {/* Owner approval: one-click Approve when proposal exists */}
       {hasProposal && lead.status !== "APPROVED" && (
@@ -486,6 +505,18 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
           <p className="text-sm text-neutral-200 whitespace-pre-wrap">{lead.scoreReason}</p>
         </div>
       )}
+
+      <OpportunityBriefCard leadId={id} />
+      <RoiEstimateCard
+        leadId={id}
+        onRoiGenerated={() => fetch(`/api/leads/${id}`).then((r) => r.ok && r.json()).then((d) => d && setLead(d))}
+      />
+      <FollowUpSequenceCard
+        leadId={id}
+        proposalSentAt={lead.proposalSentAt}
+        dealOutcome={lead.dealOutcome}
+        onSequenceGenerated={() => fetch(`/api/leads/${id}`).then((r) => r.ok && r.json()).then((d) => d && setLead(d))}
+      />
 
       {/* Artifacts */}
       <div className="border border-neutral-800 rounded-lg p-4">

@@ -9,11 +9,21 @@ Private autopilot business system running on your VPS.
 git clone <repo-url> /root/client-engine
 cd /root/client-engine
 cp .env.example .env
-# Edit .env with real values
+# Edit .env with real values (see Production checklist below)
 
 # Deploy
 bash deploy.sh
 ```
+
+## Production checklist (before live usage)
+
+1. **Env (VPS or `.env`):** Must include:
+   - `DATABASE_URL`
+   - `AUTH_SECRET`
+   - `NEXTAUTH_URL` (e.g. `https://evenslouis.ca`)
+   - `OPENAI_API_KEY`
+2. **Database:** `deploy.sh` runs `prisma db push`. If you deploy without it, run `npx prisma db push` on the server once.
+3. **Health:** After deploy, confirm `GET /api/health` returns **200** with `ok: true` and all checks true (db, pipelineTables, authSecret, nextAuthUrl).
 
 ## Operations
 
@@ -42,6 +52,15 @@ npm run dev
 ```
 
 **Run everything without interruptions:** If you changed `.env`, restart `npm run dev` once so the app loads the new values. Then you can log in at http://localhost:3000/login and run `npm run test:e2e:dry` for the full flow (login → dashboard → metrics → new lead → metrics).
+
+**Full manual runbook (production-grade audit):** [docs/RUNBOOK.md](docs/RUNBOOK.md) — preflight, auth, pipeline E2E, idempotency, gates, revise, retry, worker (optional), research snapshot test; pass criteria and fail conditions.
+
+**Next: R1 Research Engine:** [docs/NEXT_R1.md](docs/NEXT_R1.md) — 9–5 automation requirements, R1 components (Upwork API first), notifications, “10 real clients” definitions.
+
+**Can't log in?**
+1. Run `npm run reset-auth`, then try again with `ADMIN_EMAIL` / `ADMIN_PASSWORD` from `.env`.
+2. If it still fails, check the terminal where `npm run dev` is running — you'll see either "no user for email …" or "wrong password for …".
+3. **Dev bypass:** In `.env` add `AUTH_DEV_PASSWORD=changeme`. Restart dev server. You can then log in with *any* email and password `changeme` (no DB check). Remove this in production.
 
 ## E2E tests (Playwright)
 

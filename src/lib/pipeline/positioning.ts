@@ -1,13 +1,10 @@
 import { db } from "@/lib/db";
 import { chat, type ChatUsage } from "@/lib/llm";
 import { isDryRun } from "@/lib/pipeline/dry-run";
+import { PositioningMetaSchema } from "@/lib/pipeline/positioning-schema";
+import type { Provenance } from "@/lib/pipeline/provenance";
 
-const POSITIONING_PROMPT = `You are a positioning strategist for a freelance full-stack developer. Given this lead, write a short POSITIONING_BRIEF that will be used to open proposals.
-
-Focus on problem and outcome, not features:
-- What problem does the client have?
-- What outcome do they want?
-- One sentence "positioning" that frames how we approach this (e.g. "This is a scope-tight MVP to validate X before scaling").
+const POSITIONING_PROMPT = `You are a positioning strategist for a freelance full-stack developer. Given this lead, produce two outputs.
 
 Lead:
 Title: {title}
@@ -16,16 +13,36 @@ Budget: {budget}
 Timeline: {timeline}
 Platform: {platform}
 
-Write 2-4 short paragraphs in markdown. No generic intros. Start with the problem/outcome.`;
+Output format (exactly):
+
+---METADATA---
+<valid JSON only, no markdown fences>
+---BRIEF---
+<2-4 short paragraphs in markdown>
+
+JSON must match this shape:
+{
+  "feltProblem": "string (min 10 chars)",
+  "languageMap": { "use": ["string"], "avoid": [], "competitorOveruse": [] },
+  "reframedOffer": "string (min 10 chars)",
+  "blueOceanAngle": "string (min 10 chars)",
+  "packaging": { "solutionName": "string", "doNotMention": [], "hookOneLiner": "string (min 10 chars)" }
+}
+
+Then write the BRIEF: problem/outcome first, no generic intros.`;
 
 /**
  * Run positioning for a lead; creates artifact type "positioning", title "POSITIONING_BRIEF".
- * Throws on error.
+ * Validates meta with Zod; throws on parse failure (VALIDATION).
  */
-export async function runPositioning(leadId: string): Promise<{ artifactId: string; usage?: ChatUsage }> {
+export async function runPositioning(
+  leadId: string,
+  provenance?: Provenance
+): Promise<{ artifactId: string; usage?: ChatUsage }> {
   const lead = await db.lead.findUnique({ where: { id: leadId } });
   if (!lead) throw new Error("Lead not found");
 
+  const dryRunMeta = provenance ? { provenance } : undefined;
   if (isDryRun()) {
     const artifact = await db.artifact.create({
       data: {
@@ -33,6 +50,7 @@ export async function runPositioning(leadId: string): Promise<{ artifactId: stri
         type: "positioning",
         title: "POSITIONING_BRIEF",
         content: "**[DRY RUN]** Placeholder positioning brief.",
+        meta: dryRunMeta ?? { provenance: { isDryRun: true, createdBy: "pipeline" as const } },
       },
     });
     return { artifactId: artifact.id };
@@ -45,13 +63,33 @@ export async function runPositioning(leadId: string): Promise<{ artifactId: stri
     .replace("{timeline}", lead.timeline || "Not specified")
     .replace("{platform}", lead.platform || "Not specified");
 
-  const { content: briefContent, usage } = await chat(
+  const { content: raw, usage } = await chat(
     [
-      { role: "system", content: "You write concise positioning briefs. Output markdown only." },
+      { role: "system", content: "You output valid JSON then markdown. No extra text." },
       { role: "user", content: prompt },
     ],
     { temperature: 0.4, max_tokens: 1024 }
   );
+
+  const metaMatch = raw.match(/---METADATA---\s*([\s\S]*?)\s*---BRIEF---/);
+  const briefMatch = raw.match(/---BRIEF---\s*([\s\S]*)/);
+  const briefContent = briefMatch?.[1]?.trim() || raw;
+  let parsedMeta: unknown = null;
+  if (metaMatch?.[1]) {
+    try {
+      parsedMeta = JSON.parse(metaMatch[1].trim()) as unknown;
+    } catch {
+      const err = new Error("VALIDATION: Positioning meta JSON parse failed");
+      (err as Error & { code?: string }).code = "VALIDATION";
+      throw err;
+    }
+  }
+  const parsed = PositioningMetaSchema.safeParse(parsedMeta);
+  if (!parsed.success) {
+    const err = new Error(`VALIDATION: Positioning meta invalid: ${parsed.error.message}`);
+    (err as Error & { code?: string }).code = "VALIDATION";
+    throw err;
+  }
 
   const artifact = await db.artifact.create({
     data: {
@@ -59,6 +97,7 @@ export async function runPositioning(leadId: string): Promise<{ artifactId: stri
       type: "positioning",
       title: "POSITIONING_BRIEF",
       content: briefContent,
+      meta: { positioning: parsed.data, ...(provenance && { provenance }) } as object,
     },
   });
 

@@ -31,11 +31,16 @@ model Lead {
   contactEmail String?
   score        Int?
   scoreReason  String?    @db.Text
-  enrichedAt   DateTime?
-  scoredAt     DateTime?
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-  artifacts    Artifact[]
+  enrichedAt        DateTime?
+  scoredAt          DateTime?
+  proposalSentAt    DateTime?
+  approvedAt        DateTime?
+  buildStartedAt    DateTime?
+  buildCompletedAt  DateTime?
+  dealOutcome       String?   // "won" | "lost" | null
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  artifacts         Artifact[]
   project      Project?
   pipelineRuns PipelineRun[]
   tags         String[]
@@ -58,6 +63,7 @@ model Artifact {
   type      String
   title     String
   content   String   @db.Text
+  meta      Json?
   createdAt DateTime @default(now())
 }
 

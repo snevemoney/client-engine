@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { FileText, Copy, Check, Loader2 } from "lucide-react";
 
@@ -20,12 +21,14 @@ interface ProofArtifact {
 }
 
 export default function ProofPage() {
+  const searchParams = useSearchParams();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [proofPosts, setProofPosts] = useState<ProofArtifact[]>([]);
   const [selectedLeadId, setSelectedLeadId] = useState<string>("");
   const [generating, setGenerating] = useState(false);
   const [lastGenerated, setLastGenerated] = useState<{ content: string; artifactId: string } | null>(null);
   const [copied, setCopied] = useState(false);
+  const didAutoGenerate = useRef(false);
 
   const fetchLeads = useCallback(async () => {
     const res = await fetch("/api/leads");
@@ -48,6 +51,30 @@ export default function ProofPage() {
     fetchLeads();
     fetchProofPosts();
   }, [fetchLeads, fetchProofPosts]);
+
+  // URL trigger for browser automation: ?generate=1 runs generate once when a lead is selected
+  useEffect(() => {
+    if (didAutoGenerate.current || !searchParams.get("generate") || !selectedLeadId) return;
+    didAutoGenerate.current = true;
+    (async () => {
+      setGenerating(true);
+      setLastGenerated(null);
+      try {
+        const res = await fetch("/api/proof/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ leadId: selectedLeadId }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setLastGenerated({ content: data.content, artifactId: data.artifactId });
+          fetchProofPosts();
+        }
+      } finally {
+        setGenerating(false);
+      }
+    })();
+  }, [selectedLeadId, searchParams, fetchProofPosts]);
 
   async function generate() {
     if (!selectedLeadId) return;
@@ -108,6 +135,7 @@ export default function ProofPage() {
             </select>
           </div>
           <Button
+            data-testid="proof-generate-btn"
             onClick={generate}
             disabled={generating || !selectedLeadId}
             className="gap-2"

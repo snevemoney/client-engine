@@ -1,6 +1,8 @@
 # PROJECT_CONTEXT — Client Engine (Single Source of Truth)
 
-**For full system purpose, mental model, and non-negotiables:** read **SYSTEM_MANIFEST.md** first. This file is the implementation and “what’s built / what’s next” truth.
+**For behavioral law (who we serve, what’s forbidden, AI role, proposal/proof rules):** read **docs/CLIENT_ENGINE_AXIOMS.md** first. Do not propose or generate anything that violates it.
+
+**For full system purpose and mental model:** read **SYSTEM_MANIFEST.md**. This file is the implementation and “what’s built / what’s next” truth.
 
 ## Goal
 

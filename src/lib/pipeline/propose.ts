@@ -2,13 +2,16 @@ import { db } from "@/lib/db";
 import { chat, type ChatUsage } from "@/lib/llm";
 import { buildProposalPrompt } from "@/lib/pipeline/prompts/buildProposalPrompt";
 import { isDryRun } from "@/lib/pipeline/dry-run";
+import type { Provenance } from "@/lib/pipeline/provenance";
+import { getLeadRoiEstimate } from "@/lib/revenue/roi";
 
 const POSITIONING_ARTIFACT_TITLE = "POSITIONING_BRIEF";
+const RESEARCH_SNAPSHOT_TITLE = "RESEARCH_SNAPSHOT";
 
 /**
  * Run proposal step. Requires a positioning artifact for this lead (gate: no proposal without positioning).
  */
-export async function runPropose(leadId: string): Promise<{ artifactId: string; usage?: ChatUsage }> {
+export async function runPropose(leadId: string, provenance?: Provenance): Promise<{ artifactId: string; usage?: ChatUsage }> {
   const lead = await db.lead.findUnique({ where: { id: leadId } });
   if (!lead) throw new Error("Lead not found");
 
@@ -26,6 +29,19 @@ export async function runPropose(leadId: string): Promise<{ artifactId: string; 
     );
   }
 
+  const research = await db.artifact.findFirst({
+    where: { leadId, type: "research", title: RESEARCH_SNAPSHOT_TITLE },
+  });
+  const researchMeta = research?.meta as { sourceUrl?: string; capturedAt?: string } | null;
+  const researchSnapshot = research?.content ?? null;
+  const researchSourceUrl = researchMeta?.sourceUrl ?? null;
+
+  const roi = await getLeadRoiEstimate(leadId);
+  const roiSummary = roi
+    ? [roi.meta.whyNow, roi.meta.pilotRecommendation, ...roi.meta.expectedPilotOutcome.map((b) => `- ${b}`)].join("\n\n")
+    : null;
+
+  const meta = provenance ? { provenance } : undefined;
   if (isDryRun()) {
     const artifact = await db.artifact.create({
       data: {
@@ -33,6 +49,7 @@ export async function runPropose(leadId: string): Promise<{ artifactId: string; 
         type: "proposal",
         title: `Proposal: ${lead.title}`,
         content: "**[DRY RUN]** Placeholder proposal.",
+        meta,
       },
     });
     return { artifactId: artifact.id };
@@ -46,6 +63,9 @@ export async function runPropose(leadId: string): Promise<{ artifactId: string; 
       timeline: lead.timeline,
       platform: lead.platform,
       techStack: lead.techStack,
+      researchSnapshot: researchSnapshot ?? undefined,
+      researchSourceUrl: researchSourceUrl ?? undefined,
+      roiSummary: roiSummary ?? undefined,
     },
     positioning.content
   );
@@ -68,6 +88,7 @@ export async function runPropose(leadId: string): Promise<{ artifactId: string; 
       type: "proposal",
       title: `Proposal: ${lead.title}`,
       content,
+      meta,
     },
   });
 

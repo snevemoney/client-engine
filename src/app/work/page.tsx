@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
+import { LeadCaptureForm } from "@/components/site/LeadCaptureForm";
 
 export const dynamic = "force-dynamic";
 
@@ -26,14 +27,21 @@ export default async function WorkPage() {
         <Link href="/" className="inline-flex items-center gap-1.5 text-sm text-neutral-400 hover:text-neutral-200 mb-8 transition-colors">
           <ArrowLeft className="w-4 h-4" /> Home
         </Link>
-        <h1 className="text-4xl font-light tracking-tight mb-2">Work</h1>
-        <p className="text-neutral-400 mb-12">Selected projects and case studies.</p>
+        <div className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-6 mb-12">
+          <p className="text-neutral-400 text-sm mb-2">Proof of execution</p>
+          <h1 className="text-3xl font-light tracking-tight mb-2">Work</h1>
+          <p className="text-neutral-400 mb-4">Selected projects and case studies. Want similar outcomes for your business?</p>
+          <a href="/#contact" className="inline-flex items-center gap-2 bg-white text-neutral-900 px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-neutral-200 transition-colors">
+            Request a workflow audit <ArrowRight className="w-4 h-4" />
+          </a>
+        </div>
 
         {projects.length === 0 ? (
           <div className="border border-neutral-800 rounded-lg p-12 text-center text-neutral-500">
             Projects will appear here once deployed.
           </div>
         ) : (
+          <>
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {projects.map((p) => (
               <Link
@@ -64,6 +72,14 @@ export default async function WorkPage() {
               </Link>
             ))}
           </div>
+          <div className="mt-16 rounded-lg border border-neutral-800 bg-neutral-900/50 p-6">
+            <h2 className="text-lg font-medium mb-2">Want this for your business?</h2>
+            <p className="text-neutral-400 text-sm mb-4">Request a workflow audit. One clear next step.</p>
+            <a href="/#contact" className="inline-flex items-center gap-2 bg-white text-neutral-900 px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-neutral-200 transition-colors">
+              Request a workflow audit <ArrowRight className="w-4 h-4" />
+            </a>
+          </div>
+          </>
         )}
       </main>
 
