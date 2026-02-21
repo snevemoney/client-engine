@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, ExternalLink, Plus, FileText, X, Sparkles, Target, Send, Hammer } from "lucide-react";
+import { ArrowLeft, ExternalLink, Plus, FileText, X, Sparkles, Target, Send, Hammer, CheckCircle, XCircle } from "lucide-react";
 
 interface Artifact {
   id: string;
@@ -58,6 +58,10 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   const [scoring, setScoring] = useState(false);
   const [proposing, setProposing] = useState(false);
   const [building, setBuilding] = useState(false);
+  const [approving, setApproving] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
+  const [rejectNote, setRejectNote] = useState("");
+  const [showRejectInput, setShowRejectInput] = useState(false);
 
   async function enrichLead() {
     setEnriching(true);
@@ -119,6 +123,46 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
       }
     } catch (e) { alert("Proposal generation failed"); }
     setProposing(false);
+  }
+
+  const hasProposal = lead?.artifacts?.some((a) => a.type === "proposal") ?? false;
+  const canApprove = hasProposal && lead?.status !== "APPROVED";
+
+  async function approveLead() {
+    if (!canApprove) return;
+    setApproving(true);
+    try {
+      const res = await fetch(`/api/leads/${id}/approve`, { method: "POST" });
+      if (res.ok) {
+        const full = await fetch(`/api/leads/${id}`);
+        if (full.ok) setLead(await full.json());
+      } else {
+        const err = await res.json();
+        alert(err.error ?? "Approve failed");
+      }
+    } catch (e) { alert("Approve failed"); }
+    setApproving(false);
+  }
+
+  async function rejectLead() {
+    setRejecting(true);
+    try {
+      const res = await fetch(`/api/leads/${id}/reject`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ note: rejectNote.trim() || undefined }),
+      });
+      if (res.ok) {
+        const full = await fetch(`/api/leads/${id}`);
+        if (full.ok) setLead(await full.json());
+        setShowRejectInput(false);
+        setRejectNote("");
+      } else {
+        const err = await res.json();
+        alert(err.error ?? "Reject failed");
+      }
+    } catch (e) { alert("Reject failed"); }
+    setRejecting(false);
   }
 
   useEffect(() => {
@@ -207,6 +251,69 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
           ))}
         </div>
       </div>
+
+      {/* Latest pipeline artifacts summary */}
+      {(lead.artifacts.some((a) => a.type === "notes") || lead.artifacts.some((a) => a.type === "proposal") || lead.artifacts.some((a) => a.type === "positioning")) && (
+        <div className="border border-neutral-800 rounded-lg p-4">
+          <h3 className="text-xs font-medium text-neutral-500 uppercase tracking-wider mb-2">Pipeline artifacts</h3>
+          <div className="flex gap-2 flex-wrap">
+            {lead.artifacts.some((a) => a.type === "notes" && a.title === "AI Enrichment Report") && <Badge variant="outline">Enrichment</Badge>}
+            {lead.score != null && <Badge variant="outline">Score</Badge>}
+            {lead.artifacts.some((a) => a.type === "positioning" && a.title === "POSITIONING_BRIEF") && <Badge variant="outline">Positioning</Badge>}
+            {hasProposal && <Badge variant="outline">Proposal</Badge>}
+          </div>
+        </div>
+      )}
+
+      {/* Proposal console: positioning + proposal side-by-side to spot drift */}
+      {(() => {
+        const positioning = lead.artifacts.find((a) => a.type === "positioning" && a.title === "POSITIONING_BRIEF");
+        const proposal = lead.artifacts.find((a) => a.type === "proposal");
+        if (!positioning || !proposal) return null;
+        return (
+          <div className="border border-neutral-800 rounded-lg p-4">
+            <h3 className="text-xs font-medium text-neutral-500 uppercase tracking-wider mb-3">Proposal review (positioning vs proposal)</h3>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="border border-neutral-700 rounded-md p-3 bg-neutral-900/40 max-h-[420px] overflow-y-auto">
+                <div className="text-xs font-medium text-neutral-400 mb-2">POSITIONING_BRIEF</div>
+                <pre className="text-sm text-neutral-300 whitespace-pre-wrap font-sans">{positioning.content}</pre>
+              </div>
+              <div className="border border-neutral-700 rounded-md p-3 bg-neutral-900/40 max-h-[420px] overflow-y-auto">
+                <div className="text-xs font-medium text-neutral-400 mb-2">Proposal</div>
+                <pre className="text-sm text-neutral-300 whitespace-pre-wrap font-sans">{proposal.content}</pre>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Owner approval: one-click Approve when proposal exists */}
+      {hasProposal && lead.status !== "APPROVED" && (
+        <div className="border border-emerald-900/50 bg-emerald-950/20 rounded-lg p-4">
+          <h3 className="text-xs font-medium text-emerald-400/90 uppercase tracking-wider mb-3">Approve proposal</h3>
+          <div className="flex gap-3 flex-wrap items-center">
+            <Button size="lg" onClick={approveLead} disabled={approving} className="bg-emerald-600 hover:bg-emerald-500 text-white">
+              <CheckCircle className="w-4 h-4 mr-2" /> {approving ? "Approving..." : "Approve"}
+            </Button>
+            {!showRejectInput ? (
+              <Button variant="outline" size="sm" onClick={() => setShowRejectInput(true)} disabled={rejecting}>
+                <XCircle className="w-3.5 h-3.5 mr-1.5" /> Reject
+              </Button>
+            ) : (
+              <div className="flex gap-2 flex-wrap items-center">
+                <Input
+                  placeholder="Rejection note (optional)"
+                  value={rejectNote}
+                  onChange={(e) => setRejectNote(e.target.value)}
+                  className="max-w-xs h-8 text-sm"
+                />
+                <Button variant="outline" size="sm" onClick={rejectLead} disabled={rejecting}>{rejecting ? "..." : "Submit"}</Button>
+                <Button variant="ghost" size="sm" onClick={() => { setShowRejectInput(false); setRejectNote(""); }}>Cancel</Button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* AI Actions */}
       <div className="flex gap-3 flex-wrap">
