@@ -29,6 +29,16 @@ COPY --from=deps /app/node_modules/tslib ./node_modules/tslib
 COPY --from=deps /app/node_modules/@ioredis ./node_modules/@ioredis
 # bullmq requires ioredis from its own node_modules
 COPY --from=deps /app/node_modules/bullmq/node_modules/ioredis ./node_modules/bullmq/node_modules/ioredis
+# ioredis transitive deps (required when resolving from bullmq/node_modules/ioredis)
+COPY --from=deps /app/node_modules/standard-as-callback ./node_modules/standard-as-callback
+COPY --from=deps /app/node_modules/cluster-key-slot ./node_modules/cluster-key-slot
+COPY --from=deps /app/node_modules/denque ./node_modules/denque
+COPY --from=deps /app/node_modules/redis-errors ./node_modules/redis-errors
+COPY --from=deps /app/node_modules/redis-parser ./node_modules/redis-parser
+COPY --from=deps /app/node_modules/debug ./node_modules/debug
+COPY --from=deps /app/node_modules/ms ./node_modules/ms
+COPY --from=deps /app/node_modules/lodash.defaults ./node_modules/lodash.defaults
+COPY --from=deps /app/node_modules/lodash.isarguments ./node_modules/lodash.isarguments
 COPY --from=deps /app/node_modules/semver ./node_modules/semver
 COPY --from=deps /app/node_modules/imapflow ./node_modules/imapflow
 COPY --from=deps /app/node_modules/mailparser ./node_modules/mailparser
