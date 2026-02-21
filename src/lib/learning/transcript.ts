@@ -113,9 +113,43 @@ async function stubFetchTranscript(videoId: string, videoUrl: string): Promise<F
   };
 }
 
+/**
+ * Real provider using youtube-transcript package (YouTube timedtext/captions).
+ * Used when LEARNING_USE_MOCK_TRANSCRIPT is not set.
+ */
+async function realFetchTranscript(videoId: string, videoUrl: string): Promise<FetchTranscriptResult> {
+  try {
+    const { YoutubeTranscript } = await import("youtube-transcript");
+    const list = await YoutubeTranscript.fetchTranscript(videoId);
+    const segments = list.map((item) => ({
+      text: item.text,
+      start: item.offset / 1000,
+      duration: item.duration / 1000,
+    }));
+    return {
+      ok: true,
+      metadata: {
+        videoId,
+        title: `Video ${videoId}`,
+        channelTitle: undefined,
+      },
+      segments,
+    };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return {
+      ok: false,
+      error: msg,
+      code: "TRANSCRIPT_UNAVAILABLE",
+    };
+  }
+}
+
+const useRealTranscript = process.env.LEARNING_USE_MOCK_TRANSCRIPT !== "1" && process.env.LEARNING_USE_MOCK_TRANSCRIPT !== "true";
+
 export const transcriptProvider: TranscriptProvider = {
-  name: "stub",
-  fetchTranscript: stubFetchTranscript,
+  name: useRealTranscript ? "youtube-transcript" : "stub",
+  fetchTranscript: useRealTranscript ? realFetchTranscript : stubFetchTranscript,
 };
 
 /**

@@ -5,6 +5,68 @@ import { useState } from "react";
 type Run = { id: string; content: string; meta: unknown; createdAt: string };
 type Artifact = { id: string; title: string; content: string; meta: unknown; createdAt: string };
 
+const SUGGESTION_STATUSES = ["queued", "reviewed", "applied", "dismissed"] as const;
+
+function SuggestionRow({
+  id,
+  title,
+  content,
+  meta,
+  createdAt,
+  status,
+  onStatusChange,
+}: {
+  id: string;
+  title: string;
+  content: string;
+  meta: { systemArea?: string; effort?: string; expectedImpact?: string; status?: string } | null;
+  createdAt: string;
+  status: string;
+  onStatusChange: () => void;
+}) {
+  const [updating, setUpdating] = useState(false);
+  async function setStatus(newStatus: string) {
+    if (!SUGGESTION_STATUSES.includes(newStatus as (typeof SUGGESTION_STATUSES)[number])) return;
+    setUpdating(true);
+    try {
+      const res = await fetch(`/api/knowledge/suggestions/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (res.ok) onStatusChange();
+    } finally {
+      setUpdating(false);
+    }
+  }
+  return (
+    <li className="border border-neutral-800 rounded-lg p-3 bg-neutral-900/30">
+      <div className="flex items-start justify-between gap-2">
+        <h3 className="font-medium text-neutral-200">{title}</h3>
+        <div className="flex items-center gap-2 shrink-0">
+          <select
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+            disabled={updating}
+            className="rounded border border-neutral-700 bg-neutral-900 text-neutral-200 text-xs px-2 py-1"
+          >
+            {SUGGESTION_STATUSES.map((st) => (
+              <option key={st} value={st}>{st}</option>
+            ))}
+          </select>
+          <span className="text-xs text-neutral-500">{new Date(createdAt).toLocaleDateString()}</span>
+        </div>
+      </div>
+      {meta && (
+        <p className="text-xs text-neutral-500 mt-1">
+          {meta.systemArea} · effort {meta.effort}
+        </p>
+      )}
+      <p className="mt-2 text-sm text-neutral-400">{content.slice(0, 300)}{content.length > 300 ? "…" : ""}</p>
+    </li>
+  );
+}
+
 export function KnowledgePageClient({
   initialRuns,
   initialTranscripts,
@@ -219,19 +281,18 @@ export function KnowledgePageClient({
           <ul className="space-y-3">
             {suggestions.map((s) => {
               const meta = s.meta as { systemArea?: string; effort?: string; expectedImpact?: string; status?: string } | null;
+              const currentStatus = meta?.status ?? "queued";
               return (
-                <li key={s.id} className="border border-neutral-800 rounded-lg p-3 bg-neutral-900/30">
-                  <div className="flex items-start justify-between gap-2">
-                    <h3 className="font-medium text-neutral-200">{s.title}</h3>
-                    <span className="text-xs text-neutral-500 shrink-0">{new Date(s.createdAt).toLocaleDateString()}</span>
-                  </div>
-                  {meta && (
-                    <p className="text-xs text-neutral-500 mt-1">
-                      {meta.systemArea} · effort {meta.effort} · {meta.status ?? "queued"}
-                    </p>
-                  )}
-                  <p className="mt-2 text-sm text-neutral-400">{s.content.slice(0, 300)}{s.content.length > 300 ? "…" : ""}</p>
-                </li>
+                <SuggestionRow
+                  key={s.id}
+                  id={s.id}
+                  title={s.title}
+                  content={s.content}
+                  meta={meta}
+                  createdAt={s.createdAt}
+                  status={currentStatus}
+                  onStatusChange={() => refresh()}
+                />
               );
             })}
           </ul>

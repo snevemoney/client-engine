@@ -6,6 +6,7 @@ import { getRecentOperatorFeedbackNotes } from "@/lib/ops/feedback";
 import { getLearningInboxSummary } from "@/lib/learning/ingest";
 import { getKnowledgeQueueCounts, getTopImprovementSuggestions } from "@/lib/knowledge/ingest";
 import { getMoneyScorecard } from "@/lib/ops/moneyScorecard";
+import { getSalesLeakReport } from "@/lib/ops/salesLeak";
 import { getFailuresAndInterventions } from "@/lib/ops/failuresInterventions";
 import { getLeverageScore } from "@/lib/ops/leverageScore";
 import { getWeeklySnapshotHistory } from "@/lib/ops/weeklySnapshot";
@@ -31,12 +32,13 @@ import { LearningInboxCard } from "@/components/dashboard/command/LearningInboxC
 import { KnowledgeQueueCard } from "@/components/dashboard/command/KnowledgeQueueCard";
 import { TopSuggestionsCard } from "@/components/dashboard/command/TopSuggestionsCard";
 import { MoneyScorecardCard } from "@/components/dashboard/command/MoneyScorecardCard";
+import { SalesLeakCard } from "@/components/dashboard/command/SalesLeakCard";
 import { PatTomWeeklyScorecardCard } from "@/components/dashboard/command/PatTomWeeklyScorecardCard";
 
 export const dynamic = "force-dynamic";
 
 export default async function CommandCenterPage() {
-  const [brief, queue, constraint, lastRunReport, latestBrief, failuresInterventions, leverageScore, weeklyTrend, operatorSettings, patTomScorecard, feedbackNotes, learningInbox, knowledgeQueue, topSuggestions, moneyScorecard] = await Promise.all([
+  const [brief, queue, constraint, lastRunReport, latestBrief, failuresInterventions, leverageScore, weeklyTrend, operatorSettings, patTomScorecard, feedbackNotes, learningInbox, knowledgeQueue, topSuggestions, moneyScorecard, salesLeakReport] = await Promise.all([
     buildBrief(),
     getQueueSummary(),
     getConstraintSnapshot(),
@@ -59,6 +61,7 @@ export default async function CommandCenterPage() {
     getKnowledgeQueueCounts(),
     getTopImprovementSuggestions(5),
     getMoneyScorecard(),
+    getSalesLeakReport(),
   ]);
 
   const feedbackNoteItems = feedbackNotes.map((n) => ({
@@ -72,6 +75,8 @@ export default async function CommandCenterPage() {
       <CommandHeader />
 
       <MoneyScorecardCard data={moneyScorecard} />
+
+      <SalesLeakCard data={salesLeakReport} />
 
       <FailuresInterventionsCard data={failuresInterventions} />
 

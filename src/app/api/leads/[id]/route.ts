@@ -31,6 +31,20 @@ const ALLOWED_PATCH_FIELDS = new Set([
   "contactName",
   "contactEmail",
   "tags",
+  "salesStage",
+  "nextContactAt",
+  "lastContactAt",
+  "followUpCount",
+  "followUpCadenceDays",
+  "permissionToFollowUp",
+  "personalDetails",
+  "leadSourceType",
+  "leadSourceChannel",
+  "introducedBy",
+  "referralAskStatus",
+  "referralAskAt",
+  "referralCount",
+  "referralNames",
 ]);
 
 function pickAllowedLeadPatch(body: Record<string, unknown>): Record<string, unknown> {

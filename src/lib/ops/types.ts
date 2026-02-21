@@ -105,6 +105,37 @@ export type PipelineLeakReport = {
   leaks: { fromStage: string; toStage: string; countIn: number; countOut: number; pct: number }[];
 };
 
+/** PBD sales leak: stage counts this week + worst leak stage. */
+export type SalesLeakReport = {
+  at: string;
+  weekStart: string;
+  weekEnd: string;
+  stageCounts: Record<string, { in: number; due?: number; done?: number }>;
+  worstLeakStage: string;
+  worstLeakReason: string;
+  prospectingCount: number;
+  newContactsMade: number;
+  firstContactsSent: number;
+  presentationsCount: number;
+  followUpsDue: number;
+  followUpsDone: number;
+  referralAsksMade: number;
+  referralLeadsReceived: number;
+  relationshipTouches: number;
+};
+
+/** Follow-up discipline metrics. */
+export type FollowUpDisciplineScore = {
+  at: string;
+  pctOnTime: number | null;
+  pctWithNextDate: number;
+  pctWithNotes: number;
+  compositeScore: number;
+  dueCount: number;
+  completedOnTimeCount: number;
+  activeLeadsWithoutNextDate: number;
+};
+
 /** Deal + product intelligence per lead (from enrichment + positioning + research). */
 export type OpportunityBrief = {
   buyer: string | null;

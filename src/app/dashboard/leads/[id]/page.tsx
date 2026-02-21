@@ -44,9 +44,14 @@ interface Lead {
   dealOutcome: string | null;
   createdAt: string;
   artifacts: Artifact[];
+  salesStage: string | null;
+  nextContactAt: string | null;
+  lastContactAt: string | null;
+  personalDetails: string | null;
 }
 
 const STATUSES = ["NEW", "ENRICHED", "SCORED", "APPROVED", "REJECTED", "BUILDING", "SHIPPED"];
+const SALES_STAGES = ["PROSPECTING", "APPROACH_CONTACT", "PRESENTATION", "FOLLOW_UP", "REFERRAL", "RELATIONSHIP_MAINTENANCE"] as const;
 const ARTIFACT_TYPES = ["notes", "proposal", "scope", "screenshot", "case_study"];
 
 const statusColors: Record<string, "default" | "success" | "warning" | "destructive"> = {
@@ -268,6 +273,18 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
     }
   }
 
+  async function updateDateField(field: "nextContactAt" | "lastContactAt", value: string | null) {
+    const res = await fetch(`/api/leads/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ [field]: value ? `${value}T12:00:00.000Z` : null }),
+    });
+    if (res.ok) {
+      const updated = await res.json();
+      setLead((prev) => (prev ? { ...prev, ...updated } : prev));
+    }
+  }
+
   async function createArtifact() {
     if (!artifactTitle.trim()) return;
     setSaving(true);
@@ -328,6 +345,51 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
             </Button>
           ))}
         </div>
+      </div>
+
+      {/* Sales (PBD): stage, next/last contact, leak warning */}
+      <div className="border border-neutral-800 rounded-lg p-4">
+        <h3 className="text-xs font-medium text-neutral-500 uppercase tracking-wider mb-3">Sales stage</h3>
+        <div className="flex gap-2 flex-wrap items-center mb-3">
+          <select
+            value={lead.salesStage ?? ""}
+            onChange={(e) => updateField("salesStage", e.target.value || "")}
+            className="rounded-md border border-neutral-700 bg-neutral-900 text-sm text-neutral-200 px-3 py-1.5"
+          >
+            <option value="">—</option>
+            {SALES_STAGES.map((s) => (
+              <option key={s} value={s}>{s.replace(/_/g, " ")}</option>
+            ))}
+          </select>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 text-sm">
+          <div>
+            <label className="text-xs text-neutral-500 block mb-1">Next contact date</label>
+            <input
+              type="date"
+              value={lead.nextContactAt ? lead.nextContactAt.slice(0, 10) : ""}
+              onChange={(e) => updateDateField("nextContactAt", e.target.value || null)}
+              className="rounded-md border border-neutral-700 bg-neutral-900 text-neutral-200 px-2 py-1.5 w-full"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-neutral-500 block mb-1">Last contact date</label>
+            <input
+              type="date"
+              value={lead.lastContactAt ? lead.lastContactAt.slice(0, 10) : ""}
+              onChange={(e) => updateDateField("lastContactAt", e.target.value || null)}
+              className="rounded-md border border-neutral-700 bg-neutral-900 text-neutral-200 px-2 py-1.5 w-full"
+            />
+          </div>
+        </div>
+        {(() => {
+          const stage = lead.salesStage ?? (lead.proposalSentAt ? "FOLLOW_UP" : lead.status === "NEW" || lead.status === "ENRICHED" || lead.status === "SCORED" ? "PROSPECTING" : "APPROACH_CONTACT");
+          const needsNextDate = ["APPROACH_CONTACT", "PRESENTATION", "FOLLOW_UP"].includes(stage) && lead.status !== "REJECTED" && lead.dealOutcome !== "won" && !lead.nextContactAt;
+          if (!needsNextDate) return null;
+          return (
+            <p className="mt-3 text-sm text-red-400 font-medium">No next date = incomplete (leak). Set next contact date.</p>
+          );
+        })()}
       </div>
 
       {/* Latest pipeline artifacts summary */}

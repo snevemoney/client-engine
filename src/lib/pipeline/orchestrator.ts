@@ -13,6 +13,7 @@ import {
   formatStepFailureNotes,
   isRetryableError,
 } from "@/lib/pipeline/error-classifier";
+import { notifyPipelineFailure } from "@/lib/notify";
 
 const PIPELINE_STEPS = ["enrich", "score", "position", "propose"] as const;
 
@@ -177,6 +178,7 @@ export async function runPipelineIfEligible(
 
         const errMsg = err instanceof Error ? err.message : stepName + " failed";
         await finishRun(runId, false, errMsg);
+        notifyPipelineFailure(leadId, lead.title, stepName, errMsg);
         throw err;
       }
     }

@@ -44,6 +44,21 @@ model Lead {
   project      Project?
   pipelineRuns PipelineRun[]
   tags         String[]
+  // ----- Sales operating system (PBD 6 steps) -----
+  salesStage             String?   // PROSPECTING | APPROACH_CONTACT | PRESENTATION | FOLLOW_UP | REFERRAL | RELATIONSHIP_MAINTENANCE
+  nextContactAt          DateTime?
+  lastContactAt          DateTime?
+  followUpCount          Int       @default(0)
+  followUpCadenceDays    Int?
+  permissionToFollowUp   Boolean?
+  personalDetails        String?   @db.Text
+  leadSourceType         String?   // warm | network_referral
+  leadSourceChannel      String?   // linkedin | email | event | website | friend | existing_client | other
+  introducedBy          String?
+  referralAskStatus     String?   // not_asked | asked | received
+  referralAskAt         DateTime?
+  referralCount         Int       @default(0)
+  referralNames         String?   @db.Text
 }
 
 enum LeadStatus {

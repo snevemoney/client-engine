@@ -5,9 +5,11 @@
 import { db } from "@/lib/db";
 import { runPipelineIfEligible } from "@/lib/pipeline/runPipeline";
 import { formatStepFailureNotes } from "@/lib/pipeline/error-classifier";
+import { notifyNewProposalsReady } from "@/lib/notify";
 import { canonicalizeSourceUrl } from "./canonicalize";
 import { shouldSkipLowSignal } from "./filter";
 import { rssAdapter } from "./adapters/rss";
+import { upworkAdapter } from "./adapters/upwork";
 import type { RawOpportunity, ResearchRunReport } from "./types";
 
 const RESEARCH_SNAPSHOT_TITLE = "RESEARCH_SNAPSHOT";
@@ -15,7 +17,7 @@ const RESEARCH_RUN_REPORT_TITLE = "RESEARCH_RUN_REPORT";
 const SYSTEM_LEAD_SOURCE = "system";
 const SYSTEM_LEAD_TITLE = "Research Engine Runs";
 
-const ADAPTERS = [rssAdapter];
+const ADAPTERS = [upworkAdapter, rssAdapter];
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -179,6 +181,10 @@ export async function runResearchDiscoverAndPipeline(
       },
     },
   });
+
+  if (report.created > 0 && report.leadIds?.length) {
+    notifyNewProposalsReady(report.created, report.leadIds);
+  }
 
   return report;
 }
