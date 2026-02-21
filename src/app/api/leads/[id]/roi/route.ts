@@ -13,7 +13,7 @@ export async function GET(
   const { id } = await params;
   try {
     const roi = await getLeadRoiEstimate(id);
-    return NextResponse.json(roi ?? { estimate: null });
+    return NextResponse.json(roi ? { estimate: roi.meta, content: roi.content } : { estimate: null });
   } catch (e) {
     console.error("[leads roi GET]", e);
     return NextResponse.json({ error: "Failed to load ROI" }, { status: 500 });

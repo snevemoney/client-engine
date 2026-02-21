@@ -1,9 +1,11 @@
 /**
  * Quiet Proof Engine: generate 6–10 line proof posts from real pipeline artifacts.
  * No hype, no invented numbers. Format: what I saw → cost → what I changed → result → quiet CTA.
+ * When Client Success data exists (baseline + outcome scorecard), result lines use measurable outcomes.
  */
 
 import { db } from "@/lib/db";
+import { getClientSuccessData, buildProofSummaryFromSuccessData } from "@/lib/client-success";
 import { buildProofLines } from "./proof-lines";
 
 export type ProofPostResult = {
@@ -69,7 +71,7 @@ export async function buildProofPost(leadId: string): Promise<ProofPostResult | 
 
   const reframedSnippet = positioning ? extractReframedOffer(positioning.content) : null;
 
-  const lines = buildProofLines({
+  let lines = buildProofLines({
     saw: saw.length > 120 ? saw.slice(0, 120) : saw,
     totalCost,
     hasPositioning: !!positioning,
@@ -81,6 +83,28 @@ export async function buildProofPost(leadId: string): Promise<ProofPostResult | 
     approvedAt: lead.approvedAt,
     leadTitle: lead.title,
   });
+
+  // When Client Success data exists, inject result-focused lines (baseline → interventions → outcomes).
+  const successData = await getClientSuccessData(leadId);
+  const summary = buildProofSummaryFromSuccessData(successData);
+  if (summary.resultTarget || summary.baselineBullets.length > 0 || summary.outcomeBullets.length > 0) {
+    const resultLines: string[] = [];
+    if (summary.resultTarget) {
+      resultLines.push(`Target: ${summary.resultTarget}`);
+    }
+    if (summary.baselineBullets.length > 0) {
+      resultLines.push(`Baseline: ${summary.baselineBullets.slice(0, 3).join("; ")}`);
+    }
+    if (summary.interventionBullets.length > 0) {
+      resultLines.push(`Interventions: ${summary.interventionBullets.slice(0, 2).join("; ")}`);
+    }
+    if (summary.outcomeBullets.length > 0) {
+      resultLines.push(`Outcome: ${summary.outcomeBullets.slice(0, 3).join("; ")}`);
+    }
+    // Insert after "Saw" and "Cost"
+    const insertAt = Math.min(2, lines.length);
+    lines = [...lines.slice(0, insertAt), ...resultLines, ...lines.slice(insertAt)];
+  }
 
   return {
     lines,

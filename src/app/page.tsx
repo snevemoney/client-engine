@@ -51,9 +51,9 @@ const services = [
 ];
 
 const processSteps = [
-  { step: "01", title: "Diagnose", description: "We identify the real bottleneck and cost of inaction in a short audit or call." },
-  { step: "02", title: "Pilot", description: "A small, low-risk first step: one workflow, one outcome, 14–30 days." },
-  { step: "03", title: "Scale", description: "Roll out what works. Deployed on infrastructure you own, with clear handoff or ongoing support." },
+  { step: "01", title: "Discovery", description: "We define scope, timeline, and success criteria in a focused call." },
+  { step: "02", title: "Build", description: "I build in short cycles with daily updates. You see progress, not just promises." },
+  { step: "03", title: "Ship", description: "Deployed, documented, and handed off — or maintained long-term if you prefer." },
 ];
 
 export default async function HomePage() {
@@ -81,30 +81,25 @@ export default async function HomePage() {
             Available for new projects
           </div>
           <h1 className="text-5xl sm:text-6xl font-light tracking-tight leading-[1.1] mb-6">
-            Remove workflow bottlenecks and recover lost revenue
-            <span className="text-white font-normal"> without adding tool chaos.</span>
+            I build software that<br />
+            <span className="text-white font-normal">runs your business.</span>
           </h1>
-          <p className="text-neutral-400 text-lg sm:text-xl mb-6 max-w-xl mx-auto leading-relaxed">
+          <p className="text-neutral-400 text-lg sm:text-xl mb-10 max-w-xl mx-auto leading-relaxed">
             Full-stack development, automation, and AI — shipped fast on infrastructure you own.
           </p>
-          <ul className="text-neutral-300 text-sm sm:text-base mb-10 max-w-md mx-auto text-left space-y-2">
-            <li>• Higher throughput: systems that run while you focus on closing.</li>
-            <li>• Clear bottlenecks: fix the constraint instead of adding more tools.</li>
-            <li>• Revenue-focused: proof, lead capture, and conversion built in.</li>
-          </ul>
-          <div className="flex justify-center gap-4 flex-wrap">
-            <a
-              href="#contact"
-              className="inline-flex items-center gap-2 bg-white text-neutral-900 px-7 py-3 rounded-lg text-sm font-medium hover:bg-neutral-200 transition-colors"
-            >
-              Request a workflow audit <ArrowRight className="w-4 h-4" />
-            </a>
+          <div className="flex items-center justify-center gap-4 flex-wrap">
             <Link
               href="/work"
+              className="inline-flex items-center gap-2 bg-white text-neutral-900 px-7 py-3 rounded-lg text-sm font-medium hover:bg-neutral-200 transition-colors"
+            >
+              View my work <ArrowRight className="w-4 h-4" />
+            </Link>
+            <a
+              href="#contact"
               className="inline-flex items-center gap-2 border border-neutral-700 px-7 py-3 rounded-lg text-sm text-neutral-300 hover:bg-neutral-800 transition-colors"
             >
-              View my work
-            </Link>
+              Start a project
+            </a>
           </div>
         </div>
       </section>
@@ -168,7 +163,7 @@ export default async function HomePage() {
           <div className="text-center mb-16">
             <p className="text-sm text-neutral-500 uppercase tracking-widest mb-3">How it works</p>
             <h2 className="text-3xl font-light tracking-tight">
-              Diagnose → Pilot → <span className="text-white font-normal">Scale.</span>
+              Simple process, <span className="text-white font-normal">real results.</span>
             </h2>
           </div>
           <div className="grid gap-8 sm:grid-cols-3 max-w-4xl mx-auto">
@@ -204,10 +199,10 @@ export default async function HomePage() {
       <section id="contact" className="border-t border-neutral-800/50 px-6 py-24">
         <div className="mx-auto max-w-2xl">
           <h2 className="text-3xl font-light tracking-tight mb-4 text-center">
-            Request a <span className="text-white font-normal">workflow audit</span>
+            Ready to <span className="text-white font-normal">build something?</span>
           </h2>
           <p className="text-neutral-400 mb-8 text-center">
-            One clear next step. I&apos;ll respond within 24 hours.
+            Tell me about your project. I&apos;ll respond within 24 hours with a plan and timeline.
           </p>
           <LeadCaptureForm className="max-w-md mx-auto" />
           <p className="text-center mt-4 text-sm text-neutral-500">

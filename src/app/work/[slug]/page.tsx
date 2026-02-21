@@ -66,11 +66,32 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
           )}
         </div>
 
-        {project.description && (
-          <div className="mb-12">
-            <p className="text-neutral-300 leading-relaxed text-lg max-w-3xl">{project.description}</p>
-          </div>
-        )}
+        {/* Structured: Problem / Build / Result / Next step */}
+        <div className="mb-12 rounded-lg border border-neutral-800 bg-neutral-900/30 p-6 space-y-4">
+          <h2 className="text-lg font-medium text-neutral-200">At a glance</h2>
+          <dl className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <dt className="text-xs font-medium text-neutral-500 uppercase tracking-wider">Problem</dt>
+              <dd className="text-sm text-neutral-400 mt-0.5">—</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium text-neutral-500 uppercase tracking-wider">Build</dt>
+              <dd className="text-sm text-neutral-300 mt-0.5">{project.description ?? "—"}</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium text-neutral-500 uppercase tracking-wider">Result</dt>
+              <dd className="text-sm text-neutral-400 mt-0.5">—</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium text-neutral-500 uppercase tracking-wider">Next step</dt>
+              <dd className="mt-0.5">
+                <a href="/#contact" className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-400 hover:text-emerald-300">
+                  Request audit <ArrowRight className="w-3.5 h-3.5" />
+                </a>
+              </dd>
+            </div>
+          </dl>
+        </div>
 
         {project.screenshots.length > 0 && (
           <div className="mb-12">

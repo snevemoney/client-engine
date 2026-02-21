@@ -73,6 +73,7 @@ export type MoneyScorecard = {
   /** Daily/command center extensions */
   newLeadsToday?: number;
   newLeads7d?: number;
+  qualifiedLeads7d?: number;
   proposalsSent7d?: number;
   followUpsDueToday?: number;
   callsBooked?: number | null; // placeholder

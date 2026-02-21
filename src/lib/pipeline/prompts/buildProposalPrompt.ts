@@ -16,6 +16,8 @@ export type LeadForProposal = {
   researchSourceUrl?: string | null;
   /** When ROI estimate exists: include ROI summary, why now, pilot recommendation in proposal. */
   roiSummary?: string | null;
+  /** When result target exists: frame proposal as outcome contract (current → target, metric, timeline). */
+  resultTarget?: { currentState: string; targetState: string; metric: string; timeline: string } | null;
 };
 
 /**
@@ -84,6 +86,20 @@ ${positioningBrief}
 
 ${leadBlock}
 ${researchBlock}
+${lead.resultTarget
+    ? `
+---
+## Result Target (outcome contract — use this to frame scope and success)
+
+- **Current state:** ${lead.resultTarget.currentState}
+- **Target state:** ${lead.resultTarget.targetState}
+- **Metric:** ${lead.resultTarget.metric}
+- **Timeline:** ${lead.resultTarget.timeline}
+
+Frame the proposal as removing a specific bottleneck and delivering this measurable result. Do not invent numbers; use the metric and timeline above.
+---
+`
+    : ""}
 
 Generate a proposal with these exact sections (use markdown headers). Put the first two at the very top so the proposal sells from line one:
 

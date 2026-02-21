@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-const PRIMARY_CTA = "Request a workflow audit";
+const PRIMARY_CTA = "Get in touch";
 
 export function LeadCaptureForm({ className = "" }: { className?: string }) {
   const [name, setName] = useState("");

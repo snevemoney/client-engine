@@ -14,6 +14,7 @@ type MoneyScorecard = {
   timeToCloseMedianDays: number | null;
   newLeadsToday?: number;
   newLeads7d?: number;
+  qualifiedLeads7d?: number;
   proposalsSent7d?: number;
   followUpsDueToday?: number;
   callsBooked?: number | null;
@@ -44,6 +45,10 @@ export function MoneyScorecardCard({ data }: { data: MoneyScorecard | null }) {
           </p>
         </div>
         <div>
+          <p className="text-neutral-500 text-xs uppercase tracking-wider">Qualified (7d)</p>
+          <p className="text-neutral-200 font-medium">{data.qualifiedLeads7d ?? 0}</p>
+        </div>
+        <div>
           <p className="text-neutral-500 text-xs uppercase tracking-wider">Proposals sent</p>
           <p className="text-neutral-200 font-medium">7d: {data.proposalsSent7d ?? 0} · Total: {data.proposalsSent}</p>
         </div>
@@ -53,7 +58,7 @@ export function MoneyScorecardCard({ data }: { data: MoneyScorecard | null }) {
         </div>
         <div>
           <p className="text-neutral-500 text-xs uppercase tracking-wider">Calls booked</p>
-          <p className="text-neutral-200 font-medium">{data.callsBooked ?? "—"}</p>
+          <p className="text-neutral-200 font-medium">{data.callsBooked ?? "— (TODO: track when added)"}</p>
         </div>
         <div>
           <p className="text-neutral-500 text-xs uppercase tracking-wider">Deals won (30d)</p>

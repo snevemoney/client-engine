@@ -4,6 +4,7 @@ import { buildProposalPrompt } from "@/lib/pipeline/prompts/buildProposalPrompt"
 import { isDryRun } from "@/lib/pipeline/dry-run";
 import type { Provenance } from "@/lib/pipeline/provenance";
 import { getLeadRoiEstimate } from "@/lib/revenue/roi";
+import { getClientSuccessData } from "@/lib/client-success";
 
 const POSITIONING_ARTIFACT_TITLE = "POSITIONING_BRIEF";
 const RESEARCH_SNAPSHOT_TITLE = "RESEARCH_SNAPSHOT";
@@ -41,6 +42,9 @@ export async function runPropose(leadId: string, provenance?: Provenance): Promi
     ? [roi.meta.whyNow, roi.meta.pilotRecommendation, ...roi.meta.expectedPilotOutcome.map((b) => `- ${b}`)].join("\n\n")
     : null;
 
+  const successData = await getClientSuccessData(leadId);
+  const resultTarget = successData.resultTarget ?? null;
+
   const meta = provenance ? { provenance } : undefined;
   if (isDryRun()) {
     const artifact = await db.artifact.create({
@@ -66,6 +70,7 @@ export async function runPropose(leadId: string, provenance?: Provenance): Promi
       researchSnapshot: researchSnapshot ?? undefined,
       researchSourceUrl: researchSourceUrl ?? undefined,
       roiSummary: roiSummary ?? undefined,
+      resultTarget: resultTarget ?? undefined,
     },
     positioning.content
   );

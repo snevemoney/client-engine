@@ -1,0 +1,12 @@
+---
+description: Browser and E2E testing — use project defaults
+globs:
+alwaysApply: true
+---
+
+# Browser / testing: use defaults
+
+Use the project’s default way to run and test in a browser.
+
+- **Local dev:** `npm run dev`; the user opens the app in their own browser (e.g. http://localhost:3000).
+- **E2E tests:** Use the project’s configured runner (e.g. `npm run test:e2e` / Playwright) as intended. No special browser instructions; follow the README and config.

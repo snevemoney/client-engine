@@ -12,6 +12,16 @@ const QUICK_ACTIONS = [
   { label: "Checklist", href: "/dashboard/checklist" },
 ];
 
+const PREBAKED_PROMPTS = [
+  "What happened today?",
+  "What is the bottleneck?",
+  "What should I do first?",
+  "Which leads are strongest?",
+  "Where am I leaking money?",
+  "What should I post as proof today?",
+  "What should I fix before turning up lead volume?",
+];
+
 export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -70,9 +80,23 @@ export default function ChatPage() {
       <div className="flex-1 border border-neutral-800 rounded-lg flex flex-col min-h-0">
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
           {messages.length === 0 && (
-            <p className="text-sm text-neutral-500">
-              Try: &quot;What happened today?&quot; · &quot;Which leads are best?&quot; · &quot;What bottleneck should I fix?&quot;
-            </p>
+            <div className="space-y-2">
+              <p className="text-sm text-neutral-500">Ask operator-grade questions (uses live brief, constraint, money scorecard, ROI, learning):</p>
+              <div className="flex flex-wrap gap-1.5">
+                {PREBAKED_PROMPTS.map((prompt) => (
+                  <button
+                    key={prompt}
+                    type="button"
+                    onClick={() => {
+                      setInput(prompt);
+                    }}
+                    className="rounded-md border border-neutral-700 px-2.5 py-1.5 text-xs text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50"
+                  >
+                    {prompt}
+                  </button>
+                ))}
+              </div>
+            </div>
           )}
           {messages.map((msg, i) => (
             <div

@@ -10,6 +10,7 @@ import { ArrowLeft, ExternalLink, Plus, FileText, X, Sparkles, Target, Send, Ham
 import { OpportunityBriefCard } from "@/components/dashboard/leads/OpportunityBriefCard";
 import { RoiEstimateCard } from "@/components/dashboard/leads/RoiEstimateCard";
 import { FollowUpSequenceCard } from "@/components/dashboard/leads/FollowUpSequenceCard";
+import { ClientSuccessCard } from "@/components/dashboard/leads/ClientSuccessCard";
 
 interface Artifact {
   id: string;
@@ -517,6 +518,14 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
         dealOutcome={lead.dealOutcome}
         onSequenceGenerated={() => fetch(`/api/leads/${id}`).then((r) => r.ok && r.json()).then((d) => d && setLead(d))}
       />
+
+      {/* Client Success (baseline, interventions, outcome scorecard, proof) — after approval/build */}
+      {(lead.status === "APPROVED" || lead.status === "BUILDING" || lead.status === "SHIPPED") && (
+        <ClientSuccessCard
+          leadId={id}
+          onProofGenerated={() => fetch(`/api/leads/${id}`).then((r) => r.ok && r.json()).then((d) => d && setLead(d))}
+        />
+      )}
 
       {/* Artifacts */}
       <div className="border border-neutral-800 rounded-lg p-4">

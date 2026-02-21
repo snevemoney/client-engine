@@ -81,6 +81,9 @@ export async function getMoneyScorecard(): Promise<MoneyScorecard> {
 
   const newLeadsToday = leads.filter((l) => new Date(l.createdAt) >= todayStart).length;
   const newLeads7d = leads.filter((l) => new Date(l.createdAt) >= sevenDaysAgo).length;
+  const qualified7d = leads.filter(
+    (l) => (l.score ?? 0) >= QUALIFIED_SCORE_MIN && (new Date(l.createdAt) >= sevenDaysAgo || (l.updatedAt && new Date(l.updatedAt) >= sevenDaysAgo))
+  ).length;
   const proposalsSent7d = sent.filter((l) => l.proposalSentAt && new Date(l.proposalSentAt) >= sevenDaysAgo).length;
   const sentNoOutcome = leads.filter((l) => l.proposalSentAt && !l.dealOutcome);
   const followUpsDueToday = sentNoOutcome.length; // TODO: could filter by "next touch due today" when we have sequence dates
@@ -110,6 +113,7 @@ export async function getMoneyScorecard(): Promise<MoneyScorecard> {
     cashCollected: null,
     newLeadsToday,
     newLeads7d,
+    qualifiedLeads7d: qualified7d,
     proposalsSent7d,
     followUpsDueToday,
     callsBooked: null,
