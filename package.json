@@ -16,6 +16,7 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "test:e2e:dry": "PIPELINE_DRY_RUN=1 playwright test",
+    "smoke": "PIPELINE_DRY_RUN=1 playwright test tests/e2e/smoke.spec.ts tests/e2e/full-flow.spec.ts tests/e2e/proof-api.spec.ts",
     "script:research-lead": "node scripts/create-research-lead.mjs",
     "research:run": "npx tsx scripts/research-run.ts"
   },
