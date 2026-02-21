@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
   void (async () => {
     try {
       const { runPipelineIfEligible } = await import("@/lib/pipeline/orchestrator");
-      await runPipelineIfEligible(lead.id, "manual-create");
+      await runPipelineIfEligible(lead.id, "lead_created");
     } catch (err) {
       console.error("[leads] Pipeline run failed:", err);
     }

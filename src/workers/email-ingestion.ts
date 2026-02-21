@@ -93,7 +93,7 @@ async function ingestEmail(subject: string, text: string, html: string, from: st
 
   try {
     const { runPipelineIfEligible } = await import("@/lib/pipeline/orchestrator");
-    const result = await runPipelineIfEligible(lead.id, "email-ingestion");
+    const result = await runPipelineIfEligible(lead.id, "email_ingested");
     if (result.run) {
       console.log(`[email] Pipeline run ${result.runId}: ${result.stepsRun} steps run, ${result.stepsSkipped} skipped`);
     } else {
