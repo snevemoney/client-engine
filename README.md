@@ -28,14 +28,16 @@ bash deploy.sh
 ## Operations
 
 ```bash
-bash deploy.sh          # Pull, build, migrate, restart
+bash deploy.sh          # On server: build, migrate, restart
+./scripts/sync-and-deploy.sh   # From Mac: push, rsync to server, deploy (keeps dev/prod in sync)
+./scripts/deploy-remote.sh     # From Mac: git pull on server + deploy (requires deploy key)
 bash backup.sh          # Backup Postgres to ./backups/
 bash logs.sh            # Tail app logs
 bash logs.sh worker     # Tail worker logs
 bash logs.sh postgres   # Tail DB logs
 ```
 
-**One-command deploy from your machine:** If the server uses an SSH deploy key for GitHub, you can run `ssh root@69.62.66.78 '/root/deploy-client-engine.sh'`. Full setup: [docs/DEPLOY_SSH_SETUP.md](docs/DEPLOY_SSH_SETUP.md).
+**One-command deploy from your machine:** Use `./scripts/sync-and-deploy.sh` to keep dev and prod in sync (push, rsync, deploy). If the server has an SSH deploy key, you can use `./scripts/deploy-remote.sh` instead. See [docs/DEPLOY_SSH_SETUP.md](docs/DEPLOY_SSH_SETUP.md).
 
 **Post-deploy smoke test:** `./scripts/smoke-test.sh` (or `./scripts/smoke-test.sh https://evenslouis.ca`) — checks homepage, login, dashboard, `/api/health`, `/api/ops/command`, SSL. Exit 0 = all pass.
 
@@ -49,11 +51,13 @@ bash logs.sh postgres   # Tail DB logs
 
 ```bash
 npm install
-cp .env.example .env   # Set AUTH_SECRET, DATABASE_URL, ADMIN_EMAIL, ADMIN_PASSWORD
+cp .env.example .env   # Set AUTH_SECRET, DATABASE_URL, ADMIN_EMAIL, ADMIN_PASSWORD; REDIS_URL=redis://localhost:6379 if using Redis locally
 npx prisma db push
 npx prisma db seed
 npm run dev
 ```
+
+Use the same `.env.example` as prod; only `DATABASE_URL` and `REDIS_URL` differ (localhost vs Docker service names).
 
 **Run everything without interruptions:** If you changed `.env`, restart `npm run dev` once so the app loads the new values. Then you can log in at http://localhost:3000/login and run `npm run test:e2e:dry` for the full flow (login → dashboard → metrics → new lead → metrics).
 
@@ -86,7 +90,23 @@ PIPELINE_DRY_RUN=1 npm run test:e2e
 
 **Side-panel / manual testing:** For Cursor side-panel or embedded browser: [docs/TESTING_SIDE_PANEL.md](docs/TESTING_SIDE_PANEL.md) — local vs prod, checklist, and why prod login may fail in the panel.
 
-## Deploy from local machine
+## Deploy from local machine (keep dev and prod in sync)
+
+**Recommended:** Push your changes to `main`, then run:
+
+```bash
+./scripts/sync-and-deploy.sh
+```
+
+This pushes to GitHub, rsyncs code to the VPS, runs `deploy.sh` on the server, and checks health. Use this when the server does not have a GitHub deploy key.
+
+**If the server has a deploy key** (see [docs/DEPLOY_SSH_SETUP.md](docs/DEPLOY_SSH_SETUP.md)):
+
+```bash
+./scripts/deploy-remote.sh
+```
+
+**Manual (no sync):** To only run deploy on the server without pushing or rsync:
 
 ```bash
 ssh root@69.62.66.78 "cd /root/client-engine && bash deploy.sh"

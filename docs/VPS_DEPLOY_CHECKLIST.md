@@ -1,6 +1,8 @@
 # VPS Deploy Ready Checklist
 
-**One-command deploy (SSH deploy key):** See [DEPLOY_SSH_SETUP.md](DEPLOY_SSH_SETUP.md) for switching the server to SSH + deploy key and the `deploy-client-engine.sh` one-liner.
+**Keep dev and prod in sync:** From your machine, run `./scripts/sync-and-deploy.sh` (pushes to main, rsyncs to VPS, runs deploy.sh). Use this when the server has no GitHub deploy key.
+
+**One-command deploy (SSH deploy key):** See [DEPLOY_SSH_SETUP.md](DEPLOY_SSH_SETUP.md) for switching the server to SSH + deploy key; then use `./scripts/deploy-remote.sh`.
 
 ## Required env vars (production)
 
@@ -23,6 +25,7 @@
 | `SMTP_PORT` | Optional | Default `465` (SSL) |
 | `SMTP_USER` | Optional | SMTP auth; can reuse `IMAP_USER` for same mailbox |
 | `SMTP_PASS` | Optional | SMTP auth; can reuse `IMAP_PASS` |
+| `REDIS_URL` | For worker/queues | Prod Docker: `redis://redis:6379`. Dev: `redis://localhost:6379` or omit. |
 
 **Email ingestion (worker):** If using Hostinger email, ensure IMAP is enabled for the mailbox and app/password settings match provider requirements. Restart the worker after changing any `IMAP_*` env vars.
 
