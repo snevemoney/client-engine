@@ -12,7 +12,9 @@ services:
     restart: unless-stopped
 
   worker:
-    build: .
+    build:
+      context: .
+      target: worker
     command: node dist/workers/index.js
     env_file: .env
     depends_on:

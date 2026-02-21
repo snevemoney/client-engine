@@ -65,3 +65,12 @@ ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
 CMD ["node", "server.js"]
+
+# Worker image: same as runner but with full node_modules so BullMQ and all transitive deps resolve
+FROM runner AS worker
+USER root
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+USER nextjs
+CMD ["node", "dist/workers/index.js"]
