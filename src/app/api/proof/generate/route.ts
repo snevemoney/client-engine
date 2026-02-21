@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { buildProofPost } from "@/lib/proof-engine/generate";
@@ -32,7 +33,7 @@ export async function POST(req: NextRequest) {
       type: "proof_post",
       title: `Proof post: ${result.leadTitle.slice(0, 60)}`,
       content,
-      meta,
+      meta: meta as Prisma.InputJsonValue,
     },
   });
 

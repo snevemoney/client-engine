@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { auth } from "@/lib/auth";
 import { buildChecklistContent, CHECKLIST_TITLE } from "@/lib/proof-engine/checklist";
 import { getOrCreateProofChecklistSystemLead } from "@/lib/proof-engine/system-lead";
@@ -9,12 +10,11 @@ export async function POST(req: NextRequest) {
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json().catch(() => ({}));
-  const keywords = Array.isArray(body.keywords) ? body.keywords as string[] : undefined;
-  const requestSource = body.requestSource === "proof_post" ? "proof_post" : "manual";
+  const keywords = Array.isArray(body.keywords) ? (body.keywords as string[]) : undefined;
+  const requestSource: "proof_post" | "manual" = body.requestSource === "proof_post" ? "proof_post" : "manual";
   const proofPostArtifactId = typeof body.proofPostArtifactId === "string" ? body.proofPostArtifactId : undefined;
 
-  const opts = { keywords, requestSource, proofPostArtifactId };
-  const content = buildChecklistContent(opts);
+  const content = buildChecklistContent({ keywords, requestSource, proofPostArtifactId });
 
   const systemLeadId = await getOrCreateProofChecklistSystemLead();
   const meta: Record<string, unknown> = {
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
       type: "checklist",
       title: CHECKLIST_TITLE,
       content,
-      meta,
+      meta: meta as Prisma.InputJsonValue,
     },
   });
 
