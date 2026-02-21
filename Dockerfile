@@ -26,6 +26,7 @@ COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder /app/dist ./dist
 COPY --from=deps /app/node_modules/bullmq ./node_modules/bullmq
 COPY --from=deps /app/node_modules/tslib ./node_modules/tslib
+COPY --from=deps /app/node_modules/@ioredis ./node_modules/@ioredis
 COPY --from=deps /app/node_modules/bullmq/node_modules/ioredis ./node_modules/ioredis
 COPY --from=deps /app/node_modules/semver ./node_modules/semver
 COPY --from=deps /app/node_modules/imapflow ./node_modules/imapflow
