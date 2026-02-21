@@ -26,6 +26,9 @@ COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder /app/dist ./dist
 COPY --from=deps /app/node_modules/bullmq ./node_modules/bullmq
 COPY --from=deps /app/node_modules/tslib ./node_modules/tslib
+COPY --from=deps /app/node_modules/uuid ./node_modules/uuid
+COPY --from=deps /app/node_modules/msgpackr ./node_modules/msgpackr
+COPY --from=deps /app/node_modules/node-abort-controller ./node_modules/node-abort-controller
 COPY --from=deps /app/node_modules/@ioredis ./node_modules/@ioredis
 # bullmq requires ioredis from its own node_modules
 COPY --from=deps /app/node_modules/bullmq/node_modules/ioredis ./node_modules/bullmq/node_modules/ioredis
