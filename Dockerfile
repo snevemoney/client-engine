@@ -29,6 +29,7 @@ COPY --from=deps /app/node_modules/tslib ./node_modules/tslib
 COPY --from=deps /app/node_modules/uuid ./node_modules/uuid
 COPY --from=deps /app/node_modules/msgpackr ./node_modules/msgpackr
 COPY --from=deps /app/node_modules/node-abort-controller ./node_modules/node-abort-controller
+COPY --from=deps /app/node_modules/cron-parser ./node_modules/cron-parser
 COPY --from=deps /app/node_modules/@ioredis ./node_modules/@ioredis
 # bullmq requires ioredis from its own node_modules
 COPY --from=deps /app/node_modules/bullmq/node_modules/ioredis ./node_modules/bullmq/node_modules/ioredis
