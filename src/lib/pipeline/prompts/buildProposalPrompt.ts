@@ -57,10 +57,19 @@ ${leadBlock}
 
 ---
 
-Generate a proposal with these exact sections (use markdown headers):
+Generate a proposal with these exact sections (use markdown headers). Put the first two at the very top so the proposal sells from line one:
 
-## Opening (3 sentences max)
-A personalized opener that reflects the positioning: their problem and desired outcome first. Reference something specific from their description. No "Dear Sir/Madam" or "I saw your posting."
+## Felt Problem & Hook (at top)
+One short paragraph: the client’s felt problem in their words, then one sentence that hooks them (from the POSITIONING_BRIEF). This must appear at the very top of the proposal.
+
+## Why now
+One short line on why this is the right moment (timing, urgency, or opportunity).
+
+## Proof / credibility / mechanism
+Exactly 3 bullets: proof you can do this, credibility (relevant experience or outcome), and the mechanism (how you’ll deliver). Be specific, not generic.
+
+## Opening (2–3 sentences)
+A personalized opener that reflects the positioning. Reference something specific from their description. No "Dear Sir/Madam" or "I saw your posting."
 
 ## Approach & 1-Week Plan
 Day-by-day breakdown for the first week. Be specific about deliverables, not vague.
