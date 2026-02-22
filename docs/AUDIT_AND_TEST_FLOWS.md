@@ -186,3 +186,19 @@ USE_EXISTING_SERVER=1 PLAYWRIGHT_BASE_URL=http://localhost:3000 npx playwright t
 ```
 
 **Public endpoints (no auth):** `GET /api/health`. `POST /api/capture` and `POST /api/site/leads` are intended for public form submission (no 401 test).
+
+---
+
+## 7. Production audit (same flows, prod URL)
+
+After deploy, run the same full audit and test against production:
+
+```bash
+# 1) Post-deploy smoke (homepage, login, dashboard, health, ops/command, SSL)
+./scripts/smoke-test.sh https://evenslouis.ca
+
+# 2) Full E2E suite against prod (21 tests run without login; 5 need E2E_EMAIL/E2E_PASSWORD for login flows)
+USE_EXISTING_SERVER=1 PLAYWRIGHT_BASE_URL=https://evenslouis.ca npm run test:e2e
+```
+
+**Expected:** Smoke script exit 0; 21 E2E tests pass, 5 skip (login). To run all 26 against prod, set `E2E_EMAIL` and `E2E_PASSWORD` to valid production credentials.
