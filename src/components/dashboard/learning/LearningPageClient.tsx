@@ -194,7 +194,7 @@ export function LearningPageClient({
         onUpdate(p.id, { producedRevenueAsset: !!value, producedRevenueAssetWhat: revenueAssetWhat || undefined });
       } else if (field === "producedRevenueAssetWhat") {
         setRevenueAssetWhat(value as string);
-        onUpdate(p.id, { producedRevenueAsset, producedRevenueAssetWhat: (value as string) || undefined });
+        onUpdate(p.id, { producedRevenueAsset: revenueAsset, producedRevenueAssetWhat: (value as string) || undefined });
       } else {
         onUpdate(p.id, { [field]: value });
       }
