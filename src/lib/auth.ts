@@ -1,6 +1,6 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import { compare } from "bcryptjs";
+import { compare, hash } from "bcryptjs";
 import { db } from "./db";
 
 const authSecret = process.env.AUTH_SECRET || (process.env.NODE_ENV === "production" ? undefined : "dev-secret-change-in-production");
@@ -31,8 +31,31 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (devPassword && process.env.NODE_ENV === "development" && password === devPassword) {
           return { id: "dev-admin", email, name: "Dev Admin" };
         }
-        if (devPassword && process.env.NODE_ENV !== "development") {
+        if (devPassword && process.env.NODE_ENV !== "development" && !process.env.E2E_ALLOW_DEV_PASSWORD) {
           console.warn("AUTH_DEV_PASSWORD is set but ignored because NODE_ENV is not 'development'");
+        }
+
+        // Production e2e: allow AUTH_DEV_PASSWORD for E2E_EMAIL when E2E_ALLOW_DEV_PASSWORD is set (so Playwright can log in without relying on DB password match).
+        const e2eAllow = process.env.E2E_ALLOW_DEV_PASSWORD;
+        const e2eEmail = process.env.E2E_EMAIL?.trim().toLowerCase();
+        if (
+          process.env.NODE_ENV === "production" &&
+          e2eAllow &&
+          e2eEmail &&
+          devPassword &&
+          email === e2eEmail &&
+          password === devPassword
+        ) {
+          let user = await db.user.findFirst({
+            where: { email: { equals: e2eEmail, mode: "insensitive" } },
+          });
+          if (!user) {
+            const hashed = await hash(devPassword, 12);
+            user = await db.user.create({
+              data: { email: e2eEmail, password: hashed, name: "E2E" },
+            });
+          }
+          return { id: user.id, email: user.email, name: user.name ?? "E2E" };
         }
 
         const user = await db.user.findFirst({

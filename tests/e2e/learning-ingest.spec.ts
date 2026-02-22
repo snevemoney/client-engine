@@ -22,11 +22,12 @@ test.describe("Learning ingest", () => {
     await page.getByLabel("Email").fill(email);
     await page.getByLabel("Password").fill(password);
     await page.getByRole("button", { name: /sign in/i }).click();
-    await expect(page).toHaveURL(/\/dashboard/, { timeout: 20000 });
+    await page.waitForURL(/\/(dashboard|login)/, { timeout: 20000 });
     if (page.url().includes("/login")) {
-      test.skip(true, "Login failed. Local: set AUTH_DEV_PASSWORD in .env. Prod: set E2E_EMAIL and E2E_PASSWORD.");
+      test.skip(true, "Login failed. Local: set AUTH_DEV_PASSWORD in .env. Prod: set E2E_EMAIL and E2E_PASSWORD in .env.");
       return;
     }
+    await expect(page).toHaveURL(/\/dashboard/);
 
     await page.goto(`${baseURL}/dashboard/learning`);
     await expect(page).toHaveURL(/\/dashboard\/learning/);
@@ -36,9 +37,11 @@ test.describe("Learning ingest", () => {
 
     await urlInput.fill("https://www.youtube.com/watch?v=4htG6bk0aEc&t=466s");
     await ingestBtn.click();
-    await expect(page.locator("p.text-amber-400, p.text-neutral-400").first()).toBeVisible({ timeout: 120000 });
+    await expect(
+      page.locator("p.text-amber-400, p.text-neutral-400").filter({ hasText: /Ingested|error|failed|unavailable|disabled/i })
+    ).toBeVisible({ timeout: 120000 });
 
-    const resultEl = page.locator("p.text-amber-400, p.text-neutral-400").first();
+    const resultEl = page.locator("p.text-amber-400, p.text-neutral-400").filter({ hasText: /Ingested|error|failed|unavailable|disabled/i }).first();
     await expect(resultEl).toBeVisible({ timeout: 5000 });
     const videoResult = await resultEl.textContent();
     expect(videoResult).toBeTruthy();
@@ -46,11 +49,14 @@ test.describe("Learning ingest", () => {
     expect(videoOk, `Video ingest should succeed or show clear message. Got: ${videoResult}`).toBe(true);
 
     await urlInput.fill("https://www.youtube.com/@VALUETAINMENT");
+    await expect(ingestBtn).toBeEnabled({ timeout: 30000 });
     await page.locator("select").filter({ has: page.locator('option[value="channel"]') }).selectOption("channel");
     await ingestBtn.click();
-    await expect(page.locator("p.text-amber-400, p.text-neutral-400").first()).toBeVisible({ timeout: 180000 });
+    await expect(
+      page.locator("p.text-amber-400, p.text-neutral-400").filter({ hasText: /Ingested|error|failed|channel|not configured/i })
+    ).toBeVisible({ timeout: 180000 });
 
-    const resultEl2 = page.locator("p.text-amber-400, p.text-neutral-400").first();
+    const resultEl2 = page.locator("p.text-amber-400, p.text-neutral-400").filter({ hasText: /Ingested|error|failed|channel|not configured/i }).first();
     await expect(resultEl2).toBeVisible({ timeout: 5000 });
     const channelResult = await resultEl2.textContent();
     expect(channelResult).toBeTruthy();

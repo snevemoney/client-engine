@@ -31,6 +31,8 @@
 
 **Admin login:** Set `ADMIN_EMAIL` and `ADMIN_PASSWORD` on the server’s `.env` to the same values you use to log in. Deploy runs `seed.mjs`, which creates/updates that user; if they differ, you can get a second user or lose access after a reset-auth.
 
+**Prod e2e login:** To let Playwright log in at `https://evenslouis.ca`, add to the server’s `.env`: `E2E_ALLOW_DEV_PASSWORD=1`, `E2E_EMAIL=your@email.com`, `AUTH_DEV_PASSWORD=same-as-E2E_PASSWORD`. Restart the app (or re-run deploy). The app will allow that email + password and create the user if missing.
+
 **Email ingestion (worker):** If using Hostinger email, ensure IMAP is enabled for the mailbox and app/password settings match provider requirements. Restart the worker after changing any `IMAP_*` env vars.
 
 **Website form notification:** Set `NOTIFY_EMAIL` and either `RESEND_API_KEY` or `SMTP_HOST` + `SMTP_USER` + `SMTP_PASS` (Hostinger: `smtp.hostinger.com`, port 465). You can reuse `IMAP_USER`/`IMAP_PASS` for SMTP if using the same mailbox.

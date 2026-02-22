@@ -1,5 +1,8 @@
 import path from "node:path";
 import { defineConfig, devices } from "@playwright/test";
+import { config } from "dotenv";
+
+config({ path: path.resolve(__dirname, ".env") });
 
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3000";
 const projectRoot = path.resolve(__dirname);
