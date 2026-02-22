@@ -3,7 +3,7 @@ import { ArrowRight, Zap, Code2, Rocket, Shield, Monitor, Bot } from "lucide-rea
 import { db } from "@/lib/db";
 import { LeadCaptureForm } from "@/components/site/LeadCaptureForm";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 async function getFeaturedProjects() {
   try {

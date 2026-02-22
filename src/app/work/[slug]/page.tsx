@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { ArrowLeft, ArrowRight, ExternalLink, Github } from "lucide-react";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export default async function ProjectPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -105,7 +105,6 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
                     width={1200}
                     height={675}
                     className="w-full h-auto"
-                    unoptimized
                   />
                 </div>
               ))}

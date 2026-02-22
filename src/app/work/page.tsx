@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { LeadCaptureForm } from "@/components/site/LeadCaptureForm";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export default async function WorkPage() {
   let projects: Awaited<ReturnType<typeof db.project.findMany>> = [];
@@ -11,6 +11,7 @@ export default async function WorkPage() {
     projects = await db.project.findMany({
       where: { status: { not: "archived" } },
       orderBy: { createdAt: "desc" },
+      take: 50,
     });
   } catch (err) {
     console.error("[work] Failed to load projects:", err);
