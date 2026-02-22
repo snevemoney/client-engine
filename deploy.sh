@@ -3,13 +3,28 @@ set -euo pipefail
 
 cd "$(dirname "$0")"
 
-# Preflight: require at least 2GB free on / to avoid ENOSPC during npm/prisma
+# Preflight: require at least 2GB free. If low, try Docker prune and re-check (self-heal).
 MIN_FREE_GB=2
-FREE_KB=$(df -k / | awk 'NR==2 {print $4}')
-FREE_GB=$((FREE_KB / 1024 / 1024))
+check_disk() {
+  local free_kb
+  free_kb=$(df -k / | awk 'NR==2 {print $4}')
+  echo $((free_kb / 1024 / 1024))
+}
+FREE_GB=$(check_disk)
 if [[ "$FREE_GB" -lt "$MIN_FREE_GB" ]]; then
-  echo "==> ERROR: Low disk space. Need at least ${MIN_FREE_GB}GB free, have ~${FREE_GB}GB. Run: docker system prune -a -f; docker builder prune -a -f"
-  exit 1
+  echo "==> Low disk (~${FREE_GB}GB free). Pruning build cache first..."
+  docker builder prune -a -f
+  FREE_GB=$(check_disk)
+  if [[ "$FREE_GB" -lt "$MIN_FREE_GB" ]]; then
+    echo "==> Still low. Pruning unused images/containers (keeps running containers and volumes)..."
+    docker system prune -a -f
+    FREE_GB=$(check_disk)
+  fi
+  if [[ "$FREE_GB" -lt "$MIN_FREE_GB" ]]; then
+    echo "==> ERROR: Still only ~${FREE_GB}GB free. Need ${MIN_FREE_GB}GB. Free space manually or run: ./scripts/run-vps-cleanup.sh"
+    exit 1
+  fi
+  echo "==> Freed enough space (~${FREE_GB}GB free). Continuing."
 fi
 echo "==> Disk OK (~${FREE_GB}GB free)"
 
