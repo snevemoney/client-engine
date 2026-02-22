@@ -65,6 +65,10 @@ model Lead {
   touchCount            Int       @default(0)
   artifacts             Artifact[]
   project               Project?
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([source])
   pipelineRuns          PipelineRun[]
   touches               LeadTouch[]
   referralsReceived     LeadReferral[] @relation("ReferralsForLead")
@@ -130,6 +134,9 @@ model Artifact {
   content   String   @db.Text
   meta      Json?
   createdAt DateTime @default(now())
+
+  @@index([leadId])
+  @@index([leadId, createdAt])
 }
 
 model Project {
@@ -163,6 +170,9 @@ model PipelineRun {
   lastErrorCode String?
   lastErrorAt   DateTime?
   steps         PipelineStepRun[]
+
+  @@index([leadId])
+  @@index([leadId, startedAt])
 }
 
 model PipelineStepRun {

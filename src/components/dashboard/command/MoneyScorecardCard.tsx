@@ -86,8 +86,8 @@ export function MoneyScorecardCard({ data }: { data: MoneyScorecard | null }) {
           <p className="text-neutral-200 font-medium">{data.followUpsDueToday ?? 0}</p>
         </div>
         <div className="min-w-0">
-          <p className="text-neutral-500 text-xs uppercase tracking-wider">Calls booked</p>
-          <p className="text-neutral-200 font-medium">{data.callsBooked ?? "— (TODO: track when added)"}</p>
+          <p className="text-neutral-500 text-xs uppercase tracking-wider">Calls booked (7d)</p>
+          <p className="text-neutral-200 font-medium">{data.callsBooked != null ? data.callsBooked : "—"}</p>
         </div>
         <div className="min-w-0">
           <p className="text-neutral-500 text-xs uppercase tracking-wider">Deals won (30d)</p>

@@ -117,7 +117,6 @@
 - `POST /api/portfolio/[id]` — Portfolio
 - `GET /api/followup/[leadId]` — Follow-up
 - `POST /api/followup/[leadId]` — Follow-up action
-- `POST /api/copilot/lead/[id]` — Legacy copilot
 - `POST /api/research/run` — Research run
 - `POST /api/capture` — Capture (may be public for site form)
 - `POST /api/site/leads` — Site leads (often public)

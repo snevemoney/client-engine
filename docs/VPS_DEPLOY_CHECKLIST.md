@@ -1,8 +1,6 @@
 # VPS Deploy Ready Checklist
 
-**Keep dev and prod in sync:** From your machine, run `./scripts/sync-and-deploy.sh` (pushes to main, rsyncs to VPS, runs deploy.sh). Use this when the server has no GitHub deploy key.
-
-**One-command deploy (SSH deploy key):** See [DEPLOY_SSH_SETUP.md](DEPLOY_SSH_SETUP.md) for switching the server to SSH + deploy key; then use `./scripts/deploy-remote.sh`.
+**Deploy from your Mac:** `./scripts/deploy-remote.sh` (fast) or `./scripts/deploy-remote.sh --full` (with DB sync). No deploy key? Use `./scripts/sync-and-deploy.sh`. See [PROD_FIRST_WORKFLOW.md](PROD_FIRST_WORKFLOW.md).
 
 ## Required env vars (production)
 

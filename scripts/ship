@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# One-command deploy. Usage: ./scripts/ship preview | prod [--schema]
+
+set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+case "${1:-}" in
+  preview) exec "$SCRIPT_DIR/deploy-fast.sh" "${@:2}" ;;
+  prod)    exec "$SCRIPT_DIR/deploy-safe.sh" "${@:2}" ;;
+  *)      echo "Usage: ./scripts/ship preview | prod [--schema]"; exit 1 ;;
+esac

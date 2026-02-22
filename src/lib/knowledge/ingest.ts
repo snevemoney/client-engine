@@ -6,7 +6,7 @@
 import { db } from "@/lib/db";
 import { validateVideoUrl, fetchTranscript, discoverChannelVideos } from "@/lib/learning/transcript";
 import { extractKnowledgeFromTranscript } from "./insights";
-import { generateImprovementSuggestions } from "./suggestions";
+import { generateImprovementSuggestions, type ExistingPromotedSuggestion } from "./suggestions";
 import {
   KNOWLEDGE_ARTIFACT_TYPES,
   type KnowledgeArtifactMetaBase,

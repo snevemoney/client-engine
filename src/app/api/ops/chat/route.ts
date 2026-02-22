@@ -48,22 +48,16 @@ function buildDynamicSuggestedActions(failures: {
     });
   }
 
-  // Link-style suggestions (only show "Open Metrics" when there are failures)
   if (failures.failedPipelineRunsCount > 0) {
-    actions.push({
-      type: "link",
-      label: "Open Metrics (retry failed jobs there)",
-      href: "/dashboard/metrics",
-    });
+    actions.push({ type: "link", label: "Open Metrics", href: "/dashboard/metrics" });
   }
   actions.push(
-    { type: "link", label: "Start workday automation", href: "/dashboard/command" },
-    { type: "link", label: "Review results / brief", href: "/dashboard/command" },
-    { type: "link", label: "Proposals", href: "/dashboard/proposals" },
-    { type: "link", label: "Learning / improvement proposals", href: "/dashboard/learning" },
-    { type: "link", label: "Knowledge / suggestions", href: "/dashboard/knowledge" },
-    { type: "link", label: "Generate proof post", href: "/dashboard/proof" },
-    { type: "link", label: "Generate checklist", href: "/dashboard/checklist" }
+    { type: "link", label: "Open Command Center", href: "/dashboard/command" },
+    { type: "link", label: "Open Proposals", href: "/dashboard/proposals" },
+    { type: "link", label: "Open Learning", href: "/dashboard/learning" },
+    { type: "link", label: "Open Knowledge", href: "/dashboard/knowledge" },
+    { type: "link", label: "Open Proof", href: "/dashboard/proof" },
+    { type: "link", label: "Open Checklist", href: "/dashboard/checklist" }
   );
 
   return actions;
