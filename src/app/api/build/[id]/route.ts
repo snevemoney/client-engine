@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { chat } from "@/lib/llm";
@@ -7,28 +8,31 @@ import { normalizeUsage } from "@/lib/pipeline/usage";
 import { formatStepFailureNotes } from "@/lib/pipeline/error-classifier";
 import { buildProvenance } from "@/lib/pipeline/provenance";
 import { rateLimit } from "@/lib/rate-limit";
+import { buildCursorRulesFallback } from "@/lib/build/buildCursorRules";
 
 const LIMIT = 10;
 const WINDOW_MS = 60_000;
+
+const BuildOutputSchema = z.object({
+  projectSpecMd: z.string().min(1),
+  doThisNextMd: z.string().min(1),
+  cursorRulesMd: z.string().optional(),
+});
 
 function slugify(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
 }
 
-const SPEC_PROMPT = `You are a technical project manager. Given this project lead, generate:
+const SPEC_PROMPT = `You are a technical project manager for a private operator app. Given this project lead, generate implementation artifacts.
 
-1. A PROJECT_SPEC.md — a clear specification document with:
-   - Project overview (2-3 sentences)
-   - Core features (bulleted list, prioritized)
-   - Tech stack recommendation
-   - Database schema (if applicable, in plain text)
-   - API endpoints (if applicable)
-   - Pages/screens list
+Return valid JSON only with exactly these keys (no markdown fences):
+- projectSpecMd
+- doThisNextMd
+- cursorRulesMd
 
-2. A DO_THIS_NEXT.md — an ordered task list for a developer (Cursor-friendly). Format:
-   - [ ] Task 1 (most critical first)
-   - [ ] Task 2
-   Each task should be specific and completable in 1-4 hours.
+Context:
+- This app is private/internal. Mission: Acquire / Deliver / Improve.
+- Human guardrails: no auto-send proposals, no auto-build/code execution without approval. Human owns positioning, narrative, final send, and build decisions.
 
 Lead:
 Title: {title}
@@ -38,9 +42,27 @@ Timeline: {timeline}
 Platform: {platform}
 Tech Stack: {techStack}
 
-Output two sections separated by "---SPLIT---":
-First section: PROJECT_SPEC.md content
-Second section: DO_THIS_NEXT.md content`;
+Requirements:
+
+1) projectSpecMd
+- Build spec for the requested work.
+- Include scope, constraints, dependencies, acceptance criteria, risks.
+- Be practical and implementation-ready (overview, core features, tech stack, DB/API/pages as applicable).
+
+2) doThisNextMd
+- Immediate execution checklist for a developer (Cursor-friendly).
+- Ordered steps with "Do now" vs "Backlog" where relevant.
+- Format: - [ ] Task 1 (most critical first). Each task specific and completable in 1-4 hours.
+- Include verification after each major step.
+
+3) cursorRulesMd
+- A strict implementation rules file for AI coding assistants (Cursor/Claude).
+- Keep it concise and enforceable.
+- Must include: Mission and scope of this task; files allowed/not to change (if known); guardrails (no fake completion, no silent breaking changes, no hidden migrations); code quality rules (small patches, preserve behavior, type-safe, no dead code); verification rules (what must be tested/checked); output protocol (what to report back: changed files, what worked, risks, follow-ups).
+- Emphasize production reliability and reversible changes.
+
+Tone: Senior operator / engineer. Clear, direct, no fluff.
+Output: JSON only.`;
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -107,15 +129,45 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   try {
     const { content, usage } = await chat(
       [
-        { role: "system", content: "You are a precise technical project manager. Output clean markdown." },
+        { role: "system", content: "You are a precise technical project manager. Return only valid JSON with keys projectSpecMd, doThisNextMd, cursorRulesMd. No markdown fences." },
         { role: "user", content: prompt },
       ],
       { model: "gpt-4o-mini", temperature: 0.4, max_tokens: 3000 }
     );
 
-    const parts = content.split("---SPLIT---");
-    const spec = parts[0]?.trim() || content;
-    const tasks = parts[1]?.trim() || "- [ ] Define project scope\n- [ ] Set up development environment\n- [ ] Build core features";
+    let spec: string;
+    let tasks: string;
+    let cursorRulesContent: string;
+
+    let modelJson: unknown = null;
+    const trimmed = content.trim();
+    const fenceMatch = trimmed.match(/^```(?:json)?\s*([\s\S]*?)```\s*$/m);
+    const jsonStr = fenceMatch ? fenceMatch[1]?.trim() ?? trimmed : trimmed;
+    try {
+      modelJson = JSON.parse(jsonStr);
+    } catch {
+      modelJson = null;
+    }
+    const parsed = BuildOutputSchema.safeParse(modelJson);
+
+    if (parsed.success) {
+      spec = parsed.data.projectSpecMd.trim();
+      tasks = parsed.data.doThisNextMd.trim();
+      cursorRulesContent =
+        parsed.data.cursorRulesMd?.trim() ||
+        buildCursorRulesFallback({
+          leadTitle: lead.title,
+          taskSummary: (lead.description ?? "").slice(0, 300) || undefined,
+        });
+    } else {
+      const parts = content.split("---SPLIT---");
+      spec = parts[0]?.trim() || content;
+      tasks = parts[1]?.trim() || "- [ ] Define project scope\n- [ ] Set up development environment\n- [ ] Build core features";
+      cursorRulesContent = buildCursorRulesFallback({
+        leadTitle: lead.title,
+        taskSummary: (lead.description ?? "").slice(0, 300) || undefined,
+      });
+    }
 
     const slug = slugify(lead.title);
 
@@ -139,13 +191,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       model: "gpt-4o-mini",
       temperature: 0.4,
     });
+
     await db.artifact.create({
       data: {
         leadId: id,
         type: "scope",
         title: "PROJECT_SPEC.md",
         content: spec,
-        meta: { provenance },
+        meta: { provenance, buildArtifact: { kind: "project_spec" } } as object,
       },
     });
     await db.artifact.create({
@@ -154,7 +207,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         type: "scope",
         title: "DO_THIS_NEXT.md",
         content: tasks,
-        meta: { provenance },
+        meta: { provenance, buildArtifact: { kind: "do_this_next" } } as object,
+      },
+    });
+    await db.artifact.create({
+      data: {
+        leadId: id,
+        type: "scope",
+        title: "CURSOR_RULES.md",
+        content: cursorRulesContent,
+        meta: { provenance, buildArtifact: { kind: "cursor_rules" } } as object,
       },
     });
 

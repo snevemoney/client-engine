@@ -16,12 +16,21 @@ test.describe("All pages", () => {
     }
 
     const pages: { url: string; name: string }[] = [
-      { url: "/dashboard", name: "Leads" },
-      { url: "/dashboard/proposals", name: "Proposals" },
-      { url: "/dashboard/deploys", name: "Deploys" },
-      { url: "/dashboard/metrics", name: "Metrics" },
-      { url: "/dashboard/settings", name: "Settings" },
+      { url: "/dashboard", name: "Dashboard" },
+      { url: "/dashboard/leads", name: "Leads" },
       { url: "/dashboard/leads/new", name: "New lead" },
+      { url: "/dashboard/proposals", name: "Proposals" },
+      { url: "/dashboard/metrics", name: "Metrics" },
+      { url: "/dashboard/command", name: "Command" },
+      { url: "/dashboard/chat", name: "Chat" },
+      { url: "/dashboard/knowledge", name: "Knowledge" },
+      { url: "/dashboard/learning", name: "Learning" },
+      { url: "/dashboard/proof", name: "Proof" },
+      { url: "/dashboard/checklist", name: "Checklist" },
+      { url: "/dashboard/conversion", name: "Conversion" },
+      { url: "/dashboard/deploys", name: "Deploys" },
+      { url: "/dashboard/settings", name: "Settings" },
+      { url: "/work", name: "Work" },
     ];
 
     for (const { url, name } of pages) {
@@ -32,5 +41,33 @@ test.describe("All pages", () => {
 
     await page.goto(`${baseURL}/`);
     await expect(page).toHaveURL(/\//);
+  });
+
+  test("visit lead detail and proposal console when ids provided", async ({ page }) => {
+    const leadId = process.env.E2E_LEAD_ID;
+    const proposalId = process.env.E2E_PROPOSAL_ARTIFACT_ID;
+    if (!leadId && !proposalId) {
+      test.skip(true, "E2E_LEAD_ID or E2E_PROPOSAL_ARTIFACT_ID not set");
+      return;
+    }
+    await page.goto(`${baseURL}/login`);
+    await page.getByLabel("Email").fill("test@test.com");
+    await page.getByLabel("Password").fill(devPassword);
+    await page.getByRole("button", { name: /sign in/i }).click();
+    await expect(page).toHaveURL(/\/(dashboard|login)/, { timeout: 10000 });
+    if (page.url().includes("/login")) {
+      test.skip(true, "Login failed");
+      return;
+    }
+    if (leadId) {
+      await page.goto(`${baseURL}/dashboard/leads/${leadId}`);
+      await expect(page).toHaveURL(new RegExp(`/dashboard/leads/${leadId}`));
+      await expect(page.locator("body")).toBeVisible();
+    }
+    if (proposalId) {
+      await page.goto(`${baseURL}/dashboard/proposals/${proposalId}`);
+      await expect(page).toHaveURL(new RegExp(`/dashboard/proposals/${proposalId}`));
+      await expect(page.locator("body")).toBeVisible();
+    }
   });
 });

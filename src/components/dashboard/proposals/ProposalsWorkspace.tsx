@@ -163,10 +163,16 @@ export function ProposalsWorkspace({ buckets, followUpQueue }: { buckets: Bucket
                       {expandedId === row.leadId ? "Hide" : "Preview"}
                     </button>
                     <Link
+                      href={`/dashboard/proposals/${row.artifactId}`}
+                      className="text-xs text-emerald-400 hover:text-emerald-300"
+                    >
+                      Console
+                    </Link>
+                    <Link
                       href={`/dashboard/leads/${row.leadId}`}
                       className="text-xs text-neutral-400 hover:text-white"
                     >
-                      Open →
+                      Lead →
                     </Link>
                   </div>
                 </div>

@@ -12,6 +12,8 @@ import { RoiEstimateCard } from "@/components/dashboard/leads/RoiEstimateCard";
 import { FollowUpSequenceCard } from "@/components/dashboard/leads/FollowUpSequenceCard";
 import { ClientSuccessCard } from "@/components/dashboard/leads/ClientSuccessCard";
 import { ClientResultsGlance } from "@/components/dashboard/leads/ClientResultsGlance";
+import { LeadCopilotCard } from "@/components/leads/LeadCopilotCard";
+import { parseLeadIntelligenceFromMeta } from "@/lib/lead-intelligence";
 
 interface Artifact {
   id: string;
@@ -19,6 +21,7 @@ interface Artifact {
   title: string;
   content: string;
   createdAt: string;
+  meta?: unknown;
 }
 
 interface Lead {
@@ -48,6 +51,7 @@ interface Lead {
   nextContactAt: string | null;
   lastContactAt: string | null;
   personalDetails: string | null;
+  meta?: unknown;
 }
 
 const STATUSES = ["NEW", "ENRICHED", "SCORED", "APPROVED", "REJECTED", "BUILDING", "SHIPPED"];
@@ -405,6 +409,74 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
         </div>
       )}
 
+      {/* Lead Intelligence (from enrich/positioning artifact meta) */}
+      {(() => {
+        const positioningArtifact = lead.artifacts.find((a) => a.type === "positioning" && a.title === "POSITIONING_BRIEF");
+        const enrichArtifact = lead.artifacts.find((a) => a.type === "notes" && a.title === "AI Enrichment Report");
+        const li =
+          parseLeadIntelligenceFromMeta(positioningArtifact?.meta) ||
+          parseLeadIntelligenceFromMeta(enrichArtifact?.meta) ||
+          (lead.meta && typeof lead.meta === "object" ? parseLeadIntelligenceFromMeta(lead.meta) : null);
+        if (!li) return null;
+        const rev = li.reversibility;
+        const firstStep = rev?.lowRiskStart ?? (rev as { firstStep?: string })?.firstStep;
+        return (
+          <div className="border border-neutral-800 rounded-lg p-4">
+            <h3 className="text-xs font-medium text-neutral-500 uppercase tracking-wider mb-3">Lead intelligence</h3>
+            <div className="space-y-3 text-sm">
+              <div>
+                <strong className="text-neutral-300">Adoption risk:</strong>{" "}
+                <span className="text-neutral-200">{li.adoptionRisk?.level ?? "unknown"}</span>
+                {(li.adoptionRisk as { confidence?: string })?.confidence && (
+                  <span className="text-neutral-500 ml-1">({(li.adoptionRisk as { confidence: string }).confidence} confidence)</span>
+                )}
+              </div>
+              <div>
+                <strong className="text-neutral-300">Tool loyalty risk:</strong>{" "}
+                <span className="text-neutral-200">{li.toolLoyaltyRisk?.level ?? "unknown"}</span>
+                {(li.toolLoyaltyRisk as { confidence?: string })?.confidence && (
+                  <span className="text-neutral-500 ml-1">({(li.toolLoyaltyRisk as { confidence: string }).confidence} confidence)</span>
+                )}
+              </div>
+              <div>
+                <strong className="text-neutral-300">Reversibility:</strong>{" "}
+                <span className="text-neutral-200">{(rev as { level?: string })?.level ?? rev?.strategy ?? "—"}</span>
+              </div>
+              {li.safeStartingPoint && (
+                <div>
+                  <strong className="text-neutral-300">Safe starting point:</strong>{" "}
+                  <span className="text-neutral-200">{li.safeStartingPoint}</span>
+                </div>
+              )}
+              {li.trustSensitivity && (
+                <div>
+                  <strong className="text-neutral-300">Trust sensitivity:</strong>{" "}
+                  <span className="text-neutral-200">{li.trustSensitivity}</span>
+                </div>
+              )}
+              <div>
+                <strong className="text-neutral-300">Stakeholders</strong>
+                <ul className="list-disc ml-5 mt-1 space-y-0.5 text-neutral-300">
+                  {(li.stakeholderMap ?? []).map((s, i) => (
+                    <li key={i}>
+                      <span className="font-medium text-neutral-200">{s.role}</span>
+                      {s.influence && <span className="text-neutral-500"> ({s.influence})</span>}
+                      {s.stance && <span className="text-neutral-500"> {s.stance}</span>}
+                      {": "}
+                      {(s as { likelyConcern?: string }).likelyConcern ?? s.likelyObjection ?? "—"}
+                      {(s as { whatMakesThemFeelSafe?: string }).whatMakesThemFeelSafe ? ` → ${(s as { whatMakesThemFeelSafe: string }).whatMakesThemFeelSafe}` : ""}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Lead Copilot (rubric-based, structured response + receipts) */}
+      <LeadCopilotCard leadId={lead.id} />
+
       {/* Proposal console: version list + positioning + proposal side-by-side + one-click revise */}
       <div id="proposal-review">
       {(() => {
@@ -424,24 +496,34 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
               ) : (
                 <div className="space-y-1">
                   {proposals.map((p, idx) => (
-                    <button
+                    <div
                       key={p.id}
-                      onClick={() => setSelectedProposalId(p.id)}
-                      className={`w-full rounded-md border p-2 text-left transition-colors ${
-                        p.id === selectedProposalId ? "bg-neutral-800 border-neutral-600" : "border-neutral-800 hover:border-neutral-700"
+                      className={`rounded-md border p-2 transition-colors ${
+                        p.id === selectedProposalId ? "bg-neutral-800 border-neutral-600" : "border-neutral-800"
                       }`}
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="text-sm font-medium">Proposal v{proposals.length - idx}</div>
-                        <div className="flex items-center gap-2">
-                          {p.id === latestProposalId && (
-                            <span className="rounded bg-green-600 px-2 py-0.5 text-xs text-white">Latest</span>
-                          )}
-                          <span className="text-xs text-neutral-500">{new Date(p.createdAt).toLocaleString()}</span>
+                      <button
+                        onClick={() => setSelectedProposalId(p.id)}
+                        className="w-full text-left"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="text-sm font-medium">Proposal v{proposals.length - idx}</div>
+                          <div className="flex items-center gap-2">
+                            {p.id === latestProposalId && (
+                              <span className="rounded bg-green-600 px-2 py-0.5 text-xs text-white">Latest</span>
+                            )}
+                            <span className="text-xs text-neutral-500">{new Date(p.createdAt).toLocaleString()}</span>
+                          </div>
                         </div>
-                      </div>
-                      <div className="text-xs text-neutral-500 mt-0.5">{p.title ?? "PROPOSAL"}</div>
-                    </button>
+                        <div className="text-xs text-neutral-500 mt-0.5">{p.title ?? "PROPOSAL"}</div>
+                      </button>
+                      <Link
+                        href={`/dashboard/proposals/${p.id}`}
+                        className="text-xs text-emerald-400 hover:text-emerald-300 mt-2 inline-block"
+                      >
+                        Open Proposal Console →
+                      </Link>
+                    </div>
                   ))}
                 </div>
               )}

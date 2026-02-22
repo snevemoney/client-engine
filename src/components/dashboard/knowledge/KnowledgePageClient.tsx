@@ -7,6 +7,16 @@ type Artifact = { id: string; title: string; content: string; meta: unknown; cre
 
 const SUGGESTION_STATUSES = ["queued", "reviewed", "applied", "dismissed"] as const;
 
+const PRODUCED_TAGS = [
+  { value: "", label: "—" },
+  { value: "knowledge_only", label: "Knowledge only" },
+  { value: "proposal_template", label: "Proposal template" },
+  { value: "playbook_update", label: "Playbook update" },
+  { value: "automation_change", label: "Automation change" },
+  { value: "copy_snippet", label: "Copy snippet" },
+  { value: "positioning_rule", label: "Positioning rule" },
+] as const;
+
 function SuggestionRow({
   id,
   title,
@@ -14,27 +24,28 @@ function SuggestionRow({
   meta,
   createdAt,
   status,
-  onStatusChange,
+  produced,
+  onUpdate,
 }: {
   id: string;
   title: string;
   content: string;
-  meta: { systemArea?: string; effort?: string; expectedImpact?: string; status?: string } | null;
+  meta: { systemArea?: string; effort?: string; expectedImpact?: string; status?: string; produced?: string | null } | null;
   createdAt: string;
   status: string;
-  onStatusChange: () => void;
+  produced: string;
+  onUpdate: () => void;
 }) {
   const [updating, setUpdating] = useState(false);
-  async function setStatus(newStatus: string) {
-    if (!SUGGESTION_STATUSES.includes(newStatus as (typeof SUGGESTION_STATUSES)[number])) return;
+  async function patch(updates: { status?: string; produced?: string }) {
     setUpdating(true);
     try {
       const res = await fetch(`/api/knowledge/suggestions/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify(updates),
       });
-      if (res.ok) onStatusChange();
+      if (res.ok) onUpdate();
     } finally {
       setUpdating(false);
     }
@@ -43,15 +54,26 @@ function SuggestionRow({
     <li className="border border-neutral-800 rounded-lg p-3 bg-neutral-900/30">
       <div className="flex items-start justify-between gap-2">
         <h3 className="font-medium text-neutral-200">{title}</h3>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
           <select
             value={status}
-            onChange={(e) => setStatus(e.target.value)}
+            onChange={(e) => patch({ status: e.target.value })}
             disabled={updating}
             className="rounded border border-neutral-700 bg-neutral-900 text-neutral-200 text-xs px-2 py-1"
           >
             {SUGGESTION_STATUSES.map((st) => (
               <option key={st} value={st}>{st}</option>
+            ))}
+          </select>
+          <select
+            value={produced}
+            onChange={(e) => patch({ produced: e.target.value })}
+            disabled={updating}
+            className="rounded border border-neutral-700 bg-neutral-900 text-neutral-200 text-xs px-2 py-1"
+            title="Produced (outcome tag)"
+          >
+            {PRODUCED_TAGS.map((t) => (
+              <option key={t.value || "_"} value={t.value}>{t.label}</option>
             ))}
           </select>
           <span className="text-xs text-neutral-500">{new Date(createdAt).toLocaleDateString()}</span>
@@ -280,8 +302,9 @@ export function KnowledgePageClient({
         ) : (
           <ul className="space-y-3">
             {suggestions.map((s) => {
-              const meta = s.meta as { systemArea?: string; effort?: string; expectedImpact?: string; status?: string } | null;
+              const meta = s.meta as { systemArea?: string; effort?: string; expectedImpact?: string; status?: string; produced?: string | null } | null;
               const currentStatus = meta?.status ?? "queued";
+              const currentProduced = meta?.produced ?? "";
               return (
                 <SuggestionRow
                   key={s.id}
@@ -291,7 +314,8 @@ export function KnowledgePageClient({
                   meta={meta}
                   createdAt={s.createdAt}
                   status={currentStatus}
-                  onStatusChange={() => refresh()}
+                  produced={currentProduced}
+                  onUpdate={() => refresh()}
                 />
               );
             })}

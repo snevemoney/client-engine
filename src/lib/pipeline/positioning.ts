@@ -3,6 +3,7 @@ import { chat, type ChatUsage } from "@/lib/llm";
 import { isDryRun } from "@/lib/pipeline/dry-run";
 import { PositioningMetaSchema } from "@/lib/pipeline/positioning-schema";
 import type { Provenance } from "@/lib/pipeline/provenance";
+import { parseLeadIntelligenceFromMeta } from "@/lib/lead-intelligence";
 
 const POSITIONING_PROMPT = `You are a positioning strategist for a freelance full-stack developer. Given this lead, produce two outputs.
 
@@ -12,6 +13,7 @@ Description: {description}
 Budget: {budget}
 Timeline: {timeline}
 Platform: {platform}
+{leadIntelligenceBlock}
 
 Output format (exactly):
 
@@ -42,6 +44,26 @@ export async function runPositioning(
   const lead = await db.lead.findUnique({ where: { id: leadId } });
   if (!lead) throw new Error("Lead not found");
 
+  const enrichArtifact = await db.artifact.findFirst({
+    where: { leadId, type: "notes", title: "AI Enrichment Report" },
+    orderBy: { createdAt: "desc" },
+  });
+  const leadIntelligence = enrichArtifact?.meta ? parseLeadIntelligenceFromMeta(enrichArtifact.meta) : null;
+
+  const leadIntelligenceBlock = leadIntelligence
+    ? `
+Lead intelligence (use to make positioning safer and easier to approve):
+- Adoption risk: ${leadIntelligence.adoptionRisk?.level ?? "unknown"}. ${(leadIntelligence.adoptionRisk?.reasons ?? []).join("; ") || "—"}
+- Tool loyalty risk: ${leadIntelligence.toolLoyaltyRisk?.level ?? "unknown"}. ${leadIntelligence.toolLoyaltyRisk?.notes ?? ""}
+- Reversibility: ${leadIntelligence.reversibility?.strategy ?? ""}. Low-risk start: ${leadIntelligence.reversibility?.lowRiskStart ?? "—"}. Rollback: ${leadIntelligence.reversibility?.rollbackPlan ?? "—"}
+- Stakeholders: ${(leadIntelligence.stakeholderMap ?? []).map((s) => `${s.role}${s.who ? ` (${s.who})` : ""}: ${(s.caresAbout ?? []).join(", ")}${s.likelyObjection ? `; objection: ${s.likelyObjection}` : ""}`).join(" | ") || "—"}
+
+Positioning rules from lead intelligence: Reduce perceived risk in wording. Emphasize reversible first step if adoption risk is medium/high. Respect tool loyalty (position as augmentation/bridge if needed). Speak to stakeholder concerns directly.
+`
+    : `
+Lead intelligence: not available. Use conservative, low-risk positioning and avoid forcing tool replacement language.
+`;
+
   const dryRunMeta = provenance ? { provenance } : undefined;
   if (isDryRun()) {
     const artifact = await db.artifact.create({
@@ -61,7 +83,8 @@ export async function runPositioning(
     .replace("{description}", lead.description || "No description")
     .replace("{budget}", lead.budget || "Not specified")
     .replace("{timeline}", lead.timeline || "Not specified")
-    .replace("{platform}", lead.platform || "Not specified");
+    .replace("{platform}", lead.platform || "Not specified")
+    .replace("{leadIntelligenceBlock}", leadIntelligenceBlock);
 
   const { content: raw, usage } = await chat(
     [
@@ -91,13 +114,18 @@ export async function runPositioning(
     throw err;
   }
 
+  const artifactMeta: Record<string, unknown> = {
+    positioning: parsed.data,
+    ...(provenance && { provenance }),
+    ...(leadIntelligence && { leadIntelligence }),
+  };
   const artifact = await db.artifact.create({
     data: {
       leadId,
       type: "positioning",
       title: "POSITIONING_BRIEF",
       content: briefContent,
-      meta: { positioning: parsed.data, ...(provenance && { provenance }) } as object,
+      meta: artifactMeta as object,
     },
   });
 

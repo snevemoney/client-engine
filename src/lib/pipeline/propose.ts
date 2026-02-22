@@ -5,6 +5,7 @@ import { isDryRun } from "@/lib/pipeline/dry-run";
 import type { Provenance } from "@/lib/pipeline/provenance";
 import { getLeadRoiEstimate } from "@/lib/revenue/roi";
 import { getClientSuccessData } from "@/lib/client-success";
+import { getLeadIntelligenceForLead } from "@/lib/pipeline/getLeadIntelligenceForLead";
 
 const POSITIONING_ARTIFACT_TITLE = "POSITIONING_BRIEF";
 const RESEARCH_SNAPSHOT_TITLE = "RESEARCH_SNAPSHOT";
@@ -45,7 +46,29 @@ export async function runPropose(leadId: string, provenance?: Provenance): Promi
   const successData = await getClientSuccessData(leadId);
   const resultTarget = successData.resultTarget ?? null;
 
-  const meta = provenance ? { provenance } : undefined;
+  const leadIntelligence = await getLeadIntelligenceForLead(leadId);
+
+  const proposalRiskSummary = leadIntelligence
+    ? {
+        adoptionRiskLevel: leadIntelligence.adoptionRisk?.level ?? "unknown",
+        toolLoyaltyRiskLevel: leadIntelligence.toolLoyaltyRisk?.level ?? "unknown",
+        reversibilityLevel: (leadIntelligence.reversibility as { level?: string })?.level ?? leadIntelligence.reversibility?.strategy ?? "unknown",
+        primaryBuyer:
+          (leadIntelligence.stakeholderMap ?? []).find((s) => s.role?.toLowerCase().includes("buyer"))?.role ??
+          (leadIntelligence.stakeholderMap ?? [])[0]?.role ??
+          "unknown",
+        hasLikelyBlockers:
+          (leadIntelligence.stakeholderMap ?? []).some((s) =>
+            ["blocker", "skeptical", "resistant"].some((k) => (s.role?.toLowerCase() ?? "").includes(k) || (s.stance ?? "").toLowerCase().includes(k))
+          ),
+      }
+    : null;
+
+  const meta: Record<string, unknown> = {
+    ...(provenance ? { provenance } : {}),
+    leadIntelligenceUsed: leadIntelligence ?? null,
+    ...(proposalRiskSummary ? { proposalRiskSummary } : {}),
+  };
   if (isDryRun()) {
     const artifact = await db.artifact.create({
       data: {
@@ -53,7 +76,7 @@ export async function runPropose(leadId: string, provenance?: Provenance): Promi
         type: "proposal",
         title: `Proposal: ${lead.title}`,
         content: "**[DRY RUN]** Placeholder proposal.",
-        meta,
+        meta: meta as object,
       },
     });
     return { artifactId: artifact.id };
@@ -71,6 +94,7 @@ export async function runPropose(leadId: string, provenance?: Provenance): Promi
       researchSourceUrl: researchSourceUrl ?? undefined,
       roiSummary: roiSummary ?? undefined,
       resultTarget: resultTarget ?? undefined,
+      leadIntelligence: leadIntelligence ?? undefined,
     },
     positioning.content
   );
@@ -93,7 +117,7 @@ export async function runPropose(leadId: string, provenance?: Provenance): Promi
       type: "proposal",
       title: `Proposal: ${lead.title}`,
       content,
-      meta,
+      meta: meta as object,
     },
   });
 
