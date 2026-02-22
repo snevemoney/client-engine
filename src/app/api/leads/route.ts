@@ -47,7 +47,9 @@ export async function GET(req: NextRequest) {
       include: { _count: { select: { artifacts: true } } },
     });
 
-    return NextResponse.json(leads);
+    return NextResponse.json(leads, {
+      headers: { "Cache-Control": "private, no-store, max-age=0" },
+    });
   });
 }
 
