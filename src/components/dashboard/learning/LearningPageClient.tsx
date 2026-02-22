@@ -23,7 +23,26 @@ type ProposalMeta = {
   applyTarget?: string;
   promotedToPlaybook?: boolean;
   promotedAt?: string;
-  producedAssetType?: "proposal_template" | "case_study" | "automation" | "knowledge_only";
+  producedAssetType?: string;
+  category?: string;
+  proposedActionType?: string;
+  contradictsPlaybook?: boolean;
+  playbookIdOrName?: string;
+  producedRevenueAsset?: boolean;
+  producedRevenueAssetWhat?: string;
+  rollbackNote?: string;
+};
+
+type ProposalMetaUpdate = {
+  promotedToPlaybook?: boolean;
+  producedAssetType?: string;
+  category?: string;
+  proposedActionType?: string;
+  contradictsPlaybook?: boolean;
+  playbookIdOrName?: string;
+  producedRevenueAsset?: boolean;
+  producedRevenueAssetWhat?: string;
+  rollbackNote?: string;
 };
 
 export function LearningPageClient({
@@ -45,10 +64,7 @@ export function LearningPageClient({
   const [filterChannel, setFilterChannel] = useState("");
   const [filterTag, setFilterTag] = useState("");
 
-  async function updateProposalMeta(
-    artifactId: string,
-    updates: { promotedToPlaybook?: boolean; producedAssetType?: string }
-  ) {
+  async function updateProposalMeta(artifactId: string, updates: ProposalMetaUpdate) {
     const res = await fetch(`/api/learning/proposal/${artifactId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -104,8 +120,7 @@ export function LearningPageClient({
   }
 
   const metaProposal = (p: Proposal): ProposalMeta | undefined => (p.meta as { proposal?: ProposalMeta })?.proposal;
-  const metaTop = (p: Proposal): { promotedToPlaybook?: boolean; promotedAt?: string; producedAssetType?: string } =>
-    (p.meta as Record<string, unknown> ?? {});
+  const metaTop = (p: Proposal): Record<string, unknown> => (p.meta as Record<string, unknown>) ?? {};
   const filteredProposals = proposals.filter((p) => {
     const prop = metaProposal(p);
     if (filterChannel && prop?.sourceChannel && !String(prop.sourceChannel).toLowerCase().includes(filterChannel.toLowerCase()))
@@ -120,16 +135,32 @@ export function LearningPageClient({
     onUpdate,
   }: {
     p: Proposal;
-    onUpdate: (artifactId: string, updates: { promotedToPlaybook?: boolean; producedAssetType?: string }) => Promise<void>;
+    onUpdate: (artifactId: string, updates: ProposalMetaUpdate) => Promise<void>;
   }) {
     const prop = metaProposal(p);
     const top = metaTop(p);
     const [promoting, setPromoting] = useState(false);
-    const [produced, setProduced] = useState(top.producedAssetType ?? "");
+    const [produced, setProduced] = useState((top.producedAssetType as string) ?? "");
     const [savingProduced, setSavingProduced] = useState(false);
+    const [category, setCategory] = useState((top.category as string) ?? "");
+    const [proposedAction, setProposedAction] = useState((top.proposedActionType as string) ?? "");
+    const [contradicts, setContradicts] = useState(!!top.contradictsPlaybook);
+    const [playbookRef, setPlaybookRef] = useState((top.playbookIdOrName as string) ?? "");
+    const [revenueAsset, setRevenueAsset] = useState(!!top.producedRevenueAsset);
+    const [revenueAssetWhat, setRevenueAssetWhat] = useState((top.producedRevenueAssetWhat as string) ?? "");
+    const [rollbackNote, setRollbackNote] = useState((top.rollbackNote as string) ?? "");
     useEffect(() => {
-      setProduced(top.producedAssetType ?? "");
+      setProduced((top.producedAssetType as string) ?? "");
     }, [top.producedAssetType]);
+    useEffect(() => {
+      setCategory((top.category as string) ?? "");
+      setProposedAction((top.proposedActionType as string) ?? "");
+      setContradicts(!!top.contradictsPlaybook);
+      setPlaybookRef((top.playbookIdOrName as string) ?? "");
+      setRevenueAsset(!!top.producedRevenueAsset);
+      setRevenueAssetWhat((top.producedRevenueAssetWhat as string) ?? "");
+      setRollbackNote((top.rollbackNote as string) ?? "");
+    }, [top.category, top.proposedActionType, top.contradictsPlaybook, top.playbookIdOrName, top.producedRevenueAsset, top.producedRevenueAssetWhat, top.rollbackNote]);
 
     async function handlePromote() {
       setPromoting(true);
@@ -148,6 +179,24 @@ export function LearningPageClient({
         await onUpdate(p.id, { producedAssetType: value });
       } finally {
         setSavingProduced(false);
+      }
+    }
+
+    function handleMetaChange(field: keyof ProposalMetaUpdate, value: string | boolean) {
+      if (field === "contradictsPlaybook") {
+        setContradicts(!!value);
+        onUpdate(p.id, { contradictsPlaybook: !!value, playbookIdOrName: playbookRef || undefined });
+      } else if (field === "playbookIdOrName") {
+        setPlaybookRef(value as string);
+        onUpdate(p.id, { contradictsPlaybook: contradicts, playbookIdOrName: (value as string) || undefined });
+      } else if (field === "producedRevenueAsset") {
+        setRevenueAsset(!!value);
+        onUpdate(p.id, { producedRevenueAsset: !!value, producedRevenueAssetWhat: revenueAssetWhat || undefined });
+      } else if (field === "producedRevenueAssetWhat") {
+        setRevenueAssetWhat(value as string);
+        onUpdate(p.id, { producedRevenueAsset, producedRevenueAssetWhat: (value as string) || undefined });
+      } else {
+        onUpdate(p.id, { [field]: value });
       }
     }
 
@@ -194,10 +243,103 @@ export function LearningPageClient({
           >
             <option value="">—</option>
             <option value="proposal_template">Proposal template</option>
+            <option value="proposal_improvement">Proposal improvement</option>
+            <option value="outreach_script">Outreach script</option>
+            <option value="sales_objection_script">Sales objection script</option>
+            <option value="service_package_refinement">Service package refinement</option>
+            <option value="delivery_sop">Delivery SOP</option>
+            <option value="qa_checklist">QA checklist</option>
             <option value="case_study">Case study</option>
             <option value="automation">Automation</option>
             <option value="knowledge_only">Knowledge only</option>
+            <option value="nothing_yet">Nothing yet</option>
           </select>
+        </div>
+        <div className="flex flex-wrap gap-3 text-xs">
+          <label className="flex items-center gap-1">
+            <span className="text-neutral-500">Category:</span>
+            <select
+              value={category}
+              onChange={(e) => {
+                setCategory(e.target.value);
+                onUpdate(p.id, { category: e.target.value || undefined });
+              }}
+              className="rounded border border-neutral-700 bg-neutral-900 px-2 py-0.5 text-neutral-200"
+            >
+              <option value="">—</option>
+              <option value="sales">Sales</option>
+              <option value="ops">Ops</option>
+              <option value="delivery">Delivery</option>
+              <option value="AI">AI</option>
+              <option value="positioning">Positioning</option>
+              <option value="mindset">Mindset</option>
+            </select>
+          </label>
+          <label className="flex items-center gap-1">
+            <span className="text-neutral-500">Proposed action:</span>
+            <select
+              value={proposedAction}
+              onChange={(e) => {
+                setProposedAction(e.target.value);
+                onUpdate(p.id, { proposedActionType: e.target.value || undefined });
+              }}
+              className="rounded border border-neutral-700 bg-neutral-900 px-2 py-0.5 text-neutral-200"
+            >
+              <option value="">—</option>
+              <option value="no_action">No action</option>
+              <option value="experiment">Experiment</option>
+              <option value="playbook_update">Playbook update</option>
+              <option value="sales_script_update">Sales script update</option>
+              <option value="offer_update">Offer update</option>
+            </select>
+          </label>
+          <label className="flex items-center gap-1">
+            <input
+              type="checkbox"
+              checked={contradicts}
+              onChange={(e) => handleMetaChange("contradictsPlaybook", e.target.checked)}
+              className="rounded border-neutral-600"
+            />
+            <span className="text-neutral-500">Contradicts playbook?</span>
+            {contradicts && (
+              <input
+                type="text"
+                value={playbookRef}
+                onChange={(e) => handleMetaChange("playbookIdOrName", e.target.value)}
+                placeholder="Which playbook"
+                className="rounded border border-neutral-700 bg-neutral-900 px-2 py-0.5 text-neutral-200 w-32"
+              />
+            )}
+          </label>
+          <label className="flex items-center gap-1">
+            <input
+              type="checkbox"
+              checked={revenueAsset}
+              onChange={(e) => handleMetaChange("producedRevenueAsset", e.target.checked)}
+              className="rounded border-neutral-600"
+            />
+            <span className="text-neutral-500">Produced revenue asset?</span>
+            {revenueAsset && (
+              <input
+                type="text"
+                value={revenueAssetWhat}
+                onChange={(e) => handleMetaChange("producedRevenueAssetWhat", e.target.value)}
+                placeholder="What asset"
+                className="rounded border border-neutral-700 bg-neutral-900 px-2 py-0.5 text-neutral-200 w-36"
+              />
+            )}
+          </label>
+        </div>
+        <div>
+          <label className="text-xs text-neutral-500 block mb-0.5">Rollback note (if change didn’t work)</label>
+          <input
+            type="text"
+            value={rollbackNote}
+            onChange={(e) => setRollbackNote(e.target.value)}
+            onBlur={() => onUpdate(p.id, { rollbackNote: rollbackNote || undefined })}
+            placeholder="Optional"
+            className="w-full rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-200"
+          />
         </div>
         {prop && typeof prop === "object" && (
           <div className="grid gap-2 text-sm">

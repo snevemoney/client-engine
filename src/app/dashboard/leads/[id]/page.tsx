@@ -12,6 +12,7 @@ import { RoiEstimateCard } from "@/components/dashboard/leads/RoiEstimateCard";
 import { FollowUpSequenceCard } from "@/components/dashboard/leads/FollowUpSequenceCard";
 import { ClientSuccessCard } from "@/components/dashboard/leads/ClientSuccessCard";
 import { ClientResultsGlance } from "@/components/dashboard/leads/ClientResultsGlance";
+import { ReusableAssetLogCard } from "@/components/dashboard/leads/ReusableAssetLogCard";
 import { LeadCopilotCard } from "@/components/leads/LeadCopilotCard";
 import { SalesProcessPanel } from "@/components/dashboard/leads/SalesProcessPanel";
 import { TrustToCloseChecklistPanel } from "@/components/proposals/TrustToCloseChecklistPanel";
@@ -357,6 +358,11 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
       {/* Results at a glance (delivery leads) */}
       {(lead.status === "APPROVED" || lead.status === "BUILDING" || lead.status === "SHIPPED") && (
         <ClientResultsGlance leadId={id} />
+      )}
+
+      {/* Reusable leverage log (delivery leads) */}
+      {(lead.status === "APPROVED" || lead.status === "BUILDING" || lead.status === "SHIPPED") && (
+        <ReusableAssetLogCard leadId={id} />
       )}
 
       {/* Status bar */}

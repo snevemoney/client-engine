@@ -109,6 +109,13 @@ export async function getMoneyScorecard(): Promise<MoneyScorecard> {
       },
     },
   });
+  // Assumption: "calls booked" approximated by CALL-type touches (TouchType has no CALL_BOOKED)
+  const callsBooked7d = await db.leadTouch.count({
+    where: {
+      type: "CALL",
+      createdAt: { gte: sevenDaysAgo },
+    },
+  });
   const staleOpportunitiesCount = sentNoOutcome.filter(
     (l) => l.proposalSentAt && new Date(l.proposalSentAt) < staleCutoff
   ).length;
@@ -141,7 +148,7 @@ export async function getMoneyScorecard(): Promise<MoneyScorecard> {
     qualifiedLeads7d: qualified7d,
     proposalsSent7d,
     followUpsDueToday,
-    callsBooked: null,
+    callsBooked: callsBooked7d,
     revenueWon30d,
     dealsWon90d: dealsWon90dCount,
     staleOpportunitiesCount,

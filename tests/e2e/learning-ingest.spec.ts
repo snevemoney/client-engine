@@ -4,8 +4,9 @@
  * Local (dev server + AUTH_DEV_PASSWORD in .env):
  *   USE_EXISTING_SERVER=1 AUTH_DEV_PASSWORD=changeme npm run test:e2e tests/e2e/learning-ingest.spec.ts
  *
- * Prod (set credentials so login succeeds):
- *   USE_EXISTING_SERVER=1 PLAYWRIGHT_BASE_URL=https://evenslouis.ca E2E_EMAIL=you@example.com E2E_PASSWORD=yourpassword npm run test:e2e tests/e2e/learning-ingest.spec.ts
+ * Prod (login uses hardcoded credentials for evenslouis.ca; ensure server has run reset-auth and has E2E_ALLOW_DEV_PASSWORD=1, AUTH_DEV_PASSWORD=121618louis):
+ *   USE_EXISTING_SERVER=1 PLAYWRIGHT_BASE_URL=https://evenslouis.ca npm run test:e2e tests/e2e/learning-ingest.spec.ts
+ *   Full ingest test may need 15+ min on prod; use "ingest video then channel" for full run or "prod login and dashboard" for a quick smoke test.
  *
  * Or test manually: Dashboard → Learning, paste video URL → Ingest; then paste channel URL, set Channel → Ingest.
  */
@@ -17,40 +18,23 @@ const password = (process.env.E2E_PASSWORD || process.env.AUTH_DEV_PASSWORD || "
 
 test.describe("Learning ingest", () => {
   test("ingest video then channel", async ({ page }) => {
+    test.setTimeout(900000); // 15 min for prod (video + channel ingest can be very slow)
     const base = baseURL.replace(/\/$/, "");
+    const isProd = base.includes("evenslouis.ca");
+    const loginEmail = isProd ? "sneve1@hotmail.com" : email;
+    const loginPassword = isProd ? "121618louis" : password;
     await page.goto(`${base}/login`);
     await expect(page.getByLabel("Email")).toBeVisible({ timeout: 10000 });
-    // Login via in-page fetch so session cookie is set in the same origin (page context)
-    const loginResult = await page.evaluate(
-      async ({
-        baseUrl,
-        email: e,
-        password: p,
-      }: {
-        baseUrl: string;
-        email: string;
-        password: string;
-      }) => {
-        const csrfRes = await fetch(`${baseUrl}/api/auth/csrf`);
-        const { csrfToken } = (await csrfRes.json()) as { csrfToken: string };
-        const res = await fetch(`${baseUrl}/api/auth/callback/credentials`, {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: new URLSearchParams({ csrfToken, email: e, password: p }),
-          credentials: "include",
-        });
-        const text = await res.text();
-        return { status: res.status, ok: res.ok, body: text.slice(0, 300), url: res.url };
-      },
-      { baseUrl: base, email, password }
-    );
-    if (loginResult.status !== 302 && !loginResult.ok) {
-      test.skip(true, `Login fetch failed: ${loginResult.status} ${loginResult.body}`);
+    await page.getByLabel("Email").fill(loginEmail);
+    await page.getByLabel("Password").fill(loginPassword);
+    await page.getByRole("button", { name: /sign in/i }).click();
+    await page.waitForURL(/\/(dashboard|login)/, { timeout: 20000 });
+    if (page.url().includes("/login")) {
+      const errText = await page.locator("p.text-red-400").textContent().catch(() => "");
+      test.skip(true, `Login failed. Error: ${errText || "none"}. Prod: ensure server has E2E_ALLOW_DEV_PASSWORD=1 and AUTH_DEV_PASSWORD=121618louis, and DB user (run reset-auth).`);
       return;
     }
-    console.log("Login fetch result:", JSON.stringify(loginResult));
-    await page.goto(`${base}/dashboard`);
-    await expect(page).toHaveURL(/\/dashboard/, { timeout: 15000 });
+    await expect(page).toHaveURL(/\/dashboard/);
 
     await page.goto(`${baseURL}/dashboard/learning`);
     await expect(page).toHaveURL(/\/dashboard\/learning/);

@@ -12,6 +12,9 @@ import { getReferralEngineMetrics } from "@/lib/ops/referralEngine";
 import { getProspectingSourceMetrics } from "@/lib/ops/prospectingSources";
 import { getChannelRoleCritique } from "@/lib/ops/channelRoleMap";
 import { getFailuresAndInterventions } from "@/lib/ops/failuresInterventions";
+import { getBuildOpsSummary } from "@/lib/ops/buildTasks";
+import { getOpsHealth } from "@/lib/ops/opsHealth";
+import { getReusableAssetSummary } from "@/lib/ops/reusableAssetSummary";
 import { getLeverageScore } from "@/lib/ops/leverageScore";
 import { getWeeklySnapshotHistory } from "@/lib/ops/weeklySnapshot";
 import { getOperatorSettings } from "@/lib/ops/settings";
@@ -24,6 +27,8 @@ import { QueueSummaryCard } from "@/components/dashboard/command/QueueSummaryCar
 import { ConstraintCard } from "@/components/dashboard/command/ConstraintCard";
 import { AiBriefCard } from "@/components/dashboard/command/AiBriefCard";
 import { FailuresInterventionsCard } from "@/components/dashboard/command/FailuresInterventionsCard";
+import { BuildOpsCard } from "@/components/dashboard/command/BuildOpsCard";
+import { ReusableAssetSummaryCard } from "@/components/dashboard/command/ReusableAssetSummaryCard";
 import { LeverageScoreCard } from "@/components/dashboard/command/LeverageScoreCard";
 import { LeverageTrendCard } from "@/components/dashboard/command/LeverageTrendCard";
 import { GraduationTriggerCard } from "@/components/dashboard/command/GraduationTriggerCard";
@@ -44,11 +49,12 @@ import { ChannelRoleCard } from "@/components/dashboard/command/ChannelRoleCard"
 import { OwnedAudienceCard } from "@/components/dashboard/command/OwnedAudienceCard";
 import { NetworkingEventsCard } from "@/components/dashboard/command/NetworkingEventsCard";
 import { PatTomWeeklyScorecardCard } from "@/components/dashboard/command/PatTomWeeklyScorecardCard";
+import { OpsHealthGatewayCard } from "@/components/dashboard/command/OpsHealthGatewayCard";
 
 export const dynamic = "force-dynamic";
 
 export default async function CommandCenterPage() {
-  const [brief, queue, constraint, lastRunReport, latestBrief, failuresInterventions, leverageScore, weeklyTrend, operatorSettings, patTomScorecard, feedbackNotes, learningInbox, knowledgeQueue, topSuggestions, moneyScorecard, salesLeakReport, followUpDiscipline, referralEngine, prospectingSources, channelRoleCritique] = await Promise.all([
+  const [brief, queue, constraint, lastRunReport, latestBrief, failuresInterventions, buildOpsSummary, opsHealth, reusableAssetSummary, leverageScore, weeklyTrend, operatorSettings, patTomScorecard, feedbackNotes, learningInbox, knowledgeQueue, topSuggestions, moneyScorecard, salesLeakReport, followUpDiscipline, referralEngine, prospectingSources, channelRoleCritique] = await Promise.all([
     buildBrief(),
     getQueueSummary(),
     getConstraintSnapshot(),
@@ -62,6 +68,9 @@ export default async function CommandCenterPage() {
     }),
     getLatestOperatorBrief(),
     getFailuresAndInterventions(),
+    getBuildOpsSummary(),
+    getOpsHealth(),
+    getReusableAssetSummary(),
     getLeverageScore(),
     getWeeklySnapshotHistory(8),
     getOperatorSettings(),
@@ -88,6 +97,14 @@ export default async function CommandCenterPage() {
     <div className="space-y-6 min-w-0">
       <CommandHeader />
 
+      <OpsHealthGatewayCard
+        summary={{
+          workdayStatus: opsHealth.workdayRun.status,
+          totalCount: opsHealth.failuresAndInterventions.totalCount,
+          approvalQueueCount: opsHealth.approvalQueueCount,
+        }}
+      />
+
       <MoneyScorecardCard data={moneyScorecard} />
 
       <SalesLeakCard data={salesLeakReport} />
@@ -105,6 +122,10 @@ export default async function CommandCenterPage() {
       <NetworkingEventsCard />
 
       <FailuresInterventionsCard data={failuresInterventions} />
+
+      <BuildOpsCard data={buildOpsSummary} />
+
+      <ReusableAssetSummaryCard data={reusableAssetSummary} />
 
       <PatTomWeeklyScorecardCard data={patTomScorecard} />
 
