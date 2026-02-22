@@ -6,10 +6,10 @@
  */
 
 import { db } from "@/lib/db";
-import { validateChannelUrl, normalizeChannelUrl } from "./normalize";
+import { validateChannelUrl } from "./normalize";
 import { ingestVideo } from "./videoIngest";
 import { TRANSCRIPT_STATUS, ytLog } from "./types";
-import type { ChannelIngestRunSummary, VideoMeta } from "./types";
+import type { ChannelIngestRunSummary } from "./types";
 
 const FETCH_HEADERS: Record<string, string> = {
   "Accept-Language": "en-US,en;q=0.9",

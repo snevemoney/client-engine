@@ -62,9 +62,13 @@ export async function getFailedTranscripts(limit = 20) {
     select: {
       id: true,
       videoId: true,
+      channelId: true,
       sourceUrl: true,
       title: true,
+      language: true,
+      durationSeconds: true,
       providerUsed: true,
+      transcriptStatus: true,
       failureReason: true,
       createdAt: true,
     },
