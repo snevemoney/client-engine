@@ -50,11 +50,13 @@ import { OwnedAudienceCard } from "@/components/dashboard/command/OwnedAudienceC
 import { NetworkingEventsCard } from "@/components/dashboard/command/NetworkingEventsCard";
 import { PatTomWeeklyScorecardCard } from "@/components/dashboard/command/PatTomWeeklyScorecardCard";
 import { OpsHealthGatewayCard } from "@/components/dashboard/command/OpsHealthGatewayCard";
+import { YouTubeIngestSummaryCard } from "@/components/dashboard/command/YouTubeIngestSummaryCard";
+import { getYouTubeIngestSummary } from "@/lib/youtube/queries";
 
 export const dynamic = "force-dynamic";
 
 export default async function CommandCenterPage() {
-  const [brief, queue, constraint, lastRunReport, latestBrief, failuresInterventions, buildOpsSummary, opsHealth, reusableAssetSummary, leverageScore, weeklyTrend, operatorSettings, patTomScorecard, feedbackNotes, learningInbox, knowledgeQueue, topSuggestions, moneyScorecard, salesLeakReport, followUpDiscipline, referralEngine, prospectingSources, channelRoleCritique] = await Promise.all([
+  const [brief, queue, constraint, lastRunReport, latestBrief, failuresInterventions, buildOpsSummary, opsHealth, reusableAssetSummary, leverageScore, weeklyTrend, operatorSettings, patTomScorecard, feedbackNotes, learningInbox, knowledgeQueue, topSuggestions, moneyScorecard, salesLeakReport, followUpDiscipline, referralEngine, prospectingSources, channelRoleCritique, youtubeIngestSummary] = await Promise.all([
     buildBrief(),
     getQueueSummary(),
     getConstraintSnapshot(),
@@ -85,6 +87,7 @@ export default async function CommandCenterPage() {
     getReferralEngineMetrics(),
     getProspectingSourceMetrics(),
     getChannelRoleCritique(),
+    getYouTubeIngestSummary(),
   ]);
 
   const feedbackNoteItems = feedbackNotes.map((n) => ({
@@ -161,6 +164,12 @@ export default async function CommandCenterPage() {
       <ConstraintCard constraint={constraint} />
       <AiBriefCard latestBrief={latestBrief} />
       <LearningInboxCard proposalCount={learningInbox.proposalCount} latestSource={learningInbox.latestSource} />
+      <YouTubeIngestSummaryCard
+        transcriptsThisWeek={youtubeIngestSummary.transcriptsThisWeek}
+        failedJobs={youtubeIngestSummary.failedJobs}
+        pendingProposals={youtubeIngestSummary.pendingProposals}
+        promotedCount={youtubeIngestSummary.promotedCount}
+      />
       <div className="grid gap-4 sm:grid-cols-2">
         <KnowledgeQueueCard
           transcriptsToday={knowledgeQueue.transcriptsToday}
