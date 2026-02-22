@@ -115,6 +115,7 @@ export async function ingestVideo(opts: IngestVideoOptions): Promise<LearningRun
   } catch (e) {
     report.ok = false;
     report.errors.push(e instanceof Error ? e.message : "Failed to create video/transcript artifacts");
+    await writeLearningRunReport(leadId, report);
     return report;
   }
 

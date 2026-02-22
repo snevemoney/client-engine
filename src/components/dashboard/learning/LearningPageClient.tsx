@@ -230,6 +230,7 @@ export function LearningPageClient({
         <div className="flex flex-wrap gap-2 items-end">
           <div className="flex-1 min-w-[200px]">
             <input
+              data-testid="learning-url-input"
               type="text"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
@@ -246,6 +247,7 @@ export function LearningPageClient({
             <option value="channel">Channel</option>
           </select>
           <button
+            data-testid="learning-ingest-button"
             onClick={handleIngest}
             disabled={loading || !url.trim()}
             className="rounded-md bg-neutral-100 text-neutral-900 px-4 py-2 text-sm font-medium hover:bg-neutral-200 disabled:opacity-50"
