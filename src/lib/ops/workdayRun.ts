@@ -56,6 +56,7 @@ export async function runWorkdayRun(): Promise<WorkdayRunSummary> {
       const result = await runPipelineIfEligible(lead.id, "workday_run");
       if (result.run) summary.pipeline.runs++;
     } catch (err) {
+      summary.ok = false;
       summary.pipeline.errors.push(
         `${lead.id}: ${err instanceof Error ? err.message : String(err)}`
       );
@@ -79,6 +80,7 @@ export async function runWorkdayRun(): Promise<WorkdayRunSummary> {
       const result = await runPipelineIfEligible(leadId, "workday_retry");
       if (result.run) summary.pipeline.retries++;
     } catch (err) {
+      summary.ok = false;
       summary.pipeline.errors.push(
         `retry ${leadId}: ${err instanceof Error ? err.message : String(err)}`
       );

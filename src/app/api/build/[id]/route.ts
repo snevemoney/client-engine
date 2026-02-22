@@ -69,7 +69,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const key = `${session.user.id}:build`;
-  const { ok, remaining, resetAt } = rateLimit(key, LIMIT, WINDOW_MS);
+  const { ok, resetAt } = rateLimit(key, LIMIT, WINDOW_MS);
   if (!ok) {
     return NextResponse.json(
       { error: "Too many requests", resetAt },
@@ -124,7 +124,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const runId = await createRun(id);
   const stepId = await startStep(runId, "build");
-  await db.lead.update({ where: { id }, data: { buildStartedAt: new Date() } });
 
   try {
     const { content, usage } = await chat(
@@ -171,53 +170,57 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     const slug = slugify(lead.title);
 
-    const project = await db.project.create({
-      data: {
-        slug: `${slug}-${Date.now().toString(36).slice(-4)}`,
-        name: lead.title,
-        description: lead.description,
-        leadId: lead.id,
-        techStack: lead.techStack,
-        status: "draft",
-      },
-    });
-
-    await db.lead.update({
-      where: { id },
-      data: { status: "BUILDING", buildCompletedAt: new Date() },
-    });
-
     const provenance = buildProvenance(runId, "build", {
       model: "gpt-4o-mini",
       temperature: 0.4,
     });
+    const project = await db.$transaction(async (tx) => {
+      const startedAt = new Date();
+      const createdProject = await tx.project.create({
+        data: {
+          slug: `${slug}-${Date.now().toString(36).slice(-4)}`,
+          name: lead.title,
+          description: lead.description,
+          leadId: lead.id,
+          techStack: lead.techStack,
+          status: "draft",
+        },
+      });
 
-    await db.artifact.create({
-      data: {
-        leadId: id,
-        type: "scope",
-        title: "PROJECT_SPEC.md",
-        content: spec,
-        meta: { provenance, buildArtifact: { kind: "project_spec" } } as object,
-      },
-    });
-    await db.artifact.create({
-      data: {
-        leadId: id,
-        type: "scope",
-        title: "DO_THIS_NEXT.md",
-        content: tasks,
-        meta: { provenance, buildArtifact: { kind: "do_this_next" } } as object,
-      },
-    });
-    await db.artifact.create({
-      data: {
-        leadId: id,
-        type: "scope",
-        title: "CURSOR_RULES.md",
-        content: cursorRulesContent,
-        meta: { provenance, buildArtifact: { kind: "cursor_rules" } } as object,
-      },
+      await tx.lead.update({
+        where: { id },
+        data: { status: "BUILDING", buildStartedAt: startedAt, buildCompletedAt: null },
+      });
+
+      await tx.artifact.create({
+        data: {
+          leadId: id,
+          type: "scope",
+          title: "PROJECT_SPEC.md",
+          content: spec,
+          meta: { provenance, buildArtifact: { kind: "project_spec" } } as object,
+        },
+      });
+      await tx.artifact.create({
+        data: {
+          leadId: id,
+          type: "scope",
+          title: "DO_THIS_NEXT.md",
+          content: tasks,
+          meta: { provenance, buildArtifact: { kind: "do_this_next" } } as object,
+        },
+      });
+      await tx.artifact.create({
+        data: {
+          leadId: id,
+          type: "scope",
+          title: "CURSOR_RULES.md",
+          content: cursorRulesContent,
+          meta: { provenance, buildArtifact: { kind: "cursor_rules" } } as object,
+        },
+      });
+
+      return createdProject;
     });
 
     const norm = normalizeUsage(usage, "gpt-4o-mini");
