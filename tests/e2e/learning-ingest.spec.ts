@@ -12,22 +12,45 @@
 import { test, expect } from "@playwright/test";
 
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3000";
-const email = process.env.E2E_EMAIL || "test@test.com";
-const password = process.env.E2E_PASSWORD || process.env.AUTH_DEV_PASSWORD || "changeme";
+const email = (process.env.E2E_EMAIL || "test@test.com").trim().toLowerCase();
+const password = (process.env.E2E_PASSWORD || process.env.AUTH_DEV_PASSWORD || "changeme").trim();
 
 test.describe("Learning ingest", () => {
   test("ingest video then channel", async ({ page }) => {
-    await page.goto(`${baseURL}/login`);
+    const base = baseURL.replace(/\/$/, "");
+    await page.goto(`${base}/login`);
     await expect(page.getByLabel("Email")).toBeVisible({ timeout: 10000 });
-    await page.getByLabel("Email").fill(email);
-    await page.getByLabel("Password").fill(password);
-    await page.getByRole("button", { name: /sign in/i }).click();
-    await page.waitForURL(/\/(dashboard|login)/, { timeout: 20000 });
-    if (page.url().includes("/login")) {
-      test.skip(true, "Login failed. Local: set AUTH_DEV_PASSWORD in .env. Prod: set E2E_EMAIL and E2E_PASSWORD in .env.");
+    // Login via in-page fetch so session cookie is set in the same origin (page context)
+    const loginResult = await page.evaluate(
+      async ({
+        baseUrl,
+        email: e,
+        password: p,
+      }: {
+        baseUrl: string;
+        email: string;
+        password: string;
+      }) => {
+        const csrfRes = await fetch(`${baseUrl}/api/auth/csrf`);
+        const { csrfToken } = (await csrfRes.json()) as { csrfToken: string };
+        const res = await fetch(`${baseUrl}/api/auth/callback/credentials`, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({ csrfToken, email: e, password: p }),
+          credentials: "include",
+        });
+        const text = await res.text();
+        return { status: res.status, ok: res.ok, body: text.slice(0, 300), url: res.url };
+      },
+      { baseUrl: base, email, password }
+    );
+    if (loginResult.status !== 302 && !loginResult.ok) {
+      test.skip(true, `Login fetch failed: ${loginResult.status} ${loginResult.body}`);
       return;
     }
-    await expect(page).toHaveURL(/\/dashboard/);
+    console.log("Login fetch result:", JSON.stringify(loginResult));
+    await page.goto(`${base}/dashboard`);
+    await expect(page).toHaveURL(/\/dashboard/, { timeout: 15000 });
 
     await page.goto(`${baseURL}/dashboard/learning`);
     await expect(page).toHaveURL(/\/dashboard\/learning/);
