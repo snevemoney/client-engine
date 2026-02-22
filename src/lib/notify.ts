@@ -7,6 +7,11 @@ import nodemailer from "nodemailer";
 
 const NOTIFY_EMAIL = process.env.NOTIFY_EMAIL ?? "contact@evenslouis.ca";
 
+function getAppBaseUrl(): string {
+  return process.env.NEXT_PUBLIC_APP_URL ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "");
+}
+
 async function sendResend(opts: { subject: string; text: string; html: string }): Promise<boolean> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) return false;
@@ -71,7 +76,7 @@ export function sendOperatorAlert(opts: { subject: string; body: string }): void
 }
 
 export function notifyPipelineFailure(leadId: string, leadTitle: string, stepName: string, errMessage: string): void {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "";
+  const appUrl = getAppBaseUrl();
   const body = [
     `Pipeline run failed.`,
     ``,
@@ -87,7 +92,7 @@ export function notifyPipelineFailure(leadId: string, leadTitle: string, stepNam
 
 /** Call when research (or workday) creates new leads; pipeline will draft proposals. */
 export function notifyNewProposalsReady(count: number, leadIds: string[]): void {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "";
+  const appUrl = getAppBaseUrl();
   const links = leadIds.slice(0, 10).map((id) => `${appUrl}/dashboard/leads/${id}`).join("\n");
   const body = [
     `${count} new lead(s) created; pipeline will draft proposals.`,

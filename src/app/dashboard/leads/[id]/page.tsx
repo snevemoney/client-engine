@@ -269,7 +269,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   }, [id]);
 
   async function updateStatus(status: string) {
-    const res = await fetch(`/api/leads/${id}`, {
+    const res = await fetch(`/api/leads/${id}/status`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status }),
@@ -277,6 +277,9 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
     if (res.ok) {
       const updated = await res.json();
       setLead((prev) => (prev ? { ...prev, ...updated } : prev));
+    } else {
+      const err = await res.json().catch(() => null);
+      alert(err?.error ?? `Failed to set status to ${status}`);
     }
   }
 
@@ -653,10 +656,13 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
         <Button variant="outline" size="sm" onClick={generateProposal} disabled={proposing}>
           <Send className="w-3.5 h-3.5" /> {proposing ? "Generating..." : "Generate Proposal"}
         </Button>
-        {(lead.status === "APPROVED" || lead.status === "SCORED") && (
+        {lead.status === "APPROVED" && (
           <Button variant="outline" size="sm" onClick={startBuild} disabled={building}>
             <Hammer className="w-3.5 h-3.5" /> {building ? "Building..." : "Start Build"}
           </Button>
+        )}
+        {lead.status === "SCORED" && (
+          <span className="text-xs text-neutral-500">Approve lead to start build.</span>
         )}
       </div>
 

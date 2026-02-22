@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { runResearchDiscoverAndPipeline } from "@/lib/research/run";
+import { parseLimit } from "@/lib/query-limit";
 
 /**
  * POST /api/research/run
@@ -22,7 +23,7 @@ export async function POST(req: NextRequest) {
 
   const url = new URL(req.url);
   const limitParam = url.searchParams.get("limit");
-  const limit = limitParam ? Math.min(Math.max(1, parseInt(limitParam, 10)), 50) : undefined;
+  const limit = limitParam == null ? undefined : parseLimit(limitParam, 10, 50);
 
   try {
     const report = await runResearchDiscoverAndPipeline({ limit });

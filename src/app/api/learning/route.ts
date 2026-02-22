@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { getRecentLearningArtifacts } from "@/lib/learning/ingest";
+import { parseLimit } from "@/lib/query-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -9,8 +10,7 @@ export async function GET(req: NextRequest) {
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const url = new URL(req.url);
-  const limitParam = url.searchParams.get("limit");
-  const limit = limitParam ? Math.min(Math.max(1, parseInt(limitParam, 10)), 50) : 20;
+  const limit = parseLimit(url.searchParams.get("limit"), 20, 50);
 
   try {
     const data = await getRecentLearningArtifacts({ limit });
