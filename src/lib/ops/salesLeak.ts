@@ -66,9 +66,31 @@ export async function getSalesLeakReport(): Promise<SalesLeakReport> {
       leadSourceType: true,
       referralAskStatus: true,
       referralAskAt: true,
+      relationshipLastCheck: true,
       createdAt: true,
     },
   });
+
+  // Relationship maintenance: CHECK_IN touches this week + leads with relationshipLastCheck updated this week.
+  const [checkInTouchesThisWeek, leadsWithRelationshipCheckThisWeek] = await Promise.all([
+    db.leadTouch.count({
+      where: {
+        type: "CHECK_IN",
+        createdAt: { gte: weekStart, lte: weekEnd },
+      },
+    }),
+    db.lead.count({
+      where: {
+        relationshipLastCheck: { gte: weekStart, lte: weekEnd },
+      },
+    }),
+  ]);
+  const relationshipTouches = checkInTouchesThisWeek + leadsWithRelationshipCheckThisWeek;
+
+  const stageCounts: Record<string, { in: number; due?: number; done?: number }> = {};
+  for (const s of PBD_STAGES) {
+    stageCounts[s] = { in: 0, due: 0, done: 0 };
+  }
 
   let prospectingCount = 0;
   let newContactsMade = 0;
@@ -78,12 +100,6 @@ export async function getSalesLeakReport(): Promise<SalesLeakReport> {
   let followUpsDone = 0;
   let referralAsksMade = 0;
   let referralLeadsReceived = 0;
-  let relationshipTouches = 0;
-
-  const stageCounts: Record<string, { in: number; due?: number; done?: number }> = {};
-  for (const s of PBD_STAGES) {
-    stageCounts[s] = { in: 0, due: 0, done: 0 };
-  }
 
   for (const lead of leads) {
     const stage = effectiveStage(lead);

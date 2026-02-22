@@ -34,7 +34,7 @@ test.describe("Full E2E flow", () => {
     await page.getByPlaceholder(/e-commerce/i).fill("E2E test lead " + Date.now());
     await page.getByLabel("Source").fill("e2e");
     await page.getByRole("button", { name: /create lead/i }).click();
-    await expect(page).toHaveURL(/\/dashboard/).or(expect(page).toHaveURL(/\/dashboard\/leads/));
+    await expect(page).toHaveURL(/\/dashboard(\/leads\/[a-z0-9-]+)?\/?/);
 
     // 5) Back to metrics — page loads and shows at least the section (run may appear after a moment)
     await page.goto("/dashboard/metrics");

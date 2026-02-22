@@ -9,7 +9,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const { id } = await params;
   const lead = await db.lead.findUnique({
     where: { id },
-    include: { artifacts: { orderBy: { createdAt: "desc" } }, project: true },
+    include: {
+      artifacts: { orderBy: { createdAt: "desc" } },
+      project: true,
+      touches: { orderBy: { createdAt: "desc" } },
+      referralsReceived: { orderBy: { createdAt: "desc" } },
+    },
   });
 
   if (!lead) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -45,6 +50,12 @@ const ALLOWED_PATCH_FIELDS = new Set([
   "referralAskAt",
   "referralCount",
   "referralNames",
+  "sourceDetail",
+  "lastTouchType",
+  "followUpStage",
+  "detailScore",
+  "relationshipStatus",
+  "relationshipLastCheck",
 ]);
 
 function pickAllowedLeadPatch(body: Record<string, unknown>): Record<string, unknown> {
@@ -71,7 +82,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 
   try {
-    const data = pickAllowedLeadPatch(body);
+    const data = pickAllowedLeadPatch(body) as Record<string, unknown> & { referralAskAt?: Date | string | null; referralAskStatus?: string | null };
+
+    // When marking referral ask as "asked", set referralAskAt to now if not already provided (so Sales Leak / Referral Engine counts correctly).
+    if (data.referralAskStatus === "asked" && (data.referralAskAt === undefined || data.referralAskAt === null)) {
+      data.referralAskAt = new Date();
+    }
 
     if (Object.keys(data).length === 0) {
       const lead = await db.lead.findUnique({ where: { id } });

@@ -87,6 +87,8 @@ export async function getMoneyScorecard(): Promise<MoneyScorecard> {
 
   const now = new Date();
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const todayEnd = new Date(todayStart);
+  todayEnd.setHours(23, 59, 59, 999);
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   const staleCutoff = new Date(now.getTime() - STALE_DAYS * 24 * 60 * 60 * 1000);
 
@@ -97,7 +99,16 @@ export async function getMoneyScorecard(): Promise<MoneyScorecard> {
   ).length;
   const proposalsSent7d = sent.filter((l) => l.proposalSentAt && new Date(l.proposalSentAt) >= sevenDaysAgo).length;
   const sentNoOutcome = leads.filter((l) => l.proposalSentAt && !l.dealOutcome);
-  const followUpsDueToday = sentNoOutcome.length; // TODO: could filter by "next touch due today" when we have sequence dates
+  const followUpsDueToday = await db.lead.count({
+    where: {
+      status: { not: "REJECTED" },
+      dealOutcome: { not: "won" },
+      nextContactAt: {
+        gte: todayStart,
+        lte: todayEnd,
+      },
+    },
+  });
   const staleOpportunitiesCount = sentNoOutcome.filter(
     (l) => l.proposalSentAt && new Date(l.proposalSentAt) < staleCutoff
   ).length;

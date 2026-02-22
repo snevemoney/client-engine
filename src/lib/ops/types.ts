@@ -136,6 +136,49 @@ export type FollowUpDisciplineScore = {
   activeLeadsWithoutNextDate: number;
 };
 
+/** Follow-up discipline metrics for Command Center card. */
+export type FollowUpDisciplineMetrics = {
+  at: string;
+  followUpsDueToday: number;
+  overdueCount: number;
+  noTouchIn7DaysCount: number;
+  avgTouchesBeforeClose: number | null;
+  avgTouchesOnActive: number | null;
+  touched7PlusNotWonCount: number;
+  status: "ok" | "leak";
+  overdueLeads: { id: string; title: string; company: string | null; daysOverdue: number }[];
+};
+
+/** Referral engine metrics for Command Center card. */
+export type ReferralEngineMetrics = {
+  at: string;
+  referralAsksThisWeek: number;
+  referralsReceivedThisMonth: number;
+  referralToQualifiedPct: number | null;
+  referralToWonPct: number | null;
+  topReferralSourceCount: number;
+  eligibleForReferralAskCount: number;
+};
+
+/** Prospecting source metrics (per channel). */
+export type ProspectingSourceRow = {
+  channel: string;
+  newLeads: number;
+  qualified: number;
+  proposals: number;
+  won: number;
+  cashCollected: number;
+  conversionPct: number | null;
+};
+
+export type ProspectingSourceMetrics = {
+  at: string;
+  bestSourceThisMonth: string | null;
+  weakSourceWarning: string | null;
+  channelRoiSummary: string | null; // one-line ROI summary for card
+  rows: ProspectingSourceRow[];
+};
+
 /** Deal + product intelligence per lead (from enrichment + positioning + research). */
 export type OpportunityBrief = {
   buyer: string | null;

@@ -13,6 +13,8 @@ import { FollowUpSequenceCard } from "@/components/dashboard/leads/FollowUpSeque
 import { ClientSuccessCard } from "@/components/dashboard/leads/ClientSuccessCard";
 import { ClientResultsGlance } from "@/components/dashboard/leads/ClientResultsGlance";
 import { LeadCopilotCard } from "@/components/leads/LeadCopilotCard";
+import { SalesProcessPanel } from "@/components/dashboard/leads/SalesProcessPanel";
+import { TrustToCloseChecklistPanel } from "@/components/proposals/TrustToCloseChecklistPanel";
 import { parseLeadIntelligenceFromMeta } from "@/lib/lead-intelligence";
 
 interface Artifact {
@@ -51,6 +53,18 @@ interface Lead {
   nextContactAt: string | null;
   lastContactAt: string | null;
   personalDetails: string | null;
+  leadSourceType: string | null;
+  leadSourceChannel: string | null;
+  introducedBy: string | null;
+  sourceDetail: string | null;
+  referralAskStatus: string | null;
+  referralAskAt: string | null;
+  referralCount: number;
+  relationshipStatus: string | null;
+  relationshipLastCheck: string | null;
+  touchCount: number;
+  touches?: { id: string; type: string; direction: string; summary: string; scriptUsed: string | null; outcome: string | null; nextTouchAt: string | null; createdAt: string }[];
+  referralsReceived?: { id: string; referredName: string; referredCompany: string | null; status: string; createdAt: string }[];
   meta?: unknown;
 }
 
@@ -265,7 +279,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
     }
   }
 
-  async function updateField(field: string, value: string) {
+  async function updateField(field: string, value: string | null) {
     const res = await fetch(`/api/leads/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -277,16 +291,22 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
     }
   }
 
-  async function updateDateField(field: "nextContactAt" | "lastContactAt", value: string | null) {
+  async function updateDateField(field: "nextContactAt" | "lastContactAt" | "relationshipLastCheck", value: string | null) {
     const res = await fetch(`/api/leads/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ [field]: value ? `${value}T12:00:00.000Z` : null }),
+      body: JSON.stringify({ [field]: value ? (value.includes("T") ? value : `${value}T12:00:00.000Z`) : null }),
     });
     if (res.ok) {
       const updated = await res.json();
       setLead((prev) => (prev ? { ...prev, ...updated } : prev));
     }
+  }
+
+  function refetchLead() {
+    fetch(`/api/leads/${id}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => d && setLead(d));
   }
 
   async function createArtifact() {
@@ -395,6 +415,27 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
           );
         })()}
       </div>
+
+      {/* Sales process: source, touches, referrals, relationship */}
+      <SalesProcessPanel
+        leadId={id}
+        leadSourceType={lead.leadSourceType ?? null}
+        leadSourceChannel={lead.leadSourceChannel ?? null}
+        sourceDetail={lead.sourceDetail ?? null}
+        introducedBy={lead.introducedBy ?? null}
+        referralAskStatus={lead.referralAskStatus ?? null}
+        referralCount={lead.referralCount ?? 0}
+        relationshipStatus={lead.relationshipStatus ?? null}
+        relationshipLastCheck={lead.relationshipLastCheck ?? null}
+        touchCount={lead.touchCount ?? 0}
+        nextContactAt={lead.nextContactAt ?? null}
+        lastContactAt={lead.lastContactAt ?? null}
+        touches={lead.touches ?? []}
+        referralsReceived={lead.referralsReceived ?? []}
+        onUpdate={refetchLead}
+        updateField={updateField}
+        updateDateField={updateDateField}
+      />
 
       {/* Latest pipeline artifacts summary */}
       {(lead.artifacts.some((a) => a.type === "notes") || lead.artifacts.some((a) => a.type === "proposal") || lead.artifacts.some((a) => a.type === "positioning")) && (
@@ -551,6 +592,14 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                 <div className="text-xs font-medium text-neutral-400 mb-2">Proposal</div>
                 <pre className="text-sm text-neutral-300 whitespace-pre-wrap font-sans">{proposal.content}</pre>
               </div>
+            </div>
+            <div className="mt-4">
+              <TrustToCloseChecklistPanel
+                artifactId={proposal.id}
+                meta={proposal.meta}
+                onUpdate={() => refetchLead()}
+                compact
+              />
             </div>
               </>
             )}

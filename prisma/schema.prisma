@@ -40,9 +40,6 @@ model Lead {
   dealOutcome       String?   // "won" | "lost" | null
   createdAt         DateTime   @default(now())
   updatedAt         DateTime   @updatedAt
-  artifacts         Artifact[]
-  project      Project?
-  pipelineRuns PipelineRun[]
   tags         String[]
   // ----- Sales operating system (PBD 6 steps) -----
   salesStage             String?   // PROSPECTING | APPROACH_CONTACT | PRESENTATION | FOLLOW_UP | REFERRAL | RELATIONSHIP_MAINTENANCE
@@ -59,6 +56,19 @@ model Lead {
   referralAskAt         DateTime?
   referralCount         Int       @default(0)
   referralNames         String?   @db.Text
+  sourceDetail          String?   @db.Text  // e.g. "Montreal meetup", "LinkedIn post: AI ops audit"
+  lastTouchType         TouchType?
+  followUpStage         Int       @default(0)
+  detailScore           Int?      // 0-100 how well we captured their details
+  relationshipStatus    String?   // active | dormant | nurture
+  relationshipLastCheck DateTime?
+  touchCount            Int       @default(0)
+  artifacts             Artifact[]
+  project               Project?
+  pipelineRuns          PipelineRun[]
+  touches               LeadTouch[]
+  referralsReceived     LeadReferral[] @relation("ReferralsForLead")
+  attributions          LeadAttribution[]
 }
 
 enum LeadStatus {
@@ -69,6 +79,44 @@ enum LeadStatus {
   REJECTED
   BUILDING
   SHIPPED
+}
+
+enum LeadSourceType {
+  COLD
+  WARM
+  REFERRAL
+  CONTENT
+  NETWORKING
+  INBOUND
+  OTHER
+}
+
+enum ProspectingChannel {
+  LINKEDIN
+  NETWORKING_EVENT
+  EMAIL_OUTREACH
+  REFERRAL_INTRO
+  REFERRAL
+  INSTAGRAM
+  YOUTUBE
+  TIKTOK
+  TWITTER
+  X
+  THREADS
+  NEWSLETTER
+  DIRECT_MESSAGE
+  WEBSITE_INBOUND
+  OTHER
+}
+
+enum TouchType {
+  EMAIL
+  CALL
+  LINKEDIN_DM
+  MEETING
+  FOLLOW_UP
+  REFERRAL_ASK
+  CHECK_IN
 }
 
 model Artifact {
@@ -126,4 +174,113 @@ model PipelineStepRun {
   costEstimate      Float?
   outputArtifactIds String[]     @default([])
   notes             String?     @db.Text
+}
+
+model LeadTouch {
+  id              String   @id @default(cuid())
+  leadId          String
+  lead            Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  type            TouchType
+  direction       String   // outbound | inbound
+  summary         String   @db.Text
+  scriptUsed      String?
+  outcome         String?
+  nextAction      String?  @db.Text
+  nextTouchAt     DateTime?
+  detailsCaptured Json?
+  createdAt       DateTime @default(now())
+
+  @@index([leadId])
+}
+
+model LeadReferral {
+  id                String   @id @default(cuid())
+  sourceLeadId      String
+  sourceLead        Lead     @relation("ReferralsForLead", fields: [sourceLeadId], references: [id], onDelete: Cascade)
+  referredName      String
+  referredCompany   String?
+  referredContact   String?  @db.Text
+  referralQuality   Int?
+  status            String   @default("new") // new | contacted | qualified | proposal_sent | won | lost
+  convertedLeadId   String?
+  notes             String?  @db.Text
+  createdAt         DateTime @default(now())
+
+  @@index([sourceLeadId])
+}
+
+model ContentAsset {
+  id              String    @id @default(cuid())
+  platform        String    // linkedin, youtube, tiktok, instagram
+  title           String?
+  url             String?   @db.Text
+  publishedAt     DateTime?
+  topicTag        String?
+  format          String?
+  ctaType         String?
+  views           Int?
+  comments        Int?
+  inboundLeads    Int       @default(0)
+  qualifiedLeads  Int       @default(0)
+  wonDeals        Int       @default(0)
+  cashCollected   Float     @default(0)
+  notes           String?   @db.Text
+  createdAt       DateTime  @default(now())
+}
+
+model LeadAttribution {
+  id             String   @id @default(cuid())
+  leadId         String
+  lead           Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  contentAssetId String?
+  sourceChannel  String?
+  confidence     Int?
+  note           String?  @db.Text
+  createdAt      DateTime @default(now())
+
+  @@index([leadId])
+}
+
+// ----- Client Acquisition Engine (Tom-style freelancer marketing) -----
+
+/** Owned audience (newsletter/blog) ledger: manual snapshots for health + trend. */
+model OwnedAudienceLedger {
+  id                  String   @id @default(cuid())
+  at                  DateTime // snapshot date (e.g. end of week)
+  subscribers         Int      @default(0)
+  sends               Int      @default(0)
+  replies             Int      @default(0)
+  clicks              Int      @default(0)
+  inquiriesInfluenced Int      @default(0)
+  note                String?  @db.Text
+  createdAt           DateTime @default(now())
+
+  @@index([at])
+}
+
+/** Networking events with quality score inputs. */
+model NetworkingEvent {
+  id                   String   @id @default(cuid())
+  name                 String
+  eventDate            DateTime
+  audienceType         String?  // e.g. "tech founders", "indie devs"
+  relevanceScore       Int?     // 1-10
+  contactsMade         Int      @default(0)
+  followUpsSent        Int      @default(0)
+  opportunitiesCreated Int     @default(0)
+  revenue             Float?
+  notes               String?  @db.Text
+  createdAt            DateTime @default(now())
+}
+
+/** NDA-safe proof assets: anonymized patterns, lessons, outcomes. No client names. */
+model ProofAsset {
+  id                    String   @id @default(cuid())
+  anonymizedCasePattern String   @db.Text
+  lessonLearned         String?  @db.Text
+  outcomeSummary        String?  @db.Text
+  processImprovement    String?  @db.Text
+  channelContentIdeas   String[] @default([]) // e.g. "LinkedIn post on X"
+  linkedArtifactIds     String[] @default([]) // proposal/content artifact IDs
+  createdAt             DateTime @default(now())
 }

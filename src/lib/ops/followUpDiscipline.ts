@@ -1,76 +1,97 @@
 /**
- * Follow-up discipline score: % on time, % with next date set, % with notes.
+ * Follow-up discipline metrics: due/overdue, no-touch-in-7d, avg touches, leak flag.
+ * Powers the Follow-up Discipline Command Center card.
  */
 
 import { db } from "@/lib/db";
-import type { FollowUpDisciplineScore } from "./types";
+import type { FollowUpDisciplineMetrics } from "./types";
 
-const ACTIVE_STAGES = ["APPROACH_CONTACT", "PRESENTATION", "FOLLOW_UP"] as const;
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+const NINETY_DAYS_MS = 90 * 24 * 60 * 60 * 1000;
 
-function effectiveStage(lead: {
-  salesStage: string | null;
-  status: string;
-  proposalSentAt: Date | null;
-  dealOutcome: string | null;
-}): string {
-  if (lead.salesStage) return lead.salesStage;
-  if (lead.dealOutcome === "won" || lead.dealOutcome === "lost") return "";
-  if (lead.proposalSentAt) return "FOLLOW_UP";
-  if (lead.status === "NEW" || lead.status === "ENRICHED" || lead.status === "SCORED") return "PROSPECTING";
-  return "APPROACH_CONTACT";
-}
-
-export async function getFollowUpDisciplineScore(): Promise<FollowUpDisciplineScore> {
+export async function getFollowUpDisciplineMetrics(): Promise<FollowUpDisciplineMetrics> {
   const now = new Date();
-  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const todayEnd = new Date(now);
+  todayEnd.setHours(23, 59, 59, 999);
+  const sevenDaysAgo = new Date(now.getTime() - SEVEN_DAYS_MS);
+  const ninetyDaysAgo = new Date(now.getTime() - NINETY_DAYS_MS);
 
   const leads = await db.lead.findMany({
-    where: { status: { not: "REJECTED" } },
+    where: {
+      status: { notIn: ["REJECTED"] },
+      dealOutcome: { not: "won" },
+    },
     select: {
       id: true,
+      title: true,
       status: true,
-      salesStage: true,
-      proposalSentAt: true,
-      dealOutcome: true,
       nextContactAt: true,
       lastContactAt: true,
-      personalDetails: true,
-      updatedAt: true,
+      dealOutcome: true,
+      touchCount: true,
+      proposalSentAt: true,
     },
   });
 
-  const active = leads.filter((l) => ACTIVE_STAGES.includes(effectiveStage(l) as (typeof ACTIVE_STAGES)[number]));
-  const withNextDate = active.filter((l) => l.nextContactAt != null);
-  const activeLeadsWithoutNextDate = active.length - withNextDate.length;
+  const withNextDue = leads.filter((l) => l.nextContactAt != null);
+  const followUpsDueToday = withNextDue.filter(
+    (l) => l.nextContactAt && new Date(l.nextContactAt) <= todayEnd && new Date(l.nextContactAt) >= new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  ).length;
+  const overdueCount = withNextDue.filter((l) => l.nextContactAt && new Date(l.nextContactAt) < now).length;
 
-  const dueInPast = withNextDate.filter((l) => l.nextContactAt && l.nextContactAt < now);
-  const completedOnTime = dueInPast.filter(
-    (l) => l.lastContactAt && l.nextContactAt && l.lastContactAt >= l.nextContactAt
-  );
-  const dueCount = dueInPast.length;
-  const completedOnTimeCount = completedOnTime.length;
-  const pctOnTime = dueCount > 0 ? Math.round((completedOnTimeCount / dueCount) * 100) : null;
-  const pctWithNextDate = active.length > 0 ? Math.round((withNextDate.length / active.length) * 100) : 100;
-
-  const withNotes = active.filter(
+  const activeOpen = leads.filter(
     (l) =>
-      (l.personalDetails && l.personalDetails.trim().length > 0) ||
-      (l.updatedAt && l.updatedAt >= sevenDaysAgo)
+      l.status !== "REJECTED" &&
+      l.dealOutcome !== "won" &&
+      (l.status === "NEW" || l.status === "ENRICHED" || l.status === "SCORED" || l.proposalSentAt != null)
   );
-  const pctWithNotes = active.length > 0 ? Math.round((withNotes.length / active.length) * 100) : 100;
+  const noTouchIn7DaysCount = activeOpen.filter(
+    (l) => !l.lastContactAt || new Date(l.lastContactAt).getTime() < sevenDaysAgo.getTime()
+  ).length;
 
-  const components = [pctWithNextDate, pctWithNotes];
-  if (pctOnTime !== null) components.push(pctOnTime);
-  const compositeScore = Math.round(components.reduce((a, b) => a + b, 0) / components.length);
+  const won90d = await db.lead.findMany({
+    where: {
+      dealOutcome: "won",
+      updatedAt: { gte: ninetyDaysAgo },
+    },
+    select: { id: true, touchCount: true },
+  });
+  const avgTouchesBeforeClose =
+    won90d.length > 0
+      ? Math.round((won90d.reduce((s, l) => s + l.touchCount, 0) / won90d.length) * 10) / 10
+      : null;
+
+  const activeWithTouches = activeOpen.filter((l) => l.touchCount > 0);
+  const avgTouchesOnActive =
+    activeWithTouches.length > 0
+      ? Math.round((activeWithTouches.reduce((s, l) => s + l.touchCount, 0) / activeWithTouches.length) * 10) / 10
+      : null;
+
+  const touched7PlusNotWonCount = activeOpen.filter((l) => l.touchCount >= 7).length;
+
+  const overdueLeads = withNextDue
+    .filter((l) => l.nextContactAt && new Date(l.nextContactAt) < now)
+    .map((l) => ({
+      id: l.id,
+      title: l.title,
+      company: null as string | null,
+      daysOverdue: Math.floor((now.getTime() - new Date(l.nextContactAt!).getTime()) / (24 * 60 * 60 * 1000)),
+    }))
+    .sort((a, b) => a.daysOverdue - b.daysOverdue)
+    .slice(0, 10);
+
+  const status: "ok" | "leak" =
+    overdueCount > 0 || (noTouchIn7DaysCount > 0 && activeOpen.length > 0) ? "leak" : "ok";
 
   return {
     at: now.toISOString(),
-    pctOnTime,
-    pctWithNextDate,
-    pctWithNotes,
-    compositeScore: Math.min(100, Math.max(0, compositeScore)),
-    dueCount,
-    completedOnTimeCount,
-    activeLeadsWithoutNextDate,
+    followUpsDueToday,
+    overdueCount,
+    noTouchIn7DaysCount,
+    avgTouchesBeforeClose,
+    avgTouchesOnActive,
+    touched7PlusNotWonCount,
+    status,
+    overdueLeads,
   };
 }

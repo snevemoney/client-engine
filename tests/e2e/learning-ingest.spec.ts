@@ -18,10 +18,11 @@ const password = process.env.E2E_PASSWORD || process.env.AUTH_DEV_PASSWORD || "c
 test.describe("Learning ingest", () => {
   test("ingest video then channel", async ({ page }) => {
     await page.goto(`${baseURL}/login`);
+    await expect(page.getByLabel("Email")).toBeVisible({ timeout: 10000 });
     await page.getByLabel("Email").fill(email);
     await page.getByLabel("Password").fill(password);
     await page.getByRole("button", { name: /sign in/i }).click();
-    await expect(page).toHaveURL(/\/(dashboard|login)/, { timeout: 15000 });
+    await expect(page).toHaveURL(/\/dashboard/, { timeout: 20000 });
     if (page.url().includes("/login")) {
       test.skip(true, "Login failed. Local: set AUTH_DEV_PASSWORD in .env. Prod: set E2E_EMAIL and E2E_PASSWORD.");
       return;
@@ -35,7 +36,7 @@ test.describe("Learning ingest", () => {
 
     await urlInput.fill("https://www.youtube.com/watch?v=4htG6bk0aEc&t=466s");
     await ingestBtn.click();
-    await expect(page.getByText(/Ingested|ingested|error|Error|disabled|unavailable/i)).toBeVisible({ timeout: 120000 });
+    await expect(page.locator("p.text-amber-400, p.text-neutral-400").first()).toBeVisible({ timeout: 120000 });
 
     const resultEl = page.locator("p.text-amber-400, p.text-neutral-400").first();
     await expect(resultEl).toBeVisible({ timeout: 5000 });
@@ -47,7 +48,7 @@ test.describe("Learning ingest", () => {
     await urlInput.fill("https://www.youtube.com/@VALUETAINMENT");
     await page.locator("select").filter({ has: page.locator('option[value="channel"]') }).selectOption("channel");
     await ingestBtn.click();
-    await expect(page.getByText(/Ingested|ingested|error|Error|disabled|unavailable|channel/i)).toBeVisible({ timeout: 180000 });
+    await expect(page.locator("p.text-amber-400, p.text-neutral-400").first()).toBeVisible({ timeout: 180000 });
 
     const resultEl2 = page.locator("p.text-amber-400, p.text-neutral-400").first();
     await expect(resultEl2).toBeVisible({ timeout: 5000 });

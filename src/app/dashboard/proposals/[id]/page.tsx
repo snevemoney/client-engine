@@ -3,6 +3,7 @@
 import { use, useState, useEffect } from "react";
 import Link from "next/link";
 import ProposalConsoleEditor from "@/components/proposals/ProposalConsoleEditor";
+import { TrustToCloseChecklistPanel } from "@/components/proposals/TrustToCloseChecklistPanel";
 
 type Artifact = {
   id: string;
@@ -104,6 +105,14 @@ export default function ProposalConsolePage({ params }: { params: Promise<{ id: 
         }}
         onSaved={(updated) => setArtifact((prev) => (prev ? { ...prev, ...updated } : null))}
       />
+
+      <section className="mt-6">
+        <TrustToCloseChecklistPanel
+          artifactId={artifact.id}
+          meta={artifact.meta}
+          onUpdate={(meta) => setArtifact((prev) => (prev ? { ...prev, meta } : null))}
+        />
+      </section>
 
       {/* Full proposal (raw markdown) */}
       <section className="mt-8">
