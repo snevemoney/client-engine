@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { RefreshCw, Megaphone, AlertTriangle, Heart } from "lucide-react";
+import { RefreshCw, Megaphone, AlertTriangle, Heart, LayoutDashboard, Zap, History, Settings } from "lucide-react";
 import type { MetaAdsDashboardData, MetaAdsDashboardError, DateRangePreset } from "@/lib/meta-ads/types";
 import { MetaAdsKpiCards } from "./MetaAdsKpiCards";
 import { MetaAdsCampaignTable } from "./MetaAdsCampaignTable";
@@ -11,6 +11,10 @@ import { MetaAdsAdTable } from "./MetaAdsAdTable";
 import { MetaAdsInsightsPanel } from "./MetaAdsInsightsPanel";
 import { MetaAdsDataStatusStrip } from "./MetaAdsDataStatusStrip";
 import { MetaAdsEmptyState } from "./MetaAdsEmptyState";
+import { MetaAdsRecommendationsPanel } from "./MetaAdsRecommendationsPanel";
+import { MetaAdsActionHistoryPanel } from "./MetaAdsActionHistoryPanel";
+import { MetaAdsSettingsPanel } from "./MetaAdsSettingsPanel";
+import { MetaAdsExplainabilityCard } from "./MetaAdsExplainabilityCard";
 
 const RANGES: { value: DateRangePreset; label: string }[] = [
   { value: "today", label: "Today" },
@@ -59,12 +63,17 @@ function errorMessage(err: MetaAdsDashboardError): { message: string; docHint: s
   }
 }
 
+type Tab = "overview" | "recommendations" | "actions" | "settings";
+
 export function MetaAdsPageClient() {
   const [range, setRange] = useState<DateRangePreset>("last_7d");
+  const [tab, setTab] = useState<Tab>("overview");
   const [data, setData] = useState<MetaAdsDashboardData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [lastFetchWasFresh, setLastFetchWasFresh] = useState(false);
+  const [settingsSummary, setSettingsSummary] = useState<{ mode: string; dryRun: boolean; targetCpl: number | null; minSpend: number; minImpressions: number } | null>(null);
+  const [lastGenerated, setLastGenerated] = useState<string | null>(null);
 
   const fetchData = useCallback(async (opts?: { skipCache?: boolean }) => {
     setLoading(true);
@@ -98,6 +107,17 @@ export function MetaAdsPageClient() {
     fetchData();
   }, [fetchData]);
 
+  useEffect(() => {
+    if (tab === "recommendations" || tab === "settings") {
+      fetch("/api/meta-ads/settings")
+        .then((r) => r.json())
+        .then((j) => {
+          const s = j.settings;
+          if (s) setSettingsSummary({ mode: s.mode ?? "manual", dryRun: s.dryRun ?? true, targetCpl: s.targetCpl ?? null, minSpend: s.minSpendForDecision ?? 20, minImpressions: s.minImpressionsForDecision ?? 100 });
+        });
+    }
+  }, [tab]);
+
   const needsAttention = data?.insights?.filter((i) => i.severity === "warn" || i.severity === "critical").length ?? 0;
   const isEmpty = data?.ok && data.campaigns.length === 0;
   const cacheState = loading ? "loading" : data?.cacheHit ? "cached" : "fresh";
@@ -127,7 +147,26 @@ export function MetaAdsPageClient() {
         </Link>
       </div>
 
-      {/* Data status strip */}
+      {/* Tabs */}
+      <div className="flex gap-1 border-b border-neutral-800 pb-2">
+        {[
+          { id: "overview" as Tab, label: "Overview", icon: LayoutDashboard },
+          { id: "recommendations" as Tab, label: "Recommendations", icon: Zap },
+          { id: "actions" as Tab, label: "Action History", icon: History },
+          { id: "settings" as Tab, label: "Settings", icon: Settings },
+        ].map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            className={`flex items-center gap-2 px-3 py-2 rounded text-sm ${tab === t.id ? "bg-neutral-800 text-neutral-100" : "text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50"}`}
+          >
+            <t.icon className="w-4 h-4" />
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === "overview" && (
       <MetaAdsDataStatusStrip
         status={error ? "error" : loading && !data ? "loading" : "connected"}
         accountId={data?.accountId ?? null}
@@ -135,7 +174,10 @@ export function MetaAdsPageClient() {
         cacheState={lastFetchWasFresh ? "fresh" : cacheState}
         lastSyncedAt={data?.lastFetchedAt ?? null}
       />
+      )}
 
+      {tab === "overview" && (
+      <>
       {/* Filter bar */}
       <div className="flex flex-wrap items-center gap-4">
         <select
@@ -214,6 +256,33 @@ export function MetaAdsPageClient() {
           )}
         </div>
       )}
+      </>
+      )}
+
+      {tab === "recommendations" && (
+        <div className="grid lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            <MetaAdsRecommendationsPanel
+              onRefresh={() => fetchData({ skipCache: true })}
+              onData={(d) => setLastGenerated(d.lastGenerated)}
+            />
+          </div>
+          <div>
+            <MetaAdsExplainabilityCard
+              mode={settingsSummary?.mode ?? "manual"}
+              dryRun={settingsSummary?.dryRun ?? true}
+              targetCpl={settingsSummary?.targetCpl ?? null}
+              minSpend={settingsSummary?.minSpend ?? 20}
+              minImpressions={settingsSummary?.minImpressions ?? 100}
+              lastGenerated={lastGenerated}
+            />
+          </div>
+        </div>
+      )}
+
+      {tab === "actions" && <MetaAdsActionHistoryPanel />}
+
+      {tab === "settings" && <MetaAdsSettingsPanel />}
     </div>
   );
 }

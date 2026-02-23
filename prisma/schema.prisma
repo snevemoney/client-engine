@@ -457,3 +457,68 @@ model LearningProposal {
   @@index([category])
   @@index([systemArea])
 }
+
+// ----- Meta Ads Control Center V3 (recommendations + approvals + audit) -----
+
+/** Recommendation lifecycle: queued → approved/dismissed → applied/failed */
+model MetaAdsRecommendation {
+  id           String    @id @default(cuid())
+  accountId    String
+  entityType   String    // campaign | adset | ad
+  entityId     String
+  entityName   String    @db.Text
+  ruleKey      String
+  severity     String    // info | warn | critical
+  confidence   String    // low | medium | high
+  status       String    // queued | approved | dismissed | applied | failed
+  actionType   String    // pause | resume | increase_budget | decrease_budget | refresh_creative | wait
+  actionPayload Json     @default("{}")
+  evidence     Json      @default("{}")  // spend, leads, cpl, ctr, cpc, cpm, frequency, delivery, learning
+  reason       String    @db.Text
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  approvedAt   DateTime?
+  appliedAt    DateTime?
+  dismissedAt  DateTime?
+
+  @@index([accountId, status, createdAt])
+}
+
+/** Audit log for every Meta Ads action (manual or rule-triggered) */
+model MetaAdsActionLog {
+  id               String   @id @default(cuid())
+  recommendationId String?
+  accountId        String
+  entityType       String
+  entityId         String
+  entityName       String   @db.Text
+  actionType       String
+  actionPayload    Json     @default("{}")
+  mode             String   // manual | approve_required | auto_safe | dry_run
+  triggeredBy      String   // user | rule_engine
+  dryRun           Boolean  @default(false)
+  status           String   // success | failed | simulated
+  message          String?  @db.Text
+  metaResponse     Json?
+  createdAt        DateTime @default(now())
+
+  @@index([accountId, createdAt])
+}
+
+/** Single row per account — automation settings and guardrails */
+model MetaAdsAutomationSettings {
+  id                        String   @id @default(cuid())
+  accountId                 String   @unique
+  mode                      String   @default("manual")  // manual | approve_required | auto_safe
+  dryRun                    Boolean  @default(true)
+  targetCpl                 Float?
+  minSpendForDecision       Float    @default(20)
+  minImpressionsForDecision Int      @default(100)
+  maxBudgetIncreasePctPerAction Float @default(10)
+  maxBudgetIncreasePctPerDay   Float  @default(20)
+  allowChangesDuringLearning Boolean @default(false)
+  protectedCampaignIds      Json     @default("[]")  // string[]
+  updatedAt                 DateTime @updatedAt
+
+  @@index([accountId])
+}

@@ -119,9 +119,60 @@ If pause/resume fails: token may lack `ads_management`. Check Asset Health page 
 | No prior period data | KPI cards show no trend arrows |
 | Partial asset-health fetch | Page shows partial data; some checks warn/fail |
 
-## Limitations (V2)
+## V3 Recommendations lifecycle
 
-- Pause/resume only. No budget edits, campaign creation, or creative changes.
+1. **Generate** — Click Generate in Recommendations tab. Rules run on current dashboard data (7d range). Recommendations are stored as `queued`.
+2. **Review** — Each recommendation shows rule, evidence (spend, leads, CPL, etc.), severity, confidence.
+3. **Approve / Dismiss** — Approve to enable Apply; Dismiss to hide.
+4. **Apply** — Executes the Meta action (pause, resume, budget). Respects Settings dry-run.
+5. **Audit** — Every apply writes to Action History. Status: success, failed, or simulated (dry-run).
+
+## Approval flow
+
+- **queued** → Approve → **approved** → Apply → **applied** (or **failed**)
+- **queued** → Dismiss → **dismissed**
+- **approved** / **dismissed** → Reset → **queued**
+
+Apply requires approval unless you pass `forceQueued: true` (not exposed in UI by default).
+
+## Dry-run mode
+
+- **ON** (default): Apply simulates the action, writes to Action History as `simulated`, does not call Meta API.
+- **OFF**: Apply executes real Meta API call. Toggle in Settings.
+
+## Guardrails
+
+- No autonomous scheduler. All applies are explicit user clicks.
+- refresh_creative and wait are recommendation-only — no Meta write.
+- Budget changes: ad set level only (documented).
+- Protected campaign IDs: rules skip these entities.
+
+## What actions are safe vs not yet automated
+
+| Action | Automated? | Notes |
+|--------|------------|------|
+| Pause campaign/adset/ad | Yes | Via Apply |
+| Resume campaign/adset/ad | Yes | Via Apply |
+| Increase ad set budget | Yes | Ad set only, % increase |
+| Decrease ad set budget | Yes | Ad set only |
+| Refresh creative | No | Recommendation only |
+| Campaign budget | No | Ad set only supported |
+
+## Testing (Tier A / Tier B)
+
+**Tier A (local automated):**
+- `npm run test -- src/lib/meta-ads/recommendations-rules.test.ts` — rules engine unit tests
+
+**Tier B (manual, MCP/browser):**
+1. Meta Ads page loads; tabs Overview, Recommendations, Action History, Settings
+2. Generate recommendations (requires dashboard data)
+3. Approve/dismiss recommendations
+4. Apply in dry-run — Action History shows `simulated`
+5. Turn dry-run OFF in Settings; Apply a real pause — verify in Ads Manager
+6. Settings persist after save
+
+**Dry-run first:** Always test with dry-run ON before turning off.
+
 - Single account. Multi-account support is a future enhancement.
 - Lead metrics depend on Meta Pixel/CAPI Lead events being set up.
 - Cache: 10 min TTL. Click Refresh with bypass for fresh data.
