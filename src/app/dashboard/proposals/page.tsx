@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { db } from "@/lib/db";
 import { ProposalsWorkspace } from "@/components/dashboard/proposals/ProposalsWorkspace";
 
