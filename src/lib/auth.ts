@@ -43,9 +43,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           e2eAllow &&
           e2eEmail &&
           devPassword &&
-          String(password).replace(/\s/g, "").trim() === String(devPassword).replace(/\s/g, "").trim()
+          email === e2eEmail &&
+          password === devPassword
         ) {
-          // Log in as E2E_EMAIL (ignore client email to avoid encoding/case issues)
           let user = await db.user.findFirst({
             where: { email: { equals: e2eEmail, mode: "insensitive" } },
           });

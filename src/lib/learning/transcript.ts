@@ -368,7 +368,7 @@ async function realFetchTranscript(videoId: string, videoUrl: string): Promise<F
     primaryError = err instanceof Error ? err.message : String(err);
   }
 
-  const fallback = await fetchTranscriptInternalFallback(videoId);
+  let fallback = await fetchTranscriptInternalFallback(videoId);
   if (fallback.ok) return fallback;
 
   try {

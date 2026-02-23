@@ -4,7 +4,7 @@
  */
 
 import { db } from "@/lib/db";
-import { getCachedSystemLead } from "./cached";
+import { getOrCreateSystemLead } from "./systemLead";
 
 /** Shared with client; do not add server-only imports to this constant. */
 export const MONETIZATION_ROLES = [
@@ -24,7 +24,7 @@ const ARTIFACT_TITLE = "MONETIZATION_MAP";
 export type ProjectMonetizationMap = Record<string, MonetizationRole[]>;
 
 export async function getMonetizationMap(): Promise<ProjectMonetizationMap> {
-  const leadId = await getCachedSystemLead();
+  const leadId = await getOrCreateSystemLead();
   const artifact = await db.artifact.findFirst({
     where: { leadId, type: ARTIFACT_TYPE, title: ARTIFACT_TITLE },
     orderBy: { createdAt: "desc" },
@@ -42,7 +42,7 @@ export async function getMonetizationMap(): Promise<ProjectMonetizationMap> {
 }
 
 export async function updateMonetizationMap(projectRoles: ProjectMonetizationMap): Promise<void> {
-  const leadId = await getCachedSystemLead();
+  const leadId = await getOrCreateSystemLead();
   const existing = await db.artifact.findFirst({
     where: { leadId, type: ARTIFACT_TYPE, title: ARTIFACT_TITLE },
     orderBy: { createdAt: "desc" },

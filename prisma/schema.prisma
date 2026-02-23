@@ -65,16 +65,10 @@ model Lead {
   touchCount            Int       @default(0)
   artifacts             Artifact[]
   project               Project?
-
-  @@index([status])
-  @@index([createdAt])
-  @@index([source])
   pipelineRuns          PipelineRun[]
   touches               LeadTouch[]
   referralsReceived     LeadReferral[] @relation("ReferralsForLead")
   attributions          LeadAttribution[]
-  buildTasksLinked      BuildTask[]
-  reusableAssetLogs     ReusableAssetLog[]
 }
 
 enum LeadStatus {
@@ -134,9 +128,6 @@ model Artifact {
   content   String   @db.Text
   meta      Json?
   createdAt DateTime @default(now())
-
-  @@index([leadId])
-  @@index([leadId, createdAt])
 }
 
 model Project {
@@ -154,7 +145,6 @@ model Project {
   status       String   @default("draft")
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
-  reusableAssetLogs ReusableAssetLog[]
 }
 
 model PipelineRun {
@@ -170,9 +160,6 @@ model PipelineRun {
   lastErrorCode String?
   lastErrorAt   DateTime?
   steps         PipelineStepRun[]
-
-  @@index([leadId])
-  @@index([leadId, startedAt])
 }
 
 model PipelineStepRun {
@@ -296,68 +283,4 @@ model ProofAsset {
   channelContentIdeas   String[] @default([]) // e.g. "LinkedIn post on X"
   linkedArtifactIds     String[] @default([]) // proposal/content artifact IDs
   createdAt             DateTime @default(now())
-}
-
-// ----- Build Ops / Code Ops (Cloud Agent queue) -----
-
-/** Build task: bug, feature, refactor, guardrail, template. Trackable work for Cursor Cloud Agent. */
-model BuildTask {
-  id                   String    @id @default(cuid())
-  title                String
-  type                 String    // bug | feature | refactor | guardrail | template
-  priority             String    @default("medium") // low | medium | high
-  linkedLeadId         String?
-  linkedLead           Lead?     @relation(fields: [linkedLeadId], references: [id])
-  linkedCriticismItem  String?   @db.Text  // optional ref to weekly critic item
-  expectedOutcome      String?   @db.Text
-  status               String    @default("todo") // todo | in_progress | review | done
-  cursorPrompt         String?   @db.Text  // exact prompt given to Cloud Agent
-  prSummary            String?   @db.Text  // what changed
-  humanApproved        Boolean   @default(false)
-  businessImpact       String?   // Acquire | Deliver | Improve
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
-
-  @@index([status])
-  @@index([type])
-}
-
-// ----- Reusable Asset Log (leverage from delivered work) -----
-
-/** Log of reusable leverage extracted from a delivered client project. Human-driven. */
-model ReusableAssetLog {
-  id               String   @id @default(cuid())
-  leadId           String?
-  lead             Lead?    @relation(fields: [leadId], references: [id])
-  projectId        String?
-  project          Project? @relation(fields: [projectId], references: [id])
-  assetType        String   // template | component | workflow | prompt_pack | checklist | case_study | prompt_pattern | sales_script | sop_playbook
-  label            String?  @db.Text  // short name or "None" when none extracted
-  reasonNone       String?  @db.Text  // when no asset: reason (e.g. "one-off, not reusable")
-  notes            String?  @db.Text  // what makes it reusable
-  reusabilityScore Int?     // 1-5
-  whereStored      String?  @db.Text  // path, link, or "Notion doc X"
-  canProductize    String?  // yes | no | maybe
-  createdAt        DateTime @default(now())
-
-  @@index([leadId])
-  @@index([projectId])
-  @@index([createdAt])
-}
-
-// ----- Operator Copilot: approved action execution log -----
-
-/** Log of actions executed by the operator copilot (chat approve → execute). */
-model OperatorActionRun {
-  id             String    @id @default(cuid())
-  actionName     String
-  input          Json      @default("{}")
-  approvedBy     String    // User id from session
-  status         String    // queued | running | success | fail
-  resultSummary  String?   @db.Text
-  error          String?   @db.Text
-  createdAt      DateTime  @default(now())
-
-  @@index([actionName])
-  @@index([createdAt])
 }

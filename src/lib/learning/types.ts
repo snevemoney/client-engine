@@ -30,22 +30,7 @@ export type ProducedAssetType =
   | "proposal_template"
   | "case_study"
   | "automation"
-  | "knowledge_only"
-  | "proposal_improvement"
-  | "outreach_script"
-  | "sales_objection_script"
-  | "service_package_refinement"
-  | "delivery_sop"
-  | "qa_checklist"
-  | "nothing_yet";
-
-/** Learning → Action: proposed action type for this proposal. */
-export type ProposedActionType =
-  | "no_action"
-  | "experiment"
-  | "playbook_update"
-  | "sales_script_update"
-  | "offer_update";
+  | "knowledge_only";
 
 /** Meta on ENGINE_IMPROVEMENT_PROPOSAL artifact: curation and promotion. */
 export type LearningProposalMeta = {
@@ -53,20 +38,6 @@ export type LearningProposalMeta = {
   promotedAt?: string; // ISO
   producedAssetType?: ProducedAssetType;
   contradictionIds?: string[]; // artifact IDs this contradicts (optional)
-  /** Source quality: manual or heuristic (e.g. from transcript clarity) */
-  sourceQuality?: "high" | "medium" | "low";
-  /** Category for filtering: sales | ops | delivery | AI | positioning | mindset */
-  category?: "sales" | "ops" | "delivery" | "AI" | "positioning" | "mindset";
-  /** Contradicts existing playbook? If yes, which (id or name). */
-  contradictsPlaybook?: boolean;
-  playbookIdOrName?: string;
-  /** Proposed action type (experiment, playbook update, etc.). */
-  proposedActionType?: ProposedActionType;
-  /** Did this produce a revenue-related asset? */
-  producedRevenueAsset?: boolean;
-  producedRevenueAssetWhat?: string;
-  /** Rollback note if change was applied and didn't work. */
-  rollbackNote?: string;
 };
 
 export type EngineImprovementProposal = {

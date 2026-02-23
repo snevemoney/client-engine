@@ -20,21 +20,14 @@ import {
   BookOpen,
   Library,
   Menu,
-  Wrench,
-  Activity,
-  Target,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { Sheet } from "@/components/ui/sheet";
 
 const primaryNav = [
   { href: "/dashboard/command", label: "Command Center", icon: LayoutDashboard },
-  { href: "/dashboard/ops-health", label: "Ops Health", icon: Activity },
-  { href: "/dashboard/sales-leak", label: "Sales Leak", icon: TrendingUp },
-  { href: "/dashboard/results", label: "Results Ledger", icon: Target },
   { href: "/dashboard/leads", label: "Leads", icon: Inbox },
   { href: "/dashboard/proposals", label: "Proposals", icon: FileText },
-  { href: "/dashboard/build-ops", label: "Build Ops", icon: Wrench },
   { href: "/dashboard/metrics", label: "Metrics", icon: BarChart3 },
   { href: "/work", label: "Website / Work", icon: Briefcase },
   { href: "/dashboard/chat", label: "Chatbot", icon: MessageSquare },

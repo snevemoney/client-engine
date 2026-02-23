@@ -1,11 +1,5 @@
-# Log rotation (max-size 10m, max-file 3) prevents container logs from filling disk.
 services:
   app:
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
     build:
       context: .
       target: runner
@@ -20,11 +14,6 @@ services:
     restart: unless-stopped
 
   worker:
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
     build:
       context: .
       target: worker
@@ -38,11 +27,6 @@ services:
     restart: unless-stopped
 
   postgres:
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
     image: postgres:16-alpine
     volumes:
       - pgdata:/var/lib/postgresql/data
@@ -58,11 +42,6 @@ services:
     restart: unless-stopped
 
   redis:
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
     image: redis:7-alpine
     volumes:
       - redisdata:/data

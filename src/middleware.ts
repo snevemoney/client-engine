@@ -7,6 +7,7 @@ export default auth((req) => {
 
   const isProtected = pathname.startsWith("/dashboard");
   const isLoginPage = pathname === "/login";
+  const isApi = pathname.startsWith("/api");
 
   if (isProtected && !isLoggedIn) {
     const loginUrl = new URL("/login", req.nextUrl.origin);

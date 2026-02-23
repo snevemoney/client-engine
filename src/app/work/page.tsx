@@ -1,10 +1,9 @@
 import Link from "next/link";
-import Image from "next/image";
 import { db } from "@/lib/db";
 import { ArrowLeft, ArrowRight } from "lucide-react";
-import { SiteFooter } from "@/components/site/SiteFooter";
+import { LeadCaptureForm } from "@/components/site/LeadCaptureForm";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 export default async function WorkPage() {
   let projects: Awaited<ReturnType<typeof db.project.findMany>> = [];
@@ -12,7 +11,6 @@ export default async function WorkPage() {
     projects = await db.project.findMany({
       where: { status: { not: "archived" } },
       orderBy: { createdAt: "desc" },
-      take: 50,
     });
   } catch (err) {
     console.error("[work] Failed to load projects:", err);
@@ -38,9 +36,9 @@ export default async function WorkPage() {
           <p className="text-neutral-400 text-sm mb-2">Proof of execution</p>
           <h1 className="text-3xl font-light tracking-tight mb-2">Work</h1>
           <p className="text-neutral-400 mb-4">Selected projects and case studies. Want similar outcomes for your business?</p>
-          <Link href="/#contact" className="inline-flex items-center gap-2 bg-white text-neutral-900 px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-neutral-200 transition-colors">
+          <a href="/#contact" className="inline-flex items-center gap-2 bg-white text-neutral-900 px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-neutral-200 transition-colors">
             Request a workflow audit <ArrowRight className="w-4 h-4" />
-          </Link>
+          </a>
         </div>
 
         {projects.length === 0 ? (
@@ -57,13 +55,11 @@ export default async function WorkPage() {
                 className="border border-neutral-800/50 rounded-xl p-6 hover:border-neutral-700/50 transition-colors group"
               >
                 {p.screenshots.length > 0 && (
-                  <div className="rounded-lg overflow-hidden mb-4 border border-neutral-800/30 relative h-40">
-                    <Image
+                  <div className="rounded-lg overflow-hidden mb-4 border border-neutral-800/30">
+                    <img
                       src={p.screenshots[0]}
                       alt={p.name}
-                      fill
-                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                      className="object-cover object-top"
+                      className="w-full h-40 object-cover object-top"
                     />
                   </div>
                 )}
@@ -84,15 +80,23 @@ export default async function WorkPage() {
           <div className="mt-16 rounded-lg border border-neutral-800 bg-neutral-900/50 p-6">
             <h2 className="text-lg font-medium mb-2">Want this for your business?</h2>
             <p className="text-neutral-400 text-sm mb-4">Request a workflow audit. One clear next step.</p>
-            <Link href="/#contact" className="inline-flex items-center gap-2 bg-white text-neutral-900 px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-neutral-200 transition-colors">
+            <a href="/#contact" className="inline-flex items-center gap-2 bg-white text-neutral-900 px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-neutral-200 transition-colors">
               Request a workflow audit <ArrowRight className="w-4 h-4" />
-            </Link>
+            </a>
           </div>
           </>
         )}
       </main>
 
-      <SiteFooter className="mt-12" />
+      <footer className="border-t border-neutral-800/50 py-8 mt-12">
+        <div className="mx-auto max-w-6xl px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <span className="text-sm text-neutral-500">&copy; {new Date().getFullYear()} Evens Louis</span>
+          <div className="flex items-center gap-6 text-sm text-neutral-500">
+            <Link href="/work" className="hover:text-neutral-300 transition-colors">Work</Link>
+            <a href="mailto:contact@evenslouis.ca" className="hover:text-neutral-300 transition-colors">Email</a>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

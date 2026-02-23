@@ -4,9 +4,10 @@
  */
 
 import { buildBrief } from "@/lib/orchestrator/brief";
-import { getCachedConstraintSnapshot, getCachedSystemLead } from "./cached";
+import { getConstraintSnapshot } from "./constraint";
 import { getTopImprovementSuggestions } from "@/lib/knowledge/ingest";
 import { db } from "@/lib/db";
+import { getOrCreateSystemLead } from "./systemLead";
 import type { OperatorBrief } from "./types";
 
 const ARTIFACT_TITLE = "OPERATOR_BRIEFING";
@@ -15,7 +16,7 @@ export async function generateOperatorBrief(): Promise<OperatorBrief> {
   const at = new Date().toISOString();
   const [brief, constraint, recentErrors, knowledgeSuggestions] = await Promise.all([
     buildBrief(),
-    getCachedConstraintSnapshot(),
+    getConstraintSnapshot(),
     db.pipelineRun.findMany({
       where: { success: false },
       orderBy: { lastErrorAt: "desc" },
@@ -130,7 +131,7 @@ export async function generateOperatorBrief(): Promise<OperatorBrief> {
     },
   };
 
-  const systemLeadId = await getCachedSystemLead();
+  const systemLeadId = await getOrCreateSystemLead();
   await db.artifact.create({
     data: {
       leadId: systemLeadId,

@@ -9,10 +9,10 @@ export default async function MetricsPage() {
   const [runs, stepCounts, constraint, scorecard, lastRunReport, recentFailures] = await Promise.all([
     db.pipelineRun.findMany({
       orderBy: { startedAt: "desc" },
-      take: 30,
+      take: 50,
       include: {
         lead: { select: { id: true, title: true } },
-        steps: { select: { stepName: true, success: true, notes: true } },
+        steps: true,
       },
     }),
     db.pipelineStepRun.groupBy({

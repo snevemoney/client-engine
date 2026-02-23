@@ -4,8 +4,8 @@
  */
 
 import { db } from "@/lib/db";
-import { getCachedConstraintSnapshot } from "./cached";
-import { getCachedOperatorSettings } from "./cached";
+import { getConstraintSnapshot } from "./constraint";
+import { getOperatorSettings } from "./settings";
 import type { MoneyScorecard } from "./types";
 
 const RECENT_DAYS = 30;
@@ -27,7 +27,6 @@ export async function getMoneyScorecard(): Promise<MoneyScorecard> {
   const [leads, dealsWon90dCount] = await Promise.all([
   db.lead.findMany({
     where: { createdAt: { gte: since } },
-    take: 500,
     select: {
       score: true,
       budget: true,
@@ -110,21 +109,14 @@ export async function getMoneyScorecard(): Promise<MoneyScorecard> {
       },
     },
   });
-  // Assumption: "calls booked" approximated by CALL-type touches (TouchType has no CALL_BOOKED)
-  const callsBooked7d = await db.leadTouch.count({
-    where: {
-      type: "CALL",
-      createdAt: { gte: sevenDaysAgo },
-    },
-  });
   const staleOpportunitiesCount = sentNoOutcome.filter(
     (l) => l.proposalSentAt && new Date(l.proposalSentAt) < staleCutoff
   ).length;
   const revenueWon30d = won.reduce((sum, l) => sum + (parseBudget(l.budget) ?? 0), 0) || null;
 
   const [constraint, operatorSettings] = await Promise.all([
-    getCachedConstraintSnapshot(),
-    getCachedOperatorSettings(),
+    getConstraintSnapshot(),
+    getOperatorSettings(),
   ]);
   const primaryBottleneck = constraint ? `${constraint.label}: ${constraint.reason}` : null;
   const constraintImpactNote = constraint
@@ -149,7 +141,7 @@ export async function getMoneyScorecard(): Promise<MoneyScorecard> {
     qualifiedLeads7d: qualified7d,
     proposalsSent7d,
     followUpsDueToday,
-    callsBooked: callsBooked7d,
+    callsBooked: null,
     revenueWon30d,
     dealsWon90d: dealsWon90dCount,
     staleOpportunitiesCount,

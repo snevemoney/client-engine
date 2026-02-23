@@ -1,11 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Play } from "lucide-react";
 
 export function WorkdayRunCard({ lastRunAt }: { lastRunAt: string | null }) {
-  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; at?: string; research?: { created: number }; pipeline?: { runs: number; retries: number } } | null>(null);
 
@@ -17,9 +15,6 @@ export function WorkdayRunCard({ lastRunAt }: { lastRunAt: string | null }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Run failed");
       setResult(data);
-      if (data.ok) {
-        router.refresh();
-      }
     } catch (e) {
       setResult({ ok: false });
     } finally {

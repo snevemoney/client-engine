@@ -18,10 +18,6 @@
 | `/dashboard/proposals/[id]` | Proposal console (edit sections, toggles) | Yes |
 | `/dashboard/metrics` | Pipeline metrics | Yes |
 | `/dashboard/command` | Command center / brief | Yes |
-| `/dashboard/ops-health` | Ops health | Yes |
-| `/dashboard/sales-leak` | Sales leak | Yes |
-| `/dashboard/results` | Results ledger | Yes |
-| `/dashboard/build-ops` | Build ops | Yes |
 | `/dashboard/chat` | Ops chat | Yes |
 | `/dashboard/knowledge` | Knowledge engine | Yes |
 | `/dashboard/learning` | Learning engine | Yes |
@@ -117,6 +113,7 @@
 - `POST /api/portfolio/[id]` — Portfolio
 - `GET /api/followup/[leadId]` — Follow-up
 - `POST /api/followup/[leadId]` — Follow-up action
+- `POST /api/copilot/lead/[id]` — Legacy copilot
 - `POST /api/research/run` — Research run
 - `POST /api/capture` — Capture (may be public for site form)
 - `POST /api/site/leads` — Site leads (often public)
@@ -144,12 +141,12 @@
 - **smoke.spec.ts** — GET /api/health 200, ok true, checks.
 - **proof-api.spec.ts** — Proof/checklist generate 401 without auth.
 - **lead-copilot.spec.ts** — Copilot 401 without auth; (optional) lead detail + Ask Copilot UI.
-- **pages.spec.ts** — Login + visit all dashboard pages (command, ops-health, sales-leak, results, leads, proposals, build-ops, metrics, work, chat, learning, settings, proof, checklist, deploys, conversion, knowledge), leads/new, home.
+- **pages.spec.ts** — Login + visit dashboard, proposals, deploys, metrics, settings, leads/new, home.
 - **full-flow.spec.ts** — Login → dashboard → metrics → new lead → metrics (enrich visible).
-- **prod.spec.ts** — Production audit: health + DB checks, every page, silent-fail API checks, key flow, render speed (see §8).
 
 **Gaps to cover (this audit):**
-- API 401 tests for a representative set of protected endpoints (api-auth.spec.ts covers many).
+- All dashboard pages (command, chat, knowledge, learning, proof, checklist, conversion).
+- API 401 tests for a representative set of protected endpoints.
 - Optional: lead detail and proposal detail by id (with real id from DB or fixture).
 
 ---
@@ -205,27 +202,3 @@ USE_EXISTING_SERVER=1 PLAYWRIGHT_BASE_URL=https://evenslouis.ca npm run test:e2e
 ```
 
 **Expected:** Smoke script exit 0; 21 E2E tests pass, 5 skip (login). To run all 26 against prod, set `E2E_EMAIL` and `E2E_PASSWORD` to valid production credentials.
-
----
-
-## 8. Production full audit (every page, flows, DB, silent fails, speed)
-
-**prod.spec.ts** runs a dedicated production checklist:
-
-| What | How |
-|------|-----|
-| **Health + DB** | GET /api/health 200, ok true, checks.db + checks.pipelineTables + authSecret + nextAuthUrl |
-| **Every page** | Login, then visit all 21 routes (/, /login, all dashboard + /work); expect status &lt; 500, body visible |
-| **Silent fails** | After login: GET /api/leads → 200 and body is array; GET /api/ops/command → 200 and body is object/array |
-| **Key flow** | Login → metrics → new lead → metrics shows "enrich" (pipeline ran) |
-| **Render speed** | Critical pages (command, leads, metrics) must load within 15s (domcontentloaded) |
-
-Run against production (with valid credentials so login-dependent tests run):
-
-```bash
-USE_EXISTING_SERVER=1 PLAYWRIGHT_BASE_URL=https://evenslouis.ca \
-  E2E_EMAIL=your@email.com E2E_PASSWORD=yourpassword \
-  npm run test:e2e tests/e2e/prod.spec.ts
-```
-
-Without credentials, health + public-pages tests run; every-page, silent-fail, flow and speed tests are skipped (login required).

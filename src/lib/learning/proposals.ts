@@ -67,7 +67,7 @@ Generate one engine improvement proposal as JSON. sourceVideo: "${videoUrl}".`;
     const risk = RISK_LEVELS.includes(parsed.risk as EngineImprovementProposal["risk"])
       ? (parsed.risk as EngineImprovementProposal["risk"])
       : "med";
-    const applyTarget = typeof parsed.applyTarget === "string" && APPLY_TARGETS.includes(parsed.applyTarget as NonNullable<EngineImprovementProposal["applyTarget"]>)
+    const applyTarget = typeof parsed.applyTarget === "string" && APPLY_TARGETS.includes(parsed.applyTarget as any)
       ? (parsed.applyTarget as EngineImprovementProposal["applyTarget"])
       : undefined;
 

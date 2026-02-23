@@ -10,9 +10,6 @@ test("debug login", async ({ page }) => {
   await page.getByRole("button", { name: /sign in/i }).click();
   await page.waitForTimeout(5000);
   const url = page.url();
-  if (url.includes("/login")) {
-    test.skip(true, "Login failed (credentials not configured for this env)");
-    return;
-  }
-  expect(url).toContain("dashboard");
+  const bodyText = await page.locator("body").textContent();
+  expect(url, `Final URL: ${url}. Body snippet: ${bodyText?.slice(0, 500)}`).toContain("dashboard");
 });

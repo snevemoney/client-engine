@@ -147,7 +147,6 @@ export type FollowUpDisciplineMetrics = {
   touched7PlusNotWonCount: number;
   status: "ok" | "leak";
   overdueLeads: { id: string; title: string; company: string | null; daysOverdue: number }[];
-  dueTodayLeads: { id: string; title: string; company: string | null; nextContactAt: string }[];
 };
 
 /** Referral engine metrics for Command Center card. */

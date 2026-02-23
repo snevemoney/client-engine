@@ -17,24 +17,20 @@ test.describe("All pages", () => {
 
     const pages: { url: string; name: string }[] = [
       { url: "/dashboard", name: "Dashboard" },
-      { url: "/dashboard/command", name: "Command" },
-      { url: "/dashboard/ops-health", name: "Ops Health" },
-      { url: "/dashboard/sales-leak", name: "Sales Leak" },
-      { url: "/dashboard/results", name: "Results Ledger" },
       { url: "/dashboard/leads", name: "Leads" },
       { url: "/dashboard/leads/new", name: "New lead" },
       { url: "/dashboard/proposals", name: "Proposals" },
-      { url: "/dashboard/build-ops", name: "Build Ops" },
       { url: "/dashboard/metrics", name: "Metrics" },
-      { url: "/work", name: "Work" },
+      { url: "/dashboard/command", name: "Command" },
       { url: "/dashboard/chat", name: "Chat" },
+      { url: "/dashboard/knowledge", name: "Knowledge" },
       { url: "/dashboard/learning", name: "Learning" },
-      { url: "/dashboard/settings", name: "Settings" },
       { url: "/dashboard/proof", name: "Proof" },
       { url: "/dashboard/checklist", name: "Checklist" },
-      { url: "/dashboard/deploys", name: "Deploys" },
       { url: "/dashboard/conversion", name: "Conversion" },
-      { url: "/dashboard/knowledge", name: "Knowledge" },
+      { url: "/dashboard/deploys", name: "Deploys" },
+      { url: "/dashboard/settings", name: "Settings" },
+      { url: "/work", name: "Work" },
     ];
 
     for (const { url, name } of pages) {

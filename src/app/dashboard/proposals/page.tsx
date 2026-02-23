@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { db } from "@/lib/db";
 import { ProposalsWorkspace } from "@/components/dashboard/proposals/ProposalsWorkspace";
 
@@ -26,7 +27,6 @@ async function getProposalInbox(): Promise<{
   const leads = await db.lead.findMany({
     where: { status: { not: "REJECTED" } },
     orderBy: { updatedAt: "desc" },
-    take: 200,
     include: {
       artifacts: {
         where: {

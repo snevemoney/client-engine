@@ -21,7 +21,6 @@ export async function getFollowUpDisciplineMetrics(): Promise<FollowUpDiscipline
       status: { notIn: ["REJECTED"] },
       dealOutcome: { not: "won" },
     },
-    take: 500,
     select: {
       id: true,
       title: true,
@@ -81,23 +80,6 @@ export async function getFollowUpDisciplineMetrics(): Promise<FollowUpDiscipline
     .sort((a, b) => a.daysOverdue - b.daysOverdue)
     .slice(0, 10);
 
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const dueTodayLeads = withNextDue
-    .filter(
-      (l) =>
-        l.nextContactAt &&
-        new Date(l.nextContactAt) >= todayStart &&
-        new Date(l.nextContactAt) <= todayEnd
-    )
-    .map((l) => ({
-      id: l.id,
-      title: l.title,
-      company: null as string | null,
-      nextContactAt: l.nextContactAt!.toISOString(),
-    }))
-    .sort((a, b) => new Date(a.nextContactAt).getTime() - new Date(b.nextContactAt).getTime())
-    .slice(0, 20);
-
   const status: "ok" | "leak" =
     overdueCount > 0 || (noTouchIn7DaysCount > 0 && activeOpen.length > 0) ? "leak" : "ok";
 
@@ -111,6 +93,5 @@ export async function getFollowUpDisciplineMetrics(): Promise<FollowUpDiscipline
     touched7PlusNotWonCount,
     status,
     overdueLeads,
-    dueTodayLeads,
   };
 }

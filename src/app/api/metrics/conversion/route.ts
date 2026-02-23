@@ -23,7 +23,7 @@ export async function GET() {
       dealOutcome: true,
     },
     orderBy: { createdAt: "desc" },
-    take: 500,
+    take: 5000,
   });
 
   const total = leads.length;

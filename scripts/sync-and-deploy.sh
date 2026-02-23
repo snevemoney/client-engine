@@ -36,8 +36,8 @@ rsync -avz --delete \
   "$ROOT/" "$SERVER:$REMOTE_DIR/"
 
 # 3) Run deploy on server
-echo "==> Running deploy-fast on server..."
-ssh -o ConnectTimeout=15 "$SERVER" "cd $REMOTE_DIR && bash scripts/deploy-fast.sh"
+echo "==> Running deploy.sh on server..."
+ssh -o ConnectTimeout=15 "$SERVER" "cd $REMOTE_DIR && bash deploy.sh"
 
 # 4) Health check
 echo "==> Health check..."

@@ -18,13 +18,7 @@
     "test:e2e:dry": "PIPELINE_DRY_RUN=1 playwright test",
     "smoke": "PIPELINE_DRY_RUN=1 playwright test tests/e2e/smoke.spec.ts tests/e2e/full-flow.spec.ts tests/e2e/proof-api.spec.ts",
     "script:research-lead": "node scripts/create-research-lead.mjs",
-    "research:run": "npx tsx scripts/research-run.ts",
-    "deploy": "bash scripts/deploy-remote.sh",
-    "deploy:full": "bash scripts/deploy-remote.sh --full",
-    "ops:deploy:fast": "bash scripts/deploy-fast.sh",
-    "ops:deploy:safe": "bash scripts/deploy-safe.sh",
-    "ops:logs": "bash scripts/watch-prod.sh",
-    "ops:health": "curl -sf http://127.0.0.1:3200/api/health 2>/dev/null || curl -sf https://evenslouis.ca/api/health"
+    "research:run": "npx tsx scripts/research-run.ts"
   },
   "prisma": {
     "seed": "node prisma/seed.mjs"

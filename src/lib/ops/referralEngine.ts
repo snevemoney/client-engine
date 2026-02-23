@@ -39,7 +39,6 @@ export async function getReferralEngineMetrics(): Promise<ReferralEngineMetrics>
       select: { id: true, status: true, sourceLeadId: true },
     }),
     db.leadReferral.findMany({
-      take: 500,
       select: { id: true, status: true },
     }),
     db.lead.findMany({

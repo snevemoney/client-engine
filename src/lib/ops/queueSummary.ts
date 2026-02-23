@@ -13,7 +13,6 @@ export type QueueSummary = {
 export async function getQueueSummary(): Promise<QueueSummary> {
   const leads = await db.lead.findMany({
     where: { status: { not: "REJECTED" } },
-    take: 500,
     select: {
       status: true,
       enrichedAt: true,

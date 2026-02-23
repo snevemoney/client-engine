@@ -1,67 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { buildBrief } from "@/lib/orchestrator/brief";
+import { getConstraintSnapshot } from "@/lib/ops/constraint";
 import { getLatestOperatorBrief } from "@/lib/ops/operatorBrief";
 import { getExecutiveBriefContext } from "@/lib/ops/executiveBrief";
 import { getRecentOperatorFeedbackNotes } from "@/lib/ops/feedback";
 import { getLearningContextForChat } from "@/lib/learning/ingest";
 import { getKnowledgeContextForChat } from "@/lib/knowledge/ingest";
 import { getTopRoiSummariesForChat } from "@/lib/revenue/roi";
-import { getFailuresAndInterventions } from "@/lib/ops/failuresInterventions";
-import { getOpsHealth } from "@/lib/ops/opsHealth";
-import { getRegisteredActions } from "@/lib/ops/actions/registry";
 import { chat } from "@/lib/llm";
-
-const LLM_RESPONSE_SCHEMA = z.object({
-  answer: z.string(),
-  data_gaps: z.array(z.string()).optional().default([]),
-  sources_used: z.array(z.string()).optional().default([]),
-  confidence: z.enum(["high", "medium", "low"]).optional().default("medium"),
-});
-
-type SuggestedAction =
-  | { type: "link"; label: string; href: string }
-  | {
-      type: "executable";
-      action: string;
-      label: string;
-      reason?: string;
-      risk?: "low" | "medium" | "high";
-      requiresApproval: boolean;
-    };
-
-function buildDynamicSuggestedActions(failures: {
-  failedPipelineRunsCount: number;
-}): SuggestedAction[] {
-  const registered = getRegisteredActions();
-  const actions: SuggestedAction[] = [];
-
-  if (failures.failedPipelineRunsCount > 0 && registered.includes("retry_failed_pipeline_runs")) {
-    actions.push({
-      type: "executable",
-      action: "retry_failed_pipeline_runs",
-      label: `Retry ${failures.failedPipelineRunsCount} failed pipeline run(s)`,
-      reason: "Pipeline runs failed with retryable errors (e.g. rate limit).",
-      risk: "low",
-      requiresApproval: true,
-    });
-  }
-
-  if (failures.failedPipelineRunsCount > 0) {
-    actions.push({ type: "link", label: "Open Metrics", href: "/dashboard/metrics" });
-  }
-  actions.push(
-    { type: "link", label: "Open Command Center", href: "/dashboard/command" },
-    { type: "link", label: "Open Proposals", href: "/dashboard/proposals" },
-    { type: "link", label: "Open Learning", href: "/dashboard/learning" },
-    { type: "link", label: "Open Knowledge", href: "/dashboard/knowledge" },
-    { type: "link", label: "Open Proof", href: "/dashboard/proof" },
-    { type: "link", label: "Open Checklist", href: "/dashboard/checklist" }
-  );
-
-  return actions;
-}
 
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -76,17 +23,7 @@ export async function POST(req: NextRequest) {
   const message = typeof body.message === "string" ? body.message.trim() : "";
   if (!message) return NextResponse.json({ error: "message required" }, { status: 400 });
 
-  const [
-    brief,
-    execContext,
-    latestBrief,
-    feedbackNotes,
-    learningContext,
-    knowledgeContext,
-    roiContext,
-    failures,
-    opsHealth,
-  ] = await Promise.all([
+  const [brief, execContext, latestBrief, feedbackNotes, learningContext, knowledgeContext, roiContext] = await Promise.all([
     buildBrief(),
     getExecutiveBriefContext(),
     getLatestOperatorBrief(),
@@ -94,42 +31,30 @@ export async function POST(req: NextRequest) {
     getLearningContextForChat(3),
     getKnowledgeContextForChat(3),
     getTopRoiSummariesForChat(3),
-    getFailuresAndInterventions(),
-    getOpsHealth(),
   ]);
-
-  const failedPipelineRunsCount = failures.failedPipelineRuns.length;
-  const suggested_actions = buildDynamicSuggestedActions({ failedPipelineRunsCount });
 
   const context = [
     "You are an Executive Operator AI for the Client Engine. Answer like a strategist: direct, specific, grounded in the data below. No hype.",
     "",
-    "RESPONSE FORMAT: You MUST respond with valid JSON only, no markdown or extra text. Use this exact shape:",
-    '{"answer":"...","data_gaps":["..."],"sources_used":["..."],"confidence":"high|medium|low"}',
-    "- answer: Your reply (plain text or markdown). Cite sources in the text (e.g. \"Per money scorecard:\", \"Per brief:\"). When you don't have data, say \"Data missing: [what would be needed].\" Do not guess.",
-    "- data_gaps: Array of strings describing what data is missing to answer fully (empty array if none).",
-    "- sources_used: Array of which data blocks you used (e.g. \"moneyScorecard\", \"brief\", \"queue\", \"constraintSnapshot\", \"learning\", \"roi\").",
-    "- confidence: \"high\" if data is complete, \"medium\" if partial, \"low\" if mostly inference.",
-    "",
-    "OPERATOR CONTEXT (use for sources_used):",
-    `- Failed pipeline runs (last 24h): ${opsHealth.failedJobs.last24h}. Failed in last 7d: ${opsHealth.failedJobs.last7d}.`,
-    failedPipelineRunsCount > 0
-      ? `- There are ${failedPipelineRunsCount} failed pipeline run(s) that may be retryable.`
-      : "",
+    "RESPONSE RULES (mandatory):",
+    "1. Cite sources: when stating a fact from the data, say where it comes from (e.g. \"Per money scorecard:\", \"Per today's brief:\", \"Per constraint snapshot:\", \"Per queue summary:\", \"Per learning/ROI context:\").",
+    "2. When you are inferring (conclusion not directly in the data), say so: prefix with \"Inferring:\" or end the sentence with \"(inference from pattern).\"",
+    "3. When you don't have data to answer, say \"Data missing: [what would be needed].\" Do not guess.",
+    "4. Prefer short answers with bullets. End with 1–3 concrete next actions when relevant.",
     "",
     "--- MONEY SCORECARD (cite as \"per money scorecard\") ---",
     execContext.moneyScorecard,
     "",
-    "--- STAGE CONVERSION ---",
+    "--- STAGE CONVERSION (cite as \"per stage conversion\") ---",
     execContext.stageConversion,
     "",
-    "--- PIPELINE LEAK ---",
+    "--- PIPELINE LEAK (cite as \"per pipeline leak\") ---",
     execContext.pipelineLeak,
     "",
-    "--- REVENUE FORECAST ---",
+    "--- REVENUE FORECAST (cite as \"per revenue forecast\") ---",
     execContext.revenueForecast,
     "",
-    "--- EXECUTIVE BRIEF ---",
+    "--- EXECUTIVE BRIEF (cite as \"per brief\" or \"per operator brief\") ---",
     `Throughput: ${execContext.todaysThroughput}`,
     `Primary constraint: ${execContext.primaryConstraint}`,
     execContext.constraintPlaybook ? `Constraint playbook: ${execContext.constraintPlaybook}` : "",
@@ -138,7 +63,7 @@ export async function POST(req: NextRequest) {
     `Biggest risk: ${execContext.biggestRisk}`,
     execContext.bestLeadToPrioritize ? `Best lead to prioritize: ${execContext.bestLeadToPrioritize}` : "",
     "",
-    "--- QUEUE ---",
+    "--- QUEUE (cite as \"per queue\" or \"per next actions\") ---",
     `Qualified leads: ${brief.qualifiedLeads.length}. Ready proposals: ${brief.readyProposals.length}. Next actions: ${brief.nextActions.slice(0, 5).map((a) => `${a.title}: ${a.action}`).join("; ") || "None"}.`,
     brief.risks.length ? `Risks: ${brief.risks.join("; ")}` : "",
     latestBrief ? `Latest brief: ${latestBrief.summary}` : "",
@@ -156,32 +81,21 @@ export async function POST(req: NextRequest) {
         { role: "system", content: context },
         { role: "user", content: message },
       ],
-      { temperature: 0.3, max_tokens: 800 }
+      { temperature: 0.3, max_tokens: 600 }
     );
 
-    let parsed: z.infer<typeof LLM_RESPONSE_SCHEMA>;
-    const trimmed = content.trim().replace(/^```json?\s*|\s*```$/g, "");
-    try {
-      const parsedJson = JSON.parse(trimmed);
-      const parseResult = LLM_RESPONSE_SCHEMA.safeParse(parsedJson);
-      if (parseResult.success) {
-        parsed = parseResult.data;
-      } else {
-        parsed = { answer: content, data_gaps: [], sources_used: [], confidence: "medium" };
-      }
-    } catch {
-      parsed = { answer: content, data_gaps: [], sources_used: [], confidence: "medium" };
-    }
+    const suggestedActions: { label: string; href: string }[] = [
+      { label: "Start workday automation", href: "/dashboard/command" },
+      { label: "Review results / brief", href: "/dashboard/command" },
+      { label: "Proposals", href: "/dashboard/proposals" },
+      { label: "Learning / improvement proposals", href: "/dashboard/learning" },
+      { label: "Knowledge / suggestions", href: "/dashboard/knowledge" },
+      { label: "Metrics / retry failed", href: "/dashboard/metrics" },
+      { label: "Generate proof post", href: "/dashboard/proof" },
+      { label: "Generate checklist", href: "/dashboard/checklist" },
+    ];
 
-    return NextResponse.json({
-      reply: {
-        answer: parsed.answer,
-        data_gaps: parsed.data_gaps ?? [],
-        sources_used: parsed.sources_used ?? [],
-        confidence: parsed.confidence ?? "medium",
-        suggested_actions,
-      },
-    });
+    return NextResponse.json({ reply: content, suggestedActions });
   } catch (err) {
     console.error("[ops/chat]", err);
     return NextResponse.json(

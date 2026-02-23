@@ -3,9 +3,8 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowLeft, ArrowRight, ExternalLink, Github } from "lucide-react";
-import { SiteFooter } from "@/components/site/SiteFooter";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 export default async function ProjectPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -86,9 +85,9 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
             <div>
               <dt className="text-xs font-medium text-neutral-500 uppercase tracking-wider">Next step</dt>
               <dd className="mt-0.5">
-                <Link href="/#contact" className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-400 hover:text-emerald-300">
+                <a href="/#contact" className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-400 hover:text-emerald-300">
                   Request audit <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
+                </a>
               </dd>
             </div>
           </dl>
@@ -106,6 +105,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
                     width={1200}
                     height={675}
                     className="w-full h-auto"
+                    unoptimized
                   />
                 </div>
               ))}
@@ -116,9 +116,9 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
             <div className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-4 mb-8">
               <h3 className="text-sm font-medium text-neutral-300 mb-2">Next step</h3>
               <p className="text-neutral-400 text-sm mb-3">Want similar outcomes for your business? Request a workflow audit.</p>
-              <Link href="/#contact" className="inline-flex items-center gap-2 bg-white text-neutral-900 px-4 py-2 rounded-lg text-sm font-medium hover:bg-neutral-200 transition-colors">
+              <a href="/#contact" className="inline-flex items-center gap-2 bg-white text-neutral-900 px-4 py-2 rounded-lg text-sm font-medium hover:bg-neutral-200 transition-colors">
                 Request audit <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
+              </a>
             </div>
           </div>
 
@@ -126,15 +126,23 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
             <div className="lg:sticky lg:top-24 rounded-lg border border-neutral-800 bg-neutral-900/50 p-4">
               <h3 className="text-sm font-medium text-neutral-300 mb-2">Want this for your business?</h3>
               <p className="text-neutral-400 text-xs mb-4">Request a workflow audit or book a strategy call.</p>
-              <Link href="/#contact" className="block w-full text-center bg-white text-neutral-900 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-neutral-200 transition-colors">
+              <a href="/#contact" className="block w-full text-center bg-white text-neutral-900 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-neutral-200 transition-colors">
                 Request a workflow audit
-              </Link>
+              </a>
             </div>
           </aside>
         </div>
       </main>
 
-      <SiteFooter />
+      <footer className="border-t border-neutral-800/50 py-8">
+        <div className="mx-auto max-w-6xl px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <span className="text-sm text-neutral-500">&copy; {new Date().getFullYear()} Evens Louis</span>
+          <div className="flex items-center gap-6 text-sm text-neutral-500">
+            <Link href="/work" className="hover:text-neutral-300 transition-colors">Work</Link>
+            <a href="mailto:contact@evenslouis.ca" className="hover:text-neutral-300 transition-colors">Email</a>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

@@ -3,7 +3,7 @@
  */
 
 import { db } from "@/lib/db";
-import { getCachedSystemLead } from "./cached";
+import { getOrCreateSystemLead } from "./systemLead";
 
 const ARTIFACT_TYPE = "operator_feedback";
 const ARTIFACT_TITLE = "OPERATOR_FEEDBACK_NOTE";
@@ -12,7 +12,7 @@ export async function addOperatorFeedbackNote(
   content: string,
   meta?: { tags?: string[] }
 ): Promise<string> {
-  const systemLeadId = await getCachedSystemLead();
+  const systemLeadId = await getOrCreateSystemLead();
   const artifact = await db.artifact.create({
     data: {
       leadId: systemLeadId,
@@ -28,11 +28,14 @@ export async function addOperatorFeedbackNote(
 export async function getRecentOperatorFeedbackNotes(limit = 10): Promise<
   { id: string; content: string; createdAt: Date; meta: unknown }[]
 > {
-  const systemLeadId = await getCachedSystemLead();
-  if (!systemLeadId) return [];
+  const systemLead = await db.lead.findFirst({
+    where: { source: "system", title: "Research Engine Runs" },
+    select: { id: true },
+  });
+  if (!systemLead) return [];
 
   const artifacts = await db.artifact.findMany({
-    where: { leadId: systemLeadId, type: ARTIFACT_TYPE, title: ARTIFACT_TITLE },
+    where: { leadId: systemLead.id, type: ARTIFACT_TYPE, title: ARTIFACT_TITLE },
     orderBy: { createdAt: "desc" },
     take: limit,
     select: { id: true, content: true, createdAt: true, meta: true },
