@@ -8,6 +8,8 @@ import { MetaAdsCampaignTable } from "./MetaAdsCampaignTable";
 import { MetaAdsAdSetTable } from "./MetaAdsAdSetTable";
 import { MetaAdsAdTable } from "./MetaAdsAdTable";
 import { MetaAdsInsightsPanel } from "./MetaAdsInsightsPanel";
+import { MetaAdsDataStatusStrip } from "./MetaAdsDataStatusStrip";
+import { MetaAdsEmptyState } from "./MetaAdsEmptyState";
 
 const RANGES: { value: DateRangePreset; label: string }[] = [
   { value: "today", label: "Today" },
@@ -17,18 +19,42 @@ const RANGES: { value: DateRangePreset; label: string }[] = [
   { value: "last_30d", label: "30d" },
 ];
 
-function errorMessage(err: MetaAdsDashboardError): string {
+const RANGE_LABELS: Record<DateRangePreset, string> = {
+  today: "Today",
+  yesterday: "Yesterday",
+  last_7d: "7d",
+  last_14d: "14d",
+  last_30d: "30d",
+};
+
+function errorMessage(err: MetaAdsDashboardError): { message: string; docHint: string } {
+  const base = "See docs/META_ADS_MONITOR_SETUP.md for setup and troubleshooting.";
   switch (err.code) {
     case "NO_TOKEN":
-      return "META_ACCESS_TOKEN not configured. Add it to .env and restart.";
+      return {
+        message: "META_ACCESS_TOKEN not configured.",
+        docHint: "Add META_ACCESS_TOKEN and META_AD_ACCOUNT_ID to .env, then restart. See setup doc for token generation.",
+      };
     case "INVALID_TOKEN":
-      return "Invalid or expired token. Generate a new one in Graph API Explorer or Business Settings.";
+      return {
+        message: "Invalid or expired token.",
+        docHint: "Generate a new token in Graph API Explorer or Business Settings → System Users. Ensure ads_read is included.",
+      };
     case "PERMISSION_DENIED":
-      return "Permission denied. Ensure ads_read is granted for your token.";
+      return {
+        message: "Permission denied.",
+        docHint: "Your token needs ads_read. Re-generate with ads_read in Graph API Explorer or System User settings.",
+      };
     case "RATE_LIMIT":
-      return "Rate limit hit. Wait a few minutes and try again.";
+      return {
+        message: "Rate limit hit.",
+        docHint: "Wait 5–10 minutes before refreshing. Use cache (don’t force refresh) when checking frequently.",
+      };
     default:
-      return err.error ?? "Failed to load. See docs/META_ADS_MONITOR_SETUP.md";
+      return {
+        message: err.error ?? "Failed to load.",
+        docHint: base,
+      };
   }
 }
 
@@ -37,23 +63,30 @@ export function MetaAdsPageClient() {
   const [data, setData] = useState<MetaAdsDashboardData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [lastFetchWasFresh, setLastFetchWasFresh] = useState(false);
 
   const fetchData = useCallback(async (opts?: { skipCache?: boolean }) => {
     setLoading(true);
     setError(null);
+    setLastFetchWasFresh(false);
     try {
       const skipCache = opts?.skipCache ? "&skipCache=1" : "";
       const res = await fetch(`/api/meta-ads/dashboard?range=${range}${skipCache}`);
       const json = (await res.json()) as MetaAdsDashboardData | MetaAdsDashboardError;
       if (!json.ok) {
         const err = json as MetaAdsDashboardError;
-        setError(errorMessage(err));
+        const { message, docHint } = errorMessage(err);
+        setError(`${message} ${docHint}`);
         setData(null);
       } else {
         setData(json as MetaAdsDashboardData);
+        if (opts?.skipCache) {
+          setLastFetchWasFresh(true);
+          setTimeout(() => setLastFetchWasFresh(false), 4000);
+        }
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Network error");
+      setError(`${e instanceof Error ? e.message : "Network error"} See docs/META_ADS_MONITOR_SETUP.md for setup and troubleshooting.`);
       setData(null);
     } finally {
       setLoading(false);
@@ -65,6 +98,8 @@ export function MetaAdsPageClient() {
   }, [fetchData]);
 
   const needsAttention = data?.insights?.filter((i) => i.severity === "warn" || i.severity === "critical").length ?? 0;
+  const isEmpty = data?.ok && data.campaigns.length === 0;
+  const cacheState = loading ? "loading" : data?.cacheHit ? "cached" : "fresh";
 
   return (
     <div className="space-y-6 min-w-0">
@@ -84,12 +119,22 @@ export function MetaAdsPageClient() {
         </p>
       </div>
 
-      {/* Header / Filter bar */}
+      {/* Data status strip */}
+      <MetaAdsDataStatusStrip
+        status={error ? "error" : loading && !data ? "loading" : "connected"}
+        accountId={data?.accountId ?? null}
+        range={RANGE_LABELS[range]}
+        cacheState={lastFetchWasFresh ? "fresh" : cacheState}
+        lastSyncedAt={data?.lastFetchedAt ?? null}
+      />
+
+      {/* Filter bar */}
       <div className="flex flex-wrap items-center gap-4">
         <select
           value={range}
           onChange={(e) => setRange(e.target.value as DateRangePreset)}
-          className="rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-200"
+          disabled={loading}
+          className="rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-200 disabled:opacity-50"
         >
           {RANGES.map((r) => (
             <option key={r.value} value={r.value}>
@@ -100,18 +145,15 @@ export function MetaAdsPageClient() {
         <button
           onClick={() => fetchData({ skipCache: true })}
           disabled={loading}
-          className="flex items-center gap-2 rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-200 hover:bg-neutral-700 disabled:opacity-50"
+          className="flex items-center gap-2 rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-200 hover:bg-neutral-700 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-          Refresh
+          {loading ? "Loading…" : "Refresh"}
         </button>
-        {data?.lastFetchedAt && (
-          <span className="text-xs text-neutral-500">
-            {data.cacheHit ? "Cached · " : ""}Synced: {new Date(data.lastFetchedAt).toLocaleString()}
+        {!loading && data?.ok && (
+          <span className={`text-xs ${lastFetchWasFresh ? "text-emerald-400" : "text-neutral-500"}`}>
+            {lastFetchWasFresh ? "Fresh fetch" : data.cacheHit ? "Cached" : "Live"}
           </span>
-        )}
-        {data?.accountId && (
-          <span className="text-xs text-neutral-500">{data.accountId}</span>
         )}
       </div>
 
@@ -120,7 +162,7 @@ export function MetaAdsPageClient() {
         <div className="rounded-lg border border-red-900/50 bg-red-950/20 p-4">
           <p className="text-sm text-red-200">{error}</p>
           <p className="text-xs text-neutral-500 mt-1">
-            See docs/META_ADS_MONITOR_SETUP.md for setup and troubleshooting.
+            docs/META_ADS_MONITOR_SETUP.md · docs/META_ADS_MONITOR_RUNBOOK.md
           </p>
         </div>
       )}
@@ -140,7 +182,7 @@ export function MetaAdsPageClient() {
       {/* No account / No data */}
       {!loading && !error && !data?.ok && (
         <div className="rounded-lg border border-neutral-800 p-8 text-center text-neutral-500">
-          No data. Configure META_ACCESS_TOKEN and META_AD_ACCOUNT_ID.
+          No data. Configure META_ACCESS_TOKEN and META_AD_ACCOUNT_ID in .env.
         </div>
       )}
 
@@ -148,16 +190,20 @@ export function MetaAdsPageClient() {
       {!loading && data?.ok && (
         <div className="space-y-6">
           <MetaAdsKpiCards summary={data.summary} />
-          <div className="grid lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-6">
-              <MetaAdsCampaignTable campaigns={data.campaigns} />
-              <MetaAdsAdSetTable adsets={data.adsets} />
-              <MetaAdsAdTable ads={data.ads} />
+          {isEmpty ? (
+            <MetaAdsEmptyState accountId={data.accountId} range={RANGE_LABELS[range]} />
+          ) : (
+            <div className="grid lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 space-y-6">
+                <MetaAdsCampaignTable campaigns={data.campaigns} />
+                <MetaAdsAdSetTable adsets={data.adsets} />
+                <MetaAdsAdTable ads={data.ads} />
+              </div>
+              <div>
+                <MetaAdsInsightsPanel insights={data.insights} />
+              </div>
             </div>
-            <div>
-              <MetaAdsInsightsPanel insights={data.insights} />
-            </div>
-          </div>
+          )}
         </div>
       )}
     </div>

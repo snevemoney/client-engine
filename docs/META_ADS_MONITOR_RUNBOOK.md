@@ -70,6 +70,29 @@ Daily 5-minute check for ad performance using the in-app Meta Ads dashboard.
 | CTR drop vs prior period | Consider refreshing creative or audience |
 | Paused campaign | Re-activate if ready; otherwise leave paused |
 
+## No data in selected range
+
+When the dashboard shows **"No campaigns in selected range"** with connected status:
+
+1. **Integration is healthy** — The Meta connection and token are valid. The API returned successfully.
+2. **No delivery in range** — No campaigns had spend or impressions in the selected date range. Possible causes:
+   - All campaigns paused
+   - Budget too low or not yet spent
+   - Range too narrow (e.g. Today / Yesterday with no activity yet)
+3. **What to try**
+   - Switch to **30d** or **14d** — campaigns often have delivery over longer windows
+   - Check Ads Manager directly to confirm campaign status
+   - Verify date range in status strip matches what you expect
+
+## Quick health check (integration verification)
+
+1. Open **Dashboard → Meta Ads**
+2. Check **Data status strip** at top: Connection = Connected, Token implied valid if data loads
+3. If error: see error message and doc hint; check META_ADS_MONITOR_SETUP.md
+4. If "No campaigns in selected range" — integration OK; try 30d or verify in Ads Manager
+5. Click **Refresh** — button shows loading state, then "Fresh" for a few seconds after bypass
+6. Cache state: Cached = served from 10‑min cache; Fresh = just fetched from Meta API
+
 ## Limitations (V1.1)
 
 - Read-only. No edits from the app.
