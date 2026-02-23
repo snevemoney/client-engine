@@ -18,8 +18,10 @@ export async function GET(req: NextRequest) {
     const since = new Date();
     since.setDate(since.getDate() - range);
     const now = new Date();
+    const threeDaysAgo = new Date(now);
+    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
 
-    const [byDriver, noNextAction, overdue, proposalsNoFollowUp, lastTouch] = await Promise.all([
+    const [byDriver, noNextAction, overdue, overdue3d, proposalsNoFollowUp, lastTouch] = await Promise.all([
       db.lead.groupBy({
         by: ["driverType"],
         where: {
@@ -42,6 +44,13 @@ export async function GET(req: NextRequest) {
           status: { notIn: ["REJECTED", "SHIPPED"] },
           dealOutcome: { not: "won" },
           nextActionDueAt: { lt: now },
+        },
+      }),
+      db.lead.count({
+        where: {
+          status: { notIn: ["REJECTED", "SHIPPED"] },
+          dealOutcome: { not: "won" },
+          nextActionDueAt: { lt: threeDaysAgo },
         },
       }),
       db.lead.count({
@@ -71,6 +80,7 @@ export async function GET(req: NextRequest) {
       byDriverType: byDriverMap,
       noNextAction,
       overdue,
+      overdue3d,
       proposalsNoFollowUp,
       lastTouchAt: lastTouchAt?.toISOString() ?? null,
       noSalesActions7d,

@@ -18,6 +18,7 @@ type QueueItem = {
 type DriverSummary = {
   noNextAction: number;
   overdue: number;
+  overdue3d?: number;
   proposalsNoFollowUp: number;
   noSalesActions7d?: boolean;
 };
@@ -65,7 +66,9 @@ export function FollowUpQueueCard() {
   if (summary?.noNextAction && summary.noNextAction > 0) {
     warnings.push(`${summary.noNextAction} lead(s) with no next action set`);
   }
-  if (summary?.overdue && summary.overdue > 0) {
+  if (summary?.overdue3d && summary.overdue3d > 0) {
+    warnings.push(`${summary.overdue3d} overdue > 3 days`);
+  } else if (summary?.overdue && summary.overdue > 0) {
     warnings.push(`${summary.overdue} overdue follow-up(s)`);
   }
   if (summary?.proposalsNoFollowUp && summary.proposalsNoFollowUp > 0) {
