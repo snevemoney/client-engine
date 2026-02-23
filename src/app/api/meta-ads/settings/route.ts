@@ -18,8 +18,16 @@ const SettingsSchema = z.object({
   maxBudgetIncreasePctPerDay: z.number().min(0).max(100).optional(),
   allowChangesDuringLearning: z.boolean().optional(),
   protectedCampaignIds: z.array(z.string()).optional(),
-  actionCooldownMinutes: z.number().min(0).max(10080).optional(), // 0 = disabled, max 7d
+  actionCooldownMinutes: z.number().min(0).max(10080).optional(),
   maxActionsPerEntityPerDay: z.number().min(0).max(50).optional(),
+  schedulerEnabled: z.boolean().optional(),
+  schedulerCron: z.string().nullable().optional(),
+  schedulerIntervalMinutes: z.number().min(5).max(1440).optional(),
+  autoGenerateRecommendations: z.boolean().optional(),
+  autoApplyApprovedOnly: z.boolean().optional(),
+  autoApproveLowRisk: z.boolean().optional(),
+  maxAppliesPerRun: z.number().min(1).max(50).optional(),
+  allowedAutoApproveRuleKeys: z.array(z.string()).optional(),
 });
 
 export const dynamic = "force-dynamic";
@@ -100,6 +108,17 @@ export async function PATCH(req: NextRequest) {
     }
     if (body.actionCooldownMinutes != null) data.actionCooldownMinutes = body.actionCooldownMinutes;
     if (body.maxActionsPerEntityPerDay != null) data.maxActionsPerEntityPerDay = body.maxActionsPerEntityPerDay;
+    if (body.schedulerEnabled != null) data.schedulerEnabled = body.schedulerEnabled;
+    if (body.schedulerCron !== undefined) data.schedulerCron = body.schedulerCron;
+    if (body.schedulerIntervalMinutes != null) data.schedulerIntervalMinutes = Math.min(1440, Math.max(5, body.schedulerIntervalMinutes));
+    if (body.autoGenerateRecommendations != null) data.autoGenerateRecommendations = body.autoGenerateRecommendations;
+    if (body.autoApplyApprovedOnly != null) data.autoApplyApprovedOnly = body.autoApplyApprovedOnly;
+    if (body.autoApproveLowRisk != null) data.autoApproveLowRisk = body.autoApproveLowRisk;
+    if (body.maxAppliesPerRun != null) data.maxAppliesPerRun = Math.min(50, Math.max(1, body.maxAppliesPerRun));
+    if (body.allowedAutoApproveRuleKeys != null) {
+      const keys = body.allowedAutoApproveRuleKeys.filter((s) => typeof s === "string" && String(s).trim().length > 0).map((s) => String(s).trim());
+      data.allowedAutoApproveRuleKeys = [...new Set(keys)];
+    }
 
     const updated = await db.metaAdsAutomationSettings.update({
       where: { accountId: acc },

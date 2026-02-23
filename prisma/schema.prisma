@@ -522,7 +522,33 @@ model MetaAdsAutomationSettings {
   protectedCampaignIds      Json     @default("[]")  // string[]
   actionCooldownMinutes     Int      @default(720)  // 12h default
   maxActionsPerEntityPerDay Int      @default(2)
+  schedulerEnabled          Boolean  @default(false)
+  schedulerCron             String?
+  schedulerIntervalMinutes  Int      @default(60)
+  autoGenerateRecommendations Boolean @default(true)
+  autoApplyApprovedOnly     Boolean  @default(true)
+  autoApproveLowRisk        Boolean  @default(false)
+  maxAppliesPerRun          Int      @default(5)
+  allowedAutoApproveRuleKeys Json    @default("[]")  // string[]
+  lastSchedulerRunAt        DateTime?
+  lastSchedulerRunStatus    String?
+  lastSchedulerRunSummary   Json?
   updatedAt                 DateTime @updatedAt
 
   @@index([accountId])
+}
+
+/** Per-cycle scheduler run log (visibility) */
+model MetaAdsSchedulerRunLog {
+  id         String   @id @default(cuid())
+  accountId  String
+  startedAt  DateTime @default(now())
+  finishedAt DateTime?
+  status     String   // success | partial | failed | skipped
+  trigger    String   // manual | scheduled
+  dryRun     Boolean  @default(true)
+  summary    Json     @default("{}")
+  error      String?  @db.Text
+
+  @@index([accountId, startedAt])
 }

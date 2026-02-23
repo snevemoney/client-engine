@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Save, RotateCcw } from "lucide-react";
+import { useEffect, useState, useCallback } from "react";
+import { Save, RotateCcw, Play } from "lucide-react";
+import { MetaAdsSchedulerRunsPanel } from "./MetaAdsSchedulerRunsPanel";
 
 const DEFAULTS = {
   mode: "manual",
@@ -15,22 +16,36 @@ const DEFAULTS = {
   protectedCampaignIds: [] as string[],
   actionCooldownMinutes: 720,
   maxActionsPerEntityPerDay: 2,
+  schedulerEnabled: false,
+  schedulerIntervalMinutes: 60,
+  autoGenerateRecommendations: true,
+  autoApplyApprovedOnly: true,
+  autoApproveLowRisk: false,
+  maxAppliesPerRun: 5,
+  allowedAutoApproveRuleKeys: [] as string[],
+  lastSchedulerRunAt: null as string | null,
+  lastSchedulerRunStatus: null as string | null,
+  lastSchedulerRunSummary: null as Record<string, unknown> | null,
 };
 
 export function MetaAdsSettingsPanel() {
   const [settings, setSettings] = useState<typeof DEFAULTS & { id?: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [runLoading, setRunLoading] = useState(false);
+  const [runsRefreshKey, setRunsRefreshKey] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [protectedIdsInput, setProtectedIdsInput] = useState("");
+  const [autoApproveRuleKeysInput, setAutoApproveRuleKeysInput] = useState("");
 
-  useEffect(() => {
+  const fetchSettings = useCallback(() => {
     fetch("/api/meta-ads/settings")
       .then((res) => res.json())
       .then((json) => {
         const s = json.settings;
         if (s) {
           setSettings({
+            ...DEFAULTS,
             mode: s.mode ?? DEFAULTS.mode,
             dryRun: s.dryRun ?? DEFAULTS.dryRun,
             targetCpl: s.targetCpl ?? DEFAULTS.targetCpl,
@@ -42,15 +57,31 @@ export function MetaAdsSettingsPanel() {
             protectedCampaignIds: (s.protectedCampaignIds as string[]) ?? DEFAULTS.protectedCampaignIds,
             actionCooldownMinutes: s.actionCooldownMinutes ?? DEFAULTS.actionCooldownMinutes,
             maxActionsPerEntityPerDay: s.maxActionsPerEntityPerDay ?? DEFAULTS.maxActionsPerEntityPerDay,
+            schedulerEnabled: s.schedulerEnabled ?? DEFAULTS.schedulerEnabled,
+            schedulerIntervalMinutes: s.schedulerIntervalMinutes ?? DEFAULTS.schedulerIntervalMinutes,
+            autoGenerateRecommendations: s.autoGenerateRecommendations ?? DEFAULTS.autoGenerateRecommendations,
+            autoApplyApprovedOnly: s.autoApplyApprovedOnly ?? DEFAULTS.autoApplyApprovedOnly,
+            autoApproveLowRisk: s.autoApproveLowRisk ?? DEFAULTS.autoApproveLowRisk,
+            maxAppliesPerRun: s.maxAppliesPerRun ?? DEFAULTS.maxAppliesPerRun,
+            allowedAutoApproveRuleKeys: (s.allowedAutoApproveRuleKeys as string[]) ?? DEFAULTS.allowedAutoApproveRuleKeys,
+            lastSchedulerRunAt: s.lastSchedulerRunAt ?? null,
+            lastSchedulerRunStatus: s.lastSchedulerRunStatus ?? null,
+            lastSchedulerRunSummary: (s.lastSchedulerRunSummary as Record<string, unknown>) ?? null,
           });
           setProtectedIdsInput(((s.protectedCampaignIds as string[]) ?? []).join("\n"));
+          setAutoApproveRuleKeysInput(((s.allowedAutoApproveRuleKeys as string[]) ?? []).join(", "));
         } else {
           setSettings(DEFAULTS);
           setProtectedIdsInput("");
+          setAutoApproveRuleKeysInput("");
         }
       })
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    fetchSettings();
+  }, [fetchSettings]);
 
   async function save() {
     if (!settings) return;
@@ -61,6 +92,7 @@ export function MetaAdsSettingsPanel() {
         .split(/[\s,\n]+/)
         .map((s) => s.trim())
         .filter(Boolean);
+      const ruleKeys = autoApproveRuleKeysInput.split(/[\s,]+/).map((s) => s.trim()).filter(Boolean);
       const res = await fetch("/api/meta-ads/settings", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -76,6 +108,13 @@ export function MetaAdsSettingsPanel() {
           protectedCampaignIds: [...new Set(ids)],
           actionCooldownMinutes: settings.actionCooldownMinutes,
           maxActionsPerEntityPerDay: settings.maxActionsPerEntityPerDay,
+          schedulerEnabled: settings.schedulerEnabled,
+          schedulerIntervalMinutes: settings.schedulerIntervalMinutes,
+          autoGenerateRecommendations: settings.autoGenerateRecommendations,
+          autoApplyApprovedOnly: settings.autoApplyApprovedOnly,
+          autoApproveLowRisk: settings.autoApproveLowRisk,
+          maxAppliesPerRun: settings.maxAppliesPerRun,
+          allowedAutoApproveRuleKeys: [...new Set(ruleKeys)],
         }),
       });
       if (!res.ok) {
@@ -92,7 +131,29 @@ export function MetaAdsSettingsPanel() {
   function reset() {
     setSettings(DEFAULTS);
     setProtectedIdsInput("");
+    setAutoApproveRuleKeysInput("");
     setError(null);
+  }
+
+  async function runSchedulerNow() {
+    setRunLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/meta-ads/scheduler/run", { method: "POST" });
+      const json = await res.json();
+      if (json.ok !== false && json.status !== "skipped") {
+        fetchSettings();
+        setRunsRefreshKey((k) => k + 1);
+      } else if (json.status === "skipped") {
+        setError("Scheduler disabled. Enable it first.");
+      } else {
+        setError(json.summary?.error ?? "Run failed");
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed");
+    } finally {
+      setRunLoading(false);
+    }
   }
 
   if (loading || !settings) {
@@ -226,6 +287,111 @@ export function MetaAdsSettingsPanel() {
           />
           <p className="text-[10px] text-neutral-500 mt-0.5">Default 2. 0 = disabled.</p>
         </div>
+
+        <hr className="border-neutral-700 my-4" />
+        <h3 className="text-xs font-medium text-neutral-400 uppercase tracking-wider">Scheduler (V3.2)</h3>
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            id="schedulerEnabled"
+            checked={settings.schedulerEnabled}
+            onChange={(e) => setSettings({ ...settings, schedulerEnabled: e.target.checked })}
+            className="rounded border-neutral-600"
+          />
+          <label htmlFor="schedulerEnabled" className="text-sm text-neutral-300">Scheduler enabled</label>
+        </div>
+        <div>
+          <label className="block text-xs text-neutral-500 mb-1">Interval (minutes)</label>
+          <input
+            type="number"
+            min={5}
+            max={1440}
+            value={settings.schedulerIntervalMinutes}
+            onChange={(e) => setSettings({ ...settings, schedulerIntervalMinutes: Math.min(1440, Math.max(5, parseInt(e.target.value, 10) || 60)) })}
+            className="w-full rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-200"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            id="autoGenerateRecommendations"
+            checked={settings.autoGenerateRecommendations}
+            onChange={(e) => setSettings({ ...settings, autoGenerateRecommendations: e.target.checked })}
+            className="rounded border-neutral-600"
+          />
+          <label htmlFor="autoGenerateRecommendations" className="text-sm text-neutral-300">Auto-generate recommendations</label>
+        </div>
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            id="autoApplyApprovedOnly"
+            checked={settings.autoApplyApprovedOnly}
+            onChange={(e) => setSettings({ ...settings, autoApplyApprovedOnly: e.target.checked })}
+            className="rounded border-neutral-600"
+          />
+          <label htmlFor="autoApplyApprovedOnly" className="text-sm text-neutral-300">Auto-apply approved only</label>
+        </div>
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            id="autoApproveLowRisk"
+            checked={settings.autoApproveLowRisk}
+            onChange={(e) => setSettings({ ...settings, autoApproveLowRisk: e.target.checked })}
+            className="rounded border-neutral-600"
+          />
+          <label htmlFor="autoApproveLowRisk" className="text-sm text-neutral-300">Auto-approve low-risk (rule keys below)</label>
+        </div>
+        <div>
+          <label className="block text-xs text-neutral-500 mb-1">Allowed auto-approve rule keys (comma-separated)</label>
+          <input
+            type="text"
+            value={autoApproveRuleKeysInput}
+            onChange={(e) => setAutoApproveRuleKeysInput(e.target.value)}
+            placeholder="e.g. winner_scale_candidate, insufficient_data"
+            className="w-full rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-200"
+          />
+        </div>
+        <div>
+          <label className="block text-xs text-neutral-500 mb-1">Max applies per run</label>
+          <input
+            type="number"
+            min={1}
+            max={50}
+            value={settings.maxAppliesPerRun}
+            onChange={(e) => setSettings({ ...settings, maxAppliesPerRun: Math.min(50, Math.max(1, parseInt(e.target.value, 10) || 5)) })}
+            className="w-full rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-200"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={runSchedulerNow}
+            disabled={runLoading}
+            className="flex items-center gap-2 rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-200 hover:bg-neutral-700 disabled:opacity-50"
+          >
+            <Play className="w-4 h-4" />
+            {runLoading ? "Running…" : "Run now"}
+          </button>
+          {settings.lastSchedulerRunAt && (
+            <span className="text-xs text-neutral-500">
+              Last: {new Date(settings.lastSchedulerRunAt).toLocaleString()} — {settings.lastSchedulerRunStatus ?? "—"}
+            </span>
+          )}
+        </div>
+        {settings.lastSchedulerRunSummary && typeof settings.lastSchedulerRunSummary === "object" && (
+          <div className="text-[10px] text-neutral-500">
+            {[
+              settings.lastSchedulerRunSummary.generated != null && `gen: ${settings.lastSchedulerRunSummary.generated}`,
+              settings.lastSchedulerRunSummary.applied != null && `applied: ${settings.lastSchedulerRunSummary.applied}`,
+              settings.lastSchedulerRunSummary.simulated != null && `sim: ${settings.lastSchedulerRunSummary.simulated}`,
+              settings.lastSchedulerRunSummary.blocked != null && `blocked: ${settings.lastSchedulerRunSummary.blocked}`,
+              settings.lastSchedulerRunSummary.failed != null && `failed: ${settings.lastSchedulerRunSummary.failed}`,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+          </div>
+        )}
+
         <div className="flex gap-2">
           <button
             onClick={save}
@@ -244,6 +410,7 @@ export function MetaAdsSettingsPanel() {
           </button>
         </div>
       </div>
+      <MetaAdsSchedulerRunsPanel className="mt-6" refreshKey={runsRefreshKey} />
     </section>
   );
 }

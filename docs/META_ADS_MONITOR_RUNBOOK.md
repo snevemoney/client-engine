@@ -174,9 +174,31 @@ Each row shows entity, action type, reason/message, and evidence (spend, leads, 
 - **protectedCampaignIds**: Add your best-performing or experimental campaigns.
 - **targetCpl**: Set to your acceptable CPL; leave empty to use account avg.
 
+## V3.2 Scheduler (safe automation)
+
+The scheduler automates the operator loop: generate → (optionally auto-approve) → apply approved.
+
+**Safe defaults:** Scheduler OFF, dry-run ON, auto-approve OFF.
+
+**Manual trigger:** Settings → Scheduler → Run now.
+
+**Cron (optional):** Set `META_ADS_SCHEDULER_CRON_KEY` and call:
+```bash
+curl -X POST -H "x-cron-key: YOUR_KEY" https://your-app/api/meta-ads/scheduler/run-cron
+```
+
+**Approval gate:** Only **approved** recommendations are applied. Auto-approve (if enabled) approves only queued recs whose `ruleKey` is in allowed list and severity is not critical.
+
+**Troubleshooting:**
+- Scheduler enabled but nothing happens: Check dry-run; ensure you have approved recs; run may be skipped if scheduler just disabled.
+- Blocked by cooldown: Normal. Scheduler respects same cooldown/cap as manual apply.
+- Dry-run confusion: Simulated actions are logged; turn OFF only when ready for live writes.
+
+See `docs/META_ADS_SCHEDULER_RUNBOOK.md` for full setup.
+
 ## Guardrails (legacy)
 
-- No autonomous scheduler. All applies are explicit user clicks.
+- Scheduler is opt-in. When off, all applies are explicit user clicks.
 - refresh_creative and wait are recommendation-only — no Meta write.
 - Budget changes: ad set level only (documented).
 - Protected campaign IDs: rules skip these entities (generation) and apply blocks them (enforcement).

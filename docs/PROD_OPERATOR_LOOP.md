@@ -36,15 +36,15 @@ Expect `{"ok":true,"checks":{...}}`. If not, check app/worker logs.
 ## Meta Ads operator loop (when configured)
 
 1. **Refresh dashboard** — Overview tab → Refresh (or rely on cache).
-2. **Generate recommendations** — Recommendations tab → Generate.
+2. **Generate recommendations** — Recommendations tab → Generate (or let scheduler do it).
 3. **Review critical/warn** — Scan severity badges; read evidence.
 4. **Mark false positives** — If a rec is wrong, click False + to train thresholds.
 5. **Approve safe actions** — Approve recs you agree with; Dismiss others.
-6. **Apply** — Dry-run first (Settings → dry-run ON). Apply approved recs; Action History shows simulated.
+6. **Apply** — Dry-run first (Settings → dry-run ON). Apply approved recs; Action History shows simulated. Or use Scheduler Run now.
 7. **Check Action History** — Verify status (simulated/blocked/success), message, evidence.
 8. **Verify in Meta Ads Manager** — For live applies (dry-run OFF), confirm changes in Ads Manager.
 
-Settings: dry-run, target CPL, protected IDs, cooldown, daily cap. See META_ADS_MONITOR_RUNBOOK.md.
+**Scheduler (V3.2):** Settings → Scheduler. Enable + Run now for automated cycle. See META_ADS_SCHEDULER_RUNBOOK.md.
 
 ---
 
