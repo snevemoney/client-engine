@@ -43,8 +43,8 @@ export async function getReusableAssetSummary(): Promise<ReusableAssetSummary> {
   ]);
 
   const topTypes = byType
-    .map((r) => ({ assetType: r.assetType, count: r._count.id }))
-    .sort((a, b) => b.count - a.count)
+    .map((r: { assetType: string; _count: { id: number } }) => ({ assetType: r.assetType, count: r._count.id }))
+    .sort((a: { count: number }, b: { count: number }) => b.count - a.count)
     .slice(0, 6);
   const pctDeliveredWithAssets = deliveredCount > 0 ? Math.round((deliveredWithAssets / deliveredCount) * 100) : null;
 

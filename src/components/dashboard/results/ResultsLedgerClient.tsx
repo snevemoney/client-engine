@@ -10,7 +10,7 @@ export function ResultsLedgerClient({ entries }: { entries: ResultsLedgerEntry[]
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Results Ledger</h1>
         <p className="text-sm text-neutral-400 mt-1">
-          Active and delivered clients: target, baseline, current, delta, what worked/didn't, proof, next action.
+          Active and delivered clients: target, baseline, current, delta, what worked/didn&apos;t, proof, next action.
         </p>
       </div>
 
@@ -68,7 +68,7 @@ export function ResultsLedgerClient({ entries }: { entries: ResultsLedgerEntry[]
                         <p className="text-emerald-400/90">What worked: {e.whatWorked}</p>
                       )}
                       {e.whatFailed && (
-                        <p className="text-amber-400/90">What didn't: {e.whatFailed}</p>
+                        <p className="text-amber-400/90">What didn&apos;t: {e.whatFailed}</p>
                       )}
                     </div>
                   )}
