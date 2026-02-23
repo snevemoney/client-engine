@@ -1,0 +1,117 @@
+/**
+ * Normalizes raw Meta Graph API responses to stable internal types.
+ * Safely extracts leads from actions/cost_per_action_type.
+ */
+
+import type { MetaAdsSummary, MetaAdsCampaign, MetaAdsAdSet, MetaAdsAd } from "./types";
+
+type RawInsight = {
+  spend?: string;
+  impressions?: string;
+  reach?: string;
+  clicks?: string;
+  actions?: Array<{ action_type: string; value?: string }>;
+  cost_per_action_type?: Array<{ action_type: string; value?: string }>;
+  cpc?: string;
+  cpm?: string;
+  ctr?: string;
+  frequency?: string;
+  ad_id?: string;
+  adset_id?: string;
+  campaign_id?: string;
+  [key: string]: unknown;
+};
+
+const num = (v: string | number | null | undefined): number =>
+  v == null || v === "" ? 0 : typeof v === "number" ? v : parseFloat(String(v)) || 0;
+
+/** Extract lead count from actions array. Meta uses action_type "lead". */
+export function parseLeads(actions: RawInsight["actions"]): number {
+  if (!Array.isArray(actions)) return 0;
+  const lead = actions.find((a) => (a?.action_type ?? "").toLowerCase() === "lead");
+  return lead?.value != null ? num(lead.value) : 0;
+}
+
+/** Extract cost per lead from cost_per_action_type. */
+export function parseCostPerLead(costPerActionType: RawInsight["cost_per_action_type"]): number | null {
+  if (!Array.isArray(costPerActionType)) return null;
+  const lead = costPerActionType.find((a) => (a?.action_type ?? "").toLowerCase() === "lead");
+  if (lead?.value == null || lead.value === "") return null;
+  const val = num(lead.value);
+  return val > 0 ? val : null;
+}
+
+/** Use link_click as primary click metric; fall back to clicks field. */
+export function parseClicks(actions: RawInsight["actions"], rawClicks?: string): number {
+  if (Array.isArray(actions)) {
+    const linkClick = actions.find((a) => (a?.action_type ?? "").toLowerCase() === "link_click");
+    if (linkClick?.value != null) return num(linkClick.value);
+  }
+  return num(rawClicks);
+}
+
+export function normalizeInsightToRow(
+  raw: RawInsight,
+  base: { id: string; name: string; status?: string; effective_status?: string; objective?: string }
+): MetaAdsCampaign {
+  const spend = num(raw.spend);
+  const impressions = num(raw.impressions);
+  const reach = raw.reach != null && raw.reach !== "" ? num(raw.reach) : null;
+  const clicks = parseClicks(raw.actions, raw.clicks);
+  const leads = parseLeads(raw.actions);
+  const cpc = num(raw.cpc);
+  const cpm = num(raw.cpm);
+  const ctr = num(raw.ctr);
+  const frequency = raw.frequency != null && raw.frequency !== "" ? num(raw.frequency) : null;
+
+  return {
+    id: base.id,
+    name: base.name,
+    status: base.status ?? "UNKNOWN",
+    effectiveStatus: base.effective_status ?? base.status ?? "UNKNOWN",
+    objective: base.objective ?? null,
+    spend,
+    impressions,
+    reach,
+    clicks,
+    leads,
+    ctr: ctr > 0 ? ctr : impressions > 0 && clicks > 0 ? (clicks / impressions) * 100 : 0,
+    cpc: cpc > 0 ? cpc : clicks > 0 ? spend / clicks : 0,
+    cpm: cpm > 0 ? cpm : impressions > 0 ? (spend / impressions) * 1000 : 0,
+    frequency,
+    costPerLead: leads > 0 ? spend / leads : parseCostPerLead(raw.cost_per_action_type),
+    deliveryStatus: (raw as RawInsight & { delivery_info?: { status?: string } }).delivery_info?.status ?? null,
+    learningStatus: (raw as RawInsight & { learning_type_info?: { learning_type?: string } }).learning_type_info?.learning_type ?? null,
+  };
+}
+
+export function aggregateSummary(rows: Array<{ spend: number; impressions: number; reach: number | null; clicks: number; leads: number }>): MetaAdsSummary {
+  let spend = 0;
+  let impressions = 0;
+  let reach = 0;
+  let clicks = 0;
+  let leads = 0;
+  let reachCount = 0;
+  for (const r of rows) {
+    spend += r.spend;
+    impressions += r.impressions;
+    clicks += r.clicks;
+    leads += r.leads;
+    if (r.reach != null && r.reach > 0) {
+      reach += r.reach;
+      reachCount++;
+    }
+  }
+  return {
+    spend,
+    impressions,
+    reach: reachCount > 0 ? reach : null,
+    clicks,
+    leads,
+    ctr: impressions > 0 ? (clicks / impressions) * 100 : 0,
+    cpc: clicks > 0 ? spend / clicks : 0,
+    cpm: impressions > 0 ? (spend / impressions) * 1000 : 0,
+    frequency: impressions > 0 && reach > 0 ? impressions / reach : null,
+    costPerLead: leads > 0 ? spend / leads : null,
+  };
+}

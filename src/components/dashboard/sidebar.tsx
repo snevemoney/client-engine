@@ -24,6 +24,7 @@ import {
   Activity,
   Target,
   Youtube,
+  Megaphone,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { Sheet } from "@/components/ui/sheet";
@@ -50,6 +51,7 @@ const secondaryNav = [
   { href: "/dashboard/deploys", label: "Deploys", icon: Rocket },
   { href: "/dashboard/conversion", label: "Conversion", icon: TrendingUp },
   { href: "/dashboard/knowledge", label: "Knowledge", icon: Library },
+  { href: "/dashboard/meta-ads", label: "Meta Ads", icon: Megaphone },
 ];
 
 function NavContent({ onLinkClick }: { onLinkClick?: () => void }) {

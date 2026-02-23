@@ -1,6 +1,6 @@
 # VPS Deploy Ready Checklist
 
-**Deploy from your Mac:** `./scripts/deploy-remote.sh` (fast) or `./scripts/deploy-remote.sh --full` (with DB sync). No deploy key? Use `./scripts/sync-and-deploy.sh`. See [PROD_FIRST_WORKFLOW.md](PROD_FIRST_WORKFLOW.md).
+**Deploy from your Mac:** `./scripts/deploy-remote.sh` (fast) or `./scripts/deploy-remote.sh --full` (with DB sync). No deploy key? Use `./scripts/sync-and-deploy.sh`. See [PROD_FIRST_WORKFLOW.md](PROD_FIRST_WORKFLOW.md). Quick runbook: [PROD_OPERATOR_LOOP.md](PROD_OPERATOR_LOOP.md).
 
 ## Required env vars (production)
 
@@ -25,7 +25,11 @@
 | `SMTP_PORT` | Optional | Default `465` (SSL) |
 | `SMTP_USER` | Optional | SMTP auth; can reuse `IMAP_USER` for same mailbox |
 | `SMTP_PASS` | Optional | SMTP auth; can reuse `IMAP_PASS` |
+| `NOTIFY_WEBHOOK_URL` | Optional | Webhook URL for pipeline/proposal notifications (Discord-compatible; also `DISCORD_WEBHOOK_URL`) |
+| `APP_URL` | Optional | Base URL for webhook links if `NEXT_PUBLIC_APP_URL` unset; fallback `https://evenslouis.ca` |
 | `REDIS_URL` | For worker/queues | Prod Docker: `redis://redis:6379`. Dev: `redis://localhost:6379` or omit. |
+| `META_ACCESS_TOKEN` | Optional | For Meta Ads Monitor (`/dashboard/meta-ads`); long-lived or system user token with `ads_read` |
+| `META_AD_ACCOUNT_ID` | Optional | Ad account ID (e.g. `act_1234567890`). See [META_ADS_MONITOR_SETUP.md](META_ADS_MONITOR_SETUP.md) |
 
 **Admin login:** Set `ADMIN_EMAIL` and `ADMIN_PASSWORD` on the server's `.env` to the same values you use to log in. Deploy runs `seed.mjs`, which creates/updates that user; if they differ, you can get a second user or lose access after a reset-auth.
 
