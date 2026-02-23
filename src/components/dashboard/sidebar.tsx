@@ -25,12 +25,14 @@ import {
   Target,
   Youtube,
   Megaphone,
+  Compass,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { Sheet } from "@/components/ui/sheet";
 
 const primaryNav = [
   { href: "/dashboard/command", label: "Command Center", icon: LayoutDashboard },
+  { href: "/dashboard/strategy", label: "Strategy", icon: Compass },
   { href: "/dashboard/ops-health", label: "Ops Health", icon: Activity },
   { href: "/dashboard/sales-leak", label: "Sales Leak", icon: TrendingUp },
   { href: "/dashboard/results", label: "Results Ledger", icon: Target },

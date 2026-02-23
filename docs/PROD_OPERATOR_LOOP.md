@@ -4,6 +4,14 @@ Short runbook for daily prod operation.
 
 ---
 
+## Weekly strategy reset (recommended)
+
+1. Open **Strategy** (`/dashboard/strategy`).
+2. Set current week: phase, active campaign, operator improvement focus, sales target.
+3. End of week: fill review checkboxes (campaign shipped, system improved, sales actions done, proof captured) + biggest bottleneck + next automation.
+
+---
+
 ## Deploy
 
 ```bash

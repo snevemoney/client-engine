@@ -46,6 +46,7 @@ Visit each; confirm page loads, no error boundary:
 | Page | URL | Quick check |
 |------|-----|-------------|
 | Command Centre | /dashboard/command | Cards visible, Section2 loads |
+| Strategy | /dashboard/strategy | Panel loads, save strategy + review |
 | Ops Health | /dashboard/ops-health | Status visible |
 | Sales Leak | /dashboard/sales-leak | Data or empty state |
 | Results Ledger | /dashboard/results | Table or empty |

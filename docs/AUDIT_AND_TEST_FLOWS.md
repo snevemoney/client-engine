@@ -20,6 +20,11 @@
 | `/dashboard/proposals/[id]` | Proposal console (edit sections, toggles) | Yes |
 | `/dashboard/metrics` | Pipeline metrics | Yes |
 | `/dashboard/command` | Command center / brief | Yes |
+| `/dashboard/strategy` | Strategy Quadrant (weekly planning) | Yes |
+| `/dashboard/ops-health` | Ops health | Yes |
+| `/dashboard/sales-leak` | Sales leak | Yes |
+| `/dashboard/results` | Results ledger | Yes |
+| `/dashboard/build-ops` | Build ops | Yes |
 | `/dashboard/chat` | Ops chat | Yes |
 | `/dashboard/knowledge` | Knowledge engine | Yes |
 | `/dashboard/learning` | Learning engine | Yes |
@@ -28,11 +33,7 @@
 | `/dashboard/conversion` | Conversion metrics | Yes |
 | `/dashboard/deploys` | Deploys | Yes |
 | `/dashboard/settings` | Settings | Yes |
-| `/dashboard/ops-health` | Ops health panel | Yes |
-| `/dashboard/sales-leak` | Sales leak dashboard | Yes |
-| `/dashboard/results` | Results ledger | Yes |
 | `/dashboard/youtube` | YouTube ingest pipeline | Yes |
-| `/dashboard/build-ops` | Build ops / agent tasks | Yes |
 | `/work` | Work (public?) | Depends on app |
 | `/work/[slug]` | Work item by slug | Depends on app |
 | `/demos/[slug]` | Demo pages | Depends on app |

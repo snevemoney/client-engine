@@ -24,6 +24,23 @@
 10. **Follow-up**: Open **Proposals** → Follow-up Queue (Needs sequence / In progress / Stale). Open a lead with proposal sent → generate 5-touch follow-up sequence, mark touches sent manually. No auto-send.
 11. Use **Quick actions** to open Proposals, Leads, Metrics, or Deploys as needed.
 
+## Strategy Quadrant (weekly planning)
+
+The **Strategy Quadrant** panel helps you manage weekly focus across four quadrants:
+
+- **Next Innovative Campaign** (Exponential) — Active campaign: name, audience, channel, offer, CTA, proof angle
+- **Leadership / Operator Development** (Exponential) — This week's leverage/system improvement focus
+- **Operating System** (Linear) — Built into workflow (pipeline, deploys, etc.)
+- **Biz Dev & Sales** (Linear) — Sales target (e.g. "10 follow-ups / 2 calls")
+
+**Weekly fill:** Set phase (Survival, Formulation, Explosion, Plateau), active campaign block, operator improvement focus, and sales target. Save strategy.
+
+**Weekly review (end of week):** Check Campaign shipped, System improved, Sales actions done, Proof captured. Add biggest bottleneck and next automation. Save review.
+
+A compact **Strategy Snapshot** card appears on Command Center. Full panel: **Strategy** in sidebar (`/dashboard/strategy`).
+
+---
+
 ## Optional
 
 - **Result Target (per lead)**: Before or after proposal, set a **Result Target** on the lead (current state, target state, metric, timeline). Proposals that have a result target are framed as outcome contracts. See **Client Success** below.
