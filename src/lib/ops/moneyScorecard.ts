@@ -27,6 +27,7 @@ export async function getMoneyScorecard(): Promise<MoneyScorecard> {
   const [leads, dealsWon90dCount] = await Promise.all([
   db.lead.findMany({
     where: { createdAt: { gte: since } },
+    take: 500,
     select: {
       score: true,
       budget: true,

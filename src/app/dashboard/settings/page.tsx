@@ -34,7 +34,7 @@ export default async function SettingsPage() {
       select: { createdAt: true },
     }),
     getMonetizationMap(),
-    db.project.findMany({ select: { id: true, slug: true, name: true, status: true }, orderBy: { createdAt: "desc" } }),
+    db.project.findMany({ select: { id: true, slug: true, name: true, status: true }, orderBy: { createdAt: "desc" }, take: 50 }),
   ]);
 
   const researchEnabled =

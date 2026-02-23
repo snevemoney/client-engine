@@ -27,6 +27,7 @@ async function getProposalInbox(): Promise<{
   const leads = await db.lead.findMany({
     where: { status: { not: "REJECTED" } },
     orderBy: { updatedAt: "desc" },
+    take: 200,
     include: {
       artifacts: {
         where: {
