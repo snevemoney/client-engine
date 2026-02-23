@@ -1,6 +1,8 @@
 import { LegalPage, LegalSection } from "@/components/site/LegalPage";
 import type { Metadata } from "next";
 
+export const revalidate = 3600;
+
 export const metadata: Metadata = {
   title: "Data Deletion | Evens Louis",
   description: "How to request deletion of your data from evenslouis.ca and client engine.",

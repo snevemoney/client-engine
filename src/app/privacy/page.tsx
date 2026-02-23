@@ -1,6 +1,8 @@
 import { LegalPage, LegalSection } from "@/components/site/LegalPage";
 import type { Metadata } from "next";
 
+export const revalidate = 3600;
+
 export const metadata: Metadata = {
   title: "Privacy Policy | Evens Louis",
   description: "Privacy policy for evenslouis.ca and client engine services.",

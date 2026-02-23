@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { db } from "@/lib/db";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { LeadCaptureForm } from "@/components/site/LeadCaptureForm";
@@ -57,11 +58,13 @@ export default async function WorkPage() {
                 className="border border-neutral-800/50 rounded-xl p-6 hover:border-neutral-700/50 transition-colors group"
               >
                 {p.screenshots.length > 0 && (
-                  <div className="rounded-lg overflow-hidden mb-4 border border-neutral-800/30">
-                    <img
+                  <div className="rounded-lg overflow-hidden mb-4 border border-neutral-800/30 relative h-40">
+                    <Image
                       src={p.screenshots[0]}
                       alt={p.name}
-                      className="w-full h-40 object-cover object-top"
+                      fill
+                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                      className="object-cover object-top"
                     />
                   </div>
                 )}
