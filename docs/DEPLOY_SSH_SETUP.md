@@ -198,12 +198,6 @@ For true autopilot (e.g. push to main → deploy while you're at your 9–5), us
 
 ---
 
-## Later: non-root deploy user
+## After deploy: verify
 
-Current flow (root) is fine while moving fast. Long-term, a dedicated deploy user for Git pulls and app deploys is cleaner and safer. You can harden later.
-
----
-
-## Optional: auto-deploy on push
-
-For true autopilot (e.g. push to main → deploy while you're at your 9–5), use GitHub Actions to SSH into the server and run `/root/deploy-client-engine.sh`. Keeps the server simple; deploy still runs there.
+After every deploy, run the after-deploy smoke checklist. See `docs/VPS_DEPLOY_CHECKLIST.md` (After-deploy smoke checklist section) and `docs/TESTING_SIDE_PANEL.md` for the full testing strategy.

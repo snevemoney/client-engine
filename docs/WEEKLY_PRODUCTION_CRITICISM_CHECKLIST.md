@@ -120,6 +120,18 @@ Use this **every week**. Evidence + action only. If the app can’t answer a que
 
 ---
 
+## 8) App Health & Testing
+
+- [ ] **Health check:** `curl -s https://evenslouis.ca/api/health` — 200, ok true, all checks green?
+- [ ] **Automated tests passing?** Run `npm run test:e2e` locally or against prod. Any failures?
+- [ ] **Manual production check (weekly):** Log in to production (MCP browser or real browser), visit Command Center, one lead detail, Proposals, Metrics. Pages render with current data?
+- [ ] **Any pages broken, blank, or showing errors?** If so, add a fix.
+- [ ] **Was a deploy done this week?** If yes, was the after-deploy smoke checklist run? See **docs/VPS_DEPLOY_CHECKLIST.md**.
+
+**Evidence to check:** `/api/health`, automated test results, production page spot-checks. See **docs/TESTING_SIDE_PANEL.md** for the full testing strategy and checklists (Night operator, Before clients, After deploy, When app feels slow).
+
+---
+
 ## Ritual
 
 1. Open **Command Center** and read the **Pat/Tom Weekly Scorecard** card (the sentence + 7 KPIs). See **docs/PAT_TOM_WEEKLY_SCORECARD.md**.
@@ -128,3 +140,4 @@ Use this **every week**. Evidence + action only. If the app can’t answer a que
 4. For every fix you add, use the **Money Impact** format: Fix / Expected money impact / Metric to watch / Review date. See **docs/PAT_TOM_WEEKLY_SCORECARD.md**.
 5. For every “no” or “manual”: add one **concrete fix** (Do now or Backlog).
 6. Run the **Production Critic** Cursor rule (`.cursor/rules/production-critic.mdc`) for an AI review against this framework.
+7. Run the **Night Operator Checklist** (see `docs/TESTING_SIDE_PANEL.md`) if you haven't this week.
