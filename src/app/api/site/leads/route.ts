@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 import { db } from "@/lib/db";
+import { sendLeadEvent } from "@/lib/meta-capi";
 
 function buildLeadEmailPayload(opts: {
   name: string;
@@ -128,6 +129,15 @@ export async function POST(req: NextRequest) {
       website,
       message,
       title,
+    });
+
+    void sendLeadEvent({
+      eventId: lead.id,
+      email,
+      leadId: lead.id,
+      contentName: title,
+      clientIp: req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? req.headers.get("x-real-ip") ?? undefined,
+      clientUserAgent: req.headers.get("user-agent") ?? undefined,
     });
 
     return NextResponse.json({ ok: true, leadId: lead.id });
