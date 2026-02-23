@@ -190,6 +190,11 @@ export async function fetchMetaAdsDashboard(
       return { ...row, campaignId: a.campaign_id ?? "" };
     });
 
+    const adSetToCampaign = new Map<string, string>();
+    for (const aset of adsets) {
+      const cid = (aset as { campaign_id?: string }).campaign_id;
+      if (cid) adSetToCampaign.set(aset.id, cid);
+    }
     const normAds: MetaAdsAd[] = ads.map((a) => {
       const row = normalizeInsightToRow(
         (a.insight ?? {}) as Parameters<typeof normalizeInsightToRow>[0],
@@ -203,9 +208,11 @@ export async function fetchMetaAdsDashboard(
           learning_type_info: a.learning_type_info,
         }
       );
+      const adsetId = a.adset_id ?? "";
       return {
         ...row,
-        adSetId: a.adset_id ?? "",
+        adSetId: adsetId,
+        campaignId: adSetToCampaign.get(adsetId),
         creativeId: a.creative?.id ?? null,
         thumbnailUrl: a.thumbnailUrl ?? null,
       };

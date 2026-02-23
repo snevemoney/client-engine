@@ -48,6 +48,7 @@ export type MetaAdsAdSet = MetaAdsCampaign & { campaignId: string };
 
 export type MetaAdsAd = MetaAdsCampaign & {
   adSetId: string;
+  campaignId?: string;
   creativeId: string | null;
   thumbnailUrl: string | null;
 };

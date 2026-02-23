@@ -74,6 +74,7 @@ export async function POST() {
         accountId: acc,
         entityType: r.entityType,
         entityId: r.entityId,
+        campaignId: r.campaignId ?? null,
         entityName: r.entityName,
         ruleKey: r.ruleKey,
         severity: r.severity,

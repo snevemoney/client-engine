@@ -35,11 +35,16 @@ Expect `{"ok":true,"checks":{...}}`. If not, check app/worker logs.
 
 ## Meta Ads operator loop (when configured)
 
-1. **Overview** — KPIs, tables, insights; verify data loads.
-2. **Recommendations** — Generate recommendations; review; Approve/Dismiss; Apply (dry-run first).
-3. **Action History** — Verify simulated or success entries.
-4. **Settings** — Check dry-run, target CPL, thresholds.
-5. **Verify in CRM/app** — Leads quality, attribution.
+1. **Refresh dashboard** — Overview tab → Refresh (or rely on cache).
+2. **Generate recommendations** — Recommendations tab → Generate.
+3. **Review critical/warn** — Scan severity badges; read evidence.
+4. **Mark false positives** — If a rec is wrong, click False + to train thresholds.
+5. **Approve safe actions** — Approve recs you agree with; Dismiss others.
+6. **Apply** — Dry-run first (Settings → dry-run ON). Apply approved recs; Action History shows simulated.
+7. **Check Action History** — Verify status (simulated/blocked/success), message, evidence.
+8. **Verify in Meta Ads Manager** — For live applies (dry-run OFF), confirm changes in Ads Manager.
+
+Settings: dry-run, target CPL, protected IDs, cooldown, daily cap. See META_ADS_MONITOR_RUNBOOK.md.
 
 ---
 

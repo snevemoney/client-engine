@@ -21,7 +21,8 @@ export type RecommendationStatus =
   | "approved"
   | "dismissed"
   | "applied"
-  | "failed";
+  | "failed"
+  | "false_positive";
 
 export type RecommendationEvidence = {
   spend?: number;
@@ -40,6 +41,7 @@ export type RecommendationOutput = {
   ruleKey: string;
   entityType: EntityType;
   entityId: string;
+  campaignId?: string;
   entityName: string;
   severity: Severity;
   confidence: Confidence;

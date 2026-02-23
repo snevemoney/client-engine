@@ -1,12 +1,18 @@
 /**
  * POST /api/meta-ads/recommendations/[id]/apply
- * Executes Meta action. Respects settings dryRun. Writes action log.
+ * Executes Meta action. Respects settings dryRun. Enforces guardrails. Writes action log.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { jsonError, withRouteTiming } from "@/lib/api-utils";
 import { executeMetaAction } from "@/lib/meta-ads/actions-client";
+import {
+  checkProtected,
+  checkCooldown,
+  checkDailyCap,
+  buildEvidenceMessage,
+} from "@/lib/meta-ads/apply-guardrails";
 import { z } from "zod";
 
 const BodySchema = z.object({
@@ -43,6 +49,9 @@ export async function POST(
       return jsonError("Forbidden", 403);
     }
 
+    if (rec.status === "false_positive") {
+      return jsonError("Cannot apply: marked as false positive. Reset first to re-approve.", 400);
+    }
     if (rec.status !== "approved" && rec.status !== "queued") {
       return jsonError(`Cannot apply from status ${rec.status}. Approve first.`, 400);
     }
@@ -54,6 +63,125 @@ export async function POST(
       where: { accountId: rec.accountId },
     });
     const dryRun = settings?.dryRun ?? true;
+
+    const protectedCheck = checkProtected(rec, settings);
+    if (!protectedCheck.ok) {
+      const evidenceMsg = buildEvidenceMessage(
+        (rec.evidence as Record<string, unknown>) ?? {},
+        rec.ruleKey,
+        rec.severity,
+        rec.confidence
+      );
+      await db.metaAdsActionLog.create({
+        data: {
+          recommendationId: rec.id,
+          accountId: rec.accountId,
+          entityType: rec.entityType,
+          entityId: rec.entityId,
+          entityName: rec.entityName,
+          actionType: rec.actionType,
+          actionPayload: rec.actionPayload as object,
+          mode: settings?.mode ?? "manual",
+          triggeredBy: "user",
+          dryRun,
+          status: "blocked",
+          message: `${protectedCheck.reason}${evidenceMsg ? ` | ${evidenceMsg}` : ""}`,
+        },
+      });
+      return jsonError(protectedCheck.reason, 409);
+    }
+
+    const cooldownMins = settings?.actionCooldownMinutes ?? 720;
+    const cooldownCutoff = new Date(Date.now() - cooldownMins * 60 * 1000);
+    const todayStart = new Date();
+    todayStart.setUTCHours(0, 0, 0, 0);
+
+    const [recentForCooldown, todayForCap] = await Promise.all([
+      db.metaAdsActionLog.findMany({
+        where: {
+          accountId: rec.accountId,
+          entityType: rec.entityType,
+          entityId: rec.entityId,
+          createdAt: { gte: cooldownCutoff },
+        },
+        select: { status: true, createdAt: true },
+        orderBy: { createdAt: "desc" },
+      }),
+      db.metaAdsActionLog.findMany({
+        where: {
+          accountId: rec.accountId,
+          entityType: rec.entityType,
+          entityId: rec.entityId,
+          createdAt: { gte: todayStart },
+        },
+        select: { status: true },
+      }),
+    ]);
+
+    const cooldownCheck = checkCooldown(
+      rec.accountId,
+      rec.entityType,
+      rec.entityId,
+      settings,
+      recentForCooldown
+    );
+    if (!cooldownCheck.ok) {
+      const evidenceMsg = buildEvidenceMessage(
+        (rec.evidence as Record<string, unknown>) ?? {},
+        rec.ruleKey,
+        rec.severity,
+        rec.confidence
+      );
+      await db.metaAdsActionLog.create({
+        data: {
+          recommendationId: rec.id,
+          accountId: rec.accountId,
+          entityType: rec.entityType,
+          entityId: rec.entityId,
+          entityName: rec.entityName,
+          actionType: rec.actionType,
+          actionPayload: rec.actionPayload as object,
+          mode: settings?.mode ?? "manual",
+          triggeredBy: "user",
+          dryRun,
+          status: "blocked",
+          message: `${cooldownCheck.reason}${evidenceMsg ? ` | ${evidenceMsg}` : ""}`,
+        },
+      });
+      return jsonError(cooldownCheck.reason, 409);
+    }
+
+    const capCheck = checkDailyCap(
+      rec.entityType,
+      rec.entityId,
+      settings,
+      todayForCap
+    );
+    if (!capCheck.ok) {
+      const evidenceMsg = buildEvidenceMessage(
+        (rec.evidence as Record<string, unknown>) ?? {},
+        rec.ruleKey,
+        rec.severity,
+        rec.confidence
+      );
+      await db.metaAdsActionLog.create({
+        data: {
+          recommendationId: rec.id,
+          accountId: rec.accountId,
+          entityType: rec.entityType,
+          entityId: rec.entityId,
+          entityName: rec.entityName,
+          actionType: rec.actionType,
+          actionPayload: rec.actionPayload as object,
+          mode: settings?.mode ?? "manual",
+          triggeredBy: "user",
+          dryRun,
+          status: "blocked",
+          message: `${capCheck.reason}${evidenceMsg ? ` | ${evidenceMsg}` : ""}`,
+        },
+      });
+      return jsonError(capCheck.reason, 409);
+    }
 
     const actionType = rec.actionType as "pause" | "resume" | "increase_budget" | "decrease_budget";
     if (
@@ -81,6 +209,16 @@ export async function POST(
         : "success"
       : "failed";
 
+    const evidenceMsg = buildEvidenceMessage(
+      (rec.evidence as Record<string, unknown>) ?? {},
+      rec.ruleKey,
+      rec.severity,
+      rec.confidence
+    );
+    const logMessage = result.ok
+      ? `${result.responseSummary}${evidenceMsg ? ` | ${evidenceMsg}` : ""}`
+      : result.error ?? "";
+
     await db.metaAdsActionLog.create({
       data: {
         recommendationId: rec.id,
@@ -94,7 +232,7 @@ export async function POST(
         triggeredBy: "user",
         dryRun,
         status: logStatus,
-        message: result.ok ? result.responseSummary : result.error,
+        message: logMessage,
         metaResponse: result.ok && !result.simulated ? (result.requestPayload as object) : undefined,
       },
     });

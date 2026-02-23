@@ -18,6 +18,8 @@ const SettingsSchema = z.object({
   maxBudgetIncreasePctPerDay: z.number().min(0).max(100).optional(),
   allowChangesDuringLearning: z.boolean().optional(),
   protectedCampaignIds: z.array(z.string()).optional(),
+  actionCooldownMinutes: z.number().min(0).max(10080).optional(), // 0 = disabled, max 7d
+  maxActionsPerEntityPerDay: z.number().min(0).max(50).optional(),
 });
 
 export const dynamic = "force-dynamic";
@@ -90,7 +92,14 @@ export async function PATCH(req: NextRequest) {
     if (body.maxBudgetIncreasePctPerAction != null) data.maxBudgetIncreasePctPerAction = body.maxBudgetIncreasePctPerAction;
     if (body.maxBudgetIncreasePctPerDay != null) data.maxBudgetIncreasePctPerDay = body.maxBudgetIncreasePctPerDay;
     if (body.allowChangesDuringLearning != null) data.allowChangesDuringLearning = body.allowChangesDuringLearning;
-    if (body.protectedCampaignIds != null) data.protectedCampaignIds = body.protectedCampaignIds;
+    if (body.protectedCampaignIds != null) {
+      const ids = body.protectedCampaignIds
+        .filter((s) => typeof s === "string" && String(s).trim().length > 0)
+        .map((s) => String(s).trim());
+      data.protectedCampaignIds = [...new Set(ids)];
+    }
+    if (body.actionCooldownMinutes != null) data.actionCooldownMinutes = body.actionCooldownMinutes;
+    if (body.maxActionsPerEntityPerDay != null) data.maxActionsPerEntityPerDay = body.maxActionsPerEntityPerDay;
 
     const updated = await db.metaAdsAutomationSettings.update({
       where: { accountId: acc },

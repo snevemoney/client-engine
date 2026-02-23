@@ -13,6 +13,8 @@ const DEFAULTS = {
   maxBudgetIncreasePctPerDay: 20,
   allowChangesDuringLearning: false,
   protectedCampaignIds: [] as string[],
+  actionCooldownMinutes: 720,
+  maxActionsPerEntityPerDay: 2,
 };
 
 export function MetaAdsSettingsPanel() {
@@ -38,10 +40,13 @@ export function MetaAdsSettingsPanel() {
             maxBudgetIncreasePctPerDay: s.maxBudgetIncreasePctPerDay ?? DEFAULTS.maxBudgetIncreasePctPerDay,
             allowChangesDuringLearning: s.allowChangesDuringLearning ?? DEFAULTS.allowChangesDuringLearning,
             protectedCampaignIds: (s.protectedCampaignIds as string[]) ?? DEFAULTS.protectedCampaignIds,
+            actionCooldownMinutes: s.actionCooldownMinutes ?? DEFAULTS.actionCooldownMinutes,
+            maxActionsPerEntityPerDay: s.maxActionsPerEntityPerDay ?? DEFAULTS.maxActionsPerEntityPerDay,
           });
-          setProtectedIdsInput(((s.protectedCampaignIds as string[]) ?? []).join(", "));
+          setProtectedIdsInput(((s.protectedCampaignIds as string[]) ?? []).join("\n"));
         } else {
           setSettings(DEFAULTS);
+          setProtectedIdsInput("");
         }
       })
       .finally(() => setLoading(false));
@@ -53,7 +58,7 @@ export function MetaAdsSettingsPanel() {
     setError(null);
     try {
       const ids = protectedIdsInput
-        .split(",")
+        .split(/[\s,\n]+/)
         .map((s) => s.trim())
         .filter(Boolean);
       const res = await fetch("/api/meta-ads/settings", {
@@ -68,7 +73,9 @@ export function MetaAdsSettingsPanel() {
           maxBudgetIncreasePctPerAction: settings.maxBudgetIncreasePctPerAction,
           maxBudgetIncreasePctPerDay: settings.maxBudgetIncreasePctPerDay,
           allowChangesDuringLearning: settings.allowChangesDuringLearning,
-          protectedCampaignIds: ids,
+          protectedCampaignIds: [...new Set(ids)],
+          actionCooldownMinutes: settings.actionCooldownMinutes,
+          maxActionsPerEntityPerDay: settings.maxActionsPerEntityPerDay,
         }),
       });
       if (!res.ok) {
@@ -85,6 +92,7 @@ export function MetaAdsSettingsPanel() {
   function reset() {
     setSettings(DEFAULTS);
     setProtectedIdsInput("");
+    setError(null);
   }
 
   if (loading || !settings) {
@@ -185,14 +193,38 @@ export function MetaAdsSettingsPanel() {
           <label htmlFor="allowChangesDuringLearning" className="text-sm text-neutral-300">Allow changes during learning</label>
         </div>
         <div>
-          <label className="block text-xs text-neutral-500 mb-1">Protected campaign IDs (comma-separated)</label>
-          <input
-            type="text"
+          <label className="block text-xs text-neutral-500 mb-1">Protected campaign IDs (one per line or comma-separated)</label>
+          <textarea
             value={protectedIdsInput}
             onChange={(e) => setProtectedIdsInput(e.target.value)}
-            placeholder="e.g. 123456, 789012"
+            placeholder="e.g. 123456&#10;789012"
+            rows={3}
             className="w-full rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-200"
           />
+        </div>
+        <div>
+          <label className="block text-xs text-neutral-500 mb-1">Action cooldown (minutes, 0 = disabled)</label>
+          <input
+            type="number"
+            min={0}
+            max={10080}
+            value={settings.actionCooldownMinutes}
+            onChange={(e) => setSettings({ ...settings, actionCooldownMinutes: parseInt(e.target.value, 10) || 0 })}
+            className="w-full rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-200"
+          />
+          <p className="text-[10px] text-neutral-500 mt-0.5">Default 720 (12h). Prevents re-applying to same entity too soon.</p>
+        </div>
+        <div>
+          <label className="block text-xs text-neutral-500 mb-1">Max actions per entity per day</label>
+          <input
+            type="number"
+            min={0}
+            max={50}
+            value={settings.maxActionsPerEntityPerDay}
+            onChange={(e) => setSettings({ ...settings, maxActionsPerEntityPerDay: parseInt(e.target.value, 10) || 0 })}
+            className="w-full rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-200"
+          />
+          <p className="text-[10px] text-neutral-500 mt-0.5">Default 2. 0 = disabled.</p>
         </div>
         <div className="flex gap-2">
           <button

@@ -87,6 +87,7 @@ function toEntityAd(a: MetaAdsAd): Entity {
     effectiveStatus: a.effectiveStatus,
     deliveryStatus: a.deliveryStatus,
     learningStatus: a.learningStatus,
+    campaignId: a.campaignId,
   };
 }
 
@@ -97,6 +98,7 @@ function isLearning(e: Entity): boolean {
 function isProtected(e: Entity, s: AutomationSettingsInput): boolean {
   if (e.entityType === "campaign" && s.protectedCampaignIds.includes(e.entityId)) return true;
   if (e.entityType === "adset" && e.campaignId && s.protectedCampaignIds.includes(e.campaignId)) return true;
+  if (e.entityType === "ad" && e.campaignId && s.protectedCampaignIds.includes(e.campaignId)) return true;
   return false;
 }
 
@@ -133,6 +135,7 @@ export function generateRecommendations(
         ruleKey: "no_leads_after_spend",
         entityType: e.entityType,
         entityId: e.entityId,
+        ...(e.campaignId && { campaignId: e.campaignId }),
         entityName: e.entityName,
         severity,
         confidence: e.spend >= 50 ? "high" : "medium",
@@ -158,6 +161,7 @@ export function generateRecommendations(
         ruleKey: "learning_protection",
         entityType: e.entityType,
         entityId: e.entityId,
+        ...(e.campaignId && { campaignId: e.campaignId }),
         entityName: e.entityName,
         severity: "info",
         confidence: "high",
@@ -180,6 +184,7 @@ export function generateRecommendations(
         ruleKey: "insufficient_data",
         entityType: e.entityType,
         entityId: e.entityId,
+        ...(e.campaignId && { campaignId: e.campaignId }),
         entityName: e.entityName,
         severity: "info",
         confidence: "high",
@@ -203,6 +208,7 @@ export function generateRecommendations(
           ruleKey: "high_cpl",
           entityType: e.entityType,
           entityId: e.entityId,
+          ...(e.campaignId && { campaignId: e.campaignId }),
           entityName: e.entityName,
           severity: "critical",
           confidence: "high",
@@ -223,6 +229,7 @@ export function generateRecommendations(
           ruleKey: "high_cpl",
           entityType: e.entityType,
           entityId: e.entityId,
+          ...(e.campaignId && { campaignId: e.campaignId }),
           entityName: e.entityName,
           severity: "warn",
           confidence: "medium",
@@ -251,6 +258,7 @@ export function generateRecommendations(
         ruleKey: "fatigue_detected",
         entityType: e.entityType,
         entityId: e.entityId,
+        ...(e.campaignId && { campaignId: e.campaignId }),
         entityName: e.entityName,
         severity: "warn",
         confidence: "medium",
@@ -281,6 +289,7 @@ export function generateRecommendations(
         ruleKey: "winner_scale_candidate",
         entityType: e.entityType,
         entityId: e.entityId,
+        ...(e.campaignId && { campaignId: e.campaignId }),
         entityName: e.entityName,
         severity: "info",
         confidence: "medium",

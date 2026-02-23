@@ -66,9 +66,11 @@ export function MetaAdsActionHistoryPanel() {
                   <td className="py-2 px-2 text-neutral-500 text-xs">{a.mode}</td>
                   <td className="py-2 px-2">{a.dryRun ? "Y" : "—"}</td>
                   <td className="py-2 px-2">
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded ${a.status === "success" ? "bg-emerald-900/40 text-emerald-200" : a.status === "simulated" ? "bg-blue-900/40 text-blue-200" : "bg-red-900/40 text-red-200"}`}>{a.status}</span>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded ${a.status === "success" ? "bg-emerald-900/40 text-emerald-200" : a.status === "simulated" ? "bg-blue-900/40 text-blue-200" : a.status === "blocked" ? "bg-amber-900/40 text-amber-200" : "bg-red-900/40 text-red-200"}`}>{a.status}</span>
                   </td>
-                  <td className="py-2 px-2 text-neutral-500 text-xs max-w-[200px] truncate" title={a.message ?? ""}>{a.message ?? "—"}</td>
+                  <td className="py-2 px-2 text-neutral-500 text-xs max-w-[280px]" title={a.message ?? ""}>
+                    <span className="line-clamp-2">{a.message ?? "—"}</span>
+                  </td>
                 </tr>
               ))}
             </tbody>

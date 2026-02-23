@@ -6,6 +6,8 @@ import { RefreshCw, Zap, Play } from "lucide-react";
 type Rec = {
   id: string;
   entityType: string;
+  entityId: string;
+  campaignId?: string | null;
   entityName: string;
   ruleKey: string;
   severity: string;
@@ -17,9 +19,14 @@ type Rec = {
   createdAt: string;
 };
 
+type SettingsSummary = {
+  protectedCampaignIds?: string[];
+};
+
 export function MetaAdsRecommendationsPanel({ onRefresh, onData }: { onRefresh?: () => void; onData?: (d: { lastGenerated: string | null }) => void }) {
   const [recs, setRecs] = useState<Rec[]>([]);
   const [counts, setCounts] = useState<Record<string, number>>({});
+  const [settingsSummary, setSettingsSummary] = useState<SettingsSummary | null>(null);
   const [lastGenerated, setLastGenerated] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [genLoading, setGenLoading] = useState(false);
@@ -34,6 +41,7 @@ export function MetaAdsRecommendationsPanel({ onRefresh, onData }: { onRefresh?:
       const json = await res.json();
       setRecs(json.recommendations ?? []);
       setCounts(json.counts ?? {});
+      setSettingsSummary(json.settingsSummary ?? null);
       const lg = json.lastGenerated ?? null;
       setLastGenerated(lg);
       onData?.({ lastGenerated: lg });
@@ -67,7 +75,7 @@ export function MetaAdsRecommendationsPanel({ onRefresh, onData }: { onRefresh?:
     }
   }
 
-  async function patchRec(id: string, action: "approve" | "dismiss") {
+  async function patchRec(id: string, action: "approve" | "dismiss" | "false_positive" | "reset") {
     setActionId(id);
     try {
       const res = await fetch(`/api/meta-ads/recommendations/${id}`, {
@@ -102,9 +110,16 @@ export function MetaAdsRecommendationsPanel({ onRefresh, onData }: { onRefresh?:
     }
   }
 
+  const protectedIds = settingsSummary?.protectedCampaignIds ?? [];
+  const isProtected = (r: Rec) => {
+    if (r.entityType === "campaign" && protectedIds.includes(r.entityId)) return true;
+    if (r.campaignId && protectedIds.includes(r.campaignId)) return true;
+    return false;
+  };
+
   const severityCls = (s: string) => (s === "critical" ? "bg-red-900/40 text-red-200" : s === "warn" ? "bg-amber-900/40 text-amber-200" : "bg-neutral-700 text-neutral-300");
-  const statusCls = (s: string) => (s === "approved" ? "bg-emerald-900/40 text-emerald-200" : s === "applied" ? "bg-blue-900/40 text-blue-200" : s === "dismissed" ? "bg-neutral-700 text-neutral-400" : s === "failed" ? "bg-red-900/40 text-red-200" : "bg-amber-900/40 text-amber-200");
-  const canApply = (r: Rec) => ["approved", "queued"].includes(r.status) && ["pause", "resume", "increase_budget", "decrease_budget"].includes(r.actionType);
+  const statusCls = (s: string) => (s === "approved" ? "bg-emerald-900/40 text-emerald-200" : s === "applied" ? "bg-blue-900/40 text-blue-200" : s === "dismissed" ? "bg-neutral-700 text-neutral-400" : s === "failed" ? "bg-red-900/40 text-red-200" : s === "false_positive" ? "bg-purple-900/40 text-purple-200" : "bg-amber-900/40 text-amber-200");
+  const canApply = (r: Rec) => ["approved", "queued"].includes(r.status) && !isProtected(r) && ["pause", "resume", "increase_budget", "decrease_budget"].includes(r.actionType);
 
   return (
     <section className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-4">
@@ -136,6 +151,7 @@ export function MetaAdsRecommendationsPanel({ onRefresh, onData }: { onRefresh?:
                   <span className="text-neutral-500 text-xs ml-2">({r.entityType})</span>
                   <div className="flex flex-wrap gap-1.5 mt-1">
                     <span className={`text-[10px] px-1.5 py-0.5 rounded ${statusCls(r.status)}`}>{r.status}</span>
+                    {isProtected(r) && <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-900/60 text-amber-200">Protected</span>}
                     <span className={`text-[10px] px-1.5 py-0.5 rounded ${severityCls(r.severity)}`}>{r.severity}</span>
                     <span className="text-[10px] px-1.5 py-0.5 rounded bg-neutral-700 text-neutral-400">{r.ruleKey}</span>
                   </div>
@@ -150,12 +166,16 @@ export function MetaAdsRecommendationsPanel({ onRefresh, onData }: { onRefresh?:
                     </div>
                   )}
                 </div>
-                <div className="flex gap-1 shrink-0">
+                <div className="flex gap-1 shrink-0 flex-wrap">
                   {["queued", "approved"].includes(r.status) && (
                     <>
                       <button onClick={() => patchRec(r.id, "approve")} disabled={actionId !== null || r.status === "approved"} className="rounded px-2 py-1 text-[10px] text-emerald-200 bg-emerald-900/40 hover:bg-emerald-900/60 disabled:opacity-50">Approve</button>
                       <button onClick={() => patchRec(r.id, "dismiss")} disabled={actionId !== null} className="rounded px-2 py-1 text-[10px] text-neutral-300 bg-neutral-700 hover:bg-neutral-600 disabled:opacity-50">Dismiss</button>
+                      <button onClick={() => patchRec(r.id, "false_positive")} disabled={actionId !== null} className="rounded px-2 py-1 text-[10px] text-purple-200 bg-purple-900/40 hover:bg-purple-900/60 disabled:opacity-50">False +</button>
                     </>
+                  )}
+                  {["approved", "dismissed", "false_positive"].includes(r.status) && (
+                    <button onClick={() => patchRec(r.id, "reset")} disabled={actionId !== null} className="rounded px-2 py-1 text-[10px] text-neutral-300 bg-neutral-700 hover:bg-neutral-600 disabled:opacity-50">Reset</button>
                   )}
                   {canApply(r) && (
                     <button onClick={() => apply(r.id)} disabled={actionId !== null} className="flex items-center gap-1 rounded px-2 py-1 text-[10px] text-amber-200 bg-amber-900/40 hover:bg-amber-900/60 disabled:opacity-50">
@@ -169,7 +189,7 @@ export function MetaAdsRecommendationsPanel({ onRefresh, onData }: { onRefresh?:
           ))}
         </div>
       )}
-      {!loading && recs.length > 0 && <p className="text-neutral-500 text-xs mt-3">Queued: {counts.queued ?? 0} · Approved: {counts.approved ?? 0} · Applied: {counts.applied ?? 0}</p>}
+      {!loading && recs.length > 0 && <p className="text-neutral-500 text-xs mt-3">Queued: {counts.queued ?? 0} · Approved: {counts.approved ?? 0} · Applied: {counts.applied ?? 0} · False +: {counts.false_positive ?? 0}</p>}
     </section>
   );
 }

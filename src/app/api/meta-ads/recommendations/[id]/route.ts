@@ -9,7 +9,7 @@ import { jsonError, withRouteTiming } from "@/lib/api-utils";
 import { z } from "zod";
 
 const BodySchema = z.object({
-  action: z.enum(["approve", "dismiss", "reset"]),
+  action: z.enum(["approve", "dismiss", "reset", "false_positive"]),
 });
 
 export const dynamic = "force-dynamic";
@@ -56,10 +56,15 @@ export async function PATCH(
       }
       data = { ...data, status: "dismissed", dismissedAt: now };
     } else if (body.action === "reset") {
-      if (rec.status !== "approved" && rec.status !== "dismissed") {
+      if (!["approved", "dismissed", "false_positive"].includes(rec.status)) {
         return jsonError(`Cannot reset from status ${rec.status}`, 400);
       }
       data = { ...data, status: "queued", approvedAt: null, dismissedAt: null };
+    } else if (body.action === "false_positive") {
+      if (rec.status !== "queued" && rec.status !== "approved") {
+        return jsonError(`Cannot mark false_positive from status ${rec.status}`, 400);
+      }
+      data = { ...data, status: "false_positive", approvedAt: null };
     }
 
     const updated = await db.metaAdsRecommendation.update({

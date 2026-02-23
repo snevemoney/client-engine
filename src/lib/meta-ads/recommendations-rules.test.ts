@@ -123,6 +123,29 @@ describe("generateRecommendations", () => {
     expect(forProtected.length).toBe(0);
   });
 
+  it("skips adsets when parent campaign is protected", () => {
+    const adsets = [mkAdSet({ id: "as1", campaignId: "protected_camp", spend: 50, impressions: 200, leads: 0 })];
+    const recs = generateRecommendations(baseSummary, [], adsets, [], {
+      minSpendForDecision: 20,
+      minImpressionsForDecision: 100,
+      protectedCampaignIds: ["protected_camp"],
+    });
+    const forProtected = recs.filter((r) => r.entityId === "as1" || r.campaignId === "protected_camp");
+    expect(forProtected.length).toBe(0);
+  });
+
+  it("includes campaignId for adset recommendations", () => {
+    const adsets = [mkAdSet({ id: "as1", campaignId: "c1", spend: 50, impressions: 200, leads: 0 })];
+    const recs = generateRecommendations(baseSummary, [], adsets, [], {
+      minSpendForDecision: 20,
+      minImpressionsForDecision: 100,
+      protectedCampaignIds: [],
+    });
+    const adsetRec = recs.find((r) => r.entityType === "adset" && r.entityId === "as1");
+    expect(adsetRec).toBeDefined();
+    expect(adsetRec!.campaignId).toBe("c1");
+  });
+
   it("each recommendation has required fields", () => {
     const campaigns = [mkCampaign({ spend: 50, leads: 0 })];
     const recs = generateRecommendations(baseSummary, campaigns, [], []);

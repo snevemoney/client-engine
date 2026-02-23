@@ -63,12 +63,14 @@ export async function GET(req: NextRequest) {
         dismissed: countMap.dismissed ?? 0,
         applied: countMap.applied ?? 0,
         failed: countMap.failed ?? 0,
+        false_positive: countMap.false_positive ?? 0,
       },
       settingsSummary: settings
         ? {
             mode: settings.mode,
             dryRun: settings.dryRun,
             targetCpl: settings.targetCpl,
+            protectedCampaignIds: (settings.protectedCampaignIds as string[]) ?? [],
           }
         : null,
       lastGenerated,

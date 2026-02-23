@@ -460,17 +460,18 @@ model LearningProposal {
 
 // ----- Meta Ads Control Center V3 (recommendations + approvals + audit) -----
 
-/** Recommendation lifecycle: queued → approved/dismissed → applied/failed */
+/** Recommendation lifecycle: queued → approved/dismissed → applied/failed | false_positive */
 model MetaAdsRecommendation {
   id           String    @id @default(cuid())
   accountId    String
   entityType   String    // campaign | adset | ad
   entityId     String
+  campaignId   String?   // parent campaign for adset/ad (protected check)
   entityName   String    @db.Text
   ruleKey      String
   severity     String    // info | warn | critical
   confidence   String    // low | medium | high
-  status       String    // queued | approved | dismissed | applied | failed
+  status       String    // queued | approved | dismissed | applied | failed | false_positive
   actionType   String    // pause | resume | increase_budget | decrease_budget | refresh_creative | wait
   actionPayload Json     @default("{}")
   evidence     Json      @default("{}")  // spend, leads, cpl, ctr, cpc, cpm, frequency, delivery, learning
@@ -497,12 +498,13 @@ model MetaAdsActionLog {
   mode             String   // manual | approve_required | auto_safe | dry_run
   triggeredBy      String   // user | rule_engine
   dryRun           Boolean  @default(false)
-  status           String   // success | failed | simulated
+  status           String   // success | failed | simulated | blocked
   message          String?  @db.Text
   metaResponse     Json?
   createdAt        DateTime @default(now())
 
   @@index([accountId, createdAt])
+  @@index([accountId, entityType, entityId, createdAt])
 }
 
 /** Single row per account — automation settings and guardrails */
@@ -518,6 +520,8 @@ model MetaAdsAutomationSettings {
   maxBudgetIncreasePctPerDay   Float  @default(20)
   allowChangesDuringLearning Boolean @default(false)
   protectedCampaignIds      Json     @default("[]")  // string[]
+  actionCooldownMinutes     Int      @default(720)  // 12h default
+  maxActionsPerEntityPerDay Int      @default(2)
   updatedAt                 DateTime @updatedAt
 
   @@index([accountId])

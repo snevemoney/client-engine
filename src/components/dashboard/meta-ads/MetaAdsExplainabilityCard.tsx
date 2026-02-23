@@ -33,6 +33,7 @@ export function MetaAdsExplainabilityCard({
         {lastGenerated && (
           <li>Last generated: {new Date(lastGenerated).toLocaleString()}</li>
         )}
+        <li className="pt-1 text-neutral-400">Mark false positives to help tune thresholds over time.</li>
       </ul>
     </div>
   );
