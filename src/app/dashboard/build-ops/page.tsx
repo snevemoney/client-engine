@@ -1,14 +1,9 @@
-import { auth } from "@/lib/auth";
-import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { BuildOpsPageClient } from "@/components/dashboard/build-ops/BuildOpsPageClient";
 
 export const dynamic = "force-dynamic";
 
 export default async function BuildOpsPage() {
-  const session = await auth();
-  if (!session?.user) redirect("/login");
-
   const tasks = await db.buildTask.findMany({
     orderBy: [{ status: "asc" }, { createdAt: "desc" }],
     take: 100,

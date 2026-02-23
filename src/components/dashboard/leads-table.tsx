@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -145,15 +145,17 @@ export function LeadsTable() {
       )}
 
       {/* Stats bar */}
-      <div className="flex gap-4 text-xs text-neutral-500">
-        <span>{leads.length} lead{leads.length !== 1 ? "s" : ""}</span>
-        {leads.filter((l) => l.status === "NEW").length > 0 && (
-          <span>{leads.filter((l) => l.status === "NEW").length} new</span>
-        )}
-        {leads.filter((l) => l.status === "APPROVED").length > 0 && (
-          <span className="text-emerald-500">{leads.filter((l) => l.status === "APPROVED").length} approved</span>
-        )}
-      </div>
+      {(() => {
+        const newCount = leads.filter((l) => l.status === "NEW").length;
+        const approvedCount = leads.filter((l) => l.status === "APPROVED").length;
+        return (
+          <div className="flex gap-4 text-xs text-neutral-500">
+            <span>{leads.length} lead{leads.length !== 1 ? "s" : ""}</span>
+            {newCount > 0 && <span>{newCount} new</span>}
+            {approvedCount > 0 && <span className="text-emerald-500">{approvedCount} approved</span>}
+          </div>
+        );
+      })()}
 
       {/* Table */}
       <div className="border border-neutral-800 rounded-lg overflow-hidden">
@@ -170,7 +172,16 @@ export function LeadsTable() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-neutral-500">Loading...</td></tr>
+              Array.from({ length: 5 }, (_, i) => (
+                <tr key={i} className="border-b border-neutral-800/50 animate-pulse">
+                  <td className="px-4 py-3"><div className="h-4 w-48 rounded bg-muted" /></td>
+                  <td className="px-4 py-3 hidden sm:table-cell"><div className="h-4 w-16 rounded bg-muted" /></td>
+                  <td className="px-4 py-3"><div className="h-5 w-20 rounded bg-muted" /></td>
+                  <td className="px-4 py-3 hidden md:table-cell"><div className="h-4 w-8 rounded bg-muted" /></td>
+                  <td className="px-4 py-3 hidden lg:table-cell"><div className="h-4 w-16 rounded bg-muted" /></td>
+                  <td className="px-4 py-3"><div className="h-4 w-4 rounded bg-muted ml-auto" /></td>
+                </tr>
+              ))
             ) : error ? (
               <tr>
                 <td colSpan={6} className="px-4 py-8 text-center">

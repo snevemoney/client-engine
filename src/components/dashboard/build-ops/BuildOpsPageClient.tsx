@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -47,11 +47,11 @@ export function BuildOpsPageClient({
   const [saving, setSaving] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
-  const filtered = tasks.filter((t) => {
+  const filtered = useMemo(() => tasks.filter((t) => {
     if (filterStatus && t.status !== filterStatus) return false;
     if (filterType && t.type !== filterType) return false;
     return true;
-  });
+  }), [tasks, filterStatus, filterType]);
 
   async function createTask() {
     if (!addTitle.trim()) return;
