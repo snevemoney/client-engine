@@ -15,6 +15,7 @@ import { ClientResultsGlance } from "@/components/dashboard/leads/ClientResultsG
 import { ReusableAssetLogCard } from "@/components/dashboard/leads/ReusableAssetLogCard";
 import { LeadCopilotCard } from "@/components/leads/LeadCopilotCard";
 import { SalesProcessPanel } from "@/components/dashboard/leads/SalesProcessPanel";
+import { SalesDriverCard } from "@/components/dashboard/leads/SalesDriverCard";
 import { TrustToCloseChecklistPanel } from "@/components/proposals/TrustToCloseChecklistPanel";
 import { parseLeadIntelligenceFromMeta } from "@/lib/lead-intelligence";
 
@@ -64,6 +65,19 @@ interface Lead {
   relationshipStatus: string | null;
   relationshipLastCheck: string | null;
   touchCount: number;
+  driverType?: string | null;
+  driverReason?: string | null;
+  desiredResult?: string | null;
+  resultDeadline?: string | null;
+  nextAction?: string | null;
+  nextActionDueAt?: string | null;
+  proofAngle?: string | null;
+  scorePain?: number | null;
+  scoreUrgency?: number | null;
+  scoreBudget?: number | null;
+  scoreResponsiveness?: number | null;
+  scoreDecisionMaker?: number | null;
+  scoreFit?: number | null;
   touches?: { id: string; type: string; direction: string; summary: string; scriptUsed: string | null; outcome: string | null; nextTouchAt: string | null; createdAt: string }[];
   referralsReceived?: { id: string; referredName: string; referredCompany: string | null; status: string; createdAt: string }[];
   meta?: unknown;
@@ -379,6 +393,15 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
           ))}
         </div>
       </div>
+
+      {/* Sales Driver (reason → result → deadline, qualification, next action) */}
+      {lead.status !== "REJECTED" && lead.dealOutcome !== "won" && (
+        <SalesDriverCard
+          leadId={id}
+          lead={lead}
+          onUpdate={refetchLead}
+        />
+      )}
 
       {/* Sales (PBD): stage, next/last contact, leak warning */}
       <div className="border border-neutral-800 rounded-lg p-4">

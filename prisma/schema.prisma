@@ -63,12 +63,28 @@ model Lead {
   relationshipStatus    String?   // active | dormant | nurture
   relationshipLastCheck DateTime?
   touchCount            Int       @default(0)
+  // ----- Sales Driver (reason → result → deadline, qualification, next action) -----
+  driverType            String?   // survival | status | freedom | cause | competition | enemy | unknown
+  driverReason          String?   @db.Text
+  desiredResult         String?   @db.Text
+  resultDeadline        DateTime?
+  nextAction            String?   @db.Text
+  nextActionDueAt       DateTime?
+  proofAngle            String?   @db.Text
+  scorePain             Int?      // 0-2
+  scoreUrgency          Int?
+  scoreBudget           Int?
+  scoreResponsiveness   Int?
+  scoreDecisionMaker    Int?
+  scoreFit              Int?
   artifacts             Artifact[]
   project               Project?
 
   @@index([status])
   @@index([createdAt])
   @@index([source])
+  @@index([nextActionDueAt])
+  @@index([driverType])
   pipelineRuns          PipelineRun[]
   touches               LeadTouch[]
   referralsReceived     LeadReferral[] @relation("ReferralsForLead")

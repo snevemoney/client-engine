@@ -41,6 +41,15 @@ A compact **Strategy Snapshot** card appears on Command Center. Full panel: **St
 
 ---
 
+## Sales Driver Loop (reason → result → deadline)
+
+- **Driver types:** survival, status, freedom, cause, competition, enemy, unknown. Each suggests a messaging angle.
+- **Qualification (0–2 each):** Pain, Urgency, Budget, Responsiveness, Decision Maker, Fit. Total 0–12. Priority: 0–4 Low, 5–8 Medium, 9–12 High.
+- **Follow-Up Queue:** Command Center → Follow-Up Queue. Sorted by overdue first, then score, then due date. Shows warnings for no next action, overdue, proposals without follow-up.
+- **Lead detail:** Sales Driver card on each lead (except REJECTED/won). Set reason, desired result, deadline, next action, proof angle.
+
+---
+
 ## Optional
 
 - **Result Target (per lead)**: Before or after proposal, set a **Result Target** on the lead (current state, target state, metric, timeline). Proposals that have a result target are framed as outcome contracts. See **Client Success** below.

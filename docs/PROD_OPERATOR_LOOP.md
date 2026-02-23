@@ -4,6 +4,14 @@ Short runbook for daily prod operation.
 
 ---
 
+## Sales Driver Loop (daily)
+
+1. **Review follow-up queue** — Command Center → Follow-Up Queue. See overdue, due today, high-priority leads.
+2. **Update next actions** — Open each lead, set next action + due date in Sales Driver card.
+3. **Touch overdue leads** — Prioritize overdue or high-score leads missing next action.
+
+---
+
 ## Weekly strategy reset (recommended)
 
 1. Open **Strategy** (`/dashboard/strategy`).

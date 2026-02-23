@@ -41,9 +41,12 @@ import { ChannelRoleCard } from "@/components/dashboard/command/ChannelRoleCard"
 import { OwnedAudienceCard } from "@/components/dashboard/command/OwnedAudienceCard";
 import { NetworkingEventsCard } from "@/components/dashboard/command/NetworkingEventsCard";
 import { PatTomWeeklyScorecardCard } from "@/components/dashboard/command/PatTomWeeklyScorecardCard";
+import { FollowUpQueueCard } from "@/components/dashboard/command/FollowUpQueueCard";
+import { logSlow, PERF } from "@/lib/perf";
 
 /** Second wave: all remaining cards. Streams in after Section 1. */
 export default async function CommandSection2() {
+  const start = Date.now();
   const [
     brief,
     queue,
@@ -96,6 +99,8 @@ export default async function CommandSection2() {
     getProspectingSourceMetrics(),
     getChannelRoleCritique(),
   ]);
+  const ms = Date.now() - start;
+  if (ms > PERF.SLOW_PAGE_MS) logSlow("page", "/dashboard/command Section2", ms);
 
   const feedbackNoteItems = feedbackNotes.map((n) => ({
     id: n.id,
@@ -113,6 +118,7 @@ export default async function CommandSection2() {
       <ChannelRoleCard data={channelRoleCritique} />
       <OwnedAudienceCard />
       <NetworkingEventsCard />
+      <FollowUpQueueCard />
       <FailuresInterventionsCard data={failuresInterventions} />
       <BuildOpsCard data={buildOpsSummary} />
       <ReusableAssetSummaryCard data={reusableAssetSummary} />
