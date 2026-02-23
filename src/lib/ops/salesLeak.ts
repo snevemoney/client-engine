@@ -55,6 +55,7 @@ export async function getSalesLeakReport(): Promise<SalesLeakReport> {
     where: {
       status: { not: "REJECTED" },
     },
+    take: 500,
     select: {
       id: true,
       status: true,

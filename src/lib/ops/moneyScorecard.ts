@@ -4,8 +4,8 @@
  */
 
 import { db } from "@/lib/db";
-import { getConstraintSnapshot } from "./constraint";
-import { getOperatorSettings } from "./settings";
+import { getCachedConstraintSnapshot } from "./cached";
+import { getCachedOperatorSettings } from "./cached";
 import type { MoneyScorecard } from "./types";
 
 const RECENT_DAYS = 30;
@@ -123,8 +123,8 @@ export async function getMoneyScorecard(): Promise<MoneyScorecard> {
   const revenueWon30d = won.reduce((sum, l) => sum + (parseBudget(l.budget) ?? 0), 0) || null;
 
   const [constraint, operatorSettings] = await Promise.all([
-    getConstraintSnapshot(),
-    getOperatorSettings(),
+    getCachedConstraintSnapshot(),
+    getCachedOperatorSettings(),
   ]);
   const primaryBottleneck = constraint ? `${constraint.label}: ${constraint.reason}` : null;
   const constraintImpactNote = constraint

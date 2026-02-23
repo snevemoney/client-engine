@@ -5,7 +5,7 @@
  */
 
 import { db } from "@/lib/db";
-import { getFailuresAndInterventions } from "./failuresInterventions";
+import { getCachedFailuresAndInterventions } from "./cached";
 
 const STALE_NO_ACTIVITY_DAYS = 7;
 const HOUR_MS = 60 * 60 * 1000;
@@ -168,7 +168,7 @@ export async function getOpsHealth(): Promise<OpsHealth> {
   const knowledgeOk = !(lastReport?.meta as { knowledge?: { errors?: string[] } })?.knowledge?.errors?.length;
 
   // Failures & interventions (reuse existing)
-  const fi = await getFailuresAndInterventions();
+  const fi = await getCachedFailuresAndInterventions();
   const failed = fi.failedPipelineRuns.map((r) => ({
     leadId: r.leadId,
     leadTitle: r.leadTitle,

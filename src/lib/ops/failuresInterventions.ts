@@ -49,7 +49,7 @@ export async function getFailuresAndInterventions(): Promise<FailuresAndInterven
   const staleCutoff = new Date(now.getTime() - STALE_PROPOSAL_SENT_DAYS * 24 * 60 * 60 * 1000);
   const stuckCutoff = new Date(now.getTime() - STUCK_PROPOSAL_DAYS * 24 * 60 * 60 * 1000);
 
-  const [failedRuns, sentNoOutcome, leadsWithProposalNotSent, approvedNotBuilding, readyProposals] = await Promise.all([
+  const [failedRuns, sentNoOutcome, leadsWithProposalNotSent, approvedNotBuilding] = await Promise.all([
     db.pipelineRun.findMany({
       where: { success: false },
       orderBy: { lastErrorAt: "desc" },
@@ -62,6 +62,7 @@ export async function getFailuresAndInterventions(): Promise<FailuresAndInterven
         dealOutcome: null,
         status: { not: "REJECTED" },
       },
+      take: 100,
       select: { id: true, title: true, proposalSentAt: true },
     }),
     db.lead.findMany({
@@ -72,6 +73,7 @@ export async function getFailuresAndInterventions(): Promise<FailuresAndInterven
           some: { type: "proposal" },
         },
       },
+      take: 100,
       select: {
         id: true,
         title: true,
@@ -89,26 +91,11 @@ export async function getFailuresAndInterventions(): Promise<FailuresAndInterven
         buildStartedAt: null,
         project: null,
       },
+      take: 50,
       select: { id: true, title: true },
     }),
-    db.lead.findMany({
-      where: {
-        status: { not: "REJECTED" },
-        proposalSentAt: null,
-        artifacts: { some: { type: "proposal" } },
-      },
-      select: {
-        id: true,
-        title: true,
-        artifacts: {
-          where: { type: "proposal" },
-          orderBy: { createdAt: "desc" },
-          take: 1,
-          select: { createdAt: true },
-        },
-      },
-    }),
   ]);
+  const readyProposals = leadsWithProposalNotSent;
 
   const failedPipelineRuns: FailedRunItem[] = failedRuns.map((r) => ({
     leadId: r.leadId,

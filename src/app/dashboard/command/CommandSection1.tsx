@@ -1,5 +1,5 @@
 import { getOpsHealth } from "@/lib/ops/opsHealth";
-import { getMoneyScorecard } from "@/lib/ops/moneyScorecard";
+import { getCachedMoneyScorecard } from "@/lib/ops/cached";
 import { getSalesLeakReport } from "@/lib/ops/salesLeak";
 import { OpsHealthGatewayCard } from "@/components/dashboard/command/OpsHealthGatewayCard";
 import { MoneyScorecardCard } from "@/components/dashboard/command/MoneyScorecardCard";
@@ -9,7 +9,7 @@ import { SalesLeakCard } from "@/components/dashboard/command/SalesLeakCard";
 export default async function CommandSection1() {
   const [opsHealth, moneyScorecard, salesLeakReport] = await Promise.all([
     getOpsHealth(),
-    getMoneyScorecard(),
+    getCachedMoneyScorecard(),
     getSalesLeakReport(),
   ]);
 

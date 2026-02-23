@@ -21,6 +21,7 @@ export async function getFollowUpDisciplineMetrics(): Promise<FollowUpDiscipline
       status: { notIn: ["REJECTED"] },
       dealOutcome: { not: "won" },
     },
+    take: 500,
     select: {
       id: true,
       title: true,

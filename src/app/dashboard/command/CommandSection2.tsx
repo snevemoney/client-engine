@@ -1,6 +1,6 @@
 import { buildBrief } from "@/lib/orchestrator/brief";
 import { getQueueSummary } from "@/lib/ops/queueSummary";
-import { getConstraintSnapshot } from "@/lib/ops/constraint";
+import { getCachedConstraintSnapshot, getCachedFailuresAndInterventions, getCachedMoneyScorecard, getCachedOperatorSettings } from "@/lib/ops/cached";
 import { getLatestOperatorBrief } from "@/lib/ops/operatorBrief";
 import { getRecentOperatorFeedbackNotes } from "@/lib/ops/feedback";
 import { getLearningInboxSummary } from "@/lib/learning/ingest";
@@ -9,14 +9,11 @@ import { getFollowUpDisciplineMetrics } from "@/lib/ops/followUpDiscipline";
 import { getReferralEngineMetrics } from "@/lib/ops/referralEngine";
 import { getProspectingSourceMetrics } from "@/lib/ops/prospectingSources";
 import { getChannelRoleCritique } from "@/lib/ops/channelRoleMap";
-import { getFailuresAndInterventions } from "@/lib/ops/failuresInterventions";
 import { getBuildOpsSummary } from "@/lib/ops/buildTasks";
 import { getReusableAssetSummary } from "@/lib/ops/reusableAssetSummary";
 import { getLeverageScore } from "@/lib/ops/leverageScore";
 import { getWeeklySnapshotHistory } from "@/lib/ops/weeklySnapshot";
-import { getOperatorSettings } from "@/lib/ops/settings";
 import { getPatTomWeeklyScorecard } from "@/lib/ops/patTomWeeklyScorecard";
-import { getMoneyScorecard } from "@/lib/ops/moneyScorecard";
 import { db } from "@/lib/db";
 import { WorkdayRunCard } from "@/components/dashboard/command/WorkdayRunCard";
 import { BriefMeCard } from "@/components/dashboard/command/BriefMeCard";
@@ -72,7 +69,7 @@ export default async function CommandSection2() {
   ] = await Promise.all([
     buildBrief(),
     getQueueSummary(),
-    getConstraintSnapshot(),
+    getCachedConstraintSnapshot(),
     db.artifact.findFirst({
       where: {
         lead: { source: "system", title: "Research Engine Runs" },
@@ -82,18 +79,18 @@ export default async function CommandSection2() {
       select: { createdAt: true, content: true },
     }),
     getLatestOperatorBrief(),
-    getFailuresAndInterventions(),
+    getCachedFailuresAndInterventions(),
     getBuildOpsSummary(),
     getReusableAssetSummary(),
     getLeverageScore(),
     getWeeklySnapshotHistory(8),
-    getOperatorSettings(),
+    getCachedOperatorSettings(),
     getPatTomWeeklyScorecard(),
     getRecentOperatorFeedbackNotes(5),
     getLearningInboxSummary(),
     getKnowledgeQueueCounts(),
     getTopImprovementSuggestions(5),
-    getMoneyScorecard(),
+    getCachedMoneyScorecard(),
     getFollowUpDisciplineMetrics(),
     getReferralEngineMetrics(),
     getProspectingSourceMetrics(),
