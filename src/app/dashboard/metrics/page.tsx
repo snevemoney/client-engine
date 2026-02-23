@@ -11,7 +11,7 @@ export default async function MetricsPage() {
       orderBy: { startedAt: "desc" },
       take: 30,
       include: {
-        lead: { select: { id: true, title: true } },
+        lead: { select: { id: true, title: true, source: true } },
         steps: { select: { stepName: true, success: true, notes: true } },
       },
     }),
@@ -183,10 +183,12 @@ export default async function MetricsPage() {
             <thead>
               <tr className="border-b border-neutral-800 bg-neutral-900/50">
                 <th className="text-left py-2 px-3 font-medium text-neutral-400">Lead</th>
+                <th className="text-left py-2 px-3 font-medium text-neutral-400">Source</th>
                 <th className="text-left py-2 px-3 font-medium text-neutral-400">Steps</th>
                 <th className="text-left py-2 px-3 font-medium text-neutral-400">Skipped</th>
                 <th className="text-left py-2 px-3 font-medium text-neutral-400">Status</th>
                 <th className="text-left py-2 px-3 font-medium text-neutral-400">Started</th>
+                <th className="text-left py-2 px-3 font-medium text-neutral-400">Error</th>
               </tr>
             </thead>
             <tbody>
@@ -201,6 +203,9 @@ export default async function MetricsPage() {
                       >
                         {run.lead.title}
                       </Link>
+                    </td>
+                    <td className="py-2 px-3 text-neutral-500 text-xs">
+                      {run.lead.source ?? "—"}
                     </td>
                     <td className="py-2 px-3 text-neutral-400">
                       {run.steps.map((s) => s.stepName).join(", ")}
@@ -229,6 +234,9 @@ export default async function MetricsPage() {
                     </td>
                     <td className="py-2 px-3 text-neutral-500">
                       {new Date(run.startedAt).toLocaleString()}
+                    </td>
+                    <td className="py-2 px-3 text-xs text-neutral-500 max-w-[200px] truncate" title={run.error ?? undefined}>
+                      {run.success === false && run.error ? run.error : "—"}
                     </td>
                   </tr>
                 );

@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 const patchSchema = z.object({
   status: z.enum(["not_connected", "connected", "error", "disabled"]).optional(),
   accountLabel: z.string().max(200).optional().nullable(),
-  configJson: z.record(z.unknown()).optional(),
+  configJson: z.record(z.string(), z.unknown()).optional(),
   isEnabled: z.boolean().optional(),
 });
 

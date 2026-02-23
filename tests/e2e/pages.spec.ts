@@ -1,17 +1,18 @@
 import { test, expect } from "@playwright/test";
 
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3000";
-const devPassword = process.env.AUTH_DEV_PASSWORD || "changeme";
+const loginEmail = process.env.E2E_EMAIL || process.env.ADMIN_EMAIL || (process.env.AUTH_DEV_PASSWORD ? "test@test.com" : "admin@evenslouis.ca");
+const loginPassword = process.env.E2E_PASSWORD || process.env.ADMIN_PASSWORD || process.env.AUTH_DEV_PASSWORD || "changeme";
 
 test.describe("All pages", () => {
   test("login then visit every page", async ({ page }) => {
     await page.goto(`${baseURL}/login`);
-    await page.getByLabel("Email").fill("test@test.com");
-    await page.getByLabel("Password").fill(devPassword);
+    await page.getByLabel("Email").fill(loginEmail);
+    await page.getByLabel("Password").fill(loginPassword);
     await page.getByRole("button", { name: /sign in/i }).click();
-    await expect(page).toHaveURL(/\/(dashboard|login)/, { timeout: 10000 });
+    await expect(page).toHaveURL(/\/dashboard/, { timeout: 10000 });
     if (page.url().includes("/login")) {
-      test.skip(true, "Login failed");
+      test.skip(true, "Login failed - check ADMIN_EMAIL/E2E_EMAIL and ADMIN_PASSWORD/E2E_PASSWORD in .env");
       return;
     }
 
@@ -26,6 +27,7 @@ test.describe("All pages", () => {
       { url: "/dashboard/proposals", name: "Proposals" },
       { url: "/dashboard/build-ops", name: "Build Ops" },
       { url: "/dashboard/metrics", name: "Metrics" },
+      { url: "/dashboard/meta-ads", name: "Meta Ads" },
       { url: "/work", name: "Work" },
       { url: "/dashboard/chat", name: "Chat" },
       { url: "/dashboard/learning", name: "Learning" },
@@ -37,8 +39,8 @@ test.describe("All pages", () => {
       { url: "/dashboard/knowledge", name: "Knowledge" },
     ];
 
-    for (const { url, name } of pages) {
-      await page.goto(`${baseURL}${url}`);
+    for (const { url } of pages) {
+      await page.goto(`${baseURL}${url}`, { timeout: 45000 });
       await expect(page).toHaveURL(new RegExp(url.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
       await expect(page.locator("body")).toBeVisible();
     }
@@ -55,10 +57,10 @@ test.describe("All pages", () => {
       return;
     }
     await page.goto(`${baseURL}/login`);
-    await page.getByLabel("Email").fill("test@test.com");
-    await page.getByLabel("Password").fill(devPassword);
+    await page.getByLabel("Email").fill(loginEmail);
+    await page.getByLabel("Password").fill(loginPassword);
     await page.getByRole("button", { name: /sign in/i }).click();
-    await expect(page).toHaveURL(/\/(dashboard|login)/, { timeout: 10000 });
+    await expect(page).toHaveURL(/\/dashboard/, { timeout: 10000 });
     if (page.url().includes("/login")) {
       test.skip(true, "Login failed");
       return;

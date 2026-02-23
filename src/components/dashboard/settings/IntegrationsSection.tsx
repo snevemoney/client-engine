@@ -22,6 +22,19 @@ type Item = IntegrationProvider & {
   connection: Connection | null;
 };
 
+function formatRelative(iso: string): string {
+  try {
+    const d = new Date(iso);
+    const diff = Date.now() - d.getTime();
+    if (diff < 60_000) return "just now";
+    if (diff < 3600_000) return `${Math.floor(diff / 60_000)}m ago`;
+    if (diff < 86400_000) return `${Math.floor(diff / 3600_000)}h ago`;
+    return `${Math.floor(diff / 86400_000)}d ago`;
+  } catch {
+    return "";
+  }
+}
+
 function statusBadge(status: string, isEnabled: boolean) {
   if (!isEnabled) return <Badge variant="outline">Disabled</Badge>;
   switch (status) {
@@ -174,6 +187,13 @@ export function IntegrationsSection() {
                 <div>
                   <h3 className="font-medium text-neutral-200">{item.name}</h3>
                   <p className="text-xs text-neutral-500 mt-0.5">{item.usedBy}</p>
+                  {(item.connection?.lastTestedAt || item.connection?.lastSyncedAt) && (
+                    <p className="text-xs text-neutral-500 mt-1">
+                      {item.connection?.lastTestedAt && `Tested ${formatRelative(item.connection.lastTestedAt)}`}
+                      {item.connection?.lastTestedAt && item.connection?.lastSyncedAt && " · "}
+                      {item.connection?.lastSyncedAt && `Synced ${formatRelative(item.connection.lastSyncedAt)}`}
+                    </p>
+                  )}
                 </div>
                 {statusBadge(item.connection?.status ?? "not_connected", item.connection?.isEnabled ?? true)}
               </div>

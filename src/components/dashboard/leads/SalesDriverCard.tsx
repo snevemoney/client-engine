@@ -12,21 +12,22 @@ const DRIVER_TYPES = ["survival", "status", "freedom", "cause", "competition", "
 const SCORE_LABELS = ["Pain", "Urgency", "Budget", "Responsiveness", "Decision Maker", "Fit"] as const;
 const SCORE_KEYS = ["scorePain", "scoreUrgency", "scoreBudget", "scoreResponsiveness", "scoreDecisionMaker", "scoreFit"] as const;
 
+/** Subset of Lead needed by SalesDriverCard; undefined allowed for optional Prisma fields */
 type DriverLead = {
   id: string;
-  driverType: string | null;
-  driverReason: string | null;
-  desiredResult: string | null;
-  resultDeadline: string | null;
-  nextAction: string | null;
-  nextActionDueAt: string | null;
-  proofAngle: string | null;
-  scorePain: number | null;
-  scoreUrgency: number | null;
-  scoreBudget: number | null;
-  scoreResponsiveness: number | null;
-  scoreDecisionMaker: number | null;
-  scoreFit: number | null;
+  driverType?: string | null;
+  driverReason?: string | null;
+  desiredResult?: string | null;
+  resultDeadline?: string | null;
+  nextAction?: string | null;
+  nextActionDueAt?: string | null;
+  proofAngle?: string | null;
+  scorePain?: number | null;
+  scoreUrgency?: number | null;
+  scoreBudget?: number | null;
+  scoreResponsiveness?: number | null;
+  scoreDecisionMaker?: number | null;
+  scoreFit?: number | null;
 };
 
 interface SalesDriverCardProps {
