@@ -21,6 +21,8 @@ export type SendLeadEventOpts = {
   contentName?: string;
   clientIp?: string;
   clientUserAgent?: string;
+  /** URL where the lead form was submitted (e.g. Referer). Enables Meta to attribute events to production domain. */
+  eventSourceUrl?: string;
 };
 
 /**
@@ -47,7 +49,7 @@ export async function sendLeadEvent(opts: SendLeadEventOpts): Promise<void> {
           event_name: "Lead",
           event_time: Math.floor(Date.now() / 1000),
           event_id: opts.eventId,
-          event_source_url: process.env.NEXT_PUBLIC_APP_URL ?? process.env.APP_URL ?? "https://evenslouis.ca",
+          event_source_url: opts.eventSourceUrl ?? process.env.NEXT_PUBLIC_APP_URL ?? process.env.APP_URL ?? "https://evenslouis.ca",
           action_source: "website",
           user_data: userData,
           custom_data: {

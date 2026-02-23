@@ -131,6 +131,7 @@ export async function POST(req: NextRequest) {
       title,
     });
 
+    const sourceUrl = req.headers.get("referer") ?? req.headers.get("origin");
     void sendLeadEvent({
       eventId: lead.id,
       email,
@@ -138,6 +139,7 @@ export async function POST(req: NextRequest) {
       contentName: title,
       clientIp: req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? req.headers.get("x-real-ip") ?? undefined,
       clientUserAgent: req.headers.get("user-agent") ?? undefined,
+      eventSourceUrl: sourceUrl && /^https?:\/\//i.test(sourceUrl) ? sourceUrl : undefined,
     });
 
     return NextResponse.json({ ok: true, leadId: lead.id });
