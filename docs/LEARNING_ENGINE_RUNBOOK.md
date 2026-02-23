@@ -96,6 +96,29 @@ No other env vars are required for MVP. The rest of the app (auth, DB, LLM) uses
 5. **Chatbot**  
    The operator chatbot gets the top 3 recent learning summaries and top 3 proposals as context. It can answer: what we learned from recent videos, what bottleneck fixes are suggested, what changes are proposed, and whether ideas are strategy vs implementation vs metrics.
 
+## Testing
+
+### Tier A — Automated (local)
+
+- Set `LEARNING_USE_MOCK_TRANSCRIPT=1` for local testing.
+- `learning-ingest.spec.ts` covers learning ingest flows.
+- Test via API:
+  ```bash
+  curl -X POST http://localhost:3000/api/learning/ingest \
+    -H "Content-Type: application/json" \
+    -H "Cookie: <your-session-cookie>" \
+    -d '{"videoUrl":"https://www.youtube.com/watch?v=DUMMY"}'
+  ```
+
+### Tier B — Manual production (MCP browser or real browser)
+
+- Open `/dashboard/learning` — page loads, proposals list visible, promote/produced dropdowns work.
+- Ingest a video URL — verify transcript, summary, principles, proposal appear.
+- Check Command Center — Learning Inbox card shows proposal count.
+- Chatbot: ask "What did we learn today?" — response references learning context.
+
+See `docs/TESTING_SIDE_PANEL.md` for the full testing strategy and operator checklists.
+
 ## Quick reference
 
 - **Learning dashboard:** `/dashboard/learning`

@@ -149,13 +149,23 @@ If a transcript doesn't map to a likely benefit, the system classifies it as `kn
 
 ## Test Checklist
 
+### Tier A — Automated / local
+
 - [ ] Single video URL ingests successfully (transcript + proposal created)
 - [ ] Channel URL discovers videos and batch-ingests
 - [ ] De-dupe works (same video URL submitted twice → second is skipped)
 - [ ] Fallback provider used when primary fails
-- [ ] Failed transcript is visible in Failures panel
-- [ ] Retry button works for failed transcripts
+- [ ] Failed transcript status is set correctly
+- [ ] Retry works for failed transcripts
 - [ ] Manual promote creates `PROMOTED_TO_PLAYBOOK` status
 - [ ] Manual reject creates `REJECTED` or `KNOWLEDGE_ONLY` status
-- [ ] Command Center summary card shows correct counts
+
+### Tier B — Manual production (MCP browser or real browser)
+
+- [ ] Failed transcript is visible in Failures & Interventions panel on Command Center
+- [ ] Retry button works for failed transcripts in production
+- [ ] Command Center summary card shows correct counts (transcripts, proposals)
 - [ ] Learning proposals show classification, system area, and revenue link
+- [ ] Promoted proposals reflect in learning dashboard and chatbot context
+
+See `docs/TESTING_SIDE_PANEL.md` for the full testing strategy and operator checklists.
