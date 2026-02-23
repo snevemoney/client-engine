@@ -6,6 +6,19 @@ function fmt(v: number, isMoney = false): string {
   return isMoney ? `$${v.toFixed(2)}` : v.toLocaleString(undefined, { maximumFractionDigits: 1 });
 }
 
+function RowBadges({ ad }: { ad: MetaAdsAd }) {
+  const badges: string[] = [];
+  if (ad.spend >= 5 && ad.impressions > 100 && ad.ctr < 0.5 && ad.effectiveStatus === "ACTIVE") badges.push("Low CTR");
+  if (badges.length === 0) return null;
+  return (
+    <div className="flex flex-wrap gap-0.5 mt-0.5">
+      {badges.map((b) => (
+        <span key={b} className="text-[10px] px-1.5 py-0.5 rounded bg-amber-900/40 text-amber-200">{b}</span>
+      ))}
+    </div>
+  );
+}
+
 export function MetaAdsAdTable({ ads }: { ads: MetaAdsAd[] }) {
   return (
     <section className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-4">
@@ -26,8 +39,11 @@ export function MetaAdsAdTable({ ads }: { ads: MetaAdsAd[] }) {
           <tbody>
             {ads.map((a) => (
               <tr key={a.id} className="border-b border-neutral-800/50 hover:bg-neutral-800/30">
-                <td className="py-2 px-3 text-neutral-200 truncate max-w-[200px]" title={a.name}>
-                  {a.name}
+                <td className="py-2 px-3">
+                  <div>
+                    <span className="text-neutral-200 truncate max-w-[200px]" title={a.name}>{a.name}</span>
+                    <RowBadges ad={a} />
+                  </div>
                 </td>
                 <td className="py-2 px-3">
                   <span

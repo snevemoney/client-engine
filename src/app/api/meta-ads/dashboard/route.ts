@@ -23,11 +23,15 @@ export async function GET(req: NextRequest) {
     }
 
     const accountId = req.nextUrl.searchParams.get("account") ?? process.env.META_AD_ACCOUNT_ID ?? "";
+    const skipCache = req.nextUrl.searchParams.get("skipCache") === "1";
 
-    const result = await fetchMetaAdsDashboard(accountId, range);
+    const result = await fetchMetaAdsDashboard(accountId, range, { skipCache });
 
     if (!result.ok) {
-      const status = result.code === "NO_TOKEN" ? 503 : 502;
+      const status =
+        result.code === "NO_TOKEN" ? 503 :
+        result.code === "INVALID_TOKEN" || result.code === "PERMISSION_DENIED" ? 401 :
+        result.code === "RATE_LIMIT" ? 429 : 502;
       return NextResponse.json(result, { status });
     }
 

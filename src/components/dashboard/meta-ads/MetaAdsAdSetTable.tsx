@@ -6,6 +6,20 @@ function fmt(v: number, isMoney = false): string {
   return isMoney ? `$${v.toFixed(2)}` : v.toLocaleString(undefined, { maximumFractionDigits: 1 });
 }
 
+function RowBadges({ adset }: { adset: MetaAdsAdSet }) {
+  const badges: string[] = [];
+  if (adset.spend >= 20 && adset.leads === 0 && adset.effectiveStatus === "ACTIVE") badges.push("No leads");
+  if ((adset.deliveryStatus === "NO_DELIVERY" || adset.deliveryStatus === "UNDER_DELIVERY") && adset.spend === 0) badges.push("No delivery");
+  if (badges.length === 0) return null;
+  return (
+    <div className="flex flex-wrap gap-0.5 mt-0.5">
+      {badges.map((b) => (
+        <span key={b} className="text-[10px] px-1.5 py-0.5 rounded bg-amber-900/40 text-amber-200">{b}</span>
+      ))}
+    </div>
+  );
+}
+
 export function MetaAdsAdSetTable({ adsets }: { adsets: MetaAdsAdSet[] }) {
   return (
     <section className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-4">
@@ -16,6 +30,7 @@ export function MetaAdsAdSetTable({ adsets }: { adsets: MetaAdsAdSet[] }) {
             <tr className="border-b border-neutral-800 text-left">
               <th className="py-2 px-3 font-medium text-neutral-400">Ad Set</th>
               <th className="py-2 px-3 font-medium text-neutral-400">Status</th>
+              <th className="py-2 px-3 font-medium text-neutral-400">Delivery</th>
               <th className="py-2 px-3 font-medium text-neutral-400">Spend</th>
               <th className="py-2 px-3 font-medium text-neutral-400">Leads</th>
               <th className="py-2 px-3 font-medium text-neutral-400">CPL</th>
@@ -26,8 +41,11 @@ export function MetaAdsAdSetTable({ adsets }: { adsets: MetaAdsAdSet[] }) {
           <tbody>
             {adsets.map((a) => (
               <tr key={a.id} className="border-b border-neutral-800/50 hover:bg-neutral-800/30">
-                <td className="py-2 px-3 text-neutral-200 truncate max-w-[180px]" title={a.name}>
-                  {a.name}
+                <td className="py-2 px-3">
+                  <div>
+                    <span className="text-neutral-200 truncate max-w-[180px]" title={a.name}>{a.name}</span>
+                    <RowBadges adset={a} />
+                  </div>
                 </td>
                 <td className="py-2 px-3">
                   <span
@@ -42,6 +60,7 @@ export function MetaAdsAdSetTable({ adsets }: { adsets: MetaAdsAdSet[] }) {
                     {a.effectiveStatus}
                   </span>
                 </td>
+                <td className="py-2 px-3 text-neutral-500 text-xs">{a.deliveryStatus ?? a.learningStatus ?? "—"}</td>
                 <td className="py-2 px-3 text-neutral-300">{fmt(a.spend, true)}</td>
                 <td className="py-2 px-3 text-neutral-400">{fmt(a.leads)}</td>
                 <td className="py-2 px-3 text-neutral-400">

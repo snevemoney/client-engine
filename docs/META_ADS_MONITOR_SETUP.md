@@ -75,6 +75,40 @@ META_AD_ACCOUNT_ID=act_1234567890
 | Rate limit | Too many API calls | Reduce refresh frequency; Meta limits ~200 calls/hour per user |
 | `(#100) No permission` | Missing `ads_read` | Re-generate token with `ads_read` |
 
+## Troubleshooting
+
+### Leads not showing
+
+- Lead metrics come from Meta Pixel + CAPI `Lead` events. If you see 0 leads:
+  1. Check Events Manager → your data set → Overview for Lead event activity.
+  2. Ensure Pixel is on your site and CAPI sends Lead from `src/lib/meta-capi.ts`.
+  3. Conversion event must be configured for Lead in Events Manager.
+  4. Allow 24–48 hours for attribution; Meta can delay reporting.
+
+### Token invalid or expired
+
+- User tokens typically expire in 1–2 hours. Use a long-lived token (60 days) or System User token.
+- Generate a new token in Graph API Explorer or Business Settings → System Users → Generate token.
+- Replace `META_ACCESS_TOKEN` in `.env` and restart the app.
+
+### Permission denied
+
+- Error `(#100)` or "permission" usually means `ads_read` is missing.
+- In Graph API Explorer, add permission `ads_read` and re-generate the token.
+- For System User: assign the ad account to the system user and generate token with `ads_read`.
+
+### Timezone mismatches
+
+- Meta reports in the ad account timezone (set in Ads Manager → Settings).
+- The dashboard uses your local time for "Last sync". Date ranges (today, 7d, etc.) are interpreted by Meta’s API in the account timezone.
+- If "today" looks off, check your ad account timezone in Ads Manager.
+
+### Rate limit
+
+- Meta limits ~200 calls/hour per user. The dashboard makes multiple calls per refresh.
+- Use the 10-minute cache: repeated refreshes within 10 min use cached data.
+- Click Refresh with cache bypass sparingly; wait 5–10 min between forced refreshes.
+
 ## Lead metrics
 
 Leads come from the Meta Pixel / CAPI `Lead` event. Ensure:

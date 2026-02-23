@@ -86,6 +86,19 @@ export async function fetchAccountInsights(
   });
 }
 
+/** Fetch account insights for explicit time range (for prior period comparison). */
+export async function fetchAccountInsightsTimeRange(
+  accountId: string,
+  since: string,
+  until: string
+): Promise<{ data: Array<Record<string, unknown>> }> {
+  const path = `${accountPath(accountId)}/insights`;
+  return metaFetch(path, {
+    fields: INSIGHT_FIELDS,
+    time_range: JSON.stringify({ since, until }),
+  });
+}
+
 export async function fetchCampaigns(
   accountId: string,
   datePreset: DatePreset
@@ -110,13 +123,13 @@ export async function fetchCampaigns(
   });
 }
 
-/** Fetch campaigns with insights — Meta returns insights nested or we need to request separately. */
+/** Fetch campaigns with insights + delivery/learning fields. */
 export async function fetchCampaignsWithInsights(
   accountId: string,
   datePreset: DatePreset
-): Promise<Array<{ id: string; name: string; status?: string; effective_status?: string; objective?: string; insight?: Record<string, unknown> }>> {
+): Promise<Array<{ id: string; name: string; status?: string; effective_status?: string; objective?: string; insight?: Record<string, unknown>; delivery_info?: { status?: string }; learning_type_info?: { learning_type?: string }; review_feedback?: { abstract_message?: string } }>> {
   const path = `${accountPath(accountId)}/campaigns`;
-  const fields = `id,name,status,effective_status,objective`;
+  const fields = `id,name,status,effective_status,objective,delivery_info{status},learning_type_info{learning_type},review_feedback{abstract_message}`;
   const campaigns = await metaFetchPaginated(path, { fields });
 
   const withInsights: Array<{
@@ -126,6 +139,9 @@ export async function fetchCampaignsWithInsights(
     effective_status?: string;
     objective?: string;
     insight?: Record<string, unknown>;
+    delivery_info?: { status?: string };
+    learning_type_info?: { learning_type?: string };
+    review_feedback?: { abstract_message?: string };
   }> = [];
 
   for (const c of campaigns) {
@@ -143,6 +159,9 @@ export async function fetchCampaignsWithInsights(
         effective_status: (c as { effective_status?: string }).effective_status,
         objective: (c as { objective?: string }).objective,
         insight,
+        delivery_info: (c as { delivery_info?: { status?: string } }).delivery_info,
+        learning_type_info: (c as { learning_type_info?: { learning_type?: string } }).learning_type_info,
+        review_feedback: (c as { review_feedback?: { abstract_message?: string } }).review_feedback,
       });
     } catch {
       withInsights.push({
@@ -151,6 +170,9 @@ export async function fetchCampaignsWithInsights(
         status: (c as { status?: string }).status,
         effective_status: (c as { effective_status?: string }).effective_status,
         objective: (c as { objective?: string }).objective,
+        delivery_info: (c as { delivery_info?: { status?: string } }).delivery_info,
+        learning_type_info: (c as { learning_type_info?: { learning_type?: string } }).learning_type_info,
+        review_feedback: (c as { review_feedback?: { abstract_message?: string } }).review_feedback,
       });
     }
   }
@@ -161,9 +183,9 @@ export async function fetchCampaignsWithInsights(
 export async function fetchAdSetsWithInsights(
   accountId: string,
   datePreset: DatePreset
-): Promise<Array<{ id: string; name: string; campaign_id?: string; status?: string; effective_status?: string; objective?: string; insight?: Record<string, unknown> }>> {
+): Promise<Array<{ id: string; name: string; campaign_id?: string; status?: string; effective_status?: string; objective?: string; insight?: Record<string, unknown>; delivery_info?: { status?: string }; learning_type_info?: { learning_type?: string } }>> {
   const path = `${accountPath(accountId)}/adsets`;
-  const fields = `id,name,campaign_id,status,effective_status,objective`;
+  const fields = `id,name,campaign_id,status,effective_status,objective,delivery_info{status},learning_type_info{learning_type}`;
   const adsets = await metaFetchPaginated(path, { fields });
 
   const withInsights: Array<{
@@ -174,6 +196,8 @@ export async function fetchAdSetsWithInsights(
     effective_status?: string;
     objective?: string;
     insight?: Record<string, unknown>;
+    delivery_info?: { status?: string };
+    learning_type_info?: { learning_type?: string };
   }> = [];
 
   for (const a of adsets) {
@@ -192,6 +216,8 @@ export async function fetchAdSetsWithInsights(
         effective_status: (a as { effective_status?: string }).effective_status,
         objective: (a as { objective?: string }).objective,
         insight,
+        delivery_info: (a as { delivery_info?: { status?: string } }).delivery_info,
+        learning_type_info: (a as { learning_type_info?: { learning_type?: string } }).learning_type_info,
       });
     } catch {
       withInsights.push({
@@ -201,6 +227,8 @@ export async function fetchAdSetsWithInsights(
         status: (a as { status?: string }).status,
         effective_status: (a as { effective_status?: string }).effective_status,
         objective: (a as { objective?: string }).objective,
+        delivery_info: (a as { delivery_info?: { status?: string } }).delivery_info,
+        learning_type_info: (a as { learning_type_info?: { learning_type?: string } }).learning_type_info,
       });
     }
   }
@@ -222,10 +250,12 @@ export async function fetchAdsWithInsights(
     objective?: string;
     insight?: Record<string, unknown>;
     thumbnailUrl?: string | null;
+    delivery_info?: { status?: string };
+    learning_type_info?: { learning_type?: string };
   }>
 > {
   const path = `${accountPath(accountId)}/ads`;
-  const fields = `id,name,adset_id,creative{id},status,effective_status`;
+  const fields = `id,name,adset_id,creative{id},status,effective_status,delivery_info{status},learning_type_info{learning_type}`;
   const ads = await metaFetchPaginated(path, { fields });
 
   const withInsights: Array<{
@@ -238,6 +268,8 @@ export async function fetchAdsWithInsights(
     objective?: string;
     insight?: Record<string, unknown>;
     thumbnailUrl?: string | null;
+    delivery_info?: { status?: string };
+    learning_type_info?: { learning_type?: string };
   }> = [];
 
   for (const a of ads) {
@@ -258,6 +290,8 @@ export async function fetchAdsWithInsights(
         status: (a as { status?: string }).status,
         effective_status: (a as { effective_status?: string }).effective_status,
         insight,
+        delivery_info: (a as { delivery_info?: { status?: string } }).delivery_info,
+        learning_type_info: (a as { learning_type_info?: { learning_type?: string } }).learning_type_info,
       });
     } catch {
       withInsights.push({
@@ -267,6 +301,8 @@ export async function fetchAdsWithInsights(
         creative: (a as { creative?: { id?: string } }).creative,
         status: (a as { status?: string }).status,
         effective_status: (a as { effective_status?: string }).effective_status,
+        delivery_info: (a as { delivery_info?: { status?: string } }).delivery_info,
+        learning_type_info: (a as { learning_type_info?: { learning_type?: string } }).learning_type_info,
       });
     }
   }

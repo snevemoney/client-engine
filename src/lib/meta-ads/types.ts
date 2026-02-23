@@ -16,6 +16,11 @@ export type MetaAdsSummary = {
   cpm: number;
   frequency: number | null;
   costPerLead: number | null;
+  /** Trend deltas vs prior period (null if not computable) */
+  spendDeltaPct: number | null;
+  leadsDeltaPct: number | null;
+  cplDeltaPct: number | null;
+  ctrDeltaPct: number | null;
 };
 
 export type MetaAdsCampaign = {
@@ -36,6 +41,7 @@ export type MetaAdsCampaign = {
   costPerLead: number | null;
   deliveryStatus: string | null;
   learningStatus: string | null;
+  reviewStatus: string | null;
 };
 
 export type MetaAdsAdSet = MetaAdsCampaign & { campaignId: string };
@@ -61,6 +67,10 @@ export type MetaAdsDashboardData = {
   range: { since: string; until: string };
   datePreset: DateRangePreset;
   lastFetchedAt: string;
+  /** When cache was last populated (for cacheHit) */
+  lastSyncedAt?: string;
+  /** True if response came from cache */
+  cacheHit?: boolean;
   summary: MetaAdsSummary;
   campaigns: MetaAdsCampaign[];
   adsets: MetaAdsAdSet[];

@@ -35,31 +35,46 @@ Daily 5-minute check for ad performance using the in-app Meta Ads dashboard.
 
 **Actions:** All changes happen in Ads Manager. The dashboard is read-only. Use insights as signals, then open Ads Manager to adjust.
 
-## Daily 5-minute routine
+## Daily 5-minute review flow
 
 1. Open **Dashboard → Meta Ads**
 2. Set range to **7d** (or 14d/30d for trends)
-3. Click **Refresh**
-4. Scan KPI cards — Is spend on track? Are leads coming in?
-5. Read **Operator Insights** — Any warnings or recommendations?
-6. Skim tables — Paused campaigns, zero-spend ad sets, high-CPL ads
-7. If action needed, open Ads Manager and make changes there
+3. Check **"Needs attention"** badge — how many warn/critical insights?
+4. Click **Refresh** (or rely on cache if recently synced)
+5. Scan KPI cards — trend arrows show vs prior period (spend, leads, CPL, CTR)
+6. Read **Operator Insights** — any warnings or recommendations?
+7. Skim tables — row badges (No leads, Fatigue, High CPL, Learning, No delivery)
+8. Check Delivery column — learning/limited/no delivery?
+9. If action needed, open Ads Manager and make changes there
 
-## What to do when alerts appear
+## Weekly creative review flow
 
-| Alert | Action |
-|-------|--------|
+1. Set range to **14d** or **30d**
+2. Sort mentally or scan Ads table for **Low CTR** badges
+3. Identify creatives with CTR &lt; 0.5% and meaningful spend
+4. In Ads Manager: duplicate winning structure, test new hooks/angles
+5. Pause or refresh fatigued creatives (Frequency &gt; 3)
+
+## What to do for each insight type
+
+| Insight | Action |
+|---------|--------|
 | High spend, zero leads | Pause or narrow audience; test new creative |
-| Frequency > 3 | Expand audience or refresh creative |
-| CPL spike | Check audience overlap; pause underperformers |
-| Low CTR | A/B test headline and creative |
-| Learning limited | Increase budget or broaden audience |
+| Frequency fatigue | Expand audience or refresh creative |
+| CPL above average | Check audience overlap; pause underperformers |
+| Top performer by CPL | Consider scaling budget or duplicating |
+| Low CTR creative | A/B test headline and creative |
+| Learning limited | Allow 50+ conversions or 7 days; avoid frequent edits |
+| No delivery but active | Check budget, audience size, or bidding |
+| CPL spike vs prior period | Review recent changes; may need creative refresh |
+| CTR drop vs prior period | Consider refreshing creative or audience |
 | Paused campaign | Re-activate if ready; otherwise leave paused |
 
-## Limitations (V1)
+## Limitations (V1.1)
 
 - Read-only. No edits from the app.
 - Single account. Multi-account support is a future enhancement.
 - Lead metrics depend on Meta Pixel/CAPI Lead events being set up.
-- Data is fetched live; no persistent cache. Refresh to get latest.
+- Cache: 10 min TTL. Click Refresh with bypass for fresh data.
 - Thumbnails not shown (to avoid rate limits).
+- Delivery/learning fields may be empty for some account types.

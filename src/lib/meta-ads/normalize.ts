@@ -52,7 +52,16 @@ export function parseClicks(actions: RawInsight["actions"], rawClicks?: string):
 
 export function normalizeInsightToRow(
   raw: RawInsight,
-  base: { id: string; name: string; status?: string; effective_status?: string; objective?: string }
+  base: {
+    id: string;
+    name: string;
+    status?: string;
+    effective_status?: string;
+    objective?: string;
+    delivery_info?: { status?: string };
+    learning_type_info?: { learning_type?: string };
+    review_feedback?: { abstract_message?: string };
+  }
 ): MetaAdsCampaign {
   const spend = num(raw.spend);
   const impressions = num(raw.impressions);
@@ -80,12 +89,16 @@ export function normalizeInsightToRow(
     cpm: cpm > 0 ? cpm : impressions > 0 ? (spend / impressions) * 1000 : 0,
     frequency,
     costPerLead: leads > 0 ? spend / leads : parseCostPerLead(raw.cost_per_action_type),
-    deliveryStatus: (raw as RawInsight & { delivery_info?: { status?: string } }).delivery_info?.status ?? null,
-    learningStatus: (raw as RawInsight & { learning_type_info?: { learning_type?: string } }).learning_type_info?.learning_type ?? null,
+    deliveryStatus: base.delivery_info?.status ?? (raw as RawInsight & { delivery_info?: { status?: string } }).delivery_info?.status ?? null,
+    learningStatus: base.learning_type_info?.learning_type ?? (raw as RawInsight & { learning_type_info?: { learning_type?: string } }).learning_type_info?.learning_type ?? null,
+    reviewStatus: base.review_feedback?.abstract_message ?? null,
   };
 }
 
-export function aggregateSummary(rows: Array<{ spend: number; impressions: number; reach: number | null; clicks: number; leads: number }>): MetaAdsSummary {
+export function aggregateSummary(
+  rows: Array<{ spend: number; impressions: number; reach: number | null; clicks: number; leads: number }>,
+  deltas?: { spendDeltaPct: number | null; leadsDeltaPct: number | null; cplDeltaPct: number | null; ctrDeltaPct: number | null }
+): MetaAdsSummary {
   let spend = 0;
   let impressions = 0;
   let reach = 0;
@@ -102,16 +115,22 @@ export function aggregateSummary(rows: Array<{ spend: number; impressions: numbe
       reachCount++;
     }
   }
+  const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
+  const costPerLead = leads > 0 ? spend / leads : null;
   return {
     spend,
     impressions,
     reach: reachCount > 0 ? reach : null,
     clicks,
     leads,
-    ctr: impressions > 0 ? (clicks / impressions) * 100 : 0,
+    ctr,
     cpc: clicks > 0 ? spend / clicks : 0,
     cpm: impressions > 0 ? (spend / impressions) * 1000 : 0,
     frequency: impressions > 0 && reach > 0 ? impressions / reach : null,
-    costPerLead: leads > 0 ? spend / leads : null,
+    costPerLead,
+    spendDeltaPct: deltas?.spendDeltaPct ?? null,
+    leadsDeltaPct: deltas?.leadsDeltaPct ?? null,
+    cplDeltaPct: deltas?.cplDeltaPct ?? null,
+    ctrDeltaPct: deltas?.ctrDeltaPct ?? null,
   };
 }
