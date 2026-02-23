@@ -88,7 +88,19 @@ PIPELINE_DRY_RUN=1 npm run test:e2e
 
 **Production:** Use `PLAYWRIGHT_BASE_URL=https://evenslouis.ca` only after fixing redirect loops (set `NEXTAUTH_URL` and `AUTH_SECRET` on the server).
 
-**Side-panel / manual testing:** For Cursor side-panel or embedded browser: [docs/TESTING_SIDE_PANEL.md](docs/TESTING_SIDE_PANEL.md) — local vs prod, checklist, and why prod login may fail in the panel.
+**Testing strategy:** [docs/TESTING_SIDE_PANEL.md](docs/TESTING_SIDE_PANEL.md) — two-tier approach (Playwright automated + manual production checks), page-by-page test matrix, and embedded browser notes.
+
+## Operator checklists
+
+| When | Doc |
+|------|-----|
+| After your day job (10–15 min) | [docs/NIGHT_OPERATOR_CHECKLIST.md](docs/NIGHT_OPERATOR_CHECKLIST.md) |
+| Before a client call or demo | [docs/BEFORE_CLIENTS_CHECKLIST.md](docs/BEFORE_CLIENTS_CHECKLIST.md) |
+| After every production deploy | [docs/AFTER_DEPLOY_SMOKE_CHECKLIST.md](docs/AFTER_DEPLOY_SMOKE_CHECKLIST.md) |
+| When the app feels slow | [docs/WHEN_APP_FEELS_SLOW_CHECKLIST.md](docs/WHEN_APP_FEELS_SLOW_CHECKLIST.md) |
+| Weekly deep review | [docs/WEEKLY_PRODUCTION_CRITICISM_CHECKLIST.md](docs/WEEKLY_PRODUCTION_CRITICISM_CHECKLIST.md) |
+
+Full testing strategy and route inventory: [docs/TESTING_SIDE_PANEL.md](docs/TESTING_SIDE_PANEL.md) and [docs/AUDIT_AND_TEST_FLOWS.md](docs/AUDIT_AND_TEST_FLOWS.md).
 
 ## Deploy from local machine (keep dev and prod in sync)
 

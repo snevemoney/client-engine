@@ -175,4 +175,4 @@ If email/password don't work at the production URL (e.g. evenslouis.ca), the pro
 
 ---
 
-*For full testing strategy and operator checklists (Night operator, Before clients, After deploy, When app feels slow), see `docs/TESTING_SIDE_PANEL.md`. For step-by-step E2E test runbook, see `docs/RUNBOOK.md`.*
+*For full testing strategy, see `docs/TESTING_SIDE_PANEL.md`. For step-by-step E2E test runbook, see `docs/RUNBOOK.md`. Operator checklists: [NIGHT_OPERATOR_CHECKLIST.md](NIGHT_OPERATOR_CHECKLIST.md), [BEFORE_CLIENTS_CHECKLIST.md](BEFORE_CLIENTS_CHECKLIST.md), [AFTER_DEPLOY_SMOKE_CHECKLIST.md](AFTER_DEPLOY_SMOKE_CHECKLIST.md), [WHEN_APP_FEELS_SLOW_CHECKLIST.md](WHEN_APP_FEELS_SLOW_CHECKLIST.md).*

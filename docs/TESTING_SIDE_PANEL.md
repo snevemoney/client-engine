@@ -119,6 +119,8 @@ Test these in order for consistency. For each page, check: loads without blank/e
 | **Ops Health** | `/dashboard/ops-health` | Panel loads with failures, stale leads, integration health |
 | **Sales Leak** | `/dashboard/sales-leak` | Stage counts, leak identification, evidence |
 | **Results** | `/dashboard/results` | Active/shipped clients, target/baseline/delta |
+| **YouTube** | `/dashboard/youtube` | Ingest jobs, transcripts, proposals, provider chain status |
+| **Build Ops** | `/dashboard/build-ops` | Build tasks, agent runs, risk levels |
 
 ---
 
@@ -189,6 +191,8 @@ Before deploying, always have a rollback plan. See `docs/DEPLOY_SSH_SETUP.md` fo
 
 ## Night Operator Checklist (10–15 min)
 
+> Standalone version: [NIGHT_OPERATOR_CHECKLIST.md](NIGHT_OPERATOR_CHECKLIST.md)
+
 Run this after your day job, before you close the laptop. Goal: confirm the system ran correctly while you were away and nothing is stuck.
 
 - [ ] **Health:** `curl -s https://evenslouis.ca/api/health` → 200, ok true
@@ -209,6 +213,8 @@ Run this after your day job, before you close the laptop. Goal: confirm the syst
 
 ## Before Clients Checklist
 
+> Standalone version: [BEFORE_CLIENTS_CHECKLIST.md](BEFORE_CLIENTS_CHECKLIST.md)
+
 Run this before any client call, demo, or proposal send. Goal: the app looks professional and data is current.
 
 - [ ] **Health check passes:** `/api/health` → 200, all green
@@ -223,6 +229,8 @@ Run this before any client call, demo, or proposal send. Goal: the app looks pro
 ---
 
 ## After Deploy Smoke Checklist
+
+> Standalone version: [AFTER_DEPLOY_SMOKE_CHECKLIST.md](AFTER_DEPLOY_SMOKE_CHECKLIST.md)
 
 Run immediately after every production deploy. Goal: confirm nothing broke.
 
@@ -240,6 +248,8 @@ Run immediately after every production deploy. Goal: confirm nothing broke.
 ---
 
 ## When App Feels Slow (troubleshooting checklist)
+
+> Standalone version: [WHEN_APP_FEELS_SLOW_CHECKLIST.md](WHEN_APP_FEELS_SLOW_CHECKLIST.md)
 
 When pages take too long or the app feels sluggish, inspect in this order.
 

@@ -65,7 +65,7 @@ See `docs/TESTING_SIDE_PANEL.md` for the full testing strategy and operator chec
 To run the workday flow on a schedule (e.g. before 9 AM):
 
 ```bash
-curl -X POST https://your-domain/api/ops/workday-run \
+curl -X POST https://evenslouis.ca/api/ops/workday-run \
   -H "Authorization: Bearer YOUR_RESEARCH_CRON_SECRET"
 ```
 

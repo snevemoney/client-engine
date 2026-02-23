@@ -140,4 +140,4 @@ Use this **every week**. Evidence + action only. If the app can’t answer a que
 4. For every fix you add, use the **Money Impact** format: Fix / Expected money impact / Metric to watch / Review date. See **docs/PAT_TOM_WEEKLY_SCORECARD.md**.
 5. For every “no” or “manual”: add one **concrete fix** (Do now or Backlog).
 6. Run the **Production Critic** Cursor rule (`.cursor/rules/production-critic.mdc`) for an AI review against this framework.
-7. Run the **Night Operator Checklist** (see `docs/TESTING_SIDE_PANEL.md`) if you haven't this week.
+7. Run the **Night Operator Checklist** (see `docs/NIGHT_OPERATOR_CHECKLIST.md`) if you haven't this week.

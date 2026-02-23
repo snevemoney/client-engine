@@ -31,6 +31,8 @@
 | `/dashboard/ops-health` | Ops health panel | Yes |
 | `/dashboard/sales-leak` | Sales leak dashboard | Yes |
 | `/dashboard/results` | Results ledger | Yes |
+| `/dashboard/youtube` | YouTube ingest pipeline | Yes |
+| `/dashboard/build-ops` | Build ops / agent tasks | Yes |
 | `/work` | Work (public?) | Depends on app |
 | `/work/[slug]` | Work item by slug | Depends on app |
 | `/demos/[slug]` | Demo pages | Depends on app |
@@ -300,6 +302,8 @@ For each page, verify: (1) loads without error, (2) data renders (not blank card
 | **Results** | Active/shipped clients with target/baseline/delta | Open client detail |
 | **Conversion** | Funnel metrics | — |
 | **Deploys** | Deploy history | — |
+| **YouTube** | Ingest jobs, transcripts, learning proposals | Ingest video URL, promote/reject proposal |
+| **Build Ops** | Agent tasks, build queue | Create task, review, approve |
 
 ---
 
