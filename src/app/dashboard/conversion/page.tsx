@@ -38,7 +38,20 @@ export default function ConversionPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <div className="text-neutral-500 py-12 text-center">Loading...</div>;
+  if (loading) return (
+    <div className="space-y-6 animate-pulse">
+      <div className="h-8 w-48 rounded bg-muted" />
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {Array.from({ length: 7 }, (_, i) => (
+          <div key={i} className="border border-neutral-800 rounded-lg p-4 space-y-2">
+            <div className="h-3 w-20 rounded bg-muted" />
+            <div className="h-7 w-12 rounded bg-muted" />
+          </div>
+        ))}
+      </div>
+      <div className="h-40 rounded-lg bg-muted" />
+    </div>
+  );
   if (!data) return <div className="text-neutral-500 py-12 text-center">Failed to load conversion data.</div>;
 
   const { counts, rates, medianMs } = data;

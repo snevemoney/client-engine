@@ -34,7 +34,7 @@ export default async function SettingsPage() {
       select: { createdAt: true },
     }),
     getMonetizationMap(),
-    db.project.findMany({ select: { id: true, slug: true, name: true, status: true }, orderBy: { createdAt: "desc" } }),
+    db.project.findMany({ select: { id: true, slug: true, name: true, status: true }, orderBy: { createdAt: "desc" }, take: 50 }),
   ]);
 
   const researchEnabled =
@@ -45,6 +45,9 @@ export default async function SettingsPage() {
   const workdayInterval = (operatorSettings.workdayIntervalMinutes ?? Number(process.env.WORKDAY_INTERVAL_MINUTES)) || 60;
   const workdayMaxLeads = (operatorSettings.workdayMaxLeadsPerRun ?? Number(process.env.RESEARCH_LIMIT_PER_RUN)) || 20;
   const workdayMaxRuns = (operatorSettings.workdayMaxRunsPerDay ?? Number(process.env.WORKDAY_MAX_RUNS_PER_DAY)) || 4;
+  const workdayRunStale = !lastWorkdayRun?.createdAt
+    // eslint-disable-next-line react-hooks/purity -- server component, runs once per request
+    || (Date.now() - new Date(lastWorkdayRun.createdAt).getTime() > 24 * 60 * 60 * 1000);
 
   return (
     <div className="space-y-8">
@@ -132,16 +135,10 @@ export default async function SettingsPage() {
         <div className="grid gap-3 text-sm">
           <div className="flex justify-between items-center">
             <span className="text-neutral-400">Last workday run status</span>
-            <span className={
-              !lastWorkdayRun?.createdAt
-                ? "text-amber-400"
-                : (Date.now() - new Date(lastWorkdayRun.createdAt).getTime() > 24 * 60 * 60 * 1000)
-                  ? "text-amber-400"
-                  : "text-emerald-400"
-            }>
+            <span className={workdayRunStale ? "text-amber-400" : "text-emerald-400"}>
               {!lastWorkdayRun?.createdAt
                 ? "Never run"
-                : (Date.now() - new Date(lastWorkdayRun.createdAt).getTime() > 24 * 60 * 60 * 1000)
+                : workdayRunStale
                   ? "No run in 24h — check cron"
                   : "OK"}
             </span>

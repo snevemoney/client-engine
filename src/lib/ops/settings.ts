@@ -4,7 +4,7 @@
  */
 
 import { db } from "@/lib/db";
-import { getOrCreateSystemLead } from "./systemLead";
+import { getCachedSystemLead } from "./cached";
 
 const ARTIFACT_TYPE = "operator_settings";
 const ARTIFACT_TITLE = "OPERATOR_SETTINGS";
@@ -29,7 +29,7 @@ export type OperatorSettings = {
 };
 
 export async function getOperatorSettings(): Promise<OperatorSettings> {
-  const systemLeadId = await getOrCreateSystemLead();
+  const systemLeadId = await getCachedSystemLead();
   const artifact = await db.artifact.findFirst({
     where: { leadId: systemLeadId, type: ARTIFACT_TYPE, title: ARTIFACT_TITLE },
     orderBy: { createdAt: "desc" },
@@ -39,7 +39,7 @@ export async function getOperatorSettings(): Promise<OperatorSettings> {
 }
 
 export async function setOperatorSettings(settings: OperatorSettings): Promise<void> {
-  const systemLeadId = await getOrCreateSystemLead();
+  const systemLeadId = await getCachedSystemLead();
   const existing = await db.artifact.findFirst({
     where: { leadId: systemLeadId, type: ARTIFACT_TYPE, title: ARTIFACT_TITLE },
   });

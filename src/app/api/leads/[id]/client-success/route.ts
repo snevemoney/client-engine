@@ -14,6 +14,7 @@ import {
   resolveRisk,
   appendClientFeedback,
   appendReusableAsset,
+  upsertResultsLedgerExtra,
 } from "@/lib/client-success";
 import type { InterventionEntry, OutcomeEntry, RiskItem, ClientFeedbackEntry, ReusableAssetEntry } from "@/lib/client-success/types";
 
@@ -51,7 +52,8 @@ export async function POST(
       | "risk"
       | "resolve_risk"
       | "feedback"
-      | "reusable_asset";
+      | "reusable_asset"
+      | "results_ledger_extra";
     payload?: Record<string, unknown>;
     riskId?: string;
   };
@@ -154,6 +156,20 @@ export async function POST(
         description: p.description,
         usedInProject: p.usedInProject,
       });
+      const data = await getClientSuccessData(leadId);
+      return NextResponse.json(data);
+    }
+
+    if (body.type === "results_ledger_extra" && body.payload) {
+      const p = body.payload as {
+        currentResult?: string;
+        delta?: string;
+        whatWorked?: string;
+        whatFailed?: string;
+        outcomeConfidence?: "observed" | "inferred" | "not_enough_data";
+        nextActionRecommendation?: "upsell" | "optimize" | "closeout" | "case_study" | "follow_up" | "none";
+      };
+      await upsertResultsLedgerExtra(leadId, p);
       const data = await getClientSuccessData(leadId);
       return NextResponse.json(data);
     }

@@ -13,6 +13,7 @@ import type {
   ClientFeedbackEntry,
   ReusableAssetEntry,
   ClientSuccessData,
+  ResultsLedgerExtra,
 } from "./types";
 import { ARTIFACT_TYPES } from "./types";
 
@@ -34,6 +35,7 @@ export async function getClientSuccessData(leadId: string): Promise<ClientSucces
   let risks: RiskItem[] = [];
   let feedback: ClientFeedbackEntry[] = [];
   let reusableAssets: ReusableAssetEntry[] = [];
+  let resultLedgerExtra: ResultsLedgerExtra | null = null;
 
   for (const a of artifacts) {
     if (a.type === ARTIFACT_TYPES.RESULT_TARGET && a.meta) {
@@ -93,6 +95,22 @@ export async function getClientSuccessData(leadId: string): Promise<ClientSucces
           (e) => e && typeof e.id === "string" && typeof e.description === "string" && typeof e.kind === "string"
         );
       }
+    } else if (a.type === ARTIFACT_TYPES.RESULTS_LEDGER_EXTRA && a.meta) {
+      const m = a.meta as Record<string, unknown>;
+      resultLedgerExtra = {
+        currentResult: m.currentResult != null ? String(m.currentResult) : undefined,
+        delta: m.delta != null ? String(m.delta) : undefined,
+        whatWorked: m.whatWorked != null ? String(m.whatWorked) : undefined,
+        whatFailed: m.whatFailed != null ? String(m.whatFailed) : undefined,
+        outcomeConfidence: ["observed", "inferred", "not_enough_data"].includes(String(m.outcomeConfidence))
+          ? (m.outcomeConfidence as ResultsLedgerExtra["outcomeConfidence"])
+          : undefined,
+        nextActionRecommendation: ["upsell", "optimize", "closeout", "case_study", "follow_up", "none"].includes(
+          String(m.nextActionRecommendation)
+        )
+          ? (m.nextActionRecommendation as ResultsLedgerExtra["nextActionRecommendation"])
+          : undefined,
+      };
     }
   }
 
@@ -106,6 +124,7 @@ export async function getClientSuccessData(leadId: string): Promise<ClientSucces
     risks: risks.filter((r) => !r.resolvedAt),
     feedback,
     reusableAssets,
+    resultsLedgerExtra: resultLedgerExtra ?? undefined,
   };
 }
 
@@ -402,6 +421,50 @@ async function saveFeedbackLog(leadId: string, entries: ClientFeedbackEntry[]): 
         title: "CLIENT_FEEDBACK_LOG",
         content,
         meta: { entries },
+      },
+    });
+  }
+}
+
+/** Upsert Results Ledger extra fields (current result, delta, what worked/failed, confidence, next action). */
+export async function upsertResultsLedgerExtra(
+  leadId: string,
+  payload: Partial<ResultsLedgerExtra>
+): Promise<void> {
+  const data: ResultsLedgerExtra = {
+    currentResult: payload.currentResult,
+    delta: payload.delta,
+    whatWorked: payload.whatWorked,
+    whatFailed: payload.whatFailed,
+    outcomeConfidence: payload.outcomeConfidence,
+    nextActionRecommendation: payload.nextActionRecommendation,
+  };
+  const meta = Object.fromEntries(Object.entries(data).filter(([, v]) => v != null));
+  const content =
+    "# Results Ledger\n\n" +
+    (data.currentResult ? `**Current:** ${data.currentResult}\n` : "") +
+    (data.delta ? `**Delta:** ${data.delta}\n` : "") +
+    (data.whatWorked ? `**What worked:** ${data.whatWorked}\n` : "") +
+    (data.whatFailed ? `**What didn't:** ${data.whatFailed}\n` : "") +
+    (data.outcomeConfidence ? `**Confidence:** ${data.outcomeConfidence}\n` : "") +
+    (data.nextActionRecommendation ? `**Next action:** ${data.nextActionRecommendation}\n` : "");
+  const existing = await db.artifact.findFirst({
+    where: { leadId, type: ARTIFACT_TYPES.RESULTS_LEDGER_EXTRA },
+    select: { id: true },
+  });
+  if (existing) {
+    await db.artifact.update({
+      where: { id: existing.id },
+      data: { content, meta },
+    });
+  } else {
+    await db.artifact.create({
+      data: {
+        leadId,
+        type: ARTIFACT_TYPES.RESULTS_LEDGER_EXTRA,
+        title: "RESULTS_LEDGER_EXTRA",
+        content: content || "Results ledger extension",
+        meta,
       },
     });
   }

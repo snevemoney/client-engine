@@ -5,10 +5,8 @@
 
 import { db } from "@/lib/db";
 import type { Prisma } from "@prisma/client";
-import { getOrCreateSystemLead } from "./systemLead";
+import { getCachedSystemLead, getCachedMoneyScorecard, getCachedConstraintSnapshot } from "./cached";
 import { getLeverageScore } from "./leverageScore";
-import { getMoneyScorecard } from "./moneyScorecard";
-import { getConstraintSnapshot } from "./constraint";
 
 const ARTIFACT_TYPE = "weekly_snapshot";
 
@@ -23,7 +21,7 @@ export type WeeklySnapshotMeta = {
 };
 
 export async function getWeeklySnapshotHistory(weeks: number = 8): Promise<WeeklySnapshotMeta[]> {
-  const systemLeadId = await getOrCreateSystemLead();
+  const systemLeadId = await getCachedSystemLead();
   const artifacts = await db.artifact.findMany({
     where: { leadId: systemLeadId, type: ARTIFACT_TYPE },
     orderBy: { createdAt: "desc" },
@@ -55,8 +53,8 @@ export async function getWeeklySnapshotHistory(weeks: number = 8): Promise<Weekl
 export async function saveWeeklySnapshot(): Promise<WeeklySnapshotMeta> {
   const [leverage, money, constraint] = await Promise.all([
     getLeverageScore(),
-    getMoneyScorecard(),
-    getConstraintSnapshot(),
+    getCachedMoneyScorecard(),
+    getCachedConstraintSnapshot(),
   ]);
   const weekEnding = new Date().toISOString().slice(0, 10);
   const meta: WeeklySnapshotMeta = {
@@ -68,7 +66,7 @@ export async function saveWeeklySnapshot(): Promise<WeeklySnapshotMeta> {
     bottleneckLabel: constraint?.label ?? null,
     at: new Date().toISOString(),
   };
-  const systemLeadId = await getOrCreateSystemLead();
+  const systemLeadId = await getCachedSystemLead();
   const content = [
     `# Weekly Snapshot ${weekEnding}`,
     ``,

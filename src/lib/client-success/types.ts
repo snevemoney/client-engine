@@ -72,7 +72,19 @@ export const ARTIFACT_TYPES = {
   RISK_BOTTLENECK_LOG: "RISK_BOTTLENECK_LOG",
   CLIENT_FEEDBACK_LOG: "CLIENT_FEEDBACK_LOG",
   REUSABLE_ASSET_LOG: "REUSABLE_ASSET_LOG",
+  /** Results Ledger extension: current status, delta, what worked/failed, confidence, next action */
+  RESULTS_LEDGER_EXTRA: "RESULTS_LEDGER_EXTRA",
 } as const;
+
+/** Optional fields for Results Ledger view (stored in RESULTS_LEDGER_EXTRA artifact meta). */
+export type ResultsLedgerExtra = {
+  currentResult?: string;
+  delta?: string;
+  whatWorked?: string;
+  whatFailed?: string;
+  outcomeConfidence?: "observed" | "inferred" | "not_enough_data";
+  nextActionRecommendation?: "upsell" | "optimize" | "closeout" | "case_study" | "follow_up" | "none";
+};
 
 export type ClientSuccessData = {
   resultTarget: ResultTarget | null;
@@ -82,4 +94,6 @@ export type ClientSuccessData = {
   risks: RiskItem[];
   feedback: ClientFeedbackEntry[];
   reusableAssets: ReusableAssetEntry[];
+  /** Results Ledger extension (from RESULTS_LEDGER_EXTRA artifact) */
+  resultsLedgerExtra?: ResultsLedgerExtra | null;
 };

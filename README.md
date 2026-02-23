@@ -41,6 +41,8 @@ bash logs.sh postgres   # Tail DB logs
 
 **Post-deploy smoke test:** `./scripts/smoke-test.sh` (or `./scripts/smoke-test.sh https://evenslouis.ca`) — checks homepage, login, dashboard, `/api/health`, `/api/ops/command`, SSL. Exit 0 = all pass.
 
+**VPS out of disk (ENOSPC / rsync or deploy fails):** Run `./scripts/run-vps-cleanup.sh` from your Mac to prune Docker and free space on the server, then run `./scripts/sync-and-deploy.sh` again. See [docs/VPS_DEPLOY_CHECKLIST.md](docs/VPS_DEPLOY_CHECKLIST.md) § Disk space maintenance.
+
 ## URLs
 
 - **https://evenslouis.ca** — Public site

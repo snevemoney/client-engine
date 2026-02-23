@@ -32,7 +32,22 @@ export function OwnedAudienceCard() {
   }
 
   useEffect(() => {
-    fetchHealth();
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/owned-audience?mode=health");
+        if (cancelled) return;
+        if (res.ok) {
+          const data = await res.json();
+          if (!cancelled) setHealth(data);
+        } else {
+          if (!cancelled) setHealth(null);
+        }
+      } catch {
+        if (!cancelled) setHealth(null);
+      }
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   async function submitSnapshot() {
@@ -98,6 +113,7 @@ export function OwnedAudienceCard() {
             <div>
               <label className="text-[10px] text-neutral-500 block">Subscribers</label>
               <Input
+                data-testid="owned-audience-subscribers"
                 type="number"
                 min={0}
                 value={subscribers}
@@ -108,6 +124,7 @@ export function OwnedAudienceCard() {
             <div>
               <label className="text-[10px] text-neutral-500 block">Sends</label>
               <Input
+                data-testid="owned-audience-sends"
                 type="number"
                 min={0}
                 value={sends}
@@ -118,6 +135,7 @@ export function OwnedAudienceCard() {
             <div>
               <label className="text-[10px] text-neutral-500 block">Replies</label>
               <Input
+                data-testid="owned-audience-replies"
                 type="number"
                 min={0}
                 value={replies}
@@ -128,6 +146,7 @@ export function OwnedAudienceCard() {
             <div>
               <label className="text-[10px] text-neutral-500 block">Clicks</label>
               <Input
+                data-testid="owned-audience-clicks"
                 type="number"
                 min={0}
                 value={clicks}
@@ -138,6 +157,7 @@ export function OwnedAudienceCard() {
             <div>
               <label className="text-[10px] text-neutral-500 block">Inquiries influenced</label>
               <Input
+                data-testid="owned-audience-inquiries"
                 type="number"
                 min={0}
                 value={inquiries}

@@ -117,6 +117,7 @@ export function NetworkingEventsCard() {
       {showForm ? (
         <div className="border border-neutral-700 rounded-md p-3 space-y-2 bg-neutral-900/80">
           <Input
+            data-testid="networking-event-name"
             placeholder="Event name *"
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -144,6 +145,7 @@ export function NetworkingEventsCard() {
             <div>
               <label className="text-[10px] text-neutral-500 block">Relevance (1–10)</label>
               <Input
+                data-testid="networking-event-relevance"
                 type="number"
                 min={1}
                 max={10}
@@ -155,6 +157,7 @@ export function NetworkingEventsCard() {
             <div>
               <label className="text-[10px] text-neutral-500 block">Contacts made</label>
               <Input
+                data-testid="networking-event-contacts"
                 type="number"
                 min={0}
                 value={contactsMade}
@@ -165,6 +168,7 @@ export function NetworkingEventsCard() {
             <div>
               <label className="text-[10px] text-neutral-500 block">Follow-ups sent</label>
               <Input
+                data-testid="networking-event-followups"
                 type="number"
                 min={0}
                 value={followUpsSent}
@@ -175,6 +179,7 @@ export function NetworkingEventsCard() {
             <div>
               <label className="text-[10px] text-neutral-500 block">Opportunities</label>
               <Input
+                data-testid="networking-event-opportunities"
                 type="number"
                 min={0}
                 value={opportunitiesCreated}
