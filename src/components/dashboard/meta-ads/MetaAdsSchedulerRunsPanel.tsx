@@ -71,6 +71,8 @@ export function MetaAdsSchedulerRunsPanel({ className = "", refreshKey = 0 }: { 
                     r.summary.simulated != null && `simulated: ${r.summary.simulated}`,
                     r.summary.blocked != null && `blocked: ${r.summary.blocked}`,
                     r.summary.failed != null && `failed: ${r.summary.failed}`,
+                    (typeof r.summary.alertsSent === "number" && r.summary.alertsSent > 0) && `alerts: ${r.summary.alertsSent}`,
+                    r.summary.trendDataAvailable === true && "trends ✓",
                   ]
                     .filter(Boolean)
                     .join(" · ")}

@@ -35,6 +35,15 @@ export type RecommendationEvidence = {
   impressions?: number;
   delivery?: string | null;
   learning?: string | null;
+  /** Trend evidence (prior period comparison) */
+  priorCpl?: number;
+  priorCtr?: number;
+  priorFrequency?: number;
+  cplDeltaPct?: number;
+  ctrDeltaPct?: number;
+  frequencyDeltaPct?: number;
+  leadsDeltaPct?: number;
+  thresholdUsed?: number;
 };
 
 export type RecommendationOutput = {

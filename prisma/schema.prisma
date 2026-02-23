@@ -533,6 +533,14 @@ model MetaAdsAutomationSettings {
   lastSchedulerRunAt        DateTime?
   lastSchedulerRunStatus    String?
   lastSchedulerRunSummary   Json?
+  alertsEnabled             Boolean  @default(false)
+  alertOnSchedulerFailure   Boolean  @default(true)
+  alertOnCriticalRecommendations Boolean @default(true)
+  alertOnBlockedActions     Boolean  @default(false)
+  alertCooldownMinutes      Int      @default(60)
+  alertMinSeverity          String   @default("critical")  // warn | critical
+  alertRuleKeys             Json?    // allowlist; null = all
+  lastAlertSentAt           Json?    // { key -> timestamp } for cooldown
   updatedAt                 DateTime @updatedAt
 
   @@index([accountId])

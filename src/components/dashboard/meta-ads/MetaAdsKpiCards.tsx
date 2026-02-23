@@ -17,9 +17,9 @@ const KPIS: Array<{ key: keyof MetaAdsSummary; label: string; fmt: (v: number) =
   { key: "leads", label: "Leads", fmt: fmtNum, deltaKey: "leadsDeltaPct" },
   { key: "costPerLead", label: "CPL", fmt: (v) => (v > 0 ? fmtMoney(v) : "—"), deltaKey: "cplDeltaPct" },
   { key: "ctr", label: "CTR %", fmt: (v) => (v > 0 ? `${v.toFixed(2)}%` : "—"), deltaKey: "ctrDeltaPct" },
-  { key: "cpc", label: "CPC", fmt: (v) => (v > 0 ? fmtMoney(v) : "—") },
-  { key: "cpm", label: "CPM", fmt: (v) => (v > 0 ? fmtMoney(v) : "—") },
-  { key: "frequency", label: "Freq", fmt: (v) => (v > 0 ? v.toFixed(1) : "—") },
+  { key: "cpc", label: "CPC", fmt: (v) => (v > 0 ? fmtMoney(v) : "—"), deltaKey: "cpcDeltaPct" },
+  { key: "cpm", label: "CPM", fmt: (v) => (v > 0 ? fmtMoney(v) : "—"), deltaKey: "cpmDeltaPct" },
+  { key: "frequency", label: "Freq", fmt: (v) => (v > 0 ? v.toFixed(1) : "—"), deltaKey: "frequencyDeltaPct" },
 ];
 
 function TrendIndicator({ deltaPct }: { deltaPct: number | null }) {

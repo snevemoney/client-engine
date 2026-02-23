@@ -23,6 +23,12 @@ const DEFAULTS = {
   autoApproveLowRisk: false,
   maxAppliesPerRun: 5,
   allowedAutoApproveRuleKeys: [] as string[],
+  alertsEnabled: false,
+  alertOnSchedulerFailure: true,
+  alertOnCriticalRecommendations: true,
+  alertOnBlockedActions: false,
+  alertCooldownMinutes: 60,
+  alertMinSeverity: "critical" as "warn" | "critical",
   lastSchedulerRunAt: null as string | null,
   lastSchedulerRunStatus: null as string | null,
   lastSchedulerRunSummary: null as Record<string, unknown> | null,
@@ -64,6 +70,12 @@ export function MetaAdsSettingsPanel() {
             autoApproveLowRisk: s.autoApproveLowRisk ?? DEFAULTS.autoApproveLowRisk,
             maxAppliesPerRun: s.maxAppliesPerRun ?? DEFAULTS.maxAppliesPerRun,
             allowedAutoApproveRuleKeys: (s.allowedAutoApproveRuleKeys as string[]) ?? DEFAULTS.allowedAutoApproveRuleKeys,
+            alertsEnabled: s.alertsEnabled ?? DEFAULTS.alertsEnabled,
+            alertOnSchedulerFailure: s.alertOnSchedulerFailure ?? DEFAULTS.alertOnSchedulerFailure,
+            alertOnCriticalRecommendations: s.alertOnCriticalRecommendations ?? DEFAULTS.alertOnCriticalRecommendations,
+            alertOnBlockedActions: s.alertOnBlockedActions ?? DEFAULTS.alertOnBlockedActions,
+            alertCooldownMinutes: s.alertCooldownMinutes ?? DEFAULTS.alertCooldownMinutes,
+            alertMinSeverity: (s.alertMinSeverity ?? DEFAULTS.alertMinSeverity) as "warn" | "critical",
             lastSchedulerRunAt: s.lastSchedulerRunAt ?? null,
             lastSchedulerRunStatus: s.lastSchedulerRunStatus ?? null,
             lastSchedulerRunSummary: (s.lastSchedulerRunSummary as Record<string, unknown>) ?? null,
@@ -115,6 +127,12 @@ export function MetaAdsSettingsPanel() {
           autoApproveLowRisk: settings.autoApproveLowRisk,
           maxAppliesPerRun: settings.maxAppliesPerRun,
           allowedAutoApproveRuleKeys: [...new Set(ruleKeys)],
+          alertsEnabled: settings.alertsEnabled,
+          alertOnSchedulerFailure: settings.alertOnSchedulerFailure,
+          alertOnCriticalRecommendations: settings.alertOnCriticalRecommendations,
+          alertOnBlockedActions: settings.alertOnBlockedActions,
+          alertCooldownMinutes: settings.alertCooldownMinutes,
+          alertMinSeverity: settings.alertMinSeverity,
         }),
       });
       if (!res.ok) {
@@ -362,6 +380,74 @@ export function MetaAdsSettingsPanel() {
             className="w-full rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-200"
           />
         </div>
+
+        <hr className="border-neutral-700 my-4" />
+        <h3 className="text-xs font-medium text-neutral-400 uppercase tracking-wider">Alerts (V3.3)</h3>
+        <p className="text-[10px] text-neutral-500 mb-2">Via NOTIFY_WEBHOOK_URL or DISCORD_WEBHOOK_URL.</p>
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            id="alertsEnabled"
+            checked={settings.alertsEnabled}
+            onChange={(e) => setSettings({ ...settings, alertsEnabled: e.target.checked })}
+            className="rounded border-neutral-600"
+          />
+          <label htmlFor="alertsEnabled" className="text-sm text-neutral-300">Alerts enabled</label>
+        </div>
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            id="alertOnSchedulerFailure"
+            checked={settings.alertOnSchedulerFailure}
+            onChange={(e) => setSettings({ ...settings, alertOnSchedulerFailure: e.target.checked })}
+            className="rounded border-neutral-600"
+          />
+          <label htmlFor="alertOnSchedulerFailure" className="text-sm text-neutral-300">Alert on scheduler failure</label>
+        </div>
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            id="alertOnCriticalRecommendations"
+            checked={settings.alertOnCriticalRecommendations}
+            onChange={(e) => setSettings({ ...settings, alertOnCriticalRecommendations: e.target.checked })}
+            className="rounded border-neutral-600"
+          />
+          <label htmlFor="alertOnCriticalRecommendations" className="text-sm text-neutral-300">Alert on critical recommendations</label>
+        </div>
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            id="alertOnBlockedActions"
+            checked={settings.alertOnBlockedActions}
+            onChange={(e) => setSettings({ ...settings, alertOnBlockedActions: e.target.checked })}
+            className="rounded border-neutral-600"
+          />
+          <label htmlFor="alertOnBlockedActions" className="text-sm text-neutral-300">Alert on blocked actions</label>
+        </div>
+        <div>
+          <label className="block text-xs text-neutral-500 mb-1">Alert cooldown (min)</label>
+          <input
+            type="number"
+            min={1}
+            max={1440}
+            value={settings.alertCooldownMinutes}
+            onChange={(e) => setSettings({ ...settings, alertCooldownMinutes: Math.min(1440, Math.max(1, parseInt(e.target.value, 10) || 60)) })}
+            className="w-full rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-200"
+          />
+        </div>
+        <div>
+          <label className="block text-xs text-neutral-500 mb-1">Min severity</label>
+          <select
+            value={settings.alertMinSeverity}
+            onChange={(e) => setSettings({ ...settings, alertMinSeverity: e.target.value as "warn" | "critical" })}
+            className="w-full rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-200"
+          >
+            <option value="warn">Warn</option>
+            <option value="critical">Critical</option>
+          </select>
+        </div>
+
+        <hr className="border-neutral-700 my-4" />
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -386,6 +472,8 @@ export function MetaAdsSettingsPanel() {
               settings.lastSchedulerRunSummary.simulated != null && `sim: ${settings.lastSchedulerRunSummary.simulated}`,
               settings.lastSchedulerRunSummary.blocked != null && `blocked: ${settings.lastSchedulerRunSummary.blocked}`,
               settings.lastSchedulerRunSummary.failed != null && `failed: ${settings.lastSchedulerRunSummary.failed}`,
+              (typeof settings.lastSchedulerRunSummary.alertsSent === "number" && settings.lastSchedulerRunSummary.alertsSent > 0) && `alerts: ${settings.lastSchedulerRunSummary.alertsSent}`,
+              settings.lastSchedulerRunSummary.trendDataAvailable === true && "trends ✓",
             ]
               .filter(Boolean)
               .join(" · ")}

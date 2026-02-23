@@ -36,6 +36,12 @@ type Entity = {
   deliveryStatus: string | null;
   learningStatus: string | null;
   campaignId?: string;
+  /** Trend deltas (campaigns only, from prior-period fetch) */
+  spendDeltaPct?: number | null;
+  leadsDeltaPct?: number | null;
+  cplDeltaPct?: number | null;
+  ctrDeltaPct?: number | null;
+  frequencyDeltaPct?: number | null;
 };
 
 function toEntity(c: MetaAdsCampaign): Entity {
@@ -52,6 +58,11 @@ function toEntity(c: MetaAdsCampaign): Entity {
     effectiveStatus: c.effectiveStatus,
     deliveryStatus: c.deliveryStatus,
     learningStatus: c.learningStatus,
+    spendDeltaPct: c.spendDeltaPct ?? undefined,
+    leadsDeltaPct: c.leadsDeltaPct ?? undefined,
+    cplDeltaPct: c.cplDeltaPct ?? undefined,
+    ctrDeltaPct: c.ctrDeltaPct ?? undefined,
+    frequencyDeltaPct: c.frequencyDeltaPct ?? undefined,
   };
 }
 
@@ -70,6 +81,11 @@ function toEntityAdSet(a: MetaAdsAdSet): Entity {
     deliveryStatus: a.deliveryStatus,
     learningStatus: a.learningStatus,
     campaignId: a.campaignId,
+    spendDeltaPct: a.spendDeltaPct ?? undefined,
+    leadsDeltaPct: a.leadsDeltaPct ?? undefined,
+    cplDeltaPct: a.cplDeltaPct ?? undefined,
+    ctrDeltaPct: a.ctrDeltaPct ?? undefined,
+    frequencyDeltaPct: a.frequencyDeltaPct ?? undefined,
   };
 }
 
@@ -88,6 +104,11 @@ function toEntityAd(a: MetaAdsAd): Entity {
     deliveryStatus: a.deliveryStatus,
     learningStatus: a.learningStatus,
     campaignId: a.campaignId,
+    spendDeltaPct: a.spendDeltaPct ?? undefined,
+    leadsDeltaPct: a.leadsDeltaPct ?? undefined,
+    cplDeltaPct: a.cplDeltaPct ?? undefined,
+    ctrDeltaPct: a.ctrDeltaPct ?? undefined,
+    frequencyDeltaPct: a.frequencyDeltaPct ?? undefined,
   };
 }
 
@@ -200,6 +221,35 @@ export function generateRecommendations(
       continue;
     }
 
+    // Trend rule 1: cpl_spiking (campaigns with prior data only)
+    const hasTrendData = e.entityType === "campaign" && e.cplDeltaPct != null;
+    if (hasTrendData && e.cplDeltaPct! >= 40 && e.leads >= 1) {
+      const cpl = e.costPerLead ?? e.spend / e.leads;
+      const priorCpl = cpl / (1 + e.cplDeltaPct! / 100);
+      const severity = e.cplDeltaPct! >= 60 ? "critical" : "warn";
+      out.push({
+        ruleKey: "cpl_spiking",
+        entityType: e.entityType,
+        entityId: e.entityId,
+        ...(e.campaignId && { campaignId: e.campaignId }),
+        entityName: e.entityName,
+        severity,
+        confidence: "high",
+        reason: `CPL +${e.cplDeltaPct!.toFixed(0)}% vs prior period ($${cpl.toFixed(0)} vs $${priorCpl.toFixed(0)}). Consider reducing budget.`,
+        evidence: {
+          spend: e.spend,
+          leads: e.leads,
+          cpl,
+          priorCpl,
+          cplDeltaPct: e.cplDeltaPct ?? undefined,
+          thresholdUsed: 40,
+        },
+        actionType: "decrease_budget",
+        actionPayload: { percentDecrease: e.cplDeltaPct! >= 60 ? 25 : 15 },
+      });
+      continue;
+    }
+
     // Rule 2: high_cpl
     if (targetCpl != null && targetCpl > 0 && e.leads > 0) {
       const cpl = e.costPerLead ?? e.spend / e.leads;
@@ -247,6 +297,44 @@ export function generateRecommendations(
       }
     }
 
+    // Trend rule 2: ctr_drop_with_frequency_rise (creative fatigue pattern)
+    const hasCtrFreqTrend =
+      e.entityType === "campaign" &&
+      e.ctrDeltaPct != null &&
+      e.frequencyDeltaPct != null &&
+      e.ctrDeltaPct < -15 &&
+      e.frequencyDeltaPct > 15;
+    if (hasCtrFreqTrend && e.impressions >= 100) {
+      const priorCtr = e.ctr / (1 + e.ctrDeltaPct! / 100);
+      const priorFreq = e.frequency != null && e.frequencyDeltaPct != null
+        ? e.frequency / (1 + e.frequencyDeltaPct / 100)
+        : null;
+      const severity = (e.ctrDeltaPct ?? 0) < -30 ? "warn" : "info";
+      out.push({
+        ruleKey: "ctr_drop_with_frequency_rise",
+        entityType: e.entityType,
+        entityId: e.entityId,
+        ...(e.campaignId && { campaignId: e.campaignId }),
+        entityName: e.entityName,
+        severity,
+        confidence: "medium",
+        reason: `CTR ${e.ctrDeltaPct!.toFixed(0)}%, frequency +${e.frequencyDeltaPct!.toFixed(0)}% vs prior — possible creative fatigue.`,
+        evidence: {
+          spend: e.spend,
+          impressions: e.impressions,
+          ctr: e.ctr,
+          priorCtr,
+          ctrDeltaPct: e.ctrDeltaPct ?? undefined,
+          frequency: e.frequency ?? undefined,
+          priorFrequency: priorFreq ?? undefined,
+          frequencyDeltaPct: e.frequencyDeltaPct ?? undefined,
+        },
+        actionType: severity === "warn" ? "decrease_budget" : "refresh_creative",
+        actionPayload: severity === "warn" ? { percentDecrease: 10 } : {},
+      });
+      continue;
+    }
+
     // Rule 3: fatigue_detected (ad-level preferred)
     if (
       e.frequency != null &&
@@ -273,6 +361,43 @@ export function generateRecommendations(
         actionPayload: {},
       });
       continue;
+    }
+
+    // Trend rule 3: winner_improving_trend (scale winner with improving metrics)
+    const hasWinnerTrend =
+      e.entityType === "campaign" &&
+      e.leads >= 2 &&
+      e.cplDeltaPct != null &&
+      e.cplDeltaPct < 0 &&
+      (e.leadsDeltaPct == null || e.leadsDeltaPct >= -10) &&
+      !isLearning(e);
+    if (hasWinnerTrend && targetCpl != null && targetCpl > 0) {
+      const cpl = e.costPerLead ?? e.spend / e.leads;
+      if (cpl <= targetCpl) {
+        const priorCpl = cpl / (1 + e.cplDeltaPct! / 100);
+        const pct = Math.min(s.maxBudgetIncreasePctPerAction, 10);
+        out.push({
+          ruleKey: "winner_improving_trend",
+          entityType: e.entityType,
+          entityId: e.entityId,
+          ...(e.campaignId && { campaignId: e.campaignId }),
+          entityName: e.entityName,
+          severity: "info",
+          confidence: "high",
+          reason: `CPL improving (${e.cplDeltaPct!.toFixed(0)}% vs prior), ${e.leads} leads — consider scaling +${pct}%.`,
+          evidence: {
+            spend: e.spend,
+            leads: e.leads,
+            cpl,
+            priorCpl,
+            cplDeltaPct: e.cplDeltaPct ?? undefined,
+            leadsDeltaPct: e.leadsDeltaPct ?? undefined,
+          },
+          actionType: "increase_budget",
+          actionPayload: { percentIncrease: pct },
+        });
+        continue;
+      }
     }
 
     // Rule 5: winner_scale_candidate

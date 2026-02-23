@@ -209,10 +209,56 @@ See `docs/META_ADS_SCHEDULER_RUNBOOK.md` for full setup.
 |--------|------------|------|
 | Pause campaign/adset/ad | Yes | Via Apply |
 | Resume campaign/adset/ad | Yes | Via Apply |
-| Increase ad set budget | Yes | Ad set only, % increase |
-| Decrease ad set budget | Yes | Ad set only |
+| Increase ad set budget | Yes | Campaign or ad set |
+| Decrease ad set budget | Yes | Campaign or ad set |
 | Refresh creative | No | Recommendation only |
-| Campaign budget | No | Ad set only supported |
+| Campaign budget (CBO) | Yes | V3.3: campaign-level daily_budget |
+
+## V3.3 Trends (current vs prior period)
+
+**How trends work:**
+- For selected range (e.g. last_7d), prior period = previous 7 days.
+- Deltas: Spend, leads, CPL, CTR, CPC, CPM, frequency — % change vs prior.
+- KPI cards show trend arrows when prior data exists.
+- Campaign table shows CPL/CTR/Freq trend hints (compact % vs prior).
+
+**When no prior data:** Deltas show as — or are hidden.
+
+**Trend rules (V3.3):**
+- **cpl_spiking** — CPL +40%+ vs prior, sufficient spend/leads → decrease_budget
+- **ctr_drop_with_frequency_rise** — CTR down, frequency up → refresh_creative or decrease_budget
+- **winner_improving_trend** — Leads stable/up, CPL improving vs prior → increase_budget
+
+## V3.3 Campaign budget (CBO)
+
+For campaigns using campaign-level budget optimization:
+- **Read:** `daily_budget` (and optionally `lifetime_budget` for detection).
+- **Apply:** Increase/decrease budget via Meta API on campaign endpoint.
+- **Routing:** `entityType=campaign` → campaign budget action; `entityType=adset` → ad set budget.
+- **Limitations:** Lifetime budgets not changed; if no `daily_budget`, action fails with a clear message.
+
+## V3.3 Alerts
+
+**Setup:** Settings → Alerts section. Enable alerts and configure triggers.
+- **alertsEnabled** — Master toggle
+- **alertOnSchedulerFailure** — Notify when scheduler run fails
+- **alertOnCriticalRecommendations** — Notify when new critical recs are generated
+- **alertOnBlockedActions** — Optional: notify when actions are blocked repeatedly
+- **alertCooldownMinutes** — Min gap between same-type alerts (default 60)
+- **alertMinSeverity** — "warn" or "critical" filter
+
+**Channels:** Uses `NOTIFY_WEBHOOK_URL` or `DISCORD_WEBHOOK_URL` (same as pipeline alerts).
+
+**Payload:** Event type, severity, entity, rule, evidence, Meta Ads page link.
+
+## Troubleshooting
+
+| Issue | Check |
+|-------|-------|
+| No trends showing | Prior period may be empty; switch to 14d/30d for more data; Refresh after range change |
+| No alerts sent | alertsEnabled ON; webhook URL set; alertOn* toggles for the event type; cooldown may apply |
+| Campaign budget action failed | Entity may use lifetime budget; check Action History for "has no daily_budget" |
+| Missing prior period data | Normal for new accounts or narrow ranges; trend rules skip when no prior |
 
 ## Testing (Tier A / Tier B)
 

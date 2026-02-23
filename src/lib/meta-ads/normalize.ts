@@ -50,6 +50,31 @@ export function parseClicks(actions: RawInsight["actions"], rawClicks?: string):
   return num(rawClicks);
 }
 
+export type PriorMetrics = {
+  spend: number;
+  leads: number;
+  ctr: number;
+  costPerLead: number | null;
+  frequency: number | null;
+};
+
+/** Parse raw insight to prior metrics for trend delta computation. */
+export function parseRawToPriorMetrics(raw: RawInsight): PriorMetrics {
+  const spend = num(raw.spend);
+  const leads = parseLeads(raw.actions);
+  const impressions = num(raw.impressions);
+  const clicks = parseClicks(raw.actions, raw.clicks);
+  const ctr = num(raw.ctr) || (impressions > 0 && clicks > 0 ? (clicks / impressions) * 100 : 0);
+  const costPerLead = parseCostPerLead(raw.cost_per_action_type) ?? (leads > 0 ? spend / leads : null);
+  const frequency = raw.frequency != null && raw.frequency !== "" ? num(raw.frequency) : null;
+  return { spend, leads, ctr, costPerLead, frequency };
+}
+
+function safeDeltaPct(current: number, prior: number): number | null {
+  if (prior === 0) return null;
+  return ((current - prior) / prior) * 100;
+}
+
 export function normalizeInsightToRow(
   raw: RawInsight,
   base: {
@@ -61,7 +86,8 @@ export function normalizeInsightToRow(
     delivery_info?: { status?: string };
     learning_type_info?: { learning_type?: string };
     review_feedback?: { abstract_message?: string };
-  }
+  },
+  prior?: PriorMetrics
 ): MetaAdsCampaign {
   const spend = num(raw.spend);
   const impressions = num(raw.impressions);
@@ -73,7 +99,12 @@ export function normalizeInsightToRow(
   const ctr = num(raw.ctr);
   const frequency = raw.frequency != null && raw.frequency !== "" ? num(raw.frequency) : null;
 
-  return {
+  const ctrVal = ctr > 0 ? ctr : impressions > 0 && clicks > 0 ? (clicks / impressions) * 100 : 0;
+  const cpcVal = cpc > 0 ? cpc : clicks > 0 ? spend / clicks : 0;
+  const cpmVal = cpm > 0 ? cpm : impressions > 0 ? (spend / impressions) * 1000 : 0;
+  const cplVal = leads > 0 ? spend / leads : parseCostPerLead(raw.cost_per_action_type);
+
+  const row: MetaAdsCampaign = {
     id: base.id,
     name: base.name,
     status: base.status ?? "UNKNOWN",
@@ -84,20 +115,44 @@ export function normalizeInsightToRow(
     reach,
     clicks,
     leads,
-    ctr: ctr > 0 ? ctr : impressions > 0 && clicks > 0 ? (clicks / impressions) * 100 : 0,
-    cpc: cpc > 0 ? cpc : clicks > 0 ? spend / clicks : 0,
-    cpm: cpm > 0 ? cpm : impressions > 0 ? (spend / impressions) * 1000 : 0,
+    ctr: ctrVal,
+    cpc: cpcVal,
+    cpm: cpmVal,
     frequency,
-    costPerLead: leads > 0 ? spend / leads : parseCostPerLead(raw.cost_per_action_type),
+    costPerLead: cplVal,
     deliveryStatus: base.delivery_info?.status ?? (raw as RawInsight & { delivery_info?: { status?: string } }).delivery_info?.status ?? null,
     learningStatus: base.learning_type_info?.learning_type ?? (raw as RawInsight & { learning_type_info?: { learning_type?: string } }).learning_type_info?.learning_type ?? null,
     reviewStatus: base.review_feedback?.abstract_message ?? null,
   };
+
+  if (prior) {
+    row.spendDeltaPct = safeDeltaPct(spend, prior.spend);
+    row.leadsDeltaPct = prior.leads > 0 ? safeDeltaPct(leads, prior.leads) : null;
+    row.ctrDeltaPct = prior.ctr > 0 ? safeDeltaPct(ctrVal, prior.ctr) : null;
+    row.cplDeltaPct =
+      prior.costPerLead != null && prior.costPerLead > 0 && cplVal != null
+        ? safeDeltaPct(cplVal, prior.costPerLead)
+        : null;
+    row.frequencyDeltaPct =
+      prior.frequency != null && prior.frequency > 0 && frequency != null
+        ? safeDeltaPct(frequency, prior.frequency)
+        : null;
+  }
+
+  return row;
 }
 
 export function aggregateSummary(
   rows: Array<{ spend: number; impressions: number; reach: number | null; clicks: number; leads: number }>,
-  deltas?: { spendDeltaPct: number | null; leadsDeltaPct: number | null; cplDeltaPct: number | null; ctrDeltaPct: number | null }
+  deltas?: {
+    spendDeltaPct?: number | null;
+    leadsDeltaPct?: number | null;
+    cplDeltaPct?: number | null;
+    ctrDeltaPct?: number | null;
+    cpcDeltaPct?: number | null;
+    cpmDeltaPct?: number | null;
+    frequencyDeltaPct?: number | null;
+  }
 ): MetaAdsSummary {
   let spend = 0;
   let impressions = 0;
@@ -132,5 +187,8 @@ export function aggregateSummary(
     leadsDeltaPct: deltas?.leadsDeltaPct ?? null,
     cplDeltaPct: deltas?.cplDeltaPct ?? null,
     ctrDeltaPct: deltas?.ctrDeltaPct ?? null,
+    cpcDeltaPct: deltas?.cpcDeltaPct ?? null,
+    cpmDeltaPct: deltas?.cpmDeltaPct ?? null,
+    frequencyDeltaPct: deltas?.frequencyDeltaPct ?? null,
   };
 }

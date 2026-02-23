@@ -8,7 +8,7 @@ import { generateRecommendations } from "@/lib/meta-ads/recommendations-rules";
 import type { DateRangePreset } from "@/lib/meta-ads/types";
 
 export type GenerateResult =
-  | { ok: true; generated: number }
+  | { ok: true; generated: number; criticalCount?: number; trendDataAvailable?: boolean }
   | { ok: false; error: string; code?: string };
 
 /**
@@ -61,6 +61,9 @@ export async function runGenerateRecommendations(accountId: string): Promise<Gen
     },
   });
 
+  const criticalRecs = recs.filter((r) => r.severity === "critical");
+  const trendDataAvailable = result.campaigns.some((c) => c.cplDeltaPct != null || c.ctrDeltaPct != null);
+
   const created = await db.metaAdsRecommendation.createMany({
     data: recs.map((r) => ({
       accountId: acc,
@@ -79,5 +82,10 @@ export async function runGenerateRecommendations(accountId: string): Promise<Gen
     })),
   });
 
-  return { ok: true, generated: created.count };
+  return {
+    ok: true,
+    generated: created.count,
+    criticalCount: criticalRecs.length,
+    trendDataAvailable,
+  };
 }

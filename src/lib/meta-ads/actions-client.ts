@@ -145,12 +145,13 @@ export async function executeMetaAction(
     }
   }
 
-  // Budget changes: ad set only (documented)
+  // Budget changes: campaign (CBO) or ad set
   if (actionType === "increase_budget" || actionType === "decrease_budget") {
-    if (entityType !== "adset") {
+    const budgetLevel = entityType === "campaign" ? "campaign" : entityType === "adset" ? "adset" : null;
+    if (budgetLevel === null) {
       return {
         ok: false,
-        error: "Budget changes supported for ad sets only",
+        error: "Budget changes supported for campaigns and ad sets only",
         entityType,
         entityId,
       };
@@ -160,17 +161,20 @@ export async function executeMetaAction(
       ? (actionPayload.percentIncrease ?? 10)
       : (actionPayload.percentDecrease ?? 10);
 
-    // Fetch current daily_budget (in cents)
+    // Fetch current daily_budget (in cents) — campaign or ad set
     let currentCents: number;
     try {
-      const adset = await metaGet<{ daily_budget?: string }>(entityId, {
-        fields: "daily_budget",
+      const obj = await metaGet<{ daily_budget?: string; lifetime_budget?: string }>(entityId, {
+        fields: "daily_budget,lifetime_budget",
       });
-      const raw = adset.daily_budget;
+      const raw = obj.daily_budget;
       if (raw == null || raw === "") {
+        const hasLifetime = obj.lifetime_budget != null && obj.lifetime_budget !== "";
         return {
           ok: false,
-          error: "Ad set has no daily_budget (may use lifetime budget)",
+          error: hasLifetime
+            ? "Entity uses lifetime budget; daily_budget changes not supported"
+            : `${budgetLevel} has no daily_budget`,
           entityType,
           entityId,
         };
@@ -179,7 +183,7 @@ export async function executeMetaAction(
       if (currentCents <= 0) {
         return {
           ok: false,
-          error: "Ad set daily_budget is zero or invalid",
+          error: `${budgetLevel} daily_budget is zero or invalid`,
           entityType,
           entityId,
         };
@@ -209,10 +213,11 @@ export async function executeMetaAction(
         actionType,
         requestPayload: {
           daily_budget: newCents,
+          budgetLevel,
           percentChange: actionType === "increase_budget" ? pct : -pct,
           previousCents: currentCents,
         },
-        responseSummary: `[DRY RUN] Would set daily_budget to ${(newCents / 100).toFixed(2)} (was ${(currentCents / 100).toFixed(2)}, ${actionType === "increase_budget" ? "+" : "-"}${pct}%)`,
+        responseSummary: `[DRY RUN] Would set ${budgetLevel} daily_budget to $${(newCents / 100).toFixed(2)} (was ${(currentCents / 100).toFixed(2)}, ${actionType === "increase_budget" ? "+" : "-"}${pct}%)`,
         dryRun: true,
         simulated: true,
       };
@@ -225,8 +230,8 @@ export async function executeMetaAction(
         entityType,
         entityId,
         actionType,
-        requestPayload: { daily_budget: newCents },
-        responseSummary: `Updated daily_budget to $${(newCents / 100).toFixed(2)} (${actionType === "increase_budget" ? "+" : "-"}${pct}%)`,
+        requestPayload: { daily_budget: newCents, budgetLevel },
+        responseSummary: `Updated ${budgetLevel} daily_budget to $${(newCents / 100).toFixed(2)} (${actionType === "increase_budget" ? "+" : "-"}${pct}%)`,
       };
     } catch (e) {
       return {

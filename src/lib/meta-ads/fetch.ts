@@ -9,8 +9,16 @@ import {
   fetchCampaignsWithInsights,
   fetchAdSetsWithInsights,
   fetchAdsWithInsights,
+  fetchEntityInsightsTimeRange,
 } from "./client";
-import { aggregateSummary, normalizeInsightToRow, parseLeads, parseClicks, parseCostPerLead } from "./normalize";
+import {
+  aggregateSummary,
+  normalizeInsightToRow,
+  parseRawToPriorMetrics,
+  parseLeads,
+  parseClicks,
+  parseCostPerLead,
+} from "./normalize";
 import { generateInsights } from "./insights-rules";
 import { getCached, setCached } from "./cache";
 import type {
@@ -76,14 +84,25 @@ function safeDeltaPct(current: number, prior: number): number | null {
   return ((current - prior) / prior) * 100;
 }
 
-function parseRawInsightToSummary(raw: Record<string, unknown>): { spend: number; leads: number; ctr: number; costPerLead: number | null } {
+function parseRawInsightToSummary(raw: Record<string, unknown>): {
+  spend: number;
+  leads: number;
+  ctr: number;
+  costPerLead: number | null;
+  cpc: number;
+  cpm: number;
+  frequency: number | null;
+} {
   const spend = parseFloat(String(raw.spend ?? 0)) || 0;
   const leads = parseLeads(raw.actions as { action_type: string; value?: string }[]);
   const impressions = parseInt(String(raw.impressions ?? 0), 10) || 0;
   const clicks = parseClicks(raw.actions as { action_type: string; value?: string }[], String(raw.clicks));
   const ctr = parseFloat(String(raw.ctr ?? 0)) || (impressions > 0 && clicks > 0 ? (clicks / impressions) * 100 : 0);
   const costPerLead = parseCostPerLead(raw.cost_per_action_type as { action_type: string; value?: string }[]) ?? (leads > 0 ? spend / leads : null);
-  return { spend, leads, ctr, costPerLead };
+  const cpc = parseFloat(String(raw.cpc ?? 0)) || (clicks > 0 ? spend / clicks : 0);
+  const cpm = parseFloat(String(raw.cpm ?? 0)) || (impressions > 0 ? (spend / impressions) * 1000 : 0);
+  const frequency = raw.frequency != null && raw.frequency !== "" ? parseFloat(String(raw.frequency)) : null;
+  return { spend, leads, ctr, costPerLead, cpc, cpm, frequency };
 }
 
 export async function fetchMetaAdsDashboard(
@@ -133,6 +152,14 @@ export async function fetchMetaAdsDashboard(
     const cplPrior = priorMetrics?.costPerLead ?? null;
     const cplCurrent = currentMetrics.costPerLead;
     const cplDeltaPct = cplPrior != null && cplPrior > 0 && cplCurrent != null ? safeDeltaPct(cplCurrent, cplPrior) : null;
+    const cpcDeltaPct = priorMetrics?.cpc != null && priorMetrics.cpc > 0 ? safeDeltaPct(currentMetrics.cpc, priorMetrics.cpc) : null;
+    const cpmDeltaPct = priorMetrics?.cpm != null && priorMetrics.cpm > 0 ? safeDeltaPct(currentMetrics.cpm, priorMetrics.cpm) : null;
+    const frequencyDeltaPct =
+      priorMetrics?.frequency != null &&
+      priorMetrics.frequency > 0 &&
+      currentMetrics.frequency != null
+        ? safeDeltaPct(currentMetrics.frequency, priorMetrics.frequency)
+        : null;
 
     const summary: MetaAdsSummary = {
       spend: currentMetrics.spend,
@@ -141,15 +168,32 @@ export async function fetchMetaAdsDashboard(
       clicks: parseClicks(rawAccountInsight.actions as { action_type: string; value?: string }[], String(rawAccountInsight.clicks)),
       leads: currentMetrics.leads,
       ctr: currentMetrics.ctr,
-      cpc: parseFloat(String(rawAccountInsight.cpc ?? 0)) || 0,
-      cpm: parseFloat(String(rawAccountInsight.cpm ?? 0)) || 0,
-      frequency: rawAccountInsight.frequency != null ? parseFloat(String(rawAccountInsight.frequency)) : null,
+      cpc: currentMetrics.cpc,
+      cpm: currentMetrics.cpm,
+      frequency: currentMetrics.frequency,
       costPerLead: currentMetrics.costPerLead,
       spendDeltaPct,
       leadsDeltaPct,
       cplDeltaPct,
       ctrDeltaPct,
+      cpcDeltaPct,
+      cpmDeltaPct,
+      frequencyDeltaPct,
     };
+
+    const priorCampaignMap = new Map<string, ReturnType<typeof parseRawToPriorMetrics>>();
+    if (priorRange) {
+      const priorInsights = await Promise.all(
+        campaigns.map((c) =>
+          fetchEntityInsightsTimeRange(c.id, priorRange.since, priorRange.until).then((raw) =>
+            raw ? { id: c.id, prior: parseRawToPriorMetrics(raw as Parameters<typeof parseRawToPriorMetrics>[0]) } : null
+          )
+        )
+      );
+      for (const p of priorInsights) {
+        if (p) priorCampaignMap.set(p.id, p.prior);
+      }
+    }
 
     const normCampaigns: MetaAdsCampaign[] = campaigns.map((c) =>
       normalizeInsightToRow(
@@ -163,12 +207,21 @@ export async function fetchMetaAdsDashboard(
           delivery_info: c.delivery_info,
           learning_type_info: c.learning_type_info,
           review_feedback: c.review_feedback,
-        }
+        },
+        priorCampaignMap.get(c.id) ?? undefined
       )
     );
 
     if (summary.impressions === 0 && summary.spend === 0 && normCampaigns.length > 0) {
-      const fallback = aggregateSummary(normCampaigns, { spendDeltaPct, leadsDeltaPct, cplDeltaPct, ctrDeltaPct });
+      const fallback = aggregateSummary(normCampaigns, {
+        spendDeltaPct,
+        leadsDeltaPct,
+        cplDeltaPct,
+        ctrDeltaPct,
+        cpcDeltaPct,
+        cpmDeltaPct,
+        frequencyDeltaPct,
+      });
       if (fallback.impressions > 0 || fallback.spend > 0) {
         Object.assign(summary, fallback);
       }

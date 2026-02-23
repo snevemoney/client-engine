@@ -28,6 +28,13 @@ const SettingsSchema = z.object({
   autoApproveLowRisk: z.boolean().optional(),
   maxAppliesPerRun: z.number().min(1).max(50).optional(),
   allowedAutoApproveRuleKeys: z.array(z.string()).optional(),
+  alertsEnabled: z.boolean().optional(),
+  alertOnSchedulerFailure: z.boolean().optional(),
+  alertOnCriticalRecommendations: z.boolean().optional(),
+  alertOnBlockedActions: z.boolean().optional(),
+  alertCooldownMinutes: z.number().min(1).max(1440).optional(),
+  alertMinSeverity: z.enum(["warn", "critical"]).optional(),
+  alertRuleKeys: z.array(z.string()).nullable().optional(),
 });
 
 export const dynamic = "force-dynamic";
@@ -119,6 +126,13 @@ export async function PATCH(req: NextRequest) {
       const keys = body.allowedAutoApproveRuleKeys.filter((s) => typeof s === "string" && String(s).trim().length > 0).map((s) => String(s).trim());
       data.allowedAutoApproveRuleKeys = [...new Set(keys)];
     }
+    if (body.alertsEnabled != null) data.alertsEnabled = body.alertsEnabled;
+    if (body.alertOnSchedulerFailure != null) data.alertOnSchedulerFailure = body.alertOnSchedulerFailure;
+    if (body.alertOnCriticalRecommendations != null) data.alertOnCriticalRecommendations = body.alertOnCriticalRecommendations;
+    if (body.alertOnBlockedActions != null) data.alertOnBlockedActions = body.alertOnBlockedActions;
+    if (body.alertCooldownMinutes != null) data.alertCooldownMinutes = Math.min(1440, Math.max(1, body.alertCooldownMinutes));
+    if (body.alertMinSeverity != null) data.alertMinSeverity = body.alertMinSeverity;
+    if (body.alertRuleKeys !== undefined) data.alertRuleKeys = body.alertRuleKeys;
 
     const updated = await db.metaAdsAutomationSettings.update({
       where: { accountId: acc },

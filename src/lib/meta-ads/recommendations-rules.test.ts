@@ -17,6 +17,9 @@ const baseSummary: MetaAdsSummary = {
   leadsDeltaPct: null,
   cplDeltaPct: null,
   ctrDeltaPct: null,
+  cpcDeltaPct: null,
+  cpmDeltaPct: null,
+  frequencyDeltaPct: null,
 };
 
 function mkCampaign(overrides: Partial<MetaAdsCampaign> = {}): MetaAdsCampaign {
@@ -158,5 +161,77 @@ describe("generateRecommendations", () => {
       expect(["info", "warn", "critical"]).toContain(r.severity);
       expect(["low", "medium", "high"]).toContain(r.confidence);
     }
+  });
+
+  it("returns cpl_spiking when CPL +40% vs prior (campaign with trend data)", () => {
+    const campaigns = [
+      mkCampaign({
+        id: "c_trend",
+        spend: 120,
+        impressions: 500,
+        leads: 2,
+        costPerLead: 60,
+        cplDeltaPct: 50,
+        learningStatus: null,
+      }),
+    ];
+    const recs = generateRecommendations(baseSummary, campaigns, [], [], {
+      targetCpl: 30,
+      minSpendForDecision: 20,
+      minImpressionsForDecision: 100,
+    });
+    const cplSpiking = recs.filter((r) => r.ruleKey === "cpl_spiking");
+    expect(cplSpiking.length).toBeGreaterThanOrEqual(1);
+    expect(cplSpiking[0].actionType).toBe("decrease_budget");
+    expect(cplSpiking[0].evidence).toMatchObject({ cplDeltaPct: 50, thresholdUsed: 40 });
+  });
+
+  it("returns ctr_drop_with_frequency_rise when CTR down and frequency up", () => {
+    const campaigns = [
+      mkCampaign({
+        id: "c_ctr_freq",
+        spend: 60,
+        impressions: 500,
+        leads: 2,
+        costPerLead: 30,
+        ctr: 0.5,
+        frequency: 3,
+        ctrDeltaPct: -25,
+        frequencyDeltaPct: 20,
+        learningStatus: null,
+      }),
+    ];
+    const recs = generateRecommendations(baseSummary, campaigns, [], [], {
+      targetCpl: 50,
+      minSpendForDecision: 20,
+      minImpressionsForDecision: 100,
+    });
+    const ctrFreq = recs.filter((r) => r.ruleKey === "ctr_drop_with_frequency_rise");
+    expect(ctrFreq.length).toBeGreaterThanOrEqual(1);
+    expect(["decrease_budget", "refresh_creative"]).toContain(ctrFreq[0].actionType);
+  });
+
+  it("returns winner_improving_trend when CPL improving vs prior and leads stable", () => {
+    const campaigns = [
+      mkCampaign({
+        id: "c_winner",
+        spend: 40,
+        impressions: 800,
+        leads: 4,
+        costPerLead: 10,
+        cplDeltaPct: -15,
+        leadsDeltaPct: 5,
+        learningStatus: null,
+      }),
+    ];
+    const recs = generateRecommendations(baseSummary, campaigns, [], [], {
+      targetCpl: 15,
+      minSpendForDecision: 20,
+      minImpressionsForDecision: 100,
+    });
+    const winner = recs.filter((r) => r.ruleKey === "winner_improving_trend");
+    expect(winner.length).toBeGreaterThanOrEqual(1);
+    expect(winner[0].actionType).toBe("increase_budget");
+    expect(winner[0].evidence).toMatchObject({ cplDeltaPct: -15 });
   });
 });

@@ -89,13 +89,36 @@ export function MetaAdsCampaignTable({ campaigns, onRefresh }: Props) {
                 <td className="py-2 px-3 text-neutral-300">{fmt(c.spend, true)}</td>
                 <td className="py-2 px-3 text-neutral-400">{fmt(c.impressions)}</td>
                 <td className="py-2 px-3 text-neutral-400">{fmt(c.clicks)}</td>
-                <td className="py-2 px-3 text-neutral-400">{c.ctr > 0 ? `${c.ctr.toFixed(2)}%` : "—"}</td>
+                <td className="py-2 px-3 text-neutral-400">
+                  <div className="flex flex-col">
+                    {c.ctr > 0 ? `${c.ctr.toFixed(2)}%` : "—"}
+                    {c.ctrDeltaPct != null && (
+                      <span className={`text-[10px] ${c.ctrDeltaPct >= 0 ? "text-emerald-400" : "text-amber-400"}`}>
+                        {c.ctrDeltaPct >= 0 ? "+" : ""}{c.ctrDeltaPct.toFixed(0)}% vs prior
+                      </span>
+                    )}
+                  </div>
+                </td>
                 <td className="py-2 px-3 text-neutral-300">{fmt(c.leads)}</td>
                 <td className="py-2 px-3 text-neutral-400">
-                  {c.costPerLead != null && c.costPerLead > 0 ? fmt(c.costPerLead, true) : "—"}
+                  <div className="flex flex-col">
+                    {c.costPerLead != null && c.costPerLead > 0 ? fmt(c.costPerLead, true) : "—"}
+                    {c.cplDeltaPct != null && (
+                      <span className={`text-[10px] ${c.cplDeltaPct <= 0 ? "text-emerald-400" : "text-amber-400"}`}>
+                        {c.cplDeltaPct >= 0 ? "+" : ""}{c.cplDeltaPct.toFixed(0)}% vs prior
+                      </span>
+                    )}
+                  </div>
                 </td>
                 <td className="py-2 px-3 text-neutral-400">
-                  {c.frequency != null && c.frequency > 0 ? c.frequency.toFixed(1) : "—"}
+                  <div className="flex flex-col">
+                    {c.frequency != null && c.frequency > 0 ? c.frequency.toFixed(1) : "—"}
+                    {c.frequencyDeltaPct != null && (
+                      <span className={`text-[10px] ${c.frequencyDeltaPct <= 0 ? "text-emerald-400" : "text-amber-400"}`}>
+                        {c.frequencyDeltaPct >= 0 ? "+" : ""}{c.frequencyDeltaPct.toFixed(0)}% vs prior
+                      </span>
+                    )}
+                  </div>
                 </td>
                 <td className="py-2 px-3">
                   {onRefresh && (

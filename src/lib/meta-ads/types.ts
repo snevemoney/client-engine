@@ -21,6 +21,9 @@ export type MetaAdsSummary = {
   leadsDeltaPct: number | null;
   cplDeltaPct: number | null;
   ctrDeltaPct: number | null;
+  cpcDeltaPct: number | null;
+  cpmDeltaPct: number | null;
+  frequencyDeltaPct: number | null;
 };
 
 export type MetaAdsCampaign = {
@@ -42,6 +45,12 @@ export type MetaAdsCampaign = {
   deliveryStatus: string | null;
   learningStatus: string | null;
   reviewStatus: string | null;
+  /** Trend deltas vs prior period (null if not computable) */
+  spendDeltaPct?: number | null;
+  leadsDeltaPct?: number | null;
+  cplDeltaPct?: number | null;
+  ctrDeltaPct?: number | null;
+  frequencyDeltaPct?: number | null;
 };
 
 export type MetaAdsAdSet = MetaAdsCampaign & { campaignId: string };

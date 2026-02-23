@@ -127,6 +127,20 @@ export async function fetchAccountInsightsTimeRange(
   });
 }
 
+/** Fetch insights for a single entity (campaign/adset/ad) with time range. */
+export async function fetchEntityInsightsTimeRange(
+  entityId: string,
+  since: string,
+  until: string
+): Promise<Record<string, unknown> | null> {
+  const res = await metaFetch<{ data?: Array<Record<string, unknown>> }>(
+    `${entityId}/insights`,
+    { fields: INSIGHT_FIELDS, time_range: JSON.stringify({ since, until }) }
+  );
+  const arr = res?.data ?? [];
+  return Array.isArray(arr) && arr.length > 0 ? arr[0] : null;
+}
+
 export async function fetchCampaigns(
   accountId: string,
   datePreset: DatePreset

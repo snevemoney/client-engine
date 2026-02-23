@@ -1,10 +1,12 @@
 /**
- * Meta Ads V3.2 Scheduler — one cycle execution.
+ * Meta Ads V3.2/V3.3 Scheduler — one cycle execution.
  * Reuses apply-recommendation and generate-recommendations. Respects all guardrails.
+ * V3.3: alerts, trend-aware generation, summary includes alertsSent/trendDataAvailable.
  */
 import { db } from "@/lib/db";
 import { runGenerateRecommendations } from "@/lib/meta-ads/generate-recommendations";
 import { applyRecommendation } from "@/lib/meta-ads/apply-recommendation";
+import { sendMetaAdsAlert } from "@/lib/meta-ads/alerts";
 
 const EXECUTABLE_ACTIONS = ["pause", "resume", "increase_budget", "decrease_budget"];
 
@@ -21,6 +23,9 @@ export type SchedulerRunResult = {
     failed: number;
     skipped: number;
     error?: string;
+    criticalRecommendationsGenerated?: number;
+    trendDataAvailable?: boolean;
+    alertsSent?: number;
   };
   runLogId?: string;
 };
@@ -80,13 +85,44 @@ export async function runSchedulerCycle(
   let failed = 0;
   let skipped = 0;
   let topError: string | undefined;
+  let criticalRecommendationsGenerated = 0;
+  let trendDataAvailable = false;
+  let alertsSent = 0;
 
   try {
     if (settings.autoGenerateRecommendations) {
       const genResult = await runGenerateRecommendations(acc);
       if (genResult.ok) {
         generated = genResult.generated;
+        criticalRecommendationsGenerated = genResult.criticalCount ?? 0;
+        trendDataAvailable = genResult.trendDataAvailable ?? false;
+        if (criticalRecommendationsGenerated > 0) {
+          const criticalRecs = await db.metaAdsRecommendation.findMany({
+            where: { accountId: acc, status: "queued", severity: "critical" },
+            select: { id: true, entityType: true, entityId: true, entityName: true, ruleKey: true, evidence: true },
+          });
+          for (const r of criticalRecs.slice(0, 5)) {
+            const sent = await sendMetaAdsAlert({
+              eventType: "critical_recommendation",
+              severity: "critical",
+              accountId: acc,
+              entityType: r.entityType,
+              entityId: r.entityId,
+              entityName: r.entityName ?? undefined,
+              ruleKey: r.ruleKey ?? undefined,
+              evidence: (r.evidence as Record<string, unknown>) ?? undefined,
+              message: `New critical recommendation: ${r.ruleKey ?? "unknown"}`,
+            });
+            if (sent) alertsSent++;
+          }
+        }
       } else {
+        await sendMetaAdsAlert({
+          eventType: "scheduler_failure",
+          severity: "critical",
+          accountId: acc,
+          message: `In Generate: ${genResult.error}`,
+        });
         await db.metaAdsSchedulerRunLog.update({
           where: { id: runLog.id },
           data: {
@@ -164,6 +200,9 @@ export async function runSchedulerCycle(
       blocked,
       failed,
       skipped,
+      criticalRecommendationsGenerated,
+      trendDataAvailable,
+      alertsSent,
       ...(topError && { error: topError }),
     };
 
@@ -192,11 +231,29 @@ export async function runSchedulerCycle(
 
     return {
       status: runStatus,
-      summary: { generated, autoApproved, applied, simulated, blocked, failed, skipped, error: topError },
+      summary: {
+        generated,
+        autoApproved,
+        applied,
+        simulated,
+        blocked,
+        failed,
+        skipped,
+        criticalRecommendationsGenerated,
+        trendDataAvailable,
+        alertsSent,
+        error: topError,
+      },
       runLogId: runLog.id,
     };
   } catch (e) {
     const errMsg = e instanceof Error ? e.message : String(e);
+    await sendMetaAdsAlert({
+      eventType: "scheduler_failure",
+      severity: "critical",
+      accountId: acc,
+      message: `Scheduler cycle exception: ${errMsg}`,
+    });
     await db.metaAdsSchedulerRunLog.update({
       where: { id: runLog.id },
       data: {
