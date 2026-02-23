@@ -4,6 +4,7 @@ import { getOperatorSettings } from "@/lib/ops/settings";
 import { getMonetizationMap } from "@/lib/ops/monetization";
 import { MonetizationMapSection } from "@/components/dashboard/settings/MonetizationMapSection";
 import { CashAndGraduationSection } from "@/components/dashboard/settings/CashAndGraduationSection";
+import { IntegrationsSection } from "@/components/dashboard/settings/IntegrationsSection";
 
 export const dynamic = "force-dynamic";
 
@@ -209,6 +210,8 @@ export default async function SettingsPage() {
       </section>
 
       <MonetizationMapSection initialProjects={projects} initialMap={monetizationMap} />
+
+      <IntegrationsSection />
 
       <section className="border border-neutral-800 rounded-lg p-6 space-y-4">
         <h2 className="text-sm font-medium text-neutral-300">Diagnostics</h2>

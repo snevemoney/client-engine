@@ -616,3 +616,22 @@ model StrategyWeekReview {
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
 }
+
+// ----- Integration connections (Settings control center) -----
+
+/** Per-provider integration config. Tokens stored in configJson; no encryption in V1. */
+model IntegrationConnection {
+  id             String    @id @default(cuid())
+  provider       String    @unique
+  status         String    @default("not_connected") // not_connected | connected | error | disabled
+  accountLabel   String?
+  configJson     Json      @default("{}")
+  isEnabled      Boolean   @default(true)
+  lastSyncedAt   DateTime?
+  lastTestedAt   DateTime?
+  lastError      String?   @db.Text
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([provider])
+}

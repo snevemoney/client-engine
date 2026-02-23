@@ -41,6 +41,8 @@
 
 **Website form notification:** Set `NOTIFY_EMAIL` and either `RESEND_API_KEY` or `SMTP_HOST` + `SMTP_USER` + `SMTP_PASS` (Hostinger: `smtp.hostinger.com`, port 465). You can reuse `IMAP_USER`/`IMAP_PASS` for SMTP if using the same mailbox.
 
+**Integrations control center:** Settings → Integrations. See [INTEGRATIONS_SETTINGS.md](INTEGRATIONS_SETTINGS.md) if it exists.
+
 ## Pre-deploy checks (before deploying)
 
 1. **Build and lint pass locally:**
