@@ -32,7 +32,22 @@ export function OwnedAudienceCard() {
   }
 
   useEffect(() => {
-    fetchHealth();
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/owned-audience?mode=health");
+        if (cancelled) return;
+        if (res.ok) {
+          const data = await res.json();
+          if (!cancelled) setHealth(data);
+        } else {
+          if (!cancelled) setHealth(null);
+        }
+      } catch {
+        if (!cancelled) setHealth(null);
+      }
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   async function submitSnapshot() {

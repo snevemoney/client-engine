@@ -2,7 +2,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { db } from "@/lib/db";
 import { ArrowLeft, ArrowRight } from "lucide-react";
-import { LeadCaptureForm } from "@/components/site/LeadCaptureForm";
 import { SiteFooter } from "@/components/site/SiteFooter";
 
 export const revalidate = 60;
@@ -39,9 +38,9 @@ export default async function WorkPage() {
           <p className="text-neutral-400 text-sm mb-2">Proof of execution</p>
           <h1 className="text-3xl font-light tracking-tight mb-2">Work</h1>
           <p className="text-neutral-400 mb-4">Selected projects and case studies. Want similar outcomes for your business?</p>
-          <a href="/#contact" className="inline-flex items-center gap-2 bg-white text-neutral-900 px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-neutral-200 transition-colors">
+          <Link href="/#contact" className="inline-flex items-center gap-2 bg-white text-neutral-900 px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-neutral-200 transition-colors">
             Request a workflow audit <ArrowRight className="w-4 h-4" />
-          </a>
+          </Link>
         </div>
 
         {projects.length === 0 ? (
@@ -85,9 +84,9 @@ export default async function WorkPage() {
           <div className="mt-16 rounded-lg border border-neutral-800 bg-neutral-900/50 p-6">
             <h2 className="text-lg font-medium mb-2">Want this for your business?</h2>
             <p className="text-neutral-400 text-sm mb-4">Request a workflow audit. One clear next step.</p>
-            <a href="/#contact" className="inline-flex items-center gap-2 bg-white text-neutral-900 px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-neutral-200 transition-colors">
+            <Link href="/#contact" className="inline-flex items-center gap-2 bg-white text-neutral-900 px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-neutral-200 transition-colors">
               Request a workflow audit <ArrowRight className="w-4 h-4" />
-            </a>
+            </Link>
           </div>
           </>
         )}

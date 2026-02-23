@@ -86,9 +86,9 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
             <div>
               <dt className="text-xs font-medium text-neutral-500 uppercase tracking-wider">Next step</dt>
               <dd className="mt-0.5">
-                <a href="/#contact" className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-400 hover:text-emerald-300">
+                <Link href="/#contact" className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-400 hover:text-emerald-300">
                   Request audit <ArrowRight className="w-3.5 h-3.5" />
-                </a>
+                </Link>
               </dd>
             </div>
           </dl>
@@ -116,9 +116,9 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
             <div className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-4 mb-8">
               <h3 className="text-sm font-medium text-neutral-300 mb-2">Next step</h3>
               <p className="text-neutral-400 text-sm mb-3">Want similar outcomes for your business? Request a workflow audit.</p>
-              <a href="/#contact" className="inline-flex items-center gap-2 bg-white text-neutral-900 px-4 py-2 rounded-lg text-sm font-medium hover:bg-neutral-200 transition-colors">
+              <Link href="/#contact" className="inline-flex items-center gap-2 bg-white text-neutral-900 px-4 py-2 rounded-lg text-sm font-medium hover:bg-neutral-200 transition-colors">
                 Request audit <ArrowRight className="w-3.5 h-3.5" />
-              </a>
+              </Link>
             </div>
           </div>
 
@@ -126,9 +126,9 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
             <div className="lg:sticky lg:top-24 rounded-lg border border-neutral-800 bg-neutral-900/50 p-4">
               <h3 className="text-sm font-medium text-neutral-300 mb-2">Want this for your business?</h3>
               <p className="text-neutral-400 text-xs mb-4">Request a workflow audit or book a strategy call.</p>
-              <a href="/#contact" className="block w-full text-center bg-white text-neutral-900 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-neutral-200 transition-colors">
+              <Link href="/#contact" className="block w-full text-center bg-white text-neutral-900 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-neutral-200 transition-colors">
                 Request a workflow audit
-              </a>
+              </Link>
             </div>
           </aside>
         </div>
