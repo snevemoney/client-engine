@@ -51,6 +51,34 @@ async function metaFetch<T>(path: string, params: Record<string, string> = {}): 
   return json as T;
 }
 
+/** POST to Meta Graph API (e.g. status updates). Requires ads_management. */
+async function metaPost(path: string, body: Record<string, string>): Promise<{ success?: boolean }> {
+  const token = process.env.META_ACCESS_TOKEN?.trim();
+  if (!token) throw new Error("META_ACCESS_TOKEN not set");
+
+  const url = new URL(`${BASE}/${path}`);
+  const params = new URLSearchParams({ access_token: token, ...body });
+
+  const ctrl = new AbortController();
+  const id = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+
+  const res = await fetch(url.toString(), {
+    method: "POST",
+    body: params,
+    signal: ctrl.signal,
+  });
+  clearTimeout(id);
+
+  const json = (await res.json()) as { success?: boolean; error?: GraphError };
+
+  if (json.error) {
+    const err = json.error;
+    throw new Error(err.message || `Meta API error ${err.code ?? ""}`);
+  }
+
+  return json;
+}
+
 async function metaFetchPaginated<T extends { id?: string }>(
   path: string,
   params: Record<string, string>
@@ -308,4 +336,43 @@ export async function fetchAdsWithInsights(
   }
 
   return withInsights;
+}
+
+export type MetaStatusLevel = "campaign" | "adset" | "ad";
+
+export type UpdateStatusResult =
+  | { ok: true; level: MetaStatusLevel; id: string; previousStatus: string; newStatus: string; message: string }
+  | { ok: false; error: string; code?: string };
+
+/** Update campaign, ad set, or ad status (pause/resume). Requires ads_management permission. */
+export async function updateMetaObjectStatus(
+  level: MetaStatusLevel,
+  id: string,
+  action: "pause" | "resume"
+): Promise<UpdateStatusResult> {
+  const status = action === "pause" ? "PAUSED" : "ACTIVE";
+  try {
+    await metaPost(id, { status });
+    return {
+      ok: true,
+      level,
+      id,
+      previousStatus: action === "pause" ? "ACTIVE" : "PAUSED",
+      newStatus: status,
+      message: `${level} ${id} ${action}d successfully`,
+    };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    let code: string = "API_ERROR";
+    if (msg.toLowerCase().includes("token") || msg.includes("Invalid OAuth") || msg.includes("expired")) {
+      code = "INVALID_TOKEN";
+    } else if (msg.includes("permission") || msg.includes("(#100)") || msg.includes("access") || msg.includes("ads_management")) {
+      code = "PERMISSION_DENIED";
+    } else if (msg.includes("rate") || msg.includes("throttl") || msg.includes("limit")) {
+      code = "RATE_LIMIT";
+    } else if (msg.includes("not exist") || msg.includes("not found") || msg.includes("Unknown")) {
+      code = "NOT_FOUND";
+    }
+    return { ok: false, error: msg, code };
+  }
 }

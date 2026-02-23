@@ -28,8 +28,10 @@
 | `NOTIFY_WEBHOOK_URL` | Optional | Webhook URL for pipeline/proposal notifications (Discord-compatible; also `DISCORD_WEBHOOK_URL`) |
 | `APP_URL` | Optional | Base URL for webhook links if `NEXT_PUBLIC_APP_URL` unset; fallback `https://evenslouis.ca` |
 | `REDIS_URL` | For worker/queues | Prod Docker: `redis://redis:6379`. Dev: `redis://localhost:6379` or omit. |
-| `META_ACCESS_TOKEN` | Optional | For Meta Ads Monitor (`/dashboard/meta-ads`); long-lived or system user token with `ads_read` |
+| `META_ACCESS_TOKEN` | Optional | For Meta Ads Monitor (`/dashboard/meta-ads`); long-lived or system user token with `ads_read`; add `ads_management` for pause/resume (V2) |
 | `META_AD_ACCOUNT_ID` | Optional | Ad account ID (e.g. `act_1234567890`). See [META_ADS_MONITOR_SETUP.md](META_ADS_MONITOR_SETUP.md) |
+| `META_APP_ID` | Optional | For Asset Health permission check via debug_token |
+| `META_APP_SECRET` | Optional | For Asset Health permission check via debug_token |
 
 **Admin login:** Set `ADMIN_EMAIL` and `ADMIN_PASSWORD` on the server's `.env` to the same values you use to log in. Deploy runs `seed.mjs`, which creates/updates that user; if they differ, you can get a second user or lose access after a reset-auth.
 

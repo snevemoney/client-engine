@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { RefreshCw, Megaphone, AlertTriangle } from "lucide-react";
+import Link from "next/link";
+import { RefreshCw, Megaphone, AlertTriangle, Heart } from "lucide-react";
 import type { MetaAdsDashboardData, MetaAdsDashboardError, DateRangePreset } from "@/lib/meta-ads/types";
 import { MetaAdsKpiCards } from "./MetaAdsKpiCards";
 import { MetaAdsCampaignTable } from "./MetaAdsCampaignTable";
@@ -115,8 +116,15 @@ export function MetaAdsPageClient() {
           )}
         </h1>
         <p className="text-sm text-neutral-400 mt-1">
-          Read-only view of ad performance. No edits from this screen.
+          Monitor performance and pause/resume campaigns, ad sets, and ads.
         </p>
+        <Link
+          href="/dashboard/meta-ads/health"
+          className="inline-flex items-center gap-1.5 text-xs text-neutral-500 hover:text-neutral-300 mt-2"
+        >
+          <Heart className="w-3.5 h-3.5" />
+          Asset health
+        </Link>
       </div>
 
       {/* Data status strip */}
@@ -195,9 +203,9 @@ export function MetaAdsPageClient() {
           ) : (
             <div className="grid lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2 space-y-6">
-                <MetaAdsCampaignTable campaigns={data.campaigns} />
-                <MetaAdsAdSetTable adsets={data.adsets} />
-                <MetaAdsAdTable ads={data.ads} />
+                <MetaAdsCampaignTable campaigns={data.campaigns} onRefresh={() => fetchData({ skipCache: true })} />
+                <MetaAdsAdSetTable adsets={data.adsets} onRefresh={() => fetchData({ skipCache: true })} />
+                <MetaAdsAdTable ads={data.ads} onRefresh={() => fetchData({ skipCache: true })} />
               </div>
               <div>
                 <MetaAdsInsightsPanel insights={data.insights} />

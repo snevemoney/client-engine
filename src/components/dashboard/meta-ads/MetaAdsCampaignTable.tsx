@@ -1,6 +1,8 @@
 "use client";
 
 import type { MetaAdsCampaign } from "@/lib/meta-ads/types";
+import { META_ADS_INSIGHTS } from "@/lib/meta-ads/constants";
+import { MetaAdsStatusActions } from "./MetaAdsStatusActions";
 
 function fmt(v: number, isMoney = false): string {
   return isMoney ? `$${v.toFixed(2)}` : v.toLocaleString(undefined, { maximumFractionDigits: 1 });
@@ -8,11 +10,11 @@ function fmt(v: number, isMoney = false): string {
 
 function RowBadges({ campaign, avgCpl }: { campaign: MetaAdsCampaign; avgCpl: number | null }) {
   const badges: string[] = [];
-  if (campaign.spend >= 20 && campaign.leads === 0 && campaign.effectiveStatus === "ACTIVE") badges.push("No leads");
-  if (campaign.frequency != null && campaign.frequency > 3) badges.push("Fatigue");
+  if (campaign.spend >= META_ADS_INSIGHTS.HIGH_SPEND_NO_LEADS && campaign.leads === 0 && campaign.effectiveStatus === "ACTIVE") badges.push("No leads");
+  if (campaign.frequency != null && campaign.frequency > META_ADS_INSIGHTS.FREQUENCY_FATIGUE_THRESHOLD) badges.push("Fatigue");
   if (avgCpl != null && campaign.leads >= 1) {
     const cpl = campaign.costPerLead ?? (campaign.spend / campaign.leads);
-    if (cpl > avgCpl * 1.5) badges.push("High CPL");
+    if (cpl > avgCpl * META_ADS_INSIGHTS.CPL_ABOVE_AVG_MULTIPLIER) badges.push("High CPL");
   }
   if (campaign.learningStatus === "LEARNING_LIMITED" || campaign.learningStatus === "LEARNING") badges.push("Learning");
   if ((campaign.deliveryStatus === "NO_DELIVERY" || campaign.deliveryStatus === "UNDER_DELIVERY") && campaign.spend === 0) badges.push("No delivery");
@@ -28,7 +30,9 @@ function RowBadges({ campaign, avgCpl }: { campaign: MetaAdsCampaign; avgCpl: nu
   );
 }
 
-export function MetaAdsCampaignTable({ campaigns }: { campaigns: MetaAdsCampaign[] }) {
+type Props = { campaigns: MetaAdsCampaign[]; onRefresh?: () => void };
+
+export function MetaAdsCampaignTable({ campaigns, onRefresh }: Props) {
   const withLeads = campaigns.filter((c) => c.leads >= 1);
   const avgCpl = withLeads.length > 0
     ? withLeads.reduce((s, c) => s + (c.costPerLead ?? c.spend / c.leads), 0) / withLeads.length
@@ -50,6 +54,7 @@ export function MetaAdsCampaignTable({ campaigns }: { campaigns: MetaAdsCampaign
               <th className="py-2 px-3 font-medium text-neutral-400">Leads</th>
               <th className="py-2 px-3 font-medium text-neutral-400">CPL</th>
               <th className="py-2 px-3 font-medium text-neutral-400">Freq</th>
+              <th className="py-2 px-3 font-medium text-neutral-400">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -70,8 +75,12 @@ export function MetaAdsCampaignTable({ campaigns }: { campaigns: MetaAdsCampaign
                           ? "text-amber-400"
                           : "text-neutral-400"
                     }
+                    title={c.status !== c.effectiveStatus ? `Effective: ${c.effectiveStatus}, configured: ${c.status}` : undefined}
                   >
                     {c.effectiveStatus}
+                    {c.status && c.status !== c.effectiveStatus && (
+                      <span className="text-neutral-500 text-xs ml-0.5">(cfg: {c.status})</span>
+                    )}
                   </span>
                 </td>
                 <td className="py-2 px-3 text-neutral-500 text-xs">
@@ -87,6 +96,17 @@ export function MetaAdsCampaignTable({ campaigns }: { campaigns: MetaAdsCampaign
                 </td>
                 <td className="py-2 px-3 text-neutral-400">
                   {c.frequency != null && c.frequency > 0 ? c.frequency.toFixed(1) : "—"}
+                </td>
+                <td className="py-2 px-3">
+                  {onRefresh && (
+                    <MetaAdsStatusActions
+                      level="campaign"
+                      id={c.id}
+                      name={c.name}
+                      effectiveStatus={c.effectiveStatus}
+                      onSuccess={onRefresh}
+                    />
+                  )}
                 </td>
               </tr>
             ))}

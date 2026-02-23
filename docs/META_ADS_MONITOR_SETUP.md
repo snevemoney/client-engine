@@ -1,16 +1,17 @@
 # Meta Ads Monitor — Setup
 
-Read-only dashboard to see ad performance without opening Ads Manager. Requires Meta Marketing API access.
+Dashboard to monitor ad performance and run safe manual actions (pause/resume). Requires Meta Marketing API access.
 
 ## Prerequisites
 
 1. **Meta App** — Create or use an existing app at [developers.facebook.com](https://developers.facebook.com/apps/)
 2. **Ad account** — You must have an ad account with campaigns
-3. **Permissions** — The app needs `ads_read` (read ads and insights)
+3. **Permissions** — The app needs `ads_read` (read); `ads_management` for pause/resume (V2)
 
 ## Required permissions
 
 - `ads_read` — Required to read campaigns, ad sets, ads, and insights
+- `ads_management` — Required for pause/resume actions (V2 Control Center); without it, dashboard remains read-only
 
 ## Generate access token
 
@@ -23,7 +24,7 @@ Read-only dashboard to see ad performance without opening Ads Manager. Requires 
 5. **System User token** (recommended for server):
    - Business Settings → Users → System Users → Create
    - Assign ad account to system user
-   - Generate token with `ads_read`
+   - Generate token with `ads_read` and `ads_management` (for pause/resume)
 
 ### Option B: Long-lived token
 
@@ -49,11 +50,14 @@ Tokens expire. For production, use a System User token or implement token refres
 Add to `.env` (or production server `.env`):
 
 ```bash
-# Meta Ads Monitor (read-only)
+# Meta Ads Monitor (V2)
 META_ACCESS_TOKEN=your-long-lived-or-system-user-token
 META_AD_ACCOUNT_ID=act_1234567890
 # Optional: API version (default v21.0)
 # META_API_VERSION=v21.0
+# Optional: for Asset Health permission verification via debug_token
+# META_APP_ID=your-app-id
+# META_APP_SECRET=your-app-secret
 ```
 
 **Security:** Never expose `META_ACCESS_TOKEN` to the client. It is used only in API routes.
@@ -73,7 +77,7 @@ META_AD_ACCOUNT_ID=act_1234567890
 | `Invalid or expired token` | Token expired or wrong | Generate new token |
 | `Unsupported get request` | Wrong ad account ID or no access | Check account ID, ensure token has `ads_read` |
 | Rate limit | Too many API calls | Reduce refresh frequency; Meta limits ~200 calls/hour per user |
-| `(#100) No permission` | Missing `ads_read` | Re-generate token with `ads_read` |
+| `(#100) No permission` | Missing `ads_read` or `ads_management` | Re-generate token with required permissions |
 
 ## Troubleshooting
 

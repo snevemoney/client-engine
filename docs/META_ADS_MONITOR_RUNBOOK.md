@@ -33,7 +33,7 @@ Daily 5-minute check for ad performance using the in-app Meta Ads dashboard.
 5. **Low CTR creative** — Ad not resonating. Test new hook or angle.
 6. **Learning / delivery** — Limited delivery or learning. May need more budget or audience size.
 
-**Actions:** All changes happen in Ads Manager. The dashboard is read-only. Use insights as signals, then open Ads Manager to adjust.
+**Actions:** Use pause/resume in-app when you have `ads_management`; other changes in Ads Manager.
 
 ## Daily 5-minute review flow
 
@@ -45,7 +45,7 @@ Daily 5-minute check for ad performance using the in-app Meta Ads dashboard.
 6. Read **Operator Insights** — any warnings or recommendations?
 7. Skim tables — row badges (No leads, Fatigue, High CPL, Learning, No delivery)
 8. Check Delivery column — learning/limited/no delivery?
-9. If action needed, open Ads Manager and make changes there
+9. Use **Pause** / **Resume** (with confirm) when needed; or open Ads Manager for other changes
 
 ## Weekly creative review flow
 
@@ -93,9 +93,35 @@ When the dashboard shows **"No campaigns in selected range"** with connected sta
 5. Click **Refresh** — button shows loading state, then "Fresh" for a few seconds after bypass
 6. Cache state: Cached = served from 10‑min cache; Fresh = just fetched from Meta API
 
-## Limitations (V1.1)
+## Asset Health (V2)
 
-- Read-only. No edits from the app.
+- **Dashboard → Meta Ads → Asset health** — Read-only diagnostics
+- Shows: connection, ad account, permissions (if META_APP_ID/SECRET set), Pages, IG, Pixels, WhatsApp
+- Use to verify: ads_management present? Pages/Pixels connected?
+
+## Safe action smoke test (V2)
+
+1. Open **Dashboard → Meta Ads**
+2. Find a test campaign, ad set, or ad that is ACTIVE
+3. Click **Pause** — confirm — wait for success
+4. Verify status changes in app and in Meta Ads Manager
+5. Click **Resume** — confirm — verify again
+
+If pause/resume fails: token may lack `ads_management`. Check Asset Health page and META_ADS_MONITOR_SETUP.md.
+
+## Failure modes
+
+| Scenario | Expected behavior |
+|----------|-------------------|
+| Token missing | Error message, doc hint |
+| Permission missing (e.g. ads_management) | Pause/resume returns 403; Asset Health may show warn |
+| No campaigns in range | Empty state; integration healthy |
+| No prior period data | KPI cards show no trend arrows |
+| Partial asset-health fetch | Page shows partial data; some checks warn/fail |
+
+## Limitations (V2)
+
+- Pause/resume only. No budget edits, campaign creation, or creative changes.
 - Single account. Multi-account support is a future enhancement.
 - Lead metrics depend on Meta Pixel/CAPI Lead events being set up.
 - Cache: 10 min TTL. Click Refresh with bypass for fresh data.

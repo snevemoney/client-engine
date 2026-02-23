@@ -1,6 +1,8 @@
 "use client";
 
 import type { MetaAdsAd } from "@/lib/meta-ads/types";
+import { META_ADS_INSIGHTS } from "@/lib/meta-ads/constants";
+import { MetaAdsStatusActions } from "./MetaAdsStatusActions";
 
 function fmt(v: number, isMoney = false): string {
   return isMoney ? `$${v.toFixed(2)}` : v.toLocaleString(undefined, { maximumFractionDigits: 1 });
@@ -8,7 +10,7 @@ function fmt(v: number, isMoney = false): string {
 
 function RowBadges({ ad }: { ad: MetaAdsAd }) {
   const badges: string[] = [];
-  if (ad.spend >= 5 && ad.impressions > 100 && ad.ctr < 0.5 && ad.effectiveStatus === "ACTIVE") badges.push("Low CTR");
+  if (ad.spend >= META_ADS_INSIGHTS.MIN_SPEND_FOR_CTR && ad.impressions >= META_ADS_INSIGHTS.MIN_IMPRESSIONS_LOW_CTR && ad.ctr < META_ADS_INSIGHTS.LOW_CTR_BASELINE && ad.effectiveStatus === "ACTIVE") badges.push("Low CTR");
   if (badges.length === 0) return null;
   return (
     <div className="flex flex-wrap gap-0.5 mt-0.5">
@@ -19,7 +21,9 @@ function RowBadges({ ad }: { ad: MetaAdsAd }) {
   );
 }
 
-export function MetaAdsAdTable({ ads }: { ads: MetaAdsAd[] }) {
+type Props = { ads: MetaAdsAd[]; onRefresh?: () => void };
+
+export function MetaAdsAdTable({ ads, onRefresh }: Props) {
   return (
     <section className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-4">
       <h2 className="text-sm font-medium text-neutral-300 mb-3">Ads / Creatives</h2>
@@ -34,6 +38,7 @@ export function MetaAdsAdTable({ ads }: { ads: MetaAdsAd[] }) {
               <th className="py-2 px-3 font-medium text-neutral-400">Leads</th>
               <th className="py-2 px-3 font-medium text-neutral-400">CPL</th>
               <th className="py-2 px-3 font-medium text-neutral-400">Freq</th>
+              <th className="py-2 px-3 font-medium text-neutral-400">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -54,8 +59,12 @@ export function MetaAdsAdTable({ ads }: { ads: MetaAdsAd[] }) {
                           ? "text-amber-400"
                           : "text-neutral-400"
                     }
+                    title={a.status !== a.effectiveStatus ? `Effective: ${a.effectiveStatus}, configured: ${a.status}` : undefined}
                   >
                     {a.effectiveStatus}
+                    {a.status && a.status !== a.effectiveStatus && (
+                      <span className="text-neutral-500 text-xs ml-0.5">(cfg: {a.status})</span>
+                    )}
                   </span>
                 </td>
                 <td className="py-2 px-3 text-neutral-300">{fmt(a.spend, true)}</td>
@@ -66,6 +75,17 @@ export function MetaAdsAdTable({ ads }: { ads: MetaAdsAd[] }) {
                 </td>
                 <td className="py-2 px-3 text-neutral-400">
                   {a.frequency != null && a.frequency > 0 ? a.frequency.toFixed(1) : "—"}
+                </td>
+                <td className="py-2 px-3">
+                  {onRefresh && (
+                    <MetaAdsStatusActions
+                      level="ad"
+                      id={a.id}
+                      name={a.name}
+                      effectiveStatus={a.effectiveStatus}
+                      onSuccess={onRefresh}
+                    />
+                  )}
                 </td>
               </tr>
             ))}

@@ -1,5 +1,5 @@
 /**
- * Central config for Meta Ads Monitor insights rules.
+ * Central config for Meta Ads Monitor insights rules and row badges.
  * Tune thresholds here — deterministic, no ML.
  */
 
@@ -15,7 +15,14 @@ export const META_ADS_INSIGHTS = {
   CTR_DROP_VS_PRIOR_RATIO: 0.7,
   /** Min spend to consider for CPL spike rule */
   MIN_SPEND_FOR_CPL_SPIKE: 10,
+  /** Min spend for ad set "No leads" badge */
+  MIN_SPEND_NO_LEADS: 20,
+  /** Min impressions for Low CTR badge */
+  MIN_IMPRESSIONS_LOW_CTR: 100,
 } as const;
+
+/** Max warn/critical items to show in "Needs attention" panel */
+export const META_ADS_NEEDS_ATTENTION_LIMIT = 10;
 
 /** Cache TTL in seconds */
 export const META_ADS_CACHE_TTL_SEC = 600; // 10 min
