@@ -33,20 +33,43 @@ export function LeadsTable() {
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [sourceFilter, setSourceFilter] = useState("ALL");
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
 
   const fetchLeads = useCallback(async () => {
     setLoading(true);
-    const params = new URLSearchParams();
-    if (search) params.set("q", search);
-    if (statusFilter !== "ALL") params.set("status", statusFilter);
-    if (sourceFilter !== "ALL") params.set("source", sourceFilter);
-    const res = await fetch(`/api/leads?${params}`);
-    if (res.ok) {
-      const data = await res.json();
-      setLeads(data);
+    setError(null);
+    const controller = new AbortController();
+    let timeout: ReturnType<typeof setTimeout> | null = setTimeout(() => controller.abort(), 15000);
+    try {
+      const params = new URLSearchParams();
+      if (search) params.set("q", search);
+      if (statusFilter !== "ALL") params.set("status", statusFilter);
+      if (sourceFilter !== "ALL") params.set("source", sourceFilter);
+      const res = await fetch(`/api/leads?${params}`, {
+        credentials: "include",
+        signal: controller.signal,
+        cache: "no-store",
+      });
+      if (timeout) clearTimeout(timeout);
+      timeout = null;
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        setError(typeof data?.error === "string" ? data.error : `Failed to load leads (${res.status})`);
+        setLeads([]);
+        return;
+      }
+      setLeads(Array.isArray(data) ? data : []);
+    } catch (e) {
+      const msg = e instanceof Error && e.name === "AbortError"
+        ? "Request timed out. Check your connection and retry."
+        : e instanceof Error ? e.message : "Failed to load leads";
+      setError(msg);
+      setLeads([]);
+    } finally {
+      if (timeout) clearTimeout(timeout);
+      setLoading(false);
     }
-    setLoading(false);
   }, [search, statusFilter, sourceFilter]);
 
   useEffect(() => {
@@ -148,6 +171,13 @@ export function LeadsTable() {
           <tbody>
             {loading ? (
               <tr><td colSpan={6} className="px-4 py-8 text-center text-neutral-500">Loading...</td></tr>
+            ) : error ? (
+              <tr>
+                <td colSpan={6} className="px-4 py-8 text-center">
+                  <p className="text-amber-400">{error}</p>
+                  <Button variant="outline" size="sm" className="mt-3" onClick={() => fetchLeads()}>Retry</Button>
+                </td>
+              </tr>
             ) : leads.length === 0 ? (
               <tr><td colSpan={6} className="px-4 py-8 text-center text-neutral-500">No leads found.</td></tr>
             ) : (
@@ -157,7 +187,7 @@ export function LeadsTable() {
                     <Link href={`/dashboard/leads/${lead.id}`} className="text-neutral-100 hover:underline font-medium block truncate max-w-[300px]">
                       {lead.title}
                     </Link>
-                    {lead.tags.length > 0 && (
+                    {Array.isArray(lead.tags) && lead.tags.length > 0 && (
                       <div className="flex gap-1 mt-1">
                         {lead.tags.slice(0, 3).map((tag) => (
                           <Badge key={tag} variant="outline" className="text-[10px] py-0">{tag}</Badge>

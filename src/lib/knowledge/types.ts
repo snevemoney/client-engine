@@ -60,6 +60,8 @@ export type ImprovementSuggestionSystemArea =
 
 export type ImprovementSuggestionEffort = "S" | "M" | "L";
 
+export type ConfidenceTier = "high" | "medium" | "low";
+
 export type ImprovementSuggestionMeta = KnowledgeArtifactMetaBase & {
   problem: string;
   proposedChange: string;
@@ -69,6 +71,8 @@ export type ImprovementSuggestionMeta = KnowledgeArtifactMetaBase & {
   sourceTranscriptRef?: string;
   sourceArtifactId?: string;
   status: "queued" | "reviewed" | "applied" | "dismissed";
+  /** Source quality / confidence tier for curation. */
+  confidenceTier?: ConfidenceTier;
 };
 
 export type KnowledgeRunReport = {

@@ -27,10 +27,10 @@ type Message =
   | { role: "assistant"; content?: string; reply?: StructuredReply; error?: boolean };
 
 const QUICK_ACTIONS = [
-  { label: "Run research / workday", href: "/dashboard/command" },
-  { label: "Open Metrics (retry failed jobs there)", href: "/dashboard/metrics" },
-  { label: "Proof post", href: "/dashboard/proof" },
-  { label: "Checklist", href: "/dashboard/checklist" },
+  { label: "Open Command Center", href: "/dashboard/command" },
+  { label: "Open Metrics", href: "/dashboard/metrics" },
+  { label: "Open Proof", href: "/dashboard/proof" },
+  { label: "Open Checklist", href: "/dashboard/checklist" },
 ];
 
 const PREBAKED_PROMPTS = [
@@ -129,10 +129,18 @@ export default function ChatPage() {
   return (
     <div className="space-y-6 flex flex-col h-[calc(100vh-8rem)]">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Operator chat</h1>
+        <div className="flex items-center gap-2 flex-wrap">
+          <h1 className="text-2xl font-semibold tracking-tight">Operator chat</h1>
+          <span className="rounded border border-neutral-600 px-2 py-0.5 text-[10px] uppercase tracking-wider text-neutral-500">
+            Read-only
+          </span>
+        </div>
         <p className="text-sm text-neutral-400 mt-1">
           Ask: what happened today, best leads, bottleneck, what to do next. Uses live brief +
-          constraint data. Read-only advisor; some actions require your approval.
+          constraint data. Answers and suggested links are navigation shortcuts; actions require your approval.
+        </p>
+        <p className="text-xs text-neutral-500 mt-1">
+          Quick links open the page; you take the action there.
         </p>
         <div className="flex flex-wrap gap-2 mt-3">
           {QUICK_ACTIONS.map((a) => (

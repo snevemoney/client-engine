@@ -129,7 +129,6 @@
 - `POST /api/portfolio/[id]` — Portfolio
 - `GET /api/followup/[leadId]` — Follow-up
 - `POST /api/followup/[leadId]` — Follow-up action
-- `POST /api/copilot/lead/[id]` — Legacy copilot
 - `POST /api/research/run` — Research run
 - `POST /api/capture` — Capture (may be public for site form)
 - `POST /api/site/leads` — Site leads (often public)
@@ -166,11 +165,12 @@
 - **api-auth.spec.ts** — 401 without auth: leads, artifacts, proof, checklist, knowledge, learning, brief, ops/command, pipeline/run, copilot, proof/generate, checklist/generate; health public 200.
 - **proof-api.spec.ts** — Proof/checklist generate 401 without auth.
 - **lead-copilot.spec.ts** — Copilot 401 without auth; (optional) lead detail + Ask Copilot UI.
-- **pages.spec.ts** — Login + visit dashboard, proposals, deploys, metrics, settings, leads/new, home.
+- **pages.spec.ts** — Login + visit all dashboard pages (command, ops-health, sales-leak, results, leads, proposals, build-ops, metrics, work, chat, learning, settings, proof, checklist, deploys, conversion, knowledge), leads/new, home.
 - **full-flow.spec.ts** — Login → dashboard → metrics → new lead → metrics (enrich visible).
 - **sales-layer.spec.ts** — Sales process, follow-up discipline, referral flows.
 - **client-acquisition.spec.ts** — Channel ROI, networking events, proof asset flows.
 - **learning-ingest.spec.ts** — Learning/knowledge ingest flows.
+- **prod.spec.ts** — Production audit: health + DB checks, every page, silent-fail API checks, key flow, render speed (see §8).
 
 ### Tier B — Manual production checks (MCP browser / real browser)
 
@@ -186,8 +186,7 @@ Run after every deploy and weekly. See `docs/TESTING_SIDE_PANEL.md` for full che
 - Settings → sections load, toggles work
 
 **Gaps to cover:**
-- All dashboard pages (command, chat, knowledge, learning, proof, checklist, conversion, ops-health, sales-leak, results).
-- API 401 tests for a representative set of protected endpoints.
+- API 401 tests for a representative set of protected endpoints (api-auth.spec.ts covers many).
 - Optional: lead detail and proposal detail by id (with real id from DB or fixture).
 
 ---
@@ -205,6 +204,7 @@ Run after every deploy and weekly. See `docs/TESTING_SIDE_PANEL.md` for full che
 | **sales-layer.spec.ts** | — | Sales process, follow-up, referral flows |
 | **client-acquisition.spec.ts** | — | Channel ROI, networking, proof assets |
 | **learning-ingest.spec.ts** | — | Learning/knowledge ingest flows |
+| **prod.spec.ts** | — | Production audit: health, every page, silent-fail API, key flow, render speed |
 
 **Without login:** 21 tests run, 21 pass (all API auth + health).  
 **With login:** Set `E2E_EMAIL` and `E2E_PASSWORD` (or `AUTH_DEV_PASSWORD=changeme` and any email + `changeme`) so the login-dependent tests run and pass.
@@ -279,7 +279,31 @@ This catches real-world issues automated tests cannot: auth cookie behavior, net
 
 ---
 
-## 8. What to test on each major page
+## 8. Production full audit (every page, flows, DB, silent fails, speed)
+
+**prod.spec.ts** runs a dedicated production checklist:
+
+| What | How |
+|------|-----|
+| **Health + DB** | GET /api/health 200, ok true, checks.db + checks.pipelineTables + authSecret + nextAuthUrl |
+| **Every page** | Login, then visit all 21 routes (/, /login, all dashboard + /work); expect status < 500, body visible |
+| **Silent fails** | After login: GET /api/leads → 200 and body is array; GET /api/ops/command → 200 and body is object/array |
+| **Key flow** | Login → metrics → new lead → metrics shows "enrich" (pipeline ran) |
+| **Render speed** | Critical pages (command, leads, metrics) must load within 15s (domcontentloaded) |
+
+Run against production (with valid credentials so login-dependent tests run):
+
+```bash
+USE_EXISTING_SERVER=1 PLAYWRIGHT_BASE_URL=https://evenslouis.ca \
+  E2E_EMAIL=your@email.com E2E_PASSWORD=yourpassword \
+  npm run test:e2e tests/e2e/prod.spec.ts
+```
+
+Without credentials, health + public-pages tests run; every-page, silent-fail, flow and speed tests are skipped (login required).
+
+---
+
+## 9. What to test on each major page
 
 For each page, verify: (1) loads without error, (2) data renders (not blank cards), (3) primary actions work, (4) no console errors.
 

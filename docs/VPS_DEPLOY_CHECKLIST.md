@@ -1,8 +1,6 @@
 # VPS Deploy Ready Checklist
 
-**Keep dev and prod in sync:** From your machine, run `./scripts/sync-and-deploy.sh` (pushes to main, rsyncs to VPS, runs deploy.sh). Use this when the server has no GitHub deploy key.
-
-**One-command deploy (SSH deploy key):** See [DEPLOY_SSH_SETUP.md](DEPLOY_SSH_SETUP.md) for switching the server to SSH + deploy key; then use `./scripts/deploy-remote.sh`.
+**Deploy from your Mac:** `./scripts/deploy-remote.sh` (fast) or `./scripts/deploy-remote.sh --full` (with DB sync). No deploy key? Use `./scripts/sync-and-deploy.sh`. See [PROD_FIRST_WORKFLOW.md](PROD_FIRST_WORKFLOW.md).
 
 ## Required env vars (production)
 
@@ -166,6 +164,20 @@ If email/password don't work at the production URL (e.g. evenslouis.ca), the pro
    This deletes all users and creates one admin with current `ADMIN_EMAIL` / `ADMIN_PASSWORD` (or defaults `admin@evenslouis.ca` / `changeme`).
 3. **Log in** at `/login` with that exact email and password.
 4. **If you still get redirects or odd behavior:** Check `NEXTAUTH_URL` (e.g. `https://evenslouis.ca`) and that `AUTH_SECRET` is set.
+
+## Disk space maintenance (avoid ENOSPC)
+
+The VPS can fill up from Docker images, build cache, and container logs. We mitigate this long-term:
+
+- **Deploy self-heal:** `deploy.sh` checks free space before building. If under 2GB free, it runs `docker system prune -a -f` and `docker builder prune -a -f`, then re-checks. If still low, it exits with a clear message.
+- **Log rotation:** `docker-compose.yml` sets `max-size: 10m`, `max-file: 3` for all services so container logs stay bounded (~30MB per container).
+- **One-command cleanup from your Mac:** If the server is out of disk (e.g. rsync or deploy fails with "No space left on device"), run:
+  ```bash
+  ./scripts/run-vps-cleanup.sh
+  ```
+  This SSHs to the VPS, prunes Docker and truncates container logs, then you can run `./scripts/sync-and-deploy.sh` again.
+- **On the server:** Inspect usage with `df -h` and `docker system df`. Manual prune: `docker system prune -a -f` and `docker builder prune -a -f`. Optional: run `bash scripts/vps-disk-cleanup.sh` from the repo directory.
+- **Optional (recurring):** On the VPS, a monthly cron to prune build cache can help: `0 0 1 * * docker builder prune -f` (runs once per month).
 
 ## Logs and failures
 
