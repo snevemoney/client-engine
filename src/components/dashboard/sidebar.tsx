@@ -23,6 +23,7 @@ import {
   Wrench,
   Activity,
   Target,
+  Youtube,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { Sheet } from "@/components/ui/sheet";
@@ -38,6 +39,7 @@ const primaryNav = [
   { href: "/dashboard/metrics", label: "Metrics", icon: BarChart3 },
   { href: "/work", label: "Website / Work", icon: Briefcase },
   { href: "/dashboard/chat", label: "Chatbot", icon: MessageSquare },
+  { href: "/dashboard/youtube", label: "YouTube Ingest", icon: Youtube },
   { href: "/dashboard/learning", label: "Learning", icon: BookOpen },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];

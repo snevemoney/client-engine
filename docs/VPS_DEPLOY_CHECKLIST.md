@@ -27,13 +27,34 @@
 | `SMTP_PASS` | Optional | SMTP auth; can reuse `IMAP_PASS` |
 | `REDIS_URL` | For worker/queues | Prod Docker: `redis://redis:6379`. Dev: `redis://localhost:6379` or omit. |
 
-**Admin login:** Set `ADMIN_EMAIL` and `ADMIN_PASSWORD` on the server’s `.env` to the same values you use to log in. Deploy runs `seed.mjs`, which creates/updates that user; if they differ, you can get a second user or lose access after a reset-auth.
+**Admin login:** Set `ADMIN_EMAIL` and `ADMIN_PASSWORD` on the server's `.env` to the same values you use to log in. Deploy runs `seed.mjs`, which creates/updates that user; if they differ, you can get a second user or lose access after a reset-auth.
 
-**Prod e2e login:** To let Playwright log in at `https://evenslouis.ca`, add to the server’s `.env`: `E2E_ALLOW_DEV_PASSWORD=1`, `E2E_EMAIL=your@email.com`, `AUTH_DEV_PASSWORD=same-as-E2E_PASSWORD`. Restart the app (or re-run deploy). The app will allow that email + password and create the user if missing.
+**Prod e2e login:** To let Playwright log in at `https://evenslouis.ca`, add to the server's `.env`: `E2E_ALLOW_DEV_PASSWORD=1`, `E2E_EMAIL=your@email.com`, `AUTH_DEV_PASSWORD=same-as-E2E_PASSWORD`. Restart the app (or re-run deploy). The app will allow that email + password and create the user if missing.
 
 **Email ingestion (worker):** If using Hostinger email, ensure IMAP is enabled for the mailbox and app/password settings match provider requirements. Restart the worker after changing any `IMAP_*` env vars.
 
 **Website form notification:** Set `NOTIFY_EMAIL` and either `RESEND_API_KEY` or `SMTP_HOST` + `SMTP_USER` + `SMTP_PASS` (Hostinger: `smtp.hostinger.com`, port 465). You can reuse `IMAP_USER`/`IMAP_PASS` for SMTP if using the same mailbox.
+
+## Pre-deploy checks (before deploying)
+
+1. **Build and lint pass locally:**
+   ```bash
+   npm run build
+   npm run lint
+   ```
+   Both must exit 0. Do not deploy if either fails.
+
+2. **Automated tests pass:**
+   ```bash
+   USE_EXISTING_SERVER=1 PLAYWRIGHT_BASE_URL=http://localhost:3000 npm run test:e2e
+   ```
+
+3. **Prisma schema valid:**
+   ```bash
+   npx prisma validate
+   ```
+
+4. **No money-path logic changes without review:** If the deploy touches pipeline gates, auth, or PATCH allowlists, review manually before proceeding.
 
 ## Deploy steps
 
@@ -53,11 +74,68 @@
    ```
    Or use your process manager (systemd, Docker, etc.).
 
+## After-deploy smoke checklist
+
+Run immediately after every production deploy. Do not skip.
+
+### Automated (fast, 30 seconds)
+
+```bash
+# Curl-based smoke test
+./scripts/smoke-test.sh https://evenslouis.ca
+
+# Health only
+curl -s https://evenslouis.ca/api/health
+```
+
+Both must pass. If health check fails, **rollback immediately** (see below).
+
+### Manual production checks (MCP browser or real browser, 3-5 min)
+
+- [ ] **Login:** Open `https://evenslouis.ca/login`, log in → dashboard loads
+- [ ] **Command Center:** Scorecard renders, Failures card renders, data is current
+- [ ] **One lead detail:** Open any lead → artifacts load, pipeline actions visible
+- [ ] **Proposals:** List loads, at least one proposal visible (if any exist)
+- [ ] **Metrics:** Page loads, recent runs visible
+- [ ] **API auth gate:** `curl -s https://evenslouis.ca/api/leads` → 401 (confirms auth is working)
+- [ ] **SSL:** Certificate valid (smoke-test.sh checks this for HTTPS)
+
+If any check fails after deploy, rollback first, investigate second. See `docs/DEPLOY_SSH_SETUP.md` for rollback commands.
+
 ## Health check
 
 - **Endpoint:** `GET /api/health`
 - **Expected 200 when healthy:** `{ "ok": true, "checks": { "db": { "ok": true }, "pipelineTables": { "ok": true }, "authSecret": { "ok": true }, "nextAuthUrl": { "ok": true } } }`
 - **503 when unhealthy:** `ok: false` and one or more checks failed.
+
+## Rollback / no-deploy safety
+
+**When to rollback:**
+- Health check returns 503 or does not respond
+- Login fails (redirect loop, credentials not working)
+- Dashboard shows blank pages or 500 errors
+- Any money-path gate is broken (build without approval, PATCH bypass)
+
+**How to rollback (on the VPS):**
+```bash
+cd /root/client-engine
+git log --oneline -5
+git reset --hard HEAD~1
+bash deploy.sh
+curl -fsS https://evenslouis.ca/api/health
+```
+
+Or use the rollback script (see `docs/DEPLOY_SSH_SETUP.md`):
+```bash
+ssh root@69.62.66.78 '/root/rollback-client-engine.sh'
+```
+
+**When NOT to deploy:**
+- Build or lint fails locally
+- Automated tests fail
+- Money-path logic was changed without review
+- You're about to show the app to a client (deploy after, not before)
+- Late at night when you can't monitor the result
 
 ## Research cron (optional)
 
@@ -76,7 +154,7 @@ RESEARCH_CRON_SECRET=your-secret npm run research:run
 
 ## Reset production auth (login not working)
 
-If email/password don’t work at the production URL (e.g. evenslouis.ca), the production DB may have no user or a different password. Do this **on the VPS**, in the project directory, with the same env the app uses (e.g. same `.env` or env file):
+If email/password don't work at the production URL (e.g. evenslouis.ca), the production DB may have no user or a different password. Do this **on the VPS**, in the project directory, with the same env the app uses (e.g. same `.env` or env file):
 
 1. **Confirm env:** Ensure `ADMIN_EMAIL` and `ADMIN_PASSWORD` are set (same values you want to use to log in). If you use a `.env` file, `reset-auth` will load it when run in that directory.
 2. **Recreate the single admin user:**
@@ -106,3 +184,7 @@ The VPS can fill up from Docker images, build cache, and container logs. We miti
 - **Next.js:** stdout/stderr of `npm run start` (or your process manager logs).
 - **Pipeline failures:** Check `PipelineRun.error`, `PipelineStepRun.notes` (error code prefix), and RUN_REPORT.md artifacts per lead.
 - **Auth redirect loops:** Ensure `NEXTAUTH_URL` matches the exact URL users hit and `AUTH_SECRET` is set.
+
+---
+
+*For full testing strategy, see `docs/TESTING_SIDE_PANEL.md`. For step-by-step E2E test runbook, see `docs/RUNBOOK.md`. Operator checklists: [NIGHT_OPERATOR_CHECKLIST.md](NIGHT_OPERATOR_CHECKLIST.md), [BEFORE_CLIENTS_CHECKLIST.md](BEFORE_CLIENTS_CHECKLIST.md), [AFTER_DEPLOY_SMOKE_CHECKLIST.md](AFTER_DEPLOY_SMOKE_CHECKLIST.md), [WHEN_APP_FEELS_SLOW_CHECKLIST.md](WHEN_APP_FEELS_SLOW_CHECKLIST.md).*

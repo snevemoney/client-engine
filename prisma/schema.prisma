@@ -361,3 +361,99 @@ model OperatorActionRun {
   @@index([actionName])
   @@index([createdAt])
 }
+
+// ----- YouTube Ingestion Pipeline -----
+
+/** YouTube source: a video or channel that was submitted for ingestion. */
+model YouTubeSource {
+  id             String    @id @default(cuid())
+  type           String    // video | channel
+  url            String
+  normalizedUrl  String
+  externalId     String    @unique // videoId or channelId
+  title          String?
+  channelName    String?
+  channelId      String?
+  metadataJson   Json?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  ingestJobs     YouTubeIngestJob[]
+  transcripts    YouTubeTranscript[]
+
+  @@index([type])
+  @@index([externalId])
+}
+
+/** YouTube ingest job: tracks a single ingest attempt (video or channel batch). */
+model YouTubeIngestJob {
+  id              String    @id @default(cuid())
+  sourceType      String    // video | channel
+  sourceId        String?
+  source          YouTubeSource? @relation(fields: [sourceId], references: [id])
+  status          String    @default("PENDING") // PENDING | FETCHING | TRANSCRIBED | FAILED_TRANSCRIPT | READY_FOR_REVIEW | PROMOTED_TO_PLAYBOOK | REJECTED | KNOWLEDGE_ONLY
+  attempts        Int       @default(0)
+  providerUsed    String?
+  lastError       String?   @db.Text
+  runSummaryJson  Json?
+  queuedAt        DateTime  @default(now())
+  startedAt       DateTime?
+  completedAt     DateTime?
+
+  @@index([status])
+  @@index([sourceId])
+  @@index([queuedAt])
+}
+
+/** YouTube transcript: the actual transcript content + metadata for a video. */
+model YouTubeTranscript {
+  id                    String    @id @default(cuid())
+  videoId               String    @unique
+  channelId             String?
+  sourceUrl             String
+  title                 String?
+  transcriptText        String    @db.Text
+  transcriptSegmentsJson Json?
+  language              String?
+  durationSeconds       Int?
+  publishedAt           DateTime?
+  providerUsed          String
+  transcriptHash        String?
+  transcriptStatus      String    @default("TRANSCRIBED") // TRANSCRIBED | FAILED_TRANSCRIPT
+  failureReason         String?   @db.Text
+  metadataJson          Json?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  sourceRecord          YouTubeSource? @relation(fields: [videoId], references: [externalId])
+  learningProposals     LearningProposal[]
+
+  @@index([channelId])
+  @@index([transcriptStatus])
+  @@index([providerUsed])
+}
+
+/** Learning proposal: human-gated proposal derived from a transcript. No auto-apply. */
+model LearningProposal {
+  id                    String    @id @default(cuid())
+  transcriptId          String
+  transcript            YouTubeTranscript @relation(fields: [transcriptId], references: [id])
+  summary               String    @db.Text
+  extractedPointsJson   Json?
+  category              String?   // sales | operations | client_delivery | positioning | ai_tooling | automation | leadership | hiring | offer_design | follow_up_retention
+  systemArea            String?   // Acquire | Deliver | Improve
+  contradictionFlagsJson Json?
+  proposedActionsJson   Json?
+  producedAssetType     String?   // proposal_template | sales_script | followup_script | objection_handling | delivery_checklist | reusable_component | case_study_angle | positioning_note | knowledge_only
+  expectedImpact        String?   // acquire | deliver | improve
+  revenueLink           String?   @db.Text
+  status                String    @default("READY_FOR_REVIEW") // READY_FOR_REVIEW | PROMOTED_TO_PLAYBOOK | REJECTED | KNOWLEDGE_ONLY
+  reviewerNotes         String?   @db.Text
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([status])
+  @@index([transcriptId])
+  @@index([category])
+  @@index([systemArea])
+}

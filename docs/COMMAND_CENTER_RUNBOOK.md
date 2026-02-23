@@ -37,6 +37,25 @@
 
 For a high-level map of the system (Acquire / Deliver / Improve), see **docs/SYSTEM_MAP.md**.
 
+## What to verify on Command Center (testing / production checks)
+
+When testing (local or production), verify these items render correctly on the Command Center page:
+
+- [ ] **Money Scorecard** — Cash, revenue won, turnaround, leads, qualified, proposals, follow-ups, deals, bottleneck. Numbers are current (not stale or zero when data exists).
+- [ ] **Pat/Tom Weekly Scorecard** — Sentence fills with real numbers, 7 KPIs render.
+- [ ] **Failures & Interventions** — Card renders. Shows failed runs, stale leads, stuck proposals, approval queue. If nothing is stuck, card says so (not blank).
+- [ ] **Brief Me** — Button works. Generates a briefing with current data. Saves OPERATOR_BRIEFING artifact.
+- [ ] **Leverage Score** — Number renders (0–100). Breakdown by component visible.
+- [ ] **Constraint** — Card shows current bottleneck with evidence (counts, deltas). Not blank.
+- [ ] **Knowledge Queue / Top Suggestions** — Cards render if knowledge data exists.
+- [ ] **Follow-up Discipline** — Due today, overdue, no touch 7d, overdue list.
+- [ ] **Referral Engine** — Asks this week, received, eligible.
+- [ ] **Sales Leak** — Stage counts, worst leak identified.
+- [ ] **Quick actions** — Links to Proposals, Leads, Metrics, Deploys work.
+- [ ] **Workday Run** — "Start Workday Run" button visible; if clicked, run completes and report appears.
+
+See `docs/TESTING_SIDE_PANEL.md` for the full testing strategy and operator checklists.
+
 ## Safety (unchanged)
 
 - Auto-send proposals: **OFF**. Auto-build: **OFF**. Human approval still required for proposal send and build.
@@ -46,7 +65,7 @@ For a high-level map of the system (Acquire / Deliver / Improve), see **docs/SYS
 To run the workday flow on a schedule (e.g. before 9 AM):
 
 ```bash
-curl -X POST https://your-domain/api/ops/workday-run \
+curl -X POST https://evenslouis.ca/api/ops/workday-run \
   -H "Authorization: Bearer YOUR_RESEARCH_CRON_SECRET"
 ```
 

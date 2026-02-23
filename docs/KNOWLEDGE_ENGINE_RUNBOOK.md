@@ -68,6 +68,24 @@ No other env vars are required for the Knowledge engine. LLM and DB use existing
 - No auto-send, no auto-build. Improvement suggestions are queued only; human approves any change.
 - Knowledge ingestion does not modify leads, proposals, or production code.
 
+## Testing
+
+### Tier A — Automated (local)
+
+- Set `LEARNING_USE_MOCK_TRANSCRIPT=1` for local testing (no real YouTube API needed).
+- `learning-ingest.spec.ts` covers knowledge/learning ingest flows.
+- Test ingest via API: `POST /api/knowledge/ingest` with mock enabled.
+
+### Tier B — Manual production (MCP browser or real browser)
+
+- Open `/dashboard/knowledge` — page loads, queue visible, suggestions render.
+- Ingest a video URL (with mock or real provider) — verify transcript, summary, insights, suggestions appear.
+- Check Command Center — Knowledge Queue card shows counts, Top Suggestions card shows recent.
+- Verify Brief Me includes knowledge-derived suggestions.
+- Check `/dashboard/settings` — monetization map section renders.
+
+See `docs/TESTING_SIDE_PANEL.md` for the full testing strategy and operator checklists.
+
 ## Limitations
 
 - **Transcript/channel provider:** Same as Learning engine. Set `LEARNING_USE_MOCK_TRANSCRIPT=1` for dev; wire real provider in `src/lib/learning/transcript.ts`.

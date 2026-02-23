@@ -191,6 +191,12 @@ ${researchSourceUrl ? `(Source: ${researchSourceUrl})` : ""}
 - Errors are logged and included in `RESEARCH_RUN_REPORT` with `formatStepFailureNotes` (code-prefixed).
 - Dry-run: if `PIPELINE_DRY_RUN=1`, pipeline steps still create placeholder artifacts; research job still creates leads + RESEARCH_SNAPSHOT.
 
+### Testing
+
+**Tier A (automated/local):** Use the instructions below for local testing. Automated tests cover pipeline run creation and artifact generation.
+
+**Tier B (manual production):** After deploy, verify research-sourced leads appear in the leads list with RESEARCH_SNAPSHOT artifacts. Check `/dashboard/metrics` for research pipeline runs. Verify Command Center Brief Me references research activity. See `docs/TESTING_SIDE_PANEL.md` for the full testing strategy.
+
 ### How to test locally
 
 1. Set env (e.g. in `.env`):
