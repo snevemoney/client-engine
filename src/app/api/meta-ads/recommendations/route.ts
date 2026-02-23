@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { getMetaMode } from "@/lib/meta-ads/mode";
 import { jsonError, withRouteTiming } from "@/lib/api-utils";
 
 export const dynamic = "force-dynamic";
@@ -14,10 +15,13 @@ export async function GET(req: NextRequest) {
     const session = await auth();
     if (!session?.user) return jsonError("Unauthorized", 401);
 
-    const accountId = process.env.META_AD_ACCOUNT_ID?.trim();
+    const mode = getMetaMode();
+    let accountId = process.env.META_AD_ACCOUNT_ID?.trim();
+    if (mode === "mock" && !accountId) accountId = "act_mock";
     if (!accountId) {
       return NextResponse.json({
         recommendations: [],
+        lastActionByEntity: {},
         counts: { queued: 0, approved: 0, dismissed: 0, applied: 0, failed: 0 },
         settingsSummary: null,
       });
@@ -55,8 +59,30 @@ export async function GET(req: NextRequest) {
 
     const lastGenerated = recommendations[0]?.createdAt ?? null;
 
+    let lastActionByEntity: Record<string, { createdAt: string; status: string; actionType: string }> = {};
+    if (recommendations.length > 0) {
+      const entityKeys = new Set(recommendations.map((r) => `${r.entityType}:${r.entityId}`));
+      const recentActions = await db.metaAdsActionLog.findMany({
+        where: { accountId: acc },
+        orderBy: { createdAt: "desc" },
+        take: 200,
+        select: { entityType: true, entityId: true, createdAt: true, status: true, actionType: true },
+      });
+      for (const a of recentActions) {
+        const key = `${a.entityType}:${a.entityId}`;
+        if (!(key in lastActionByEntity) && entityKeys.has(key)) {
+          lastActionByEntity[key] = {
+            createdAt: a.createdAt.toISOString(),
+            status: a.status,
+            actionType: a.actionType,
+          };
+        }
+      }
+    }
+
     return NextResponse.json({
       recommendations,
+      lastActionByEntity,
       counts: {
         queued: countMap.queued ?? 0,
         approved: countMap.approved ?? 0,

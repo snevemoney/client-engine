@@ -2,8 +2,10 @@
  * Shared apply logic for Meta Ads recommendations.
  * Used by POST /api/meta-ads/recommendations/[id]/apply and scheduler.
  * All guardrails and action logging go through this path.
+ * In META_MODE=mock, never calls Meta API; always returns simulated.
  */
 import { db } from "@/lib/db";
+import { getMetaMode } from "@/lib/meta-ads/mode";
 import { executeMetaAction } from "@/lib/meta-ads/actions-client";
 import {
   checkProtected,
@@ -35,7 +37,9 @@ export async function applyRecommendation(
   const rec = await db.metaAdsRecommendation.findUnique({ where: { id: recommendationId } });
   if (!rec) return { ok: false, outcome: "skipped", error: "Recommendation not found", code: "not_found" };
 
-  const accountId = process.env.META_AD_ACCOUNT_ID?.trim();
+  const mode = getMetaMode();
+  let accountId = process.env.META_AD_ACCOUNT_ID?.trim();
+  if (mode === "mock" && !accountId) accountId = "act_mock";
   const acc = accountId?.startsWith("act_") ? accountId : accountId ? `act_${accountId}` : null;
   if (!acc || acc !== rec.accountId) {
     return { ok: false, outcome: "skipped", error: "Forbidden", code: "forbidden" };
@@ -169,14 +173,27 @@ export async function applyRecommendation(
   }
 
   const payload = (rec.actionPayload as { percentIncrease?: number; percentDecrease?: number }) ?? {};
-  const result = await executeMetaAction(
-    rec.entityType as "campaign" | "adset" | "ad",
-    rec.entityId,
-    rec.entityName,
-    actionType as "pause" | "resume" | "increase_budget" | "decrease_budget",
-    payload,
-    dryRun
-  );
+  let result: Awaited<ReturnType<typeof executeMetaAction>>;
+  if (mode === "mock") {
+    result = {
+      ok: true,
+      entityType: rec.entityType,
+      entityId: rec.entityId,
+      actionType: actionType as "pause" | "resume" | "increase_budget" | "decrease_budget",
+      requestPayload: { status: actionType === "pause" ? "PAUSED" : "ACTIVE" },
+      responseSummary: `[Mock mode] Simulated ${actionType} for ${rec.entityName}`,
+      simulated: true,
+    };
+  } else {
+    result = await executeMetaAction(
+      rec.entityType as "campaign" | "adset" | "ad",
+      rec.entityId,
+      rec.entityName,
+      actionType as "pause" | "resume" | "increase_budget" | "decrease_budget",
+      payload,
+      dryRun
+    );
+  }
 
   const logStatus = result.ok
     ? result.simulated

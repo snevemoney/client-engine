@@ -86,6 +86,10 @@ export type MetaAdsDashboardData = {
   adsets: MetaAdsAdSet[];
   ads: MetaAdsAd[];
   insights: OperatorInsight[];
+  /** Present when META_MODE=mock */
+  metaMode?: "mock";
+  /** Present when metaMode=mock; current META_MOCK_SCENARIO */
+  metaMockScenario?: string;
 };
 
 export type MetaAdsDashboardError = {

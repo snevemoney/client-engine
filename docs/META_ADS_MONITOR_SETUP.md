@@ -1,8 +1,38 @@
 # Meta Ads Monitor — Setup
 
-Dashboard to monitor ad performance and run safe manual actions (pause/resume). Requires Meta Marketing API access.
+Dashboard to monitor ad performance and run safe manual actions (pause/resume). Supports **mock mode** (local simulation) and **live mode** (Meta Graph API).
 
-## Prerequisites
+## Mode: Mock vs Live
+
+| Mode | When used | Behavior |
+|------|-----------|----------|
+| **Mock** | Local dev, or when `META_MODE=mock` | Simulated dashboard data; Apply always writes `simulated`; never calls Meta API |
+| **Live** | Production with `META_ACCESS_TOKEN` + `META_AD_ACCOUNT_ID` set, or when `META_MODE=live` | Real Meta API; dry-run and guardrails apply |
+
+**Default:** Local/dev → mock (safe). Production with credentials → live.
+
+**Override:** Set `META_MODE=mock` or `META_MODE=live` to force a mode.
+
+## Local development (mock mode)
+
+No Meta credentials needed. Dashboard shows simulated data. Generate and Apply work; actions are always simulated.
+
+```bash
+# Optional: explicit mock mode
+META_MODE=mock
+
+# Optional: choose scenario for mock data
+META_MOCK_SCENARIO=healthy_campaigns    # default
+META_MOCK_SCENARIO=no_campaigns
+META_MOCK_SCENARIO=high_cpl
+META_MOCK_SCENARIO=no_leads_after_spend
+META_MOCK_SCENARIO=fatigue_detected
+META_MOCK_SCENARIO=mixed_account
+```
+
+**Test guardrails in mock mode:** Add protected campaign IDs in Settings; generate recs; try Apply → blocked. Same for cooldown/cap.
+
+## Prerequisites (live mode)
 
 1. **Meta App** — Create or use an existing app at [developers.facebook.com](https://developers.facebook.com/apps/)
 2. **Ad account** — You must have an ad account with campaigns
@@ -50,11 +80,20 @@ Tokens expire. For production, use a System User token or implement token refres
 Add to `.env` (or production server `.env`):
 
 ```bash
-# Meta Ads Monitor (V2)
+# Mode: mock (local simulation) or live (Meta API). Default: mock in dev, live in prod if credentials set.
+# META_MODE=mock
+# META_MODE=live
+
+# Mock scenarios (META_MODE=mock only)
+# META_MOCK_SCENARIO=healthy_campaigns | no_campaigns | high_cpl | no_leads_after_spend | fatigue_detected | mixed_account
+
+# Live mode: required for real Meta API
 META_ACCESS_TOKEN=your-long-lived-or-system-user-token
 META_AD_ACCOUNT_ID=act_1234567890
+
 # Optional: API version (default v21.0)
 # META_API_VERSION=v21.0
+
 # Optional: for Asset Health permission verification via debug_token
 # META_APP_ID=your-app-id
 # META_APP_SECRET=your-app-secret

@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { getMetaMode } from "@/lib/meta-ads/mode";
 import { jsonError, withRouteTiming } from "@/lib/api-utils";
 import { z } from "zod";
 
@@ -64,7 +65,9 @@ export async function GET() {
     const session = await auth();
     if (!session?.user) return jsonError("Unauthorized", 401);
 
-    const accountId = process.env.META_AD_ACCOUNT_ID?.trim();
+    const mode = getMetaMode();
+    let accountId = process.env.META_AD_ACCOUNT_ID?.trim();
+    if (mode === "mock" && !accountId) accountId = "act_mock";
     if (!accountId) {
       return NextResponse.json({ settings: null });
     }
@@ -80,7 +83,9 @@ export async function PATCH(req: NextRequest) {
     const session = await auth();
     if (!session?.user) return jsonError("Unauthorized", 401);
 
-    const accountId = process.env.META_AD_ACCOUNT_ID?.trim();
+    const mode = getMetaMode();
+    let accountId = process.env.META_AD_ACCOUNT_ID?.trim();
+    if (mode === "mock" && !accountId) accountId = "act_mock";
     if (!accountId) return jsonError("META_AD_ACCOUNT_ID not set", 503);
 
     const acc = accountId.startsWith("act_") ? accountId : `act_${accountId}`;

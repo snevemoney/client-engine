@@ -74,6 +74,18 @@ export function MetaAdsPageClient() {
   const [lastFetchWasFresh, setLastFetchWasFresh] = useState(false);
   const [settingsSummary, setSettingsSummary] = useState<{ mode: string; dryRun: boolean; targetCpl: number | null; minSpend: number; minImpressions: number } | null>(null);
   const [lastGenerated, setLastGenerated] = useState<string | null>(null);
+  const [metaMode, setMetaMode] = useState<"mock" | "live" | null>(null);
+  const [metaMockScenario, setMetaMockScenario] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/meta-ads/mode")
+      .then((r) => r.json())
+      .then((j) => {
+        setMetaMode(j.mode ?? null);
+        setMetaMockScenario(j.scenario ?? null);
+      })
+      .catch(() => {});
+  }, []);
 
   const fetchData = useCallback(async (opts?: { skipCache?: boolean }) => {
     setLoading(true);
@@ -89,7 +101,10 @@ export function MetaAdsPageClient() {
         setError(`${message} ${docHint}`);
         setData(null);
       } else {
-        setData(json as MetaAdsDashboardData);
+        const d = json as MetaAdsDashboardData;
+        setData(d);
+        if (d.metaMode) setMetaMode(d.metaMode);
+        if (d.metaMockScenario) setMetaMockScenario(d.metaMockScenario);
         if (opts?.skipCache) {
           setLastFetchWasFresh(true);
           setTimeout(() => setLastFetchWasFresh(false), 4000);
@@ -125,9 +140,24 @@ export function MetaAdsPageClient() {
   return (
     <div className="space-y-6 min-w-0">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
+        <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2 flex-wrap">
           <Megaphone className="w-6 h-6 text-neutral-400" />
           Meta Ads Monitor
+          {metaMode && (
+            <span
+              className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
+                metaMode === "mock"
+                  ? "bg-amber-900/50 text-amber-200"
+                  : "bg-emerald-900/50 text-emerald-200"
+              }`}
+              title={metaMode === "mock" ? `Scenario: ${metaMockScenario ?? "healthy_campaigns"}` : undefined}
+            >
+              {metaMode === "mock" ? "Mock mode" : "Live mode"}
+              {metaMode === "mock" && metaMockScenario && (
+                <span className="text-amber-400/90"> ({metaMockScenario})</span>
+              )}
+            </span>
+          )}
           {needsAttention > 0 && (
             <span className="inline-flex items-center gap-1 rounded-full bg-amber-900/50 px-2 py-0.5 text-xs font-medium text-amber-200">
               <AlertTriangle className="w-3 h-3" />

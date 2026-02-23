@@ -1,8 +1,11 @@
 /**
  * Fetches and normalizes Meta Ads dashboard data.
  * Orchestrates client + normalize + insights. Supports cache and trend comparison.
+ * In META_MODE=mock, returns mock data without calling Meta API.
  */
 
+import { getMetaMode } from "./mode";
+import { getMockDashboardData } from "./mock-provider";
 import {
   fetchAccountInsights,
   fetchAccountInsightsTimeRange,
@@ -110,14 +113,25 @@ export async function fetchMetaAdsDashboard(
   range: DateRangePreset = "last_7d",
   options?: { skipCache?: boolean }
 ): Promise<MetaAdsDashboardData | MetaAdsDashboardError> {
-  const token = process.env.META_ACCESS_TOKEN?.trim();
+  const mode = getMetaMode();
   const account = process.env.META_AD_ACCOUNT_ID?.trim() || accountId;
+  const acc =
+    mode === "mock"
+      ? (account?.startsWith("act_") ? account : account ? `act_${account}` : "act_mock")
+      : (account?.startsWith("act_") ? account : account ? `act_${account}` : "");
 
+  if (mode === "mock") {
+    const data = getMockDashboardData(acc, range);
+    return { ...data, metaMode: "mock", metaMockScenario: process.env.META_MOCK_SCENARIO ?? "healthy_campaigns" };
+  }
+
+  if (!acc) {
+    return { ok: false, error: "META_AD_ACCOUNT_ID not configured", code: "NO_ACCOUNT" };
+  }
+  const token = process.env.META_ACCESS_TOKEN?.trim();
   if (!token) {
     return { ok: false, error: "META_ACCESS_TOKEN not configured", code: "NO_TOKEN" };
   }
-
-  const acc = account.startsWith("act_") ? account : `act_${account}`;
 
   if (!options?.skipCache) {
     const cached = getCached<MetaAdsDashboardData>(acc, range);

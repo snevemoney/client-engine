@@ -140,6 +140,11 @@ Apply requires approval unless you pass `forceQueued: true` (not exposed in UI b
 - **ON** (default): Apply simulates the action, writes to Action History as `simulated`, does not call Meta API.
 - **OFF**: Apply executes real Meta API call. Toggle in Settings.
 
+## Mock vs Live mode
+
+- **Mock mode** (local): Dashboard uses simulated data; Apply always writes `simulated` and never calls Meta. Badge shows "Mock mode" and scenario name. Use for local dev without credentials.
+- **Live mode** (prod): Real Meta API. Requires `META_ACCESS_TOKEN` and `META_AD_ACCOUNT_ID`. Badge shows "Live mode".
+
 ## V3.1 Guardrails
 
 - **Protected campaigns** — Campaigns (and their adsets/ads) in the protected list cannot be changed. Apply will return 409 and log status `blocked`. Set IDs in Settings → Protected campaign IDs (one per line or comma-separated).

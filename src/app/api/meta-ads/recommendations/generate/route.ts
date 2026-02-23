@@ -6,6 +6,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { jsonError, withRouteTiming } from "@/lib/api-utils";
 import { runGenerateRecommendations } from "@/lib/meta-ads/generate-recommendations";
+import { getMetaMode } from "@/lib/meta-ads/mode";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +15,9 @@ export async function POST() {
     const session = await auth();
     if (!session?.user) return jsonError("Unauthorized", 401);
 
-    const accountId = process.env.META_AD_ACCOUNT_ID?.trim();
+    const mode = getMetaMode();
+    let accountId = process.env.META_AD_ACCOUNT_ID?.trim();
+    if (!accountId && mode === "mock") accountId = "act_mock";
     if (!accountId) {
       return NextResponse.json({ ok: false, error: "META_AD_ACCOUNT_ID not set", generated: 0 });
     }

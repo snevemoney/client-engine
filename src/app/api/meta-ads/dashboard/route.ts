@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { fetchMetaAdsDashboard } from "@/lib/meta-ads/fetch";
+import { getMetaMode } from "@/lib/meta-ads/mode";
 import { jsonError, withRouteTiming } from "@/lib/api-utils";
 import type { DateRangePreset } from "@/lib/meta-ads/types";
 
@@ -22,14 +23,18 @@ export async function GET(req: NextRequest) {
       return jsonError("Invalid range; use today|yesterday|last_7d|last_14d|last_30d", 400);
     }
 
-    const accountId = req.nextUrl.searchParams.get("account") ?? process.env.META_AD_ACCOUNT_ID ?? "";
+    const mode = getMetaMode();
+    const accountId =
+      req.nextUrl.searchParams.get("account") ??
+      process.env.META_AD_ACCOUNT_ID ??
+      (mode === "mock" ? "act_mock" : "");
     const skipCache = req.nextUrl.searchParams.get("skipCache") === "1";
 
     const result = await fetchMetaAdsDashboard(accountId, range, { skipCache });
 
     if (!result.ok) {
       const status =
-        result.code === "NO_TOKEN" ? 503 :
+        result.code === "NO_TOKEN" || result.code === "NO_ACCOUNT" ? 503 :
         result.code === "INVALID_TOKEN" || result.code === "PERMISSION_DENIED" ? 401 :
         result.code === "RATE_LIMIT" ? 429 : 502;
       return NextResponse.json(result, { status });
