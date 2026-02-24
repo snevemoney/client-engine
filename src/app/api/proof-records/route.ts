@@ -20,6 +20,7 @@ export async function GET() {
         sourceType: r.sourceType,
         sourceId: r.sourceId,
         intakeLeadId: r.intakeLeadId ?? null,
+        proofCandidateId: r.proofCandidateId ?? null,
         title: r.title ?? "",
         company: r.company ?? null,
         outcome: r.outcome ?? "won",

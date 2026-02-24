@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,8 +19,8 @@ interface IntakeLead {
   company: string | null;
   status: string;
   score: number | null;
-  nextAction: string | null;
-  nextActionDueAt: string | null;
+  promotedLeadId?: string | null;
+  nextAction?: string | null;
   createdAt: string;
 }
 
@@ -36,9 +37,25 @@ function formatDate(iso: string): string {
   }
 }
 
+const QUICK_FILTERS = [
+  { key: "all", label: "All" },
+  { key: "needs-score", label: "Needs score" },
+  { key: "ready", label: "Ready to promote" },
+  { key: "followup-overdue", label: "Follow-up overdue" },
+  { key: "won-missing-proof", label: "Won missing proof" },
+] as const;
+
 export default function IntakePage() {
+  const searchParams = useSearchParams();
+  const filterParam = searchParams.get("filter") ?? "all";
   const [leads, setLeads] = useState<IntakeLead[]>([]);
   const [search, setSearch] = useState("");
+  const [quickFilter, setQuickFilter] = useState<string>(filterParam);
+  useEffect(() => {
+    if (["needs-score", "ready", "followup-overdue", "won-missing-proof"].includes(filterParam)) {
+      setQuickFilter(filterParam);
+    }
+  }, [filterParam]);
   const [statusFilter, setStatusFilter] = useState("all");
   const [sourceFilter, setSourceFilter] = useState("all");
   const [loading, setLoading] = useState(true);
@@ -53,7 +70,8 @@ export default function IntakePage() {
     try {
       const params = new URLSearchParams();
       if (search.trim()) params.set("search", search.trim());
-      if (statusFilter !== "all") params.set("status", statusFilter);
+      if (quickFilter !== "all") params.set("filter", quickFilter);
+      else if (statusFilter !== "all") params.set("status", statusFilter);
       if (sourceFilter !== "all") params.set("source", sourceFilter);
       const res = await fetch(`/api/intake-leads?${params}`, {
         credentials: "include",
@@ -73,7 +91,7 @@ export default function IntakePage() {
     } finally {
       setLoading(false);
     }
-  }, [search, statusFilter, sourceFilter]);
+  }, [search, quickFilter, statusFilter, sourceFilter]);
 
   useEffect(() => {
     void fetchLeads();
@@ -129,6 +147,23 @@ export default function IntakePage() {
         </Button>
       </div>
 
+      <div className="flex flex-wrap gap-2 mb-2">
+        {QUICK_FILTERS.map((f) => (
+          <button
+            key={f.key}
+            type="button"
+            onClick={() => setQuickFilter(f.key)}
+            className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
+              quickFilter === f.key
+                ? "bg-amber-600/30 text-amber-400 border border-amber-700"
+                : "bg-neutral-800/50 text-neutral-400 border border-neutral-700 hover:bg-neutral-700/50"
+            }`}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-500" />
@@ -142,7 +177,10 @@ export default function IntakePage() {
         <div className="flex gap-2">
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+            onChange={(e) => {
+              setStatusFilter(e.target.value);
+              setQuickFilter("all");
+            }}
             className="rounded-md border border-neutral-600 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 focus:border-neutral-500 focus:outline-none"
           >
             {STATUS_OPTIONS.map((s) => (
@@ -187,6 +225,7 @@ export default function IntakePage() {
                   <th className="text-left p-3 font-medium text-neutral-400">Company</th>
                   <th className="text-left p-3 font-medium text-neutral-400">Score</th>
                   <th className="text-left p-3 font-medium text-neutral-400">Status</th>
+                  <th className="text-left p-3 font-medium text-neutral-400">Pipeline</th>
                   <th className="text-left p-3 font-medium text-neutral-400">Next Action</th>
                 </tr>
               </thead>
@@ -214,6 +253,13 @@ export default function IntakePage() {
                     </td>
                     <td className="p-3">
                       <LeadStatusBadge status={lead.status} />
+                    </td>
+                    <td className="p-3">
+                      {lead.promotedLeadId ? (
+                        <span className="text-xs text-emerald-400">Promoted</span>
+                      ) : (
+                        <span className="text-xs text-neutral-500">—</span>
+                      )}
                     </td>
                     <td className="p-3 text-neutral-400 max-w-[150px] truncate">
                       {lead.nextAction ?? "—"}

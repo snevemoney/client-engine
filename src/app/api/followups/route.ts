@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { IntakeLeadStatus } from "@prisma/client";
 import { withRouteTiming } from "@/lib/api-utils";
 import {
   getStartOfDay,
@@ -102,7 +103,7 @@ export async function GET(req: NextRequest) {
       ],
     };
     if (!statusFilter) {
-      where.status = { notIn: ["won", "lost"] };
+      where.status = { notIn: [IntakeLeadStatus.won, IntakeLeadStatus.lost] };
     } else {
       where.status = statusFilter;
     }

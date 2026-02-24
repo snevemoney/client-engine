@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { IntakeLeadSource, IntakeLeadStatus, IntakeLeadUrgency } from "@prisma/client";
 import { jsonError, withRouteTiming } from "@/lib/api-utils";
+import { computeIntakePromotionReadiness } from "@/lib/intake-lead/readiness";
 
 const STATUSES = ["new", "qualified", "proposal_drafted", "sent", "won", "lost", "archived"] as const;
 const SOURCES = ["upwork", "linkedin", "referral", "inbound", "rss", "other"] as const;
@@ -52,6 +53,11 @@ function safeLead(lead: {
   lastContactedAt: Date | null;
   followUpCompletedAt: Date | null;
   followUpCount: number;
+  githubUrl: string | null;
+  loomUrl: string | null;
+  deliverySummary: string | null;
+  deliveryCompletedAt: Date | null;
+  proofCandidateCount: number;
   tags: string[];
   createdAt: Date;
   updatedAt: Date;
@@ -81,6 +87,13 @@ function safeLead(lead: {
     lastContactedAt: lead.lastContactedAt?.toISOString() ?? null,
     followUpCompletedAt: lead.followUpCompletedAt?.toISOString() ?? null,
     followUpCount: lead.followUpCount ?? 0,
+    githubUrl: lead.githubUrl ?? null,
+    loomUrl: lead.loomUrl ?? null,
+    deliverySummary: lead.deliverySummary ?? null,
+    deliveryCompletedAt: lead.deliveryCompletedAt?.toISOString() ?? null,
+    proofCandidateCount: lead.proofCandidateCount ?? 0,
+    proposalCount: (lead as { proposalCount?: number }).proposalCount ?? 0,
+    latestProposalId: (lead as { latestProposalId?: string | null }).latestProposalId ?? null,
     promotedLead: lead.promotedLead
       ? { id: lead.promotedLead.id, title: lead.promotedLead.title, status: lead.promotedLead.status }
       : null,
@@ -114,14 +127,26 @@ export async function GET(
       include: {
         activities: { orderBy: { createdAt: "desc" }, take: 100 },
         promotedLead: { select: { id: true, title: true, status: true } },
+        latestProposal: { select: { id: true, title: true, status: true } },
       },
     });
 
     if (!lead) return jsonError("Lead not found", 404);
 
+    const readiness = computeIntakePromotionReadiness(lead);
+
+    const out = safeLead(lead);
     return NextResponse.json({
-      ...safeLead(lead),
+      ...out,
+      latestProposal: lead.latestProposal
+        ? { id: lead.latestProposal.id, title: lead.latestProposal.title, status: lead.latestProposal.status }
+        : null,
       activities: lead.activities.map(safeActivity),
+      promotionReadiness: {
+        isReadyToPromote: readiness.isReadyToPromote,
+        reasons: readiness.reasons,
+        warnings: readiness.warnings,
+      },
     });
   });
 }

@@ -66,73 +66,56 @@ export async function getOpsHealth(): Promise<OpsHealth> {
   const dayAgo = new Date(now.getTime() - DAY_MS);
   const sevenDaysAgo = new Date(now.getTime() - 7 * DAY_MS);
   const staleCutoff = new Date(now.getTime() - STALE_NO_ACTIVITY_DAYS * DAY_MS);
+  const stuckCutoff = new Date(now.getTime() - 5 * DAY_MS);
 
-  // Last workday run(s): find last report and last successful
   const systemLead = await db.lead.findFirst({
     where: { source: "system", title: "Research Engine Runs" },
     select: { id: true },
   });
-  const workdayReports = systemLead
-    ? await db.artifact.findMany({
-        where: { leadId: systemLead.id, title: "WORKDAY_RUN_REPORT" },
-        orderBy: { createdAt: "desc" },
-        take: 20,
-        select: { createdAt: true, meta: true },
-      })
-    : [];
-  let lastRunAt: string | null = null;
-  let lastSuccessAt: string | null = null;
-  let lastStatus: WorkdayRunStatus = "none";
-  for (const r of workdayReports) {
-    if (!lastRunAt) lastRunAt = r.createdAt.toISOString();
-    const { status, ok } = inferWorkdayStatus(r.meta);
-    if (lastStatus === "none") lastStatus = status;
-    if (ok && !lastSuccessAt) lastSuccessAt = r.createdAt.toISOString();
-  }
-  const warningNoSuccessIn24h =
-    lastSuccessAt !== null ? new Date(lastSuccessAt).getTime() < now.getTime() - DAY_MS : lastRunAt !== null;
 
-  // Failed jobs 24h / 7d
-  const [failed24h, failed7d] = await Promise.all([
+  const [
+    workdayReports,
+    failed24h,
+    failed7d,
+    staleLeadsCount,
+    leadsWithProposal,
+    readyProposals,
+    approvedNotBuilding,
+  ] = await Promise.all([
+    systemLead
+      ? db.artifact.findMany({
+          where: { leadId: systemLead.id, title: "WORKDAY_RUN_REPORT" },
+          orderBy: { createdAt: "desc" },
+          take: 20,
+          select: { createdAt: true, meta: true },
+        })
+      : Promise.resolve([]),
     db.pipelineRun.count({ where: { success: false, lastErrorAt: { gte: dayAgo } } }),
     db.pipelineRun.count({ where: { success: false, lastErrorAt: { gte: sevenDaysAgo } } }),
-  ]);
-
-  // Stale leads: no lastContactAt or lastContactAt < staleCutoff; exclude REJECTED
-  const staleLeadsCount = await db.lead.count({
-    where: {
-      status: { not: "REJECTED" },
-      OR: [{ lastContactAt: null }, { lastContactAt: { lt: staleCutoff } }],
-      // Had some engagement (created more than X days ago so we're not counting brand-new leads)
-      createdAt: { lt: staleCutoff },
-    },
-  });
-
-  // Stuck proposals: has proposal artifact, not sent, proposal created > 5 days ago
-  const stuckCutoff = new Date(now.getTime() - 5 * DAY_MS);
-  const leadsWithProposal = await db.lead.findMany({
-    where: {
-      status: { not: "REJECTED" },
-      proposalSentAt: null,
-      artifacts: { some: { type: "proposal" } },
-    },
-    select: {
-      id: true,
-      artifacts: {
-        where: { type: "proposal" },
-        orderBy: { createdAt: "desc" },
-        take: 1,
-        select: { createdAt: true },
+    db.lead.count({
+      where: {
+        status: { not: "REJECTED" },
+        OR: [{ lastContactAt: null }, { lastContactAt: { lt: staleCutoff } }],
+        createdAt: { lt: staleCutoff },
       },
-    },
-  });
-  const stuckProposalsCount = leadsWithProposal.filter((l) => {
-    const created = l.artifacts[0]?.createdAt;
-    return created && new Date(created) < stuckCutoff;
-  }).length;
-
-  // Approval queue: ready to send proposal + approved not building
-  const [readyProposals, approvedNotBuilding] = await Promise.all([
+    }),
+    db.lead.findMany({
+      where: {
+        status: { not: "REJECTED" },
+        proposalSentAt: null,
+        artifacts: { some: { type: "proposal" } },
+      },
+      take: 100,
+      select: {
+        id: true,
+        artifacts: {
+          where: { type: "proposal" },
+          orderBy: { createdAt: "desc" },
+          take: 1,
+          select: { createdAt: true },
+        },
+      },
+    }),
     db.lead.count({
       where: {
         status: { not: "REJECTED" },
@@ -148,6 +131,23 @@ export async function getOpsHealth(): Promise<OpsHealth> {
       },
     }),
   ]);
+
+  let lastRunAt: string | null = null;
+  let lastSuccessAt: string | null = null;
+  let lastStatus: WorkdayRunStatus = "none";
+  for (const r of workdayReports) {
+    if (!lastRunAt) lastRunAt = r.createdAt.toISOString();
+    const { status, ok } = inferWorkdayStatus(r.meta);
+    if (lastStatus === "none") lastStatus = status;
+    if (ok && !lastSuccessAt) lastSuccessAt = r.createdAt.toISOString();
+  }
+  const warningNoSuccessIn24h =
+    lastSuccessAt !== null ? new Date(lastSuccessAt).getTime() < now.getTime() - DAY_MS : lastRunAt !== null;
+
+  const stuckProposalsCount = leadsWithProposal.filter((l) => {
+    const created = l.artifacts[0]?.createdAt;
+    return created && new Date(created) < stuckCutoff;
+  }).length;
   const approvalQueueCount = Math.min(readyProposals, 10) + approvedNotBuilding; // cap "ready" to avoid huge number
 
   // Integration health: DB (from health check), research = last workday, knowledge = from workday or queue

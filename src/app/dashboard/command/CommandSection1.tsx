@@ -1,7 +1,9 @@
-import { getOpsHealth } from "@/lib/ops/opsHealth";
-import { getCachedMoneyScorecard } from "@/lib/ops/cached";
-import { getSalesLeakReport } from "@/lib/ops/salesLeak";
-import { getCurrentStrategyWeek } from "@/lib/ops/strategyWeek";
+import {
+  getCachedMoneyScorecard,
+  getCachedOpsHealth,
+  getCachedSalesLeakReport,
+  getCachedCurrentStrategyWeek,
+} from "@/lib/ops/cached";
 import { OpsHealthGatewayCard } from "@/components/dashboard/command/OpsHealthGatewayCard";
 import { MoneyScorecardCard } from "@/components/dashboard/command/MoneyScorecardCard";
 import { SalesLeakCard } from "@/components/dashboard/command/SalesLeakCard";
@@ -12,10 +14,10 @@ import { logSlow, PERF } from "@/lib/perf";
 export default async function CommandSection1() {
   const start = Date.now();
   const [opsHealth, moneyScorecard, salesLeakReport, strategyWeek] = await Promise.all([
-    getOpsHealth(),
+    getCachedOpsHealth(),
     getCachedMoneyScorecard(),
-    getSalesLeakReport(),
-    getCurrentStrategyWeek(),
+    getCachedSalesLeakReport(),
+    getCachedCurrentStrategyWeek(),
   ]);
   const ms = Date.now() - start;
   if (ms > PERF.SLOW_PAGE_MS) logSlow("page", "/dashboard/command Section1", ms);

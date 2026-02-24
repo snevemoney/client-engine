@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, use } from "react";
 import Link from "next/link";
-import { ArrowLeft, Target, FileText, MessageSquare, ExternalLink, Rocket, Send, Calendar, Trophy, XCircle, Phone, Mail, CheckCircle2, Clock } from "lucide-react";
+import { ArrowLeft, Target, FileText, MessageSquare, ExternalLink, Rocket, Send, Calendar, Trophy, XCircle, Phone, Mail, CheckCircle2, Clock, Github, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -38,11 +38,24 @@ interface IntakeLead {
   lastContactedAt: string | null;
   followUpCompletedAt: string | null;
   followUpCount: number;
+  githubUrl?: string | null;
+  loomUrl?: string | null;
+  deliverySummary?: string | null;
+  deliveryCompletedAt?: string | null;
+  proofCandidateCount?: number;
+  proposalCount?: number;
+  latestProposalId?: string | null;
+  latestProposal?: { id: string; title: string; status: string } | null;
   promotedLead?: { id: string; title: string; status: string } | null;
   tags: string[];
   createdAt: string;
   updatedAt: string;
   activities?: { id: string; type: string; content: string; createdAt: string }[];
+  promotionReadiness?: {
+    isReadyToPromote: boolean;
+    reasons: string[];
+    warnings: string[];
+  };
 }
 
 const STATUSES = ["new", "qualified", "proposal_drafted", "sent", "won", "lost", "archived"];
@@ -75,6 +88,11 @@ export default function IntakeLeadDetailPage({ params }: { params: Promise<{ id:
   const [showCompleteModal, setShowCompleteModal] = useState(false);
   const [showSnoozeModal, setShowSnoozeModal] = useState(false);
   const [logModalKind, setLogModalKind] = useState<"call" | "email" | null>(null);
+  const [showDeliveryModal, setShowDeliveryModal] = useState(false);
+  const [deliveryGithub, setDeliveryGithub] = useState("");
+  const [deliveryLoom, setDeliveryLoom] = useState("");
+  const [deliverySummaryEdit, setDeliverySummaryEdit] = useState("");
+  const [showCreateCandidateModal, setShowCreateCandidateModal] = useState(false);
 
   const fetchLead = useCallback(async () => {
     setLoading(true);
@@ -174,9 +192,19 @@ export default function IntakeLeadDetailPage({ params }: { params: Promise<{ id:
     setShowEditNextAction(false);
   };
 
-  const handlePromote = () =>
+  const handlePromote = (force?: boolean) =>
     runAction("promote", () =>
-      fetch(`/api/intake-leads/${id}/promote`, { method: "POST", credentials: "include" })
+      fetch(`/api/intake-leads/${id}/promote`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ force: force ?? false }),
+      })
+    );
+
+  const handleSyncPipeline = () =>
+    runAction("sync", () =>
+      fetch(`/api/intake-leads/${id}/sync-pipeline`, { method: "POST", credentials: "include" })
     );
 
   const handleMarkSent = () =>
@@ -296,6 +324,62 @@ export default function IntakeLeadDetailPage({ params }: { params: Promise<{ id:
     setLogModalKind(null);
   };
 
+  const handleOpenDeliveryModal = () => {
+    setDeliveryGithub(lead?.githubUrl ?? "");
+    setDeliveryLoom(lead?.loomUrl ?? "");
+    setDeliverySummaryEdit(lead?.deliverySummary ?? "");
+    setShowDeliveryModal(true);
+  };
+
+  const handleSaveDelivery = async () => {
+    await runAction("delivery", () =>
+      fetch(`/api/intake-leads/${id}/delivery`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          githubUrl: deliveryGithub.trim() || null,
+          loomUrl: deliveryLoom.trim() || null,
+          deliverySummary: deliverySummaryEdit.trim() || null,
+        }),
+      })
+    );
+    setShowDeliveryModal(false);
+  };
+
+  const handleCreateProofCandidate = async () => {
+    await runAction("proofCandidate", () =>
+      fetch(`/api/intake-leads/${id}/proof-candidate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({}),
+      })
+    );
+    setShowCreateCandidateModal(false);
+  };
+
+  const handleCreateProposal = async () => {
+    setActionLoading("proposal");
+    try {
+      const res = await fetch(`/api/intake-leads/${id}/proposal`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ createNew: true }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        alert(data?.error ?? "Failed to create proposal");
+        return;
+      }
+      void fetchLead();
+      if (data?.id) window.location.href = `/dashboard/proposals/${data.id}`;
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   if (loading && !lead) {
     return (
       <div className="space-y-6">
@@ -406,33 +490,133 @@ export default function IntakeLeadDetailPage({ params }: { params: Promise<{ id:
           </div>
 
           <div className="border border-neutral-700 rounded-lg p-4">
+            <h2 className="text-lg font-semibold mb-3">Proposals</h2>
+            <div className="space-y-2 text-sm mb-3">
+              <span className="text-neutral-400">{(lead.proposalCount ?? 0)} proposal(s)</span>
+              {lead.latestProposal && (
+                <div>
+                  <Link href={`/dashboard/proposals/${lead.latestProposal.id}`} className="text-emerald-400 hover:underline">
+                    Latest: {lead.latestProposal.title} ({lead.latestProposal.status})
+                  </Link>
+                </div>
+              )}
+            </div>
+            <Button size="sm" onClick={handleCreateProposal} disabled={!!actionLoading}>
+              <FileText className="h-4 w-4 mr-1" />
+              Create Proposal
+            </Button>
+          </div>
+
+          <div className="border border-neutral-700 rounded-lg p-4">
+            <h2 className="text-lg font-semibold mb-3">Delivery & Proof</h2>
+            <div className="space-y-2 text-sm">
+              {lead.githubUrl ? (
+                <a href={lead.githubUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-blue-400 hover:underline">
+                  <Github className="h-4 w-4" /> GitHub
+                </a>
+              ) : (
+                <span className="text-neutral-500">No GitHub link</span>
+              )}
+              {lead.loomUrl ? (
+                <a href={lead.loomUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-blue-400 hover:underline">
+                  <Video className="h-4 w-4" /> Loom
+                </a>
+              ) : (
+                <span className="text-neutral-500">No Loom link</span>
+              )}
+              {lead.deliverySummary && (
+                <p className="text-neutral-300">{lead.deliverySummary}</p>
+              )}
+              {(lead.proofCandidateCount ?? 0) > 0 && (
+                <Link href={`/dashboard/proof-candidates?intakeLeadId=${id}`} className="text-amber-400 hover:underline">
+                  {lead.proofCandidateCount} proof candidate(s)
+                </Link>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-2 mt-3">
+              <Button variant="outline" size="sm" onClick={handleOpenDeliveryModal} disabled={!!actionLoading}>
+                Save Delivery Evidence
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setShowCreateCandidateModal(true)} disabled={!!actionLoading}>
+                Create Proof Candidate
+              </Button>
+              <Link href="/dashboard/proof-candidates">
+                <Button variant="ghost" size="sm">View Proof Candidates</Button>
+              </Link>
+            </div>
+          </div>
+
+          <div className="border border-neutral-700 rounded-lg p-4">
             <h2 className="text-lg font-semibold mb-4">Activity</h2>
             <LeadActivityTimeline activities={lead.activities ?? []} />
           </div>
         </div>
 
         <div className="lg:w-80 space-y-4">
+          {lead.promotionReadiness && !lead.promotedLeadId && (
+            <div className="border border-neutral-700 rounded-lg p-4">
+              <h3 className="font-medium mb-2">Promotion readiness</h3>
+              {lead.promotionReadiness.isReadyToPromote ? (
+                <p className="text-xs text-emerald-400 mb-2">Ready to promote</p>
+              ) : (
+                <ul className="text-xs text-amber-400 mb-2 list-disc list-inside">
+                  {lead.promotionReadiness.reasons.map((r, i) => (
+                    <li key={i}>{r}</li>
+                  ))}
+                </ul>
+              )}
+              {lead.promotionReadiness.warnings?.length ? (
+                <p className="text-xs text-neutral-500">{lead.promotionReadiness.warnings.join("; ")}</p>
+              ) : null}
+            </div>
+          )}
           <div className="border border-neutral-700 rounded-lg p-4 space-y-3">
             <h3 className="font-medium">Pipeline</h3>
             {!lead.promotedLeadId && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full justify-start"
-                onClick={handlePromote}
-                disabled={!!actionLoading}
-              >
-                <Rocket className="h-4 w-4" />
-                {actionLoading === "promote" ? "Promoting…" : "Promote to Pipeline"}
-              </Button>
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start"
+                  onClick={() => handlePromote(false)}
+                  disabled={!!actionLoading}
+                >
+                  <Rocket className="h-4 w-4" />
+                  {actionLoading === "promote" ? "Promoting…" : "Promote to Pipeline"}
+                </Button>
+                {!lead.promotionReadiness?.isReadyToPromote && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full justify-start text-amber-400"
+                    onClick={() => handlePromote(true)}
+                    disabled={!!actionLoading}
+                    title="Force promote despite missing fields"
+                  >
+                    Force Promote
+                  </Button>
+                )}
+              </>
             )}
             {lead.promotedLeadId && lead.promotedLead && (
-              <Link href={`/dashboard/leads/${lead.promotedLead.id}`}>
-                <Button variant="outline" size="sm" className="w-full justify-start">
-                  <ExternalLink className="h-4 w-4" />
-                  View Pipeline Lead
+              <>
+                <Link href={`/dashboard/leads/${lead.promotedLead.id}`}>
+                  <Button variant="outline" size="sm" className="w-full justify-start">
+                    <ExternalLink className="h-4 w-4" />
+                    View Pipeline Lead
+                  </Button>
+                </Link>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full justify-start"
+                  onClick={handleSyncPipeline}
+                  disabled={!!actionLoading}
+                  title="Sync intake fields to pipeline lead"
+                >
+                  {actionLoading === "sync" ? "Syncing…" : "Sync to Pipeline"}
                 </Button>
-              </Link>
+              </>
             )}
             {lead.status !== "sent" && lead.status !== "won" && lead.status !== "lost" && (
               <Button
@@ -725,6 +909,54 @@ export default function IntakeLeadDetailPage({ params }: { params: Promise<{ id:
           onSubmit={handleLogSubmit}
           loading={actionLoading === "logCall" || actionLoading === "logEmail"}
         />
+      )}
+
+      {showDeliveryModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="bg-neutral-900 border border-neutral-700 rounded-lg w-full max-w-md p-4">
+            <h3 className="font-medium mb-3">Delivery Evidence</h3>
+            <Input
+              value={deliveryGithub}
+              onChange={(e) => setDeliveryGithub(e.target.value)}
+              placeholder="GitHub URL (repo, PR, commit)"
+              className="mb-3 bg-neutral-800 border-neutral-600"
+            />
+            <Input
+              value={deliveryLoom}
+              onChange={(e) => setDeliveryLoom(e.target.value)}
+              placeholder="Loom URL"
+              className="mb-3 bg-neutral-800 border-neutral-600"
+            />
+            <Textarea
+              value={deliverySummaryEdit}
+              onChange={(e) => setDeliverySummaryEdit(e.target.value)}
+              placeholder="Delivery summary (optional)"
+              rows={2}
+              className="mb-4 bg-neutral-800 border-neutral-600 resize-none"
+            />
+            <div className="flex gap-2 justify-end">
+              <Button variant="ghost" onClick={() => setShowDeliveryModal(false)}>Cancel</Button>
+              <Button onClick={handleSaveDelivery} disabled={actionLoading === "delivery"}>Save</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showCreateCandidateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="bg-neutral-900 border border-neutral-700 rounded-lg w-full max-w-md p-4">
+            <h3 className="font-medium mb-3">Create Proof Candidate</h3>
+            <p className="text-sm text-neutral-400 mb-4">
+              Creates a draft proof candidate from this lead. You can edit and promote it from the Proof Candidates page.
+            </p>
+            <div className="flex gap-2 justify-end">
+              <Button variant="ghost" onClick={() => setShowCreateCandidateModal(false)}>Cancel</Button>
+              <Button onClick={handleCreateProofCandidate} disabled={actionLoading === "proofCandidate"}>
+                {actionLoading === "proofCandidate" ? "Creating…" : "Create"}
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

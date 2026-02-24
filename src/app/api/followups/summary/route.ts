@@ -4,7 +4,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { IntakeLeadStatus, LeadActivityType } from "@prisma/client";
+import { LeadActivityType, IntakeLeadStatus } from "@prisma/client";
 import { jsonError, withRouteTiming } from "@/lib/api-utils";
 import { getStartOfDay, getEndOfDay, isValidDate } from "@/lib/followup/dates";
 import { getWeekStart } from "@/lib/ops/weekStart";

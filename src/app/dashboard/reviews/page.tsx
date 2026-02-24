@@ -3,6 +3,11 @@ import { redirect } from "next/navigation";
 import { ReviewsList } from "@/components/dashboard/reviews/ReviewsList";
 import { IntakeWeeklyStats } from "@/components/dashboard/reviews/IntakeWeeklyStats";
 import { FollowupWeeklyStats } from "@/components/dashboard/reviews/FollowupWeeklyStats";
+import { ProposalWeeklyStats } from "@/components/dashboard/reviews/ProposalWeeklyStats";
+import { DeliveryWeeklyStats } from "@/components/dashboard/reviews/DeliveryWeeklyStats";
+import { DeliveryProofWeeklyStats } from "@/components/dashboard/reviews/DeliveryProofWeeklyStats";
+import { PipelineHygieneWeeklyStats } from "@/components/dashboard/reviews/PipelineHygieneWeeklyStats";
+import { ProofGapWeeklyStats } from "@/components/dashboard/reviews/ProofGapWeeklyStats";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +25,11 @@ export default async function ReviewsPage() {
       </div>
       <IntakeWeeklyStats />
       <FollowupWeeklyStats />
+      <ProposalWeeklyStats />
+      <DeliveryWeeklyStats />
+      <PipelineHygieneWeeklyStats />
+      <DeliveryProofWeeklyStats />
+      <ProofGapWeeklyStats />
       <ReviewsList />
     </div>
   );

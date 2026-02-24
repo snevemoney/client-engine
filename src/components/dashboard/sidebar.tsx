@@ -16,6 +16,7 @@ import {
   Quote,
   ClipboardCheck,
   ClipboardList,
+  FileCheck,
   Briefcase,
   MessageSquare,
   BookOpen,
@@ -30,6 +31,7 @@ import {
   Rss,
   Users,
   Calendar,
+  Package,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { Sheet } from "@/components/ui/sheet";
@@ -48,6 +50,7 @@ const founderOsNav = [
 
 const primaryNav = [
   { href: "/dashboard/command", label: "Command Center", icon: LayoutDashboard },
+  { href: "/dashboard/command-center", label: "Daily Ops", icon: Target },
   { href: "/dashboard/ops-health", label: "Ops Health", icon: Activity },
   { href: "/dashboard/sales-leak", label: "Sales Leak", icon: TrendingUp },
   { href: "/dashboard/results", label: "Results Ledger", icon: Target },
@@ -55,6 +58,7 @@ const primaryNav = [
   { href: "/dashboard/intake", label: "Lead Intake", icon: Target },
   { href: "/dashboard/followups", label: "Follow-ups", icon: Calendar },
   { href: "/dashboard/proposals", label: "Proposals", icon: FileText },
+  { href: "/dashboard/delivery", label: "Delivery", icon: Package },
   { href: "/dashboard/build-ops", label: "Build Ops", icon: Wrench },
   { href: "/dashboard/metrics", label: "Metrics", icon: BarChart3 },
   { href: "/work", label: "Website / Work", icon: Briefcase },
@@ -66,6 +70,7 @@ const primaryNav = [
 
 const secondaryNav = [
   { href: "/dashboard/proof", label: "Proof", icon: Quote },
+  { href: "/dashboard/proof-candidates", label: "Proof Candidates", icon: FileCheck },
   { href: "/dashboard/checklist", label: "Checklist", icon: ClipboardList },
   { href: "/dashboard/deploys", label: "Deploys", icon: Rocket },
   { href: "/dashboard/conversion", label: "Conversion", icon: TrendingUp },

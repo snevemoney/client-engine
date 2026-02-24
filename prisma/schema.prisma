@@ -92,6 +92,10 @@ model Lead {
   buildTasksLinked      BuildTask[]
   reusableAssetLogs     ReusableAssetLog[]
   promotedFromIntake    IntakeLead?
+  proofCandidates       ProofCandidate[]
+  proposalCount         Int               @default(0)
+  proposals             Proposal[]
+  deliveryProjects      DeliveryProject[]
 }
 
 enum LeadStatus {
@@ -870,6 +874,10 @@ enum LeadActivityType {
   followup_snoozed
   followup_call
   followup_email
+  delivery_logged
+  proof_candidate_created
+  proof_candidate_promoted
+  pipeline_synced
   manual
 }
 
@@ -897,12 +905,23 @@ model IntakeLead {
   outcomeReason       String?           @db.Text
   lastContactedAt     DateTime?
   followUpCompletedAt DateTime?
-  followUpCount       Int               @default(0)
-  tags                String[]          @default([])
-  createdAt           DateTime          @default(now())
-  updatedAt           DateTime          @updatedAt
-  activities       LeadActivity[]
-  proofRecords     ProofRecord[]
+  followUpCount         Int               @default(0)
+  githubUrl              String?
+  loomUrl                String?
+  deliverySummary        String?           @db.Text
+  deliveryCompletedAt    DateTime?
+  proofCandidateCount    Int               @default(0)
+  tags                   String[]          @default([])
+  createdAt              DateTime          @default(now())
+  updatedAt              DateTime          @updatedAt
+  activities             LeadActivity[]
+  proofRecords           ProofRecord[]
+  proofCandidates        ProofCandidate[]
+  proposalCount          Int               @default(0)
+  latestProposalId       String?
+  latestProposal         Proposal?         @relation("LatestProposal", fields: [latestProposalId], references: [id])
+  proposals              Proposal[]
+  deliveryProjects       DeliveryProject[]
 
   @@index([status])
   @@index([source])
@@ -926,23 +945,304 @@ model LeadActivity {
 
 /** Proof record from intake/won flow. Editable draft for observational proof. */
 model ProofRecord {
-  id           String     @id @default(cuid())
-  sourceType   String     @default("intake_lead") // intake_lead | pipeline_lead
-  sourceId     String
-  intakeLeadId String?
-  intakeLead   IntakeLead? @relation(fields: [intakeLeadId], references: [id], onDelete: SetNull)
-  title        String
-  company      String?
-  outcome      String     @default("won") // won | lost
-  proofSnippet String?    @db.Text
-  beforeState  String?    @db.Text
-  afterState   String?    @db.Text
-  metricValue  String?
-  metricLabel  String?
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  id                  String          @id @default(cuid())
+  sourceType          String          @default("intake_lead") // intake_lead | pipeline_lead
+  sourceId            String
+  intakeLeadId        String?
+  intakeLead          IntakeLead?     @relation(fields: [intakeLeadId], references: [id], onDelete: SetNull)
+  proofCandidateId    String?         @unique
+  proofCandidate      ProofCandidate? @relation(fields: [proofCandidateId], references: [id], onDelete: SetNull)
+  title               String
+  company             String?
+  outcome             String          @default("won") // won | lost
+  proofSnippet        String?         @db.Text
+  beforeState         String?         @db.Text
+  afterState          String?         @db.Text
+  metricValue         String?
+  metricLabel         String?
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
 
   @@index([intakeLeadId])
   @@index([sourceType, sourceId])
   @@index([createdAt])
+}
+
+enum ProofCandidateStatus {
+  draft
+  ready
+  promoted
+  rejected
+}
+
+enum ProofCandidateTriggerType {
+  github
+  loom
+  manual
+  result_note
+}
+
+enum ProofCandidateSourceType {
+  intake_lead
+  pipeline_lead
+  manual
+}
+
+model ProofCandidate {
+  id                     String                   @id @default(cuid())
+  sourceType             ProofCandidateSourceType
+  sourceId               String?
+  intakeLeadId           String?
+  intakeLead             IntakeLead?              @relation(fields: [intakeLeadId], references: [id], onDelete: SetNull)
+  leadId                 String?
+  lead                   Lead?                    @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  title                  String
+  company                String?
+  triggerType            ProofCandidateTriggerType
+  githubUrl              String?
+  loomUrl                String?
+  assetUrlsJson          Json?
+  deliverySummary        String?                  @db.Text
+  proofSnippet           String?                  @db.Text
+  beforeState            String?                 @db.Text
+  afterState             String?                 @db.Text
+  metricLabel            String?
+  metricValue            String?
+  tags                   String[]                 @default([])
+  status                 ProofCandidateStatus   @default(draft)
+  readyAt                DateTime?
+  promotedAt             DateTime?
+  promotedProofRecordId  String?                 @unique
+  promotedProofRecord    ProofRecord?
+  rejectedReason         String?                 @db.Text
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+  deliveryProjects       DeliveryProject[]
+
+  @@index([status])
+  @@index([sourceType])
+  @@index([triggerType])
+  @@index([intakeLeadId])
+  @@index([createdAt])
+}
+
+// ----- Phase 2.0: Proposal Engine -----
+
+enum ProposalStatus {
+  draft
+  ready
+  sent
+  viewed
+  accepted
+  rejected
+  expired
+}
+
+enum ProposalPriceType {
+  fixed
+  range
+  hourly
+  custom
+}
+
+enum ProposalActivityType {
+  created
+  edited
+  status_change
+  sent
+  viewed
+  accepted
+  rejected
+  note
+}
+
+model Proposal {
+  id               String            @id @default(cuid())
+  intakeLeadId     String?
+  intakeLead       IntakeLead?       @relation(fields: [intakeLeadId], references: [id], onDelete: SetNull)
+  pipelineLeadId  String?
+  pipelineLead    Lead?             @relation(fields: [pipelineLeadId], references: [id], onDelete: SetNull)
+  status          ProposalStatus    @default(draft)
+  title           String
+  clientName      String?
+  clientEmail     String?
+  company         String?
+  summary         String?           @db.Text
+  scopeOfWork     String?           @db.Text
+  deliverables    Json?
+  timelineDays    Int?
+  priceType       ProposalPriceType?
+  priceMin        Int?
+  priceMax        Int?
+  priceCurrency   String            @default("CAD")
+  terms           String?           @db.Text
+  cta             String?           @db.Text
+  version         Int               @default(1)
+  sentAt          DateTime?
+  viewedAt        DateTime?
+  respondedAt     DateTime?
+  acceptedAt      DateTime?
+  rejectedAt      DateTime?
+  expiresAt       DateTime?
+  lastEditedAt    DateTime?
+  createdBy       String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  versions        ProposalVersion[]
+  activities      ProposalActivity[]
+  intakeLeadsAsLatest IntakeLead[]   @relation("LatestProposal")
+  deliveryProjects DeliveryProject[]
+
+  @@index([status])
+  @@index([intakeLeadId])
+  @@index([pipelineLeadId])
+}
+
+model ProposalVersion {
+  id           String   @id @default(cuid())
+  proposalId   String
+  proposal     Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  version      Int
+  snapshotJson Json
+  changeNote   String?  @db.Text
+  createdAt    DateTime @default(now())
+
+  @@unique([proposalId, version])
+  @@index([proposalId])
+}
+
+model ProposalActivity {
+  id         String               @id @default(cuid())
+  proposalId String
+  proposal   Proposal             @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  type       ProposalActivityType
+  message    String?              @db.Text
+  metaJson   Json?
+  createdAt  DateTime             @default(now())
+
+  @@index([proposalId])
+  @@index([proposalId, createdAt(sort: Desc)])
+}
+
+// ----- Phase 2.0: Delivery Pipeline -----
+
+enum DeliveryProjectStatus {
+  not_started
+  kickoff
+  in_progress
+  qa
+  blocked
+  completed
+  archived
+}
+
+enum DeliveryMilestoneStatus {
+  todo
+  in_progress
+  done
+  blocked
+}
+
+enum DeliveryChecklistCategory {
+  kickoff
+  build
+  qa
+  handoff
+  proof
+}
+
+enum DeliveryActivityType {
+  created
+  status_change
+  milestone
+  checklist
+  note
+  qa
+  handoff
+  completed
+}
+
+model DeliveryProject {
+  id                 String                 @id @default(cuid())
+  proposalId         String?
+  proposal           Proposal?              @relation(fields: [proposalId], references: [id], onDelete: SetNull)
+  intakeLeadId       String?
+  intakeLead         IntakeLead?            @relation(fields: [intakeLeadId], references: [id], onDelete: SetNull)
+  pipelineLeadId    String?
+  pipelineLead      Lead?                  @relation(fields: [pipelineLeadId], references: [id], onDelete: SetNull)
+  status            DeliveryProjectStatus  @default(not_started)
+  title             String
+  clientName        String?
+  company           String?
+  summary           String?                 @db.Text
+  owner             String?
+  startDate         DateTime?
+  dueDate           DateTime?
+  completedAt       DateTime?
+  deliveryNotes     String?                 @db.Text
+  qaNotes           String?                 @db.Text
+  handoffNotes      String?                 @db.Text
+  githubUrl         String?
+  loomUrl           String?
+  artifactUrl       String?
+  proofRequestedAt DateTime?
+  proofCapturedAt  DateTime?
+  proofCandidateId String?
+  proofCandidate   ProofCandidate?         @relation(fields: [proofCandidateId], references: [id], onDelete: SetNull)
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+  milestones        DeliveryMilestone[]
+  checklistItems    DeliveryChecklistItem[]
+  activities        DeliveryActivity[]
+
+  @@index([status])
+  @@index([dueDate])
+  @@index([pipelineLeadId])
+  @@index([proposalId])
+  @@index([intakeLeadId])
+}
+
+model DeliveryMilestone {
+  id                 String                @id @default(cuid())
+  deliveryProjectId  String
+  deliveryProject    DeliveryProject       @relation(fields: [deliveryProjectId], references: [id], onDelete: Cascade)
+  title              String
+  description        String?               @db.Text
+  status             DeliveryMilestoneStatus @default(todo)
+  sortOrder          Int                   @default(0)
+  dueAt              DateTime?
+  completedAt        DateTime?
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+
+  @@index([deliveryProjectId])
+}
+
+model DeliveryChecklistItem {
+  id                 String                   @id @default(cuid())
+  deliveryProjectId  String
+  deliveryProject    DeliveryProject          @relation(fields: [deliveryProjectId], references: [id], onDelete: Cascade)
+  category          DeliveryChecklistCategory
+  label              String
+  isRequired         Boolean                  @default(true)
+  isDone             Boolean                  @default(false)
+  doneAt             DateTime?
+  sortOrder          Int                      @default(0)
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
+
+  @@index([deliveryProjectId])
+}
+
+model DeliveryActivity {
+  id                 String               @id @default(cuid())
+  deliveryProjectId  String
+  deliveryProject    DeliveryProject      @relation(fields: [deliveryProjectId], references: [id], onDelete: Cascade)
+  type               DeliveryActivityType
+  message            String?               @db.Text
+  metaJson           Json?
+  createdAt          DateTime             @default(now())
+
+  @@index([deliveryProjectId])
+  @@index([deliveryProjectId, createdAt(sort: Desc)])
 }

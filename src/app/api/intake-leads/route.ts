@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { IntakeLeadSource, IntakeLeadUrgency } from "@prisma/client";
+import { IntakeLeadSource, IntakeLeadUrgency, IntakeLeadStatus } from "@prisma/client";
 import { jsonError, withRouteTiming } from "@/lib/api-utils";
+import { getStartOfDay } from "@/lib/followup/dates";
 
 const SOURCES = ["upwork", "linkedin", "referral", "inbound", "rss", "other"] as const;
 const URGENCIES = ["low", "medium", "high"] as const;
@@ -39,6 +40,7 @@ function safeLead(lead: {
   scoreReason: string | null;
   nextAction: string | null;
   nextActionDueAt: Date | null;
+  promotedLeadId: string | null;
   tags: string[];
   createdAt: Date;
   updatedAt: Date;
@@ -60,6 +62,7 @@ function safeLead(lead: {
     scoreReason: lead.scoreReason ?? null,
     nextAction: lead.nextAction ?? null,
     nextActionDueAt: lead.nextActionDueAt?.toISOString() ?? null,
+    promotedLeadId: lead.promotedLeadId ?? null,
     tags: Array.isArray(lead.tags) ? lead.tags : [],
     createdAt: lead.createdAt.toISOString(),
     updatedAt: lead.updatedAt.toISOString(),
@@ -74,19 +77,51 @@ export async function GET(req: NextRequest) {
     const url = new URL(req.url);
     const status = url.searchParams.get("status");
     const source = url.searchParams.get("source");
+    const filter = url.searchParams.get("filter");
     const search = url.searchParams.get("search") ?? url.searchParams.get("q");
     const limit = Math.min(200, Math.max(1, parseInt(url.searchParams.get("limit") ?? "100", 10) || 100));
 
-    const where: Record<string, unknown> = {};
-    if (status) where.status = status;
-    if (source) where.source = source;
-    if (search?.trim()) {
-      where.OR = [
-        { title: { contains: search.trim(), mode: "insensitive" } },
-        { summary: { contains: search.trim(), mode: "insensitive" } },
-        { company: { contains: search.trim(), mode: "insensitive" } },
+    const filterWhere: Record<string, unknown> = {};
+    if (filter === "needs-score") {
+      filterWhere.status = { notIn: [IntakeLeadStatus.won, IntakeLeadStatus.lost, IntakeLeadStatus.archived] };
+      filterWhere.score = null;
+    } else if (filter === "ready") {
+      filterWhere.status = { in: ["qualified", "proposal_drafted"] };
+      filterWhere.promotedLeadId = null;
+      filterWhere.title = { not: "" };
+      filterWhere.summary = { not: "" };
+    } else if (filter === "followup-overdue") {
+      const startToday = getStartOfDay(new Date());
+      filterWhere.status = "sent";
+      filterWhere.OR = [
+        { followUpDueAt: { lt: startToday } },
+        { nextActionDueAt: { lt: startToday } },
       ];
+    } else if (filter === "won-missing-proof") {
+      filterWhere.status = "won";
+      filterWhere.proofCandidates = { none: {} };
+      filterWhere.proofRecords = { none: {} };
+    } else if (status) {
+      filterWhere.status = status;
     }
+    if (source) filterWhere.source = source;
+
+    const searchWhere = search?.trim()
+      ? {
+          OR: [
+            { title: { contains: search.trim(), mode: "insensitive" as const } },
+            { summary: { contains: search.trim(), mode: "insensitive" as const } },
+            { company: { contains: search.trim(), mode: "insensitive" as const } },
+          ],
+        }
+      : {};
+
+    const where =
+      Object.keys(searchWhere).length > 0 && Object.keys(filterWhere).length > 0
+        ? { AND: [filterWhere, searchWhere] }
+        : Object.keys(searchWhere).length > 0
+          ? searchWhere
+          : filterWhere;
 
     const leads = await db.intakeLead.findMany({
       where,

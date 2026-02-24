@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { FileText, Copy, Check, Loader2 } from "lucide-react";
+import { FileText, Copy, Check, Loader2, ClipboardList } from "lucide-react";
 
 interface Lead {
   id: string;
@@ -33,8 +33,17 @@ interface ProofRecord {
   metricValue: string | null;
   metricLabel: string | null;
   intakeLeadId: string | null;
+  proofCandidateId?: string | null;
   createdAt: string;
 }
+
+type ProofCandidateSummary = {
+  createdThisWeek?: number;
+  readyThisWeek?: number;
+  promotedThisWeek?: number;
+  pendingDrafts?: number;
+  pendingReady?: number;
+} | null;
 
 function ProofRecordEditForm({
   record,
@@ -111,7 +120,18 @@ export default function ProofPage() {
   const [copied, setCopied] = useState(false);
   const [proofRecords, setProofRecords] = useState<ProofRecord[]>([]);
   const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
+  const [candidateSummary, setCandidateSummary] = useState<ProofCandidateSummary>(null);
   const didAutoGenerate = useRef(false);
+
+  const fetchCandidateSummary = useCallback(async () => {
+    const res = await fetch("/api/proof-candidates/summary");
+    if (res.ok) {
+      const d = await res.json();
+      setCandidateSummary(d && typeof d === "object" ? d : null);
+    } else {
+      setCandidateSummary(null);
+    }
+  }, []);
 
   const fetchProofRecords = useCallback(async () => {
     const res = await fetch("/api/proof-records");
@@ -142,7 +162,8 @@ export default function ProofPage() {
     fetchLeads();
     fetchProofPosts();
     fetchProofRecords();
-  }, [fetchLeads, fetchProofPosts, fetchProofRecords]);
+    fetchCandidateSummary();
+  }, [fetchLeads, fetchProofPosts, fetchProofRecords, fetchCandidateSummary]);
 
   // URL trigger for browser automation: ?generate=1 runs generate once when a lead is selected
   useEffect(() => {
@@ -209,6 +230,21 @@ export default function ProofPage() {
       </div>
 
       <section className="border border-neutral-800 rounded-lg p-6">
+        <h2 className="text-sm font-medium text-neutral-300 mb-4 flex items-center gap-2">
+          <ClipboardList className="w-4 h-4" />
+          Proof candidates
+        </h2>
+        <div className="flex flex-wrap gap-4 text-sm">
+          <span><strong>{candidateSummary?.pendingDrafts ?? 0}</strong> drafts</span>
+          <span><strong>{candidateSummary?.pendingReady ?? 0}</strong> ready</span>
+          <span className="text-emerald-400"><strong>{candidateSummary?.promotedThisWeek ?? 0}</strong> promoted this week</span>
+        </div>
+        <Link href="/dashboard/proof-candidates" className="inline-block mt-3">
+          <Button variant="outline" size="sm">Open Proof Candidates</Button>
+        </Link>
+      </section>
+
+      <section className="border border-neutral-800 rounded-lg p-6">
         <h2 className="text-sm font-medium text-neutral-300 mb-4">Generate proof post</h2>
         <div className="flex flex-wrap items-end gap-4">
           <div className="min-w-[200px]">
@@ -267,6 +303,11 @@ export default function ProofPage() {
                       {r.intakeLeadId && (
                         <Link href={`/dashboard/intake/${r.intakeLeadId}`} className="ml-2 text-blue-400 hover:underline">
                           View intake
+                        </Link>
+                      )}
+                      {r.proofCandidateId && (
+                        <Link href={`/dashboard/proof-candidates/${r.proofCandidateId}`} className="ml-2 text-neutral-400 hover:underline">
+                          (from candidate)
                         </Link>
                       )}
                     </div>

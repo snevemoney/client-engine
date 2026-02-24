@@ -1,12 +1,13 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { jsonError, withRouteTiming } from "@/lib/api-utils";
 import { LeadActivityType } from "@prisma/client";
+import { computeIntakePromotionReadiness } from "@/lib/intake-lead/readiness";
 
 /** POST /api/intake-leads/[id]/promote — Promote IntakeLead to pipeline Lead. Idempotent. */
 export async function POST(
-  _req: Request,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   return withRouteTiming("POST /api/intake-leads/[id]/promote", async () => {
@@ -21,8 +22,21 @@ export async function POST(
 
     if (!intake) return jsonError("Lead not found", 404);
 
-    if (!intake.title?.trim()) return jsonError("Title required to promote", 400, "VALIDATION");
-    if (!intake.summary?.trim()) return jsonError("Summary required to promote", 400, "VALIDATION");
+    const readiness = computeIntakePromotionReadiness(intake);
+
+    const body = await req.json().catch(() => ({}));
+    const force = body?.force === true;
+
+    if (!readiness.isReadyToPromote && !force) {
+      return NextResponse.json(
+        {
+          error: `Not ready to promote: ${readiness.reasons.join("; ")}`,
+          code: "VALIDATION",
+          readiness: { isReadyToPromote: readiness.isReadyToPromote, reasons: readiness.reasons, warnings: readiness.warnings },
+        },
+        { status: 400 }
+      );
+    }
 
     if (intake.promotedLeadId) {
       const lead = intake.promotedLead;
@@ -30,6 +44,7 @@ export async function POST(
         ok: true,
         promotedLeadId: lead?.id ?? intake.promotedLeadId,
         message: "Already promoted",
+        readiness: { isReadyToPromote: readiness.isReadyToPromote, reasons: readiness.reasons, warnings: readiness.warnings },
         lead: lead
           ? {
               id: lead.id,
@@ -83,6 +98,7 @@ export async function POST(
     return NextResponse.json({
       ok: true,
       promotedLeadId: lead.id,
+      readiness: { isReadyToPromote: true, reasons: [], warnings: readiness.warnings },
       lead: {
         id: lead.id,
         title: lead.title,

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, Circle, Target, FileCheck, Activity, Plug, AlertTriangle, Inbox, Calendar } from "lucide-react";
+import { CheckCircle2, Circle, Target, FileCheck, Activity, Plug, AlertTriangle, Inbox, Calendar, ClipboardList, FileText, Package } from "lucide-react";
 
 function formatRelative(ms: number): string {
   if (ms < 0) return "—";
@@ -57,10 +57,62 @@ type FollowupSummary = {
   nextFollowupDue: string | null;
 } | null;
 
+type ProofCandidateSummary = {
+  createdThisWeek?: number;
+  readyThisWeek?: number;
+  promotedThisWeek?: number;
+  pendingDrafts?: number;
+  pendingReady?: number;
+} | null;
+
+type ActionSummary = {
+  unscoredCount?: number;
+  readyToPromoteCount?: number;
+  promotedMissingNextActionCount?: number;
+  sentFollowupOverdueCount?: number;
+  wonMissingProofCount?: number;
+} | null;
+
+type ProofGapsSummary = {
+  wonLeadsWithoutProofCandidate?: number;
+  readyCandidatesPendingPromotion?: number;
+  proofRecordsMissingFields?: number;
+  promotedThisWeek?: number;
+} | null;
+
+type ProposalFunnel = {
+  drafts?: number;
+  ready?: number;
+  sentThisWeek?: number;
+  acceptedThisWeek?: number;
+  rejectedThisWeek?: number;
+  readyNotSent?: number;
+  sentNoResponseOver7d?: number;
+  draftsIncomplete?: number;
+  acceptedNoProject?: number;
+} | null;
+
+type DeliveryOps = {
+  inProgress?: number;
+  dueSoon?: number;
+  overdue?: number;
+  completedThisWeek?: number;
+  proofRequestedPending?: number;
+  missingGithubLoom?: number;
+  qaIncomplete?: number;
+  handoffIncomplete?: number;
+  completedNoProofCandidate?: number;
+} | null;
+
 export function ScoreboardView() {
   const [data, setData] = useState<ScoreboardData | null>(null);
   const [intakeSummary, setIntakeSummary] = useState<IntakeSummary>(null);
   const [followupSummary, setFollowupSummary] = useState<FollowupSummary>(null);
+  const [proofCandidateSummary, setProofCandidateSummary] = useState<ProofCandidateSummary>(null);
+  const [actionSummary, setActionSummary] = useState<ActionSummary>(null);
+  const [proofGapsSummary, setProofGapsSummary] = useState<ProofGapsSummary>(null);
+  const [proposalFunnel, setProposalFunnel] = useState<ProposalFunnel>(null);
+  const [deliveryOps, setDeliveryOps] = useState<DeliveryOps>(null);
   const [loading, setLoading] = useState(true);
   const [fetchedAt, setFetchedAt] = useState<number | null>(null);
 
@@ -69,7 +121,18 @@ export function ScoreboardView() {
       fetch("/api/ops/scoreboard").then((r) => r.json()),
       fetch("/api/intake-leads/summary").then((r) => (r.ok ? r.json() : null)).catch(() => null),
       fetch("/api/followups/summary").then((r) => (r.ok ? r.json() : null)).catch(() => null),
-    ]).then(([d, intake, followup]) => {
+      fetch("/api/proof-candidates/summary").then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch("/api/intake-leads/action-summary").then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch("/api/proof-gaps/summary").then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      Promise.all([
+        fetch("/api/proposals/summary").then((r) => (r.ok ? r.json() : null)).catch(() => null),
+        fetch("/api/proposals/gaps-summary").then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      ]).then(([sum, gaps]) => ({ sum, gaps })),
+      Promise.all([
+        fetch("/api/delivery-projects/summary").then((r) => (r.ok ? r.json() : null)).catch(() => null),
+        fetch("/api/delivery-projects/gaps-summary").then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      ]).then(([sum, gaps]) => ({ sum, gaps })),
+    ]).then(([d, intake, followup, proofCand, action, proofGaps, proposalData, deliveryData]) => {
       if (d && typeof d === "object" && "weekStart" in d) {
         setData(d as ScoreboardData);
       } else {
@@ -77,6 +140,17 @@ export function ScoreboardView() {
       }
       setIntakeSummary(intake && typeof intake === "object" ? intake as IntakeSummary : null);
       setFollowupSummary(followup && typeof followup === "object" ? followup as FollowupSummary : null);
+      setProofCandidateSummary(proofCand && typeof proofCand === "object" ? proofCand as ProofCandidateSummary : null);
+      setActionSummary(action && typeof action === "object" ? action as ActionSummary : null);
+      setProofGapsSummary(proofGaps && typeof proofGaps === "object" ? proofGaps as ProofGapsSummary : null);
+      const pf = proposalData?.sum != null || proposalData?.gaps != null
+        ? { ...(proposalData?.sum ?? {}), ...(proposalData?.gaps ?? {}) }
+        : {};
+      setProposalFunnel(pf);
+      const do_ = deliveryData?.sum != null || deliveryData?.gaps != null
+        ? { ...(deliveryData?.sum ?? {}), ...(deliveryData?.gaps ?? {}) }
+        : {};
+      setDeliveryOps(do_);
       setFetchedAt(Date.now());
     }).catch(() => setData(null))
       .finally(() => setLoading(false));
@@ -102,32 +176,22 @@ export function ScoreboardView() {
     );
   }
 
-  if (!data) {
-    return (
-      <section className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-6">
-        <p className="text-sm text-neutral-500 mb-4">No strategy week set yet.</p>
-        <Link href="/dashboard/strategy">
-          <Button variant="outline" size="sm">
-            Set up strategy
-          </Button>
-        </Link>
-      </section>
-    );
-  }
-
-  const weekDate = (() => {
-    try {
-      const d = new Date(data.weekStart);
-      return Number.isNaN(d.getTime()) ? null : d;
-    } catch {
-      return null;
-    }
-  })();
+  const hasStrategy = !!data;
+  const weekDate = hasStrategy && data
+    ? (() => {
+        try {
+          const d = new Date(data.weekStart);
+          return Number.isNaN(d.getTime()) ? null : d;
+        } catch {
+          return null;
+        }
+      })()
+    : null;
   const weekLabel = weekDate
     ? weekDate.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
     : "—";
 
-  const checks = data.review
+  const checks = data?.review
     ? [
         { label: "Campaign shipped", done: data.review.campaignShipped },
         { label: "System improved", done: data.review.systemImproved },
@@ -138,7 +202,7 @@ export function ScoreboardView() {
   const reviewCount = checks.filter((c) => c.done).length;
   const reviewTotal = 4;
 
-  const reviewStatusLabel = data.review?.completedAt ? "Review completed" : "Review pending";
+  const reviewStatusLabel = data?.review?.completedAt ? "Review completed" : "Review pending";
 
   return (
     <div className="space-y-4">
@@ -154,7 +218,19 @@ export function ScoreboardView() {
           </button>
         </p>
       )}
+      {!hasStrategy && (
+        <section className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-6">
+          <p className="text-sm text-neutral-500 mb-4">No strategy week set yet.</p>
+          <Link href="/dashboard/strategy">
+            <Button variant="outline" size="sm">
+              Set up strategy
+            </Button>
+          </Link>
+        </section>
+      )}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {hasStrategy && (
+      <>
       <section className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-4">
         <h2 className="text-sm font-medium text-neutral-300 mb-3 flex items-center gap-2">
           <Target className="w-4 h-4" />
@@ -165,7 +241,7 @@ export function ScoreboardView() {
             <span className="text-neutral-500">Week:</span>
             <span className="text-neutral-300">{weekLabel}</span>
           </div>
-          {data.phase && (
+          {data?.phase && (
             <div className="flex gap-2">
               <span className="text-neutral-500">Phase:</span>
               <Badge variant="outline" className="capitalize">
@@ -173,13 +249,13 @@ export function ScoreboardView() {
               </Badge>
             </div>
           )}
-          {data.activeCampaignName && (
+          {data?.activeCampaignName && (
             <div className="flex gap-2">
               <span className="text-neutral-500">Campaign:</span>
               <span className="text-neutral-300 truncate">{data.activeCampaignName}</span>
             </div>
           )}
-          {data.weeklyTargetValue != null && (
+          {data?.weeklyTargetValue != null && (
             <div className="flex gap-2">
               <span className="text-neutral-500">Target:</span>
               <span className="text-neutral-300">
@@ -187,13 +263,13 @@ export function ScoreboardView() {
               </span>
             </div>
           )}
-          {data.keyMetric && (
+          {data?.keyMetric && (
             <div className="flex gap-2">
               <span className="text-neutral-500">Key metric:</span>
               <span className="text-neutral-300 truncate">{data.keyMetric}{data.keyMetricTarget ? ` → ${data.keyMetricTarget}` : ""}</span>
             </div>
           )}
-          {data.fuelStatement && (
+          {data?.fuelStatement && (
             <div className="flex gap-2">
               <span className="text-neutral-500">Fuel:</span>
               <span className="text-neutral-300 line-clamp-2" title={data.fuelStatement}>{data.fuelStatement}</span>
@@ -238,9 +314,9 @@ export function ScoreboardView() {
           >
             {reviewCount}/{reviewTotal} complete
           </Badge>
-          {data.review?.score != null && (
+          {data?.review?.score != null && (
             <Badge variant="outline" className="text-amber-400 border-amber-700">
-              Score: {data.review.score}
+              Score: {data?.review?.score}
             </Badge>
           )}
         </div>
@@ -271,7 +347,7 @@ export function ScoreboardView() {
         </h2>
         <div className="flex items-baseline gap-2">
           <span className="text-2xl font-semibold text-neutral-200">
-            {data.integrationReady ?? 0}/{data.integrationTotal ?? 0}
+            {data?.integrationReady ?? 0}/{data?.integrationTotal ?? 0}
           </span>
           <span className="text-sm text-neutral-500">ready</span>
         </div>
@@ -287,7 +363,7 @@ export function ScoreboardView() {
           <AlertTriangle className="w-4 h-4" />
           Alerts
         </h2>
-        {data.alerts && data.alerts.length > 0 ? (
+        {data?.alerts && data.alerts.length > 0 ? (
           <ul className="text-xs space-y-1 mb-3">
             {data.alerts.map((a, i) => (
               <li key={i} className="text-amber-400/90">{a}</li>
@@ -310,6 +386,7 @@ export function ScoreboardView() {
         </div>
       </section>
 
+      </>)}
       {followupSummary != null && (
         <section className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-4">
           <h2 className="text-sm font-medium text-neutral-300 mb-3 flex items-center gap-2">
@@ -342,6 +419,182 @@ export function ScoreboardView() {
           </Link>
         </section>
       )}
+
+      <section className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-4">
+        <h2 className="text-sm font-medium text-neutral-300 mb-3 flex items-center gap-2">
+          <Inbox className="w-4 h-4" />
+          Pipeline Hygiene
+        </h2>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-center text-sm mb-2">
+          <div>
+            <div className="font-semibold text-amber-400">{actionSummary?.readyToPromoteCount ?? 0}</div>
+            <div className="text-xs text-neutral-500">Ready to promote</div>
+          </div>
+          <div>
+            <div className="font-semibold text-neutral-300">{actionSummary?.promotedMissingNextActionCount ?? 0}</div>
+            <div className="text-xs text-neutral-500">Missing next action</div>
+          </div>
+          <div>
+            <div className="font-semibold text-red-400">{actionSummary?.sentFollowupOverdueCount ?? 0}</div>
+            <div className="text-xs text-neutral-500">Follow-up overdue</div>
+          </div>
+        </div>
+        <Link href="/dashboard/intake" className="inline-block mt-2">
+          <Button variant="ghost" size="sm" className="text-amber-300 hover:text-amber-200">
+            Open Intake
+          </Button>
+        </Link>
+      </section>
+
+      <section className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-4">
+        <h2 className="text-sm font-medium text-neutral-300 mb-3 flex items-center gap-2">
+          <FileText className="w-4 h-4" />
+          Proposal Funnel
+        </h2>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-sm mb-2">
+          <div>
+            <div className="font-semibold text-neutral-200">{proposalFunnel?.drafts ?? 0}</div>
+            <div className="text-xs text-neutral-500">Drafts</div>
+          </div>
+          <div>
+            <div className="font-semibold text-neutral-200">{proposalFunnel?.ready ?? 0}</div>
+            <div className="text-xs text-neutral-500">Ready</div>
+          </div>
+          <div>
+            <div className="font-semibold text-emerald-400">{proposalFunnel?.sentThisWeek ?? 0}</div>
+            <div className="text-xs text-neutral-500">Sent (wk)</div>
+          </div>
+          <div>
+            <div className="font-semibold text-emerald-400">{proposalFunnel?.acceptedThisWeek ?? 0}</div>
+            <div className="text-xs text-neutral-500">Accepted (wk)</div>
+          </div>
+        </div>
+        <Link href="/dashboard/proposals" className="inline-block mt-2">
+          <Button variant="ghost" size="sm" className="text-amber-300 hover:text-amber-200">
+            Open Proposals
+          </Button>
+        </Link>
+      </section>
+
+      <section className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-4">
+        <h2 className="text-sm font-medium text-neutral-300 mb-3 flex items-center gap-2">
+          <FileText className="w-4 h-4" />
+          Proposal Gaps
+        </h2>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-sm mb-2">
+          <div>
+            <div className="font-semibold text-amber-400">{proposalFunnel?.readyNotSent ?? 0}</div>
+            <div className="text-xs text-neutral-500">Ready not sent</div>
+          </div>
+          <div>
+            <div className="font-semibold text-amber-400">{proposalFunnel?.sentNoResponseOver7d ?? 0}</div>
+            <div className="text-xs text-neutral-500">No response &gt;7d</div>
+          </div>
+          <div>
+            <div className="font-semibold text-neutral-300">{proposalFunnel?.draftsIncomplete ?? 0}</div>
+            <div className="text-xs text-neutral-500">Drafts incomplete</div>
+          </div>
+          <div>
+            <div className="font-semibold text-red-400">{proposalFunnel?.acceptedNoProject ?? 0}</div>
+            <div className="text-xs text-neutral-500">Accepted no project</div>
+          </div>
+        </div>
+        <Link href="/dashboard/proposals" className="inline-block mt-2">
+          <Button variant="ghost" size="sm" className="text-amber-300 hover:text-amber-200">
+            Open Proposals
+          </Button>
+        </Link>
+      </section>
+
+      <section className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-4">
+        <h2 className="text-sm font-medium text-neutral-300 mb-3 flex items-center gap-2">
+          <Package className="w-4 h-4" />
+          Delivery Ops
+        </h2>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-sm mb-2">
+          <div>
+            <div className="font-semibold text-neutral-200">{deliveryOps?.inProgress ?? 0}</div>
+            <div className="text-xs text-neutral-500">In progress</div>
+          </div>
+          <div>
+            <div className="font-semibold text-amber-400">{deliveryOps?.dueSoon ?? 0}</div>
+            <div className="text-xs text-neutral-500">Due soon</div>
+          </div>
+          <div>
+            <div className="font-semibold text-red-400">{deliveryOps?.overdue ?? 0}</div>
+            <div className="text-xs text-neutral-500">Overdue</div>
+          </div>
+          <div>
+            <div className="font-semibold text-emerald-400">{deliveryOps?.completedThisWeek ?? 0}</div>
+            <div className="text-xs text-neutral-500">Completed (wk)</div>
+          </div>
+        </div>
+        <Link href="/dashboard/delivery" className="inline-block mt-2">
+          <Button variant="ghost" size="sm" className="text-amber-300 hover:text-amber-200">
+            Open Delivery
+          </Button>
+        </Link>
+      </section>
+
+      <section className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-4">
+        <h2 className="text-sm font-medium text-neutral-300 mb-3 flex items-center gap-2">
+          <Package className="w-4 h-4" />
+          Delivery Gaps
+        </h2>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-sm mb-2">
+          <div>
+            <div className="font-semibold text-amber-400">{deliveryOps?.missingGithubLoom ?? 0}</div>
+            <div className="text-xs text-neutral-500">Missing GitHub/Loom</div>
+          </div>
+          <div>
+            <div className="font-semibold text-neutral-300">{deliveryOps?.qaIncomplete ?? 0}</div>
+            <div className="text-xs text-neutral-500">QA incomplete</div>
+          </div>
+          <div>
+            <div className="font-semibold text-neutral-300">{deliveryOps?.handoffIncomplete ?? 0}</div>
+            <div className="text-xs text-neutral-500">Handoff incomplete</div>
+          </div>
+          <div>
+            <div className="font-semibold text-red-400">{deliveryOps?.completedNoProofCandidate ?? 0}</div>
+            <div className="text-xs text-neutral-500">Completed no proof</div>
+          </div>
+        </div>
+        <Link href="/dashboard/delivery" className="inline-block mt-2">
+          <Button variant="ghost" size="sm" className="text-amber-300 hover:text-amber-200">
+            Open Delivery
+          </Button>
+        </Link>
+      </section>
+
+      <section className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-4">
+        <h2 className="text-sm font-medium text-neutral-300 mb-3 flex items-center gap-2">
+          <ClipboardList className="w-4 h-4" />
+          Proof Gaps
+        </h2>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-sm mb-2">
+          <div>
+            <div className="font-semibold text-amber-400">{proofGapsSummary?.wonLeadsWithoutProofCandidate ?? 0}</div>
+            <div className="text-xs text-neutral-500">Won missing proof</div>
+          </div>
+          <div>
+            <div className="font-semibold text-neutral-300">{proofGapsSummary?.readyCandidatesPendingPromotion ?? 0}</div>
+            <div className="text-xs text-neutral-500">Ready pending</div>
+          </div>
+          <div>
+            <div className="font-semibold text-red-400">{proofGapsSummary?.proofRecordsMissingFields ?? 0}</div>
+            <div className="text-xs text-neutral-500">Incomplete</div>
+          </div>
+          <div>
+            <div className="font-semibold text-emerald-400">{proofGapsSummary?.promotedThisWeek ?? 0}</div>
+            <div className="text-xs text-neutral-500">Promoted (wk)</div>
+          </div>
+        </div>
+        <Link href="/dashboard/proof-candidates" className="inline-block mt-2">
+          <Button variant="ghost" size="sm" className="text-amber-300 hover:text-amber-200">
+            Open Proof Candidates
+          </Button>
+        </Link>
+      </section>
 
       {intakeSummary != null && (
         <section className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-4">
@@ -381,17 +634,18 @@ export function ScoreboardView() {
         </section>
       )}
 
+      {hasStrategy && (
       <section className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-4 sm:col-span-2 lg:col-span-1">
         <h2 className="text-sm font-medium text-neutral-300 mb-3">Priorities</h2>
         <div className="flex items-baseline gap-2">
           <span className="text-2xl font-semibold text-neutral-200">
-            {data.prioritiesDone ?? 0}/{data.prioritiesTotal ?? 0}
+            {data?.prioritiesDone ?? 0}/{data?.prioritiesTotal ?? 0}
           </span>
           <span className="text-sm text-neutral-500">done</span>
         </div>
-        {data.declaredCommitment && (
+        {data?.declaredCommitment && (
           <p className="text-xs text-neutral-500 mt-2 line-clamp-2" title={data.declaredCommitment}>
-            {data.declaredCommitment}
+            {data?.declaredCommitment}
           </p>
         )}
         <Link href="/dashboard/strategy" className="inline-block mt-3">
@@ -400,6 +654,7 @@ export function ScoreboardView() {
           </Button>
         </Link>
       </section>
+      )}
       </div>
     </div>
   );

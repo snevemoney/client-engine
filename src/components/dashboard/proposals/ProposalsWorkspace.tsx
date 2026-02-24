@@ -2,7 +2,19 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import type { ProposalRow } from "@/app/dashboard/proposals/page";
+
+type ProposalRow = {
+  leadId: string;
+  title: string;
+  status: string;
+  score: number | null;
+  artifactId: string;
+  artifactTitle: string;
+  proposalContent: string;
+  hasResearchSnapshot: boolean;
+  proposalSentAt: Date | null;
+  dealOutcome: string | null;
+};
 
 type Buckets = {
   draft: ProposalRow[];
