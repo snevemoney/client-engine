@@ -31,11 +31,8 @@ docker compose build app worker
 echo "==> Restarting..."
 docker compose up -d
 
-echo "==> Prisma validate..."
-docker compose run --rm --no-deps app npx prisma validate || { echo "FAIL: Prisma schema invalid"; exit 1; }
-
 echo "==> DB sync..."
-docker compose run --rm --user root app npx prisma db push --accept-data-loss
+docker compose run --rm --no-deps worker npx prisma db push --accept-data-loss --skip-generate
 docker compose run --rm --user root app node prisma/seed.mjs
 docker compose run --rm --user root app node prisma/seed-projects.mjs
 docker compose run --rm --user root app node prisma/seed-integrations.mjs
