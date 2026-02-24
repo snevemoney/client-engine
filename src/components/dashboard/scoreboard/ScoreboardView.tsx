@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, Circle, Target, FileCheck, Activity, Plug, AlertTriangle } from "lucide-react";
+import { CheckCircle2, Circle, Target, FileCheck, Activity, Plug, AlertTriangle, Inbox, Calendar } from "lucide-react";
 
 function formatRelative(ms: number): string {
   if (ms < 0) return "—";
@@ -40,23 +40,45 @@ type ScoreboardData = {
   integrationTotal?: number;
 };
 
+type IntakeSummary = {
+  newThisWeek: number;
+  qualified: number;
+  sent: number;
+  won: number;
+  sentThisWeek?: number;
+  wonThisWeek?: number;
+  proofCreatedThisWeek?: number;
+} | null;
+
+type FollowupSummary = {
+  followupsDueToday: number;
+  followupsOverdue: number;
+  followupsCompletedThisWeek: number;
+  nextFollowupDue: string | null;
+} | null;
+
 export function ScoreboardView() {
   const [data, setData] = useState<ScoreboardData | null>(null);
+  const [intakeSummary, setIntakeSummary] = useState<IntakeSummary>(null);
+  const [followupSummary, setFollowupSummary] = useState<FollowupSummary>(null);
   const [loading, setLoading] = useState(true);
   const [fetchedAt, setFetchedAt] = useState<number | null>(null);
 
   const refresh = () => {
-    fetch("/api/ops/scoreboard")
-      .then((r) => r.json())
-      .then((d) => {
-        if (d && typeof d === "object" && "weekStart" in d) {
-          setData(d as ScoreboardData);
-        } else {
-          setData(null);
-        }
-        setFetchedAt(Date.now());
-      })
-      .catch(() => setData(null))
+    Promise.all([
+      fetch("/api/ops/scoreboard").then((r) => r.json()),
+      fetch("/api/intake-leads/summary").then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch("/api/followups/summary").then((r) => (r.ok ? r.json() : null)).catch(() => null),
+    ]).then(([d, intake, followup]) => {
+      if (d && typeof d === "object" && "weekStart" in d) {
+        setData(d as ScoreboardData);
+      } else {
+        setData(null);
+      }
+      setIntakeSummary(intake && typeof intake === "object" ? intake as IntakeSummary : null);
+      setFollowupSummary(followup && typeof followup === "object" ? followup as FollowupSummary : null);
+      setFetchedAt(Date.now());
+    }).catch(() => setData(null))
       .finally(() => setLoading(false));
   };
 
@@ -287,6 +309,77 @@ export function ScoreboardView() {
           </Link>
         </div>
       </section>
+
+      {followupSummary != null && (
+        <section className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-4">
+          <h2 className="text-sm font-medium text-neutral-300 mb-3 flex items-center gap-2">
+            <Calendar className="w-4 h-4" />
+            Follow-up Queue
+          </h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-center text-sm mb-2">
+            <div>
+              <div className="font-semibold text-amber-400">{followupSummary.followupsDueToday ?? 0}</div>
+              <div className="text-xs text-neutral-500">Due today</div>
+            </div>
+            <div>
+              <div className="font-semibold text-red-400">{followupSummary.followupsOverdue ?? 0}</div>
+              <div className="text-xs text-neutral-500">Overdue</div>
+            </div>
+            <div>
+              <div className="font-semibold text-emerald-400">{followupSummary.followupsCompletedThisWeek ?? 0}</div>
+              <div className="text-xs text-neutral-500">Done this week</div>
+            </div>
+          </div>
+          {followupSummary.nextFollowupDue && (
+            <p className="text-xs text-neutral-500">
+              Next due: {new Date(followupSummary.nextFollowupDue).toLocaleDateString()}
+            </p>
+          )}
+          <Link href="/dashboard/followups" className="inline-block mt-3">
+            <Button variant="ghost" size="sm" className="text-amber-300 hover:text-amber-200">
+              Open Follow-ups
+            </Button>
+          </Link>
+        </section>
+      )}
+
+      {intakeSummary != null && (
+        <section className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-4">
+          <h2 className="text-sm font-medium text-neutral-300 mb-3 flex items-center gap-2">
+            <Inbox className="w-4 h-4" />
+            Lead Intake
+          </h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-sm">
+            <div>
+              <div className="font-semibold text-neutral-200">{intakeSummary.newThisWeek}</div>
+              <div className="text-xs text-neutral-500">New (wk)</div>
+            </div>
+            <div>
+              <div className="font-semibold text-neutral-200">{intakeSummary.qualified}</div>
+              <div className="text-xs text-neutral-500">Qualified</div>
+            </div>
+            <div>
+              <div className="font-semibold text-neutral-200">{intakeSummary.sent}</div>
+              <div className="text-xs text-neutral-500">Sent{typeof intakeSummary.sentThisWeek === "number" ? ` (${intakeSummary.sentThisWeek} wk)` : ""}</div>
+            </div>
+            <div>
+              <div className="font-semibold text-emerald-400">{intakeSummary.won}</div>
+              <div className="text-xs text-neutral-500">Won{typeof intakeSummary.wonThisWeek === "number" ? ` (${intakeSummary.wonThisWeek} wk)` : ""}</div>
+            </div>
+            {(intakeSummary.proofCreatedThisWeek ?? 0) > 0 && (
+              <div className="col-span-2 sm:col-span-4">
+                <div className="font-semibold text-amber-400">{intakeSummary.proofCreatedThisWeek}</div>
+                <div className="text-xs text-neutral-500">Proof records this week</div>
+              </div>
+            )}
+          </div>
+          <Link href="/dashboard/intake" className="inline-block mt-3">
+            <Button variant="ghost" size="sm" className="text-amber-300 hover:text-amber-200">
+              Open Intake
+            </Button>
+          </Link>
+        </section>
+      )}
 
       <section className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-4 sm:col-span-2 lg:col-span-1">
         <h2 className="text-sm font-medium text-neutral-300 mb-3">Priorities</h2>

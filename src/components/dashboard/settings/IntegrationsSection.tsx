@@ -83,6 +83,8 @@ export function IntegrationsSection() {
   const [configAccessToken, setConfigAccessToken] = useState("");
   const [configAccountId, setConfigAccountId] = useState("");
   const [configBaseUrl, setConfigBaseUrl] = useState("");
+  const [configBookingUrl, setConfigBookingUrl] = useState("");
+  const [configDisplayName, setConfigDisplayName] = useState("");
   const [configQueryParams, setConfigQueryParams] = useState<{ key: string; value: string }[]>([]);
   const [configMode, setConfigMode] = useState<IntegrationMode>("off");
   const [configEnabled, setConfigEnabled] = useState(true);
@@ -106,6 +108,8 @@ export function IntegrationsSection() {
     setConfigAccessToken((config?.accessToken as string) ?? "");
     setConfigAccountId((config?.accountId as string) ?? "");
     setConfigBaseUrl((config?.baseUrl as string) ?? "");
+    setConfigBookingUrl((config?.bookingUrl as string) ?? "");
+    setConfigDisplayName((config?.displayName as string) ?? "");
     setConfigQueryParams(qp ? Object.entries(qp).map(([k, v]) => ({ key: k, value: String(v) })) : []);
     setConfigMode((conn?.mode as IntegrationMode) ?? "off");
     setConfigEnabled(conn?.isEnabled ?? true);
@@ -131,6 +135,8 @@ export function IntegrationsSection() {
         accessToken: configAccessToken || undefined,
         accountId: configAccountId || undefined,
         baseUrl: configBaseUrl || undefined,
+        bookingUrl: configBookingUrl || undefined,
+        displayName: configDisplayName || undefined,
       };
       if (configOpen.supportsQueryParams) {
         configJson.additionalQueryParams =
@@ -374,6 +380,32 @@ export function IntegrationsSection() {
                   className="w-full"
                 />
               </div>
+              {(configOpen.key === "calendly" || configOpen.key === "calcom") && (
+                <>
+                  <div>
+                    <label className="block text-xs text-neutral-500 mb-1">Booking URL (manual mode)</label>
+                    <Input
+                      value={configBookingUrl}
+                      onChange={(e) => setConfigBookingUrl(e.target.value)}
+                      placeholder="https://calendly.com/you or Cal.com link"
+                      className="w-full"
+                    />
+                    <p className="text-xs text-neutral-600 mt-1">Stored when mode is MANUAL. No OAuth required.</p>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-neutral-500 mb-1">Display name (optional)</label>
+                    <Input
+                      value={configDisplayName}
+                      onChange={(e) => setConfigDisplayName(e.target.value)}
+                      placeholder="e.g. Strategy Call"
+                      className="w-full"
+                    />
+                  </div>
+                  {configBookingUrl && (
+                    <p className="text-xs text-emerald-500">Manual link configured</p>
+                  )}
+                </>
+              )}
               {configOpen.supportsQueryParams && (
                 <div>
                   <label className="block text-xs text-neutral-500 mb-1">

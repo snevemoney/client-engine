@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { FileText, Copy, Check, Loader2 } from "lucide-react";
 
 interface Lead {
@@ -20,6 +22,85 @@ interface ProofArtifact {
   lead: { id: string; title: string };
 }
 
+interface ProofRecord {
+  id: string;
+  title: string;
+  company: string | null;
+  outcome: string;
+  proofSnippet: string | null;
+  beforeState: string | null;
+  afterState: string | null;
+  metricValue: string | null;
+  metricLabel: string | null;
+  intakeLeadId: string | null;
+  createdAt: string;
+}
+
+function ProofRecordEditForm({
+  record,
+  onSave,
+  onCancel,
+}: {
+  record: ProofRecord;
+  onSave: (u: Partial<ProofRecord>) => Promise<void>;
+  onCancel: () => void;
+}) {
+  const [proofSnippet, setProofSnippet] = useState(record.proofSnippet ?? "");
+  const [beforeState, setBeforeState] = useState(record.beforeState ?? "");
+  const [afterState, setAfterState] = useState(record.afterState ?? "");
+  const [metricValue, setMetricValue] = useState(record.metricValue ?? "");
+  const [metricLabel, setMetricLabel] = useState(record.metricLabel ?? "");
+  const [saving, setSaving] = useState(false);
+
+  return (
+    <div className="mt-4 space-y-3">
+      <div>
+        <label className="block text-xs text-neutral-500 mb-1">Proof snippet</label>
+        <Textarea
+          value={proofSnippet}
+          onChange={(e) => setProofSnippet(e.target.value)}
+          rows={3}
+          className="w-full bg-neutral-800 border-neutral-600 text-sm resize-none"
+        />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs text-neutral-500 mb-1">Before</label>
+          <Input value={beforeState} onChange={(e) => setBeforeState(e.target.value)} className="bg-neutral-800 border-neutral-600" />
+        </div>
+        <div>
+          <label className="block text-xs text-neutral-500 mb-1">After</label>
+          <Input value={afterState} onChange={(e) => setAfterState(e.target.value)} className="bg-neutral-800 border-neutral-600" />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs text-neutral-500 mb-1">Metric value</label>
+          <Input value={metricValue} onChange={(e) => setMetricValue(e.target.value)} className="bg-neutral-800 border-neutral-600" />
+        </div>
+        <div>
+          <label className="block text-xs text-neutral-500 mb-1">Metric label</label>
+          <Input value={metricLabel} onChange={(e) => setMetricLabel(e.target.value)} className="bg-neutral-800 border-neutral-600" />
+        </div>
+      </div>
+      <div className="flex gap-2">
+        <Button size="sm" disabled={saving} onClick={async () => {
+          setSaving(true);
+          await onSave({
+            proofSnippet: proofSnippet.trim() || null,
+            beforeState: beforeState.trim() || null,
+            afterState: afterState.trim() || null,
+            metricValue: metricValue.trim() || null,
+            metricLabel: metricLabel.trim() || null,
+          });
+          setSaving(false);
+        }}>Save</Button>
+        <Button size="sm" variant="ghost" onClick={onCancel}>Cancel</Button>
+      </div>
+    </div>
+  );
+}
+
 export default function ProofPage() {
   const searchParams = useSearchParams();
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -28,7 +109,17 @@ export default function ProofPage() {
   const [generating, setGenerating] = useState(false);
   const [lastGenerated, setLastGenerated] = useState<{ content: string; artifactId: string } | null>(null);
   const [copied, setCopied] = useState(false);
+  const [proofRecords, setProofRecords] = useState<ProofRecord[]>([]);
+  const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
   const didAutoGenerate = useRef(false);
+
+  const fetchProofRecords = useCallback(async () => {
+    const res = await fetch("/api/proof-records");
+    if (res.ok) {
+      const data = await res.json();
+      setProofRecords(Array.isArray(data) ? data : []);
+    }
+  }, []);
 
   const fetchLeads = useCallback(async () => {
     const res = await fetch("/api/leads");
@@ -50,7 +141,8 @@ export default function ProofPage() {
   useEffect(() => {
     fetchLeads();
     fetchProofPosts();
-  }, [fetchLeads, fetchProofPosts]);
+    fetchProofRecords();
+  }, [fetchLeads, fetchProofPosts, fetchProofRecords]);
 
   // URL trigger for browser automation: ?generate=1 runs generate once when a lead is selected
   useEffect(() => {
@@ -159,6 +251,55 @@ export default function ProofPage() {
           </div>
         )}
       </section>
+
+      {proofRecords.length > 0 && (
+        <section className="border border-neutral-800 rounded-lg overflow-hidden">
+          <h2 className="text-sm font-medium text-neutral-300 px-6 py-3 border-b border-neutral-800">Proof records (from intake)</h2>
+          <ul className="divide-y divide-neutral-800">
+            {proofRecords.map((r) => (
+              <li key={r.id} className="px-6 py-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-sm font-medium text-neutral-200">{r.title}</div>
+                    {r.company && <div className="text-xs text-neutral-500">{r.company}</div>}
+                    <div className="text-xs text-neutral-500 mt-1">
+                      {new Date(r.createdAt).toLocaleString()}
+                      {r.intakeLeadId && (
+                        <Link href={`/dashboard/intake/${r.intakeLeadId}`} className="ml-2 text-blue-400 hover:underline">
+                          View intake
+                        </Link>
+                      )}
+                    </div>
+                  </div>
+                  <span className="text-xs px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400">{r.outcome}</span>
+                </div>
+                {editingRecordId === r.id ? (
+                  <ProofRecordEditForm
+                    record={r}
+                    onSave={async (updates) => {
+                      const res = await fetch(`/api/proof-records/${r.id}`, {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(updates),
+                      });
+                      if (res.ok) {
+                        setEditingRecordId(null);
+                        fetchProofRecords();
+                      }
+                    }}
+                    onCancel={() => setEditingRecordId(null)}
+                  />
+                ) : (
+                  <>
+                    {r.proofSnippet && <pre className="mt-2 text-xs text-neutral-400 whitespace-pre-wrap font-sans">{r.proofSnippet}</pre>}
+                    <Button variant="ghost" size="sm" className="mt-2" onClick={() => setEditingRecordId(r.id)}>Edit</Button>
+                  </>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {proofPosts.length > 0 && (
         <section className="border border-neutral-800 rounded-lg overflow-hidden">

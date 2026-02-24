@@ -91,6 +91,7 @@ model Lead {
   attributions          LeadAttribution[]
   buildTasksLinked      BuildTask[]
   reusableAssetLogs     ReusableAssetLog[]
+  promotedFromIntake    IntakeLead?
 }
 
 enum LeadStatus {
@@ -829,4 +830,119 @@ model SignalSyncLog {
 
   @@index([sourceId])
   @@index([createdAt(sort: Desc)])
+}
+
+// ----- Phase 1.1: Lead Intake Engine (manual-first) -----
+
+enum IntakeLeadSource {
+  upwork
+  linkedin
+  referral
+  inbound
+  rss
+  other
+}
+
+enum IntakeLeadUrgency {
+  low
+  medium
+  high
+}
+
+enum IntakeLeadStatus {
+  new
+  qualified
+  proposal_drafted
+  sent
+  won
+  lost
+  archived
+}
+
+enum LeadActivityType {
+  note
+  status_change
+  score
+  draft
+  sent
+  followup
+  followup_completed
+  followup_snoozed
+  followup_call
+  followup_email
+  manual
+}
+
+model IntakeLead {
+  id               String            @id @default(cuid())
+  source           IntakeLeadSource
+  title            String
+  company          String?
+  contactName      String?
+  contactEmail     String?
+  link             String?
+  summary          String            @db.Text
+  budgetMin        Int?
+  budgetMax        Int?
+  urgency          IntakeLeadUrgency @default(medium)
+  status           IntakeLeadStatus  @default(new)
+  score            Int?
+  scoreReason      String?           @db.Text
+  nextAction       String?           @db.Text
+  nextActionDueAt  DateTime?
+  promotedLeadId   String?           @unique
+  promotedLead     Lead?             @relation(fields: [promotedLeadId], references: [id])
+  proposalSentAt      DateTime?
+  followUpDueAt       DateTime?
+  outcomeReason       String?           @db.Text
+  lastContactedAt     DateTime?
+  followUpCompletedAt DateTime?
+  followUpCount       Int               @default(0)
+  tags                String[]          @default([])
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  activities       LeadActivity[]
+  proofRecords     ProofRecord[]
+
+  @@index([status])
+  @@index([source])
+  @@index([createdAt])
+  @@index([nextActionDueAt])
+  @@index([promotedLeadId])
+}
+
+model LeadActivity {
+  id           String          @id @default(cuid())
+  intakeLeadId String
+  intakeLead   IntakeLead      @relation(fields: [intakeLeadId], references: [id], onDelete: Cascade)
+  type         LeadActivityType
+  content      String          @db.Text
+  metadataJson Json?
+  createdAt    DateTime        @default(now())
+
+  @@index([intakeLeadId])
+  @@index([intakeLeadId, createdAt(sort: Desc)])
+}
+
+/** Proof record from intake/won flow. Editable draft for observational proof. */
+model ProofRecord {
+  id           String     @id @default(cuid())
+  sourceType   String     @default("intake_lead") // intake_lead | pipeline_lead
+  sourceId     String
+  intakeLeadId String?
+  intakeLead   IntakeLead? @relation(fields: [intakeLeadId], references: [id], onDelete: SetNull)
+  title        String
+  company      String?
+  outcome      String     @default("won") // won | lost
+  proofSnippet String?    @db.Text
+  beforeState  String?    @db.Text
+  afterState   String?    @db.Text
+  metricValue  String?
+  metricLabel  String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([intakeLeadId])
+  @@index([sourceType, sourceId])
+  @@index([createdAt])
 }

@@ -1,6 +1,8 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { ReviewsList } from "@/components/dashboard/reviews/ReviewsList";
+import { IntakeWeeklyStats } from "@/components/dashboard/reviews/IntakeWeeklyStats";
+import { FollowupWeeklyStats } from "@/components/dashboard/reviews/FollowupWeeklyStats";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +18,8 @@ export default async function ReviewsPage() {
           Track end-of-week reviews. Complete reviews to capture what worked, what failed, and next commitments.
         </p>
       </div>
+      <IntakeWeeklyStats />
+      <FollowupWeeklyStats />
       <ReviewsList />
     </div>
   );

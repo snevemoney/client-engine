@@ -52,6 +52,8 @@ const primaryNav = [
   { href: "/dashboard/sales-leak", label: "Sales Leak", icon: TrendingUp },
   { href: "/dashboard/results", label: "Results Ledger", icon: Target },
   { href: "/dashboard/leads", label: "Leads", icon: Inbox },
+  { href: "/dashboard/intake", label: "Lead Intake", icon: Target },
+  { href: "/dashboard/followups", label: "Follow-ups", icon: Calendar },
   { href: "/dashboard/proposals", label: "Proposals", icon: FileText },
   { href: "/dashboard/build-ops", label: "Build Ops", icon: Wrench },
   { href: "/dashboard/metrics", label: "Metrics", icon: BarChart3 },
