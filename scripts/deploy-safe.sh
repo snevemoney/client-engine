@@ -36,6 +36,7 @@ echo "==> DB sync..."
 docker compose run --rm --user root app npx prisma db push --accept-data-loss
 docker compose run --rm --user root app node prisma/seed.mjs
 docker compose run --rm --user root app node prisma/seed-projects.mjs
+docker compose run --rm --user root app node prisma/seed-integrations.mjs
 
 echo "==> Health check..."
 sleep 5

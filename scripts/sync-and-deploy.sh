@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Sync dev (local + GitHub main) with prod (VPS) and deploy.
 # Use this when the server cannot git pull (no deploy key). Pushes to main, rsyncs to server, runs deploy.sh.
-# Usage: ./scripts/sync-and-deploy.sh
+# Usage: ./scripts/sync-and-deploy.sh [--full]
+#   --full = run deploy-safe (DB sync, seeds) instead of deploy-fast
 
 set -euo pipefail
 
@@ -36,8 +37,10 @@ rsync -avz --delete \
   "$ROOT/" "$SERVER:$REMOTE_DIR/"
 
 # 3) Run deploy on server
-echo "==> Running deploy-fast on server..."
-ssh -o ConnectTimeout=15 "$SERVER" "cd $REMOTE_DIR && bash scripts/deploy-fast.sh"
+DEPLOY_SCRIPT="deploy-fast.sh"
+[[ "${1:-}" == "--full" ]] && DEPLOY_SCRIPT="deploy-safe.sh"
+echo "==> Running $DEPLOY_SCRIPT on server..."
+ssh -o ConnectTimeout=15 "$SERVER" "cd $REMOTE_DIR && bash scripts/$DEPLOY_SCRIPT"
 
 # 4) Health check
 echo "==> Health check..."
