@@ -9,6 +9,8 @@
 Build a lead → proposal → build pipeline with hard gates so money path is safe:
 ACCEPT → PROPOSE → BUILD. Nothing ships unless explicitly allowed.
 
+**Positioning (1-line):** *I build custom operator apps that make business operations cleaner and faster — lead flow, proposals, proofs, Meta ads in one system. Build-and-leave.* — See [docs/OPERATOR_FRAMEWORK.md](docs/OPERATOR_FRAMEWORK.md) for full framework.
+
 **Baseline:** main = deployable truth (auth, schema, API hardening, health, retry, dry-run, error classifier, E2E scaffold).
 
 ---

@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { AlertTriangle } from "lucide-react";
 
+type Priority = { id: string; title: string; status: string };
+
 type StrategyWeek = {
   id: string;
   weekStart: string;
@@ -20,6 +22,19 @@ type StrategyWeek = {
   operatorImprovementFocus: string | null;
   salesTarget: string | null;
   notes: string | null;
+  theme?: string | null;
+  monthlyFocus?: string | null;
+  weeklyTargetValue?: number | null;
+  weeklyTargetUnit?: string | null;
+  declaredCommitment?: string | null;
+  keyMetric?: string | null;
+  keyMetricTarget?: string | null;
+  biggestBottleneck?: string | null;
+  missionStatement?: string | null;
+  whyThisWeekMatters?: string | null;
+  dreamStatement?: string | null;
+  fuelStatement?: string | null;
+  priorities?: Priority[];
   review?: {
     campaignShipped: boolean;
     systemImproved: boolean;
@@ -59,6 +74,21 @@ export function StrategyQuadrantPanel() {
   const [biggestBottleneck, setBiggestBottleneck] = useState("");
   const [nextAutomation, setNextAutomation] = useState("");
 
+  const [theme, setTheme] = useState("");
+  const [monthlyFocus, setMonthlyFocus] = useState("");
+  const [weeklyTargetValue, setWeeklyTargetValue] = useState("");
+  const [weeklyTargetUnit, setWeeklyTargetUnit] = useState("");
+  const [declaredCommitment, setDeclaredCommitment] = useState("");
+  const [newPriorityTitle, setNewPriorityTitle] = useState("");
+  const [addingPriority, setAddingPriority] = useState(false);
+  const [keyMetric, setKeyMetric] = useState("");
+  const [keyMetricTarget, setKeyMetricTarget] = useState("");
+  const [anticipatedBottleneck, setAnticipatedBottleneck] = useState("");
+  const [missionStatement, setMissionStatement] = useState("");
+  const [whyThisWeekMatters, setWhyThisWeekMatters] = useState("");
+  const [dreamStatement, setDreamStatement] = useState("");
+  const [fuelStatement, setFuelStatement] = useState("");
+
   useEffect(() => {
     Promise.all([
       fetch("/api/ops/strategy-week").then((r) => r.json()),
@@ -81,8 +111,20 @@ export function StrategyQuadrantPanel() {
         setSystemImproved(week.review?.systemImproved ?? false);
         setSalesActionsDone(week.review?.salesActionsDone ?? false);
         setProofCaptured(week.review?.proofCaptured ?? false);
-        setBiggestBottleneck(week.review?.biggestBottleneck ?? "");
+        setBiggestBottleneck(week.review?.biggestBottleneck ?? ""); // review actual
         setNextAutomation(week.review?.nextAutomation ?? "");
+        setTheme(week.theme ?? "");
+        setMonthlyFocus(week.monthlyFocus ?? "");
+        setWeeklyTargetValue(week.weeklyTargetValue != null ? String(week.weeklyTargetValue) : "");
+        setWeeklyTargetUnit(week.weeklyTargetUnit ?? "");
+        setDeclaredCommitment(week.declaredCommitment ?? "");
+        setKeyMetric(week.keyMetric ?? "");
+        setKeyMetricTarget(week.keyMetricTarget ?? "");
+        setAnticipatedBottleneck(week.biggestBottleneck ?? "");
+        setMissionStatement(week.missionStatement ?? "");
+        setWhyThisWeekMatters(week.whyThisWeekMatters ?? "");
+        setDreamStatement(week.dreamStatement ?? "");
+        setFuelStatement(week.fuelStatement ?? "");
       }
       setHistory(historyRes?.items ?? []);
       setLoading(false);
@@ -106,6 +148,18 @@ export function StrategyQuadrantPanel() {
           operatorImprovementFocus: operatorImprovementFocus || undefined,
           salesTarget: salesTarget || undefined,
           notes: notes || undefined,
+          theme: theme || undefined,
+          monthlyFocus: monthlyFocus || undefined,
+          weeklyTargetValue: weeklyTargetValue ? parseFloat(weeklyTargetValue) : undefined,
+          weeklyTargetUnit: weeklyTargetUnit || undefined,
+          declaredCommitment: declaredCommitment || undefined,
+          keyMetric: keyMetric || undefined,
+          keyMetricTarget: keyMetricTarget || undefined,
+          biggestBottleneck: anticipatedBottleneck || undefined,
+          missionStatement: missionStatement || undefined,
+          whyThisWeekMatters: whyThisWeekMatters || undefined,
+          dreamStatement: dreamStatement || undefined,
+          fuelStatement: fuelStatement || undefined,
         }),
       });
       if (res.ok) {
@@ -119,6 +173,29 @@ export function StrategyQuadrantPanel() {
       alert("Save failed");
     }
     setSaving(false);
+  };
+
+  const handleAddPriority = async () => {
+    if (!newPriorityTitle.trim() || !data) return;
+    setAddingPriority(true);
+    try {
+      const res = await fetch("/api/ops/strategy-week/priorities", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: newPriorityTitle.trim() }),
+      });
+      if (res.ok) {
+        const priority = await res.json();
+        setData({ ...data, priorities: [...(data.priorities ?? []), priority] });
+        setNewPriorityTitle("");
+      } else {
+        const err = await res.json();
+        alert(err.error ?? "Add failed");
+      }
+    } catch {
+      alert("Add failed");
+    }
+    setAddingPriority(false);
   };
 
   const handleSaveReview = async () => {
@@ -169,6 +246,9 @@ export function StrategyQuadrantPanel() {
     );
   }
 
+  const summaryTarget = weeklyTargetValue && weeklyTargetUnit ? `${weeklyTargetValue} ${weeklyTargetUnit}` : declaredCommitment?.slice(0, 80) ?? null;
+  const summaryMetric = keyMetric ? `${keyMetric}${keyMetricTarget ? ` → ${keyMetricTarget}` : ""}` : null;
+
   return (
     <div className="space-y-6 max-w-3xl">
       <div>
@@ -178,6 +258,29 @@ export function StrategyQuadrantPanel() {
           Operating System (Linear), Biz Dev & Sales (Linear).
         </p>
       </div>
+
+      {(summaryTarget || summaryMetric || fuelStatement) && (
+        <section className="rounded-lg border border-neutral-700 bg-neutral-900/30 px-4 py-3 flex flex-wrap gap-4 text-sm">
+          {summaryTarget && (
+            <div>
+              <span className="text-neutral-500">Weekly target:</span>{" "}
+              <span className="text-neutral-200">{summaryTarget}</span>
+            </div>
+          )}
+          {summaryMetric && (
+            <div>
+              <span className="text-neutral-500">Key metric:</span>{" "}
+              <span className="text-neutral-200">{summaryMetric}</span>
+            </div>
+          )}
+          {fuelStatement && (
+            <div className="min-w-0 flex-1">
+              <span className="text-neutral-500">Fuel:</span>{" "}
+              <span className="text-neutral-200 line-clamp-1">{fuelStatement}</span>
+            </div>
+          )}
+        </section>
+      )}
 
       {warnings.length > 0 && (
         <section className="rounded-lg border border-amber-900/40 bg-amber-950/20 p-4">
@@ -288,6 +391,46 @@ export function StrategyQuadrantPanel() {
             />
           </div>
 
+          <div className="grid gap-2 sm:grid-cols-2">
+            <div>
+              <label className="block text-neutral-500 text-xs mb-1">Theme</label>
+              <Input value={theme} onChange={(e) => setTheme(e.target.value)} placeholder="e.g. Pipeline push" />
+            </div>
+            <div>
+              <label className="block text-neutral-500 text-xs mb-1">Monthly focus</label>
+              <Input value={monthlyFocus} onChange={(e) => setMonthlyFocus(e.target.value)} placeholder="e.g. Close 2 deals" />
+            </div>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <div>
+              <label className="block text-neutral-500 text-xs mb-1">Weekly target value</label>
+              <Input
+                type="number"
+                value={weeklyTargetValue}
+                onChange={(e) => setWeeklyTargetValue(e.target.value)}
+                placeholder="e.g. 10"
+              />
+            </div>
+            <div>
+              <label className="block text-neutral-500 text-xs mb-1">Unit</label>
+              <Input
+                value={weeklyTargetUnit}
+                onChange={(e) => setWeeklyTargetUnit(e.target.value)}
+                placeholder="e.g. calls, proposals"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-neutral-500 text-xs mb-1">Declared commitment</label>
+            <Textarea
+              value={declaredCommitment}
+              onChange={(e) => setDeclaredCommitment(e.target.value)}
+              placeholder="What you commit to this week"
+              rows={2}
+              className="w-full rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm"
+            />
+          </div>
+
           <div>
             <label className="block text-neutral-500 text-xs uppercase tracking-wider mb-1">Notes</label>
             <Textarea
@@ -304,6 +447,174 @@ export function StrategyQuadrantPanel() {
           </Button>
         </div>
       </section>
+
+      <section className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-4">
+        <h2 className="text-sm font-medium text-neutral-300 mb-3">Logic + Emotion</h2>
+        <p className="text-xs text-neutral-500 mb-4">
+          PBD-style pairs: logic drives execution, emotion fuels it.
+        </p>
+        <div className="grid gap-6 sm:grid-cols-2">
+          <div className="space-y-3">
+            <h3 className="text-xs font-medium text-neutral-400 uppercase tracking-wider">Logic</h3>
+            <div>
+              <label className="block text-neutral-500 text-xs mb-1">Weekly target</label>
+              <p className="text-sm text-neutral-300">
+                {weeklyTargetValue && weeklyTargetUnit
+                  ? `${weeklyTargetValue} ${weeklyTargetUnit}`
+                  : "— Set above"}
+              </p>
+            </div>
+            <div>
+              <label className="block text-neutral-500 text-xs mb-1">Key metric</label>
+              <Input
+                value={keyMetric}
+                onChange={(e) => setKeyMetric(e.target.value)}
+                placeholder="e.g. pipeline value, calls, proposals"
+              />
+            </div>
+            <div>
+              <label className="block text-neutral-500 text-xs mb-1">Key metric target</label>
+              <Input
+                value={keyMetricTarget}
+                onChange={(e) => setKeyMetricTarget(e.target.value)}
+                placeholder="e.g. 10 calls, $5k pipeline"
+              />
+            </div>
+            <div>
+              <label className="block text-neutral-500 text-xs mb-1">Top priorities</label>
+              <p className="text-sm text-neutral-400">
+                {data?.priorities?.length ? `${data.priorities.length} set below` : "— Add below"}
+              </p>
+            </div>
+            <div>
+              <label className="block text-neutral-500 text-xs mb-1">Anticipated bottleneck</label>
+              <Input
+                value={anticipatedBottleneck}
+                onChange={(e) => setAnticipatedBottleneck(e.target.value)}
+                placeholder="What might block you?"
+              />
+            </div>
+            <div>
+              <label className="block text-neutral-500 text-xs mb-1">Actual bottleneck (from review)</label>
+              <p className="text-sm text-neutral-400">
+                {biggestBottleneck ? biggestBottleneck : "— Fill in review"}
+              </p>
+            </div>
+          </div>
+          <div className="space-y-3">
+            <h3 className="text-xs font-medium text-neutral-400 uppercase tracking-wider">Emotion</h3>
+            <div>
+              <label className="block text-neutral-500 text-xs mb-1">Mission statement</label>
+              <Textarea
+                value={missionStatement}
+                onChange={(e) => setMissionStatement(e.target.value)}
+                placeholder="Short mission (1–2 sentences)"
+                rows={2}
+                className="w-full rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-neutral-500 text-xs mb-1">Why this week matters</label>
+              <Textarea
+                value={whyThisWeekMatters}
+                onChange={(e) => setWhyThisWeekMatters(e.target.value)}
+                placeholder="What stakes or meaning drives this week"
+                rows={2}
+                className="w-full rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-neutral-500 text-xs mb-1">Dream statement</label>
+              <Textarea
+                value={dreamStatement}
+                onChange={(e) => setDreamStatement(e.target.value)}
+                placeholder="Outcome you are building toward"
+                rows={2}
+                className="w-full rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-neutral-500 text-xs mb-1">Fuel statement</label>
+              <Textarea
+                value={fuelStatement}
+                onChange={(e) => setFuelStatement(e.target.value)}
+                placeholder="Problem to beat / motivation (enemy reframed)"
+                rows={2}
+                className="w-full rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm"
+              />
+            </div>
+          </div>
+        </div>
+        <Button onClick={handleSave} disabled={saving} className="mt-4">
+          {saving ? "Saving…" : "Save strategy"}
+        </Button>
+      </section>
+
+      {data && (
+        <section className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-4">
+          <h2 className="text-sm font-medium text-neutral-300 mb-3">Priorities</h2>
+          <div className="space-y-2 mb-3">
+            {(data.priorities ?? []).map((p) => (
+              <div key={p.id} className="flex items-center gap-2 text-sm">
+                <select
+                  value={p.status}
+                  onChange={async (e) => {
+                    const status = e.target.value as "todo" | "in_progress" | "done" | "blocked";
+                    const res = await fetch(`/api/ops/strategy-week/priorities/${p.id}`, {
+                      method: "PATCH",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ status }),
+                    });
+                    if (res.ok) {
+                      const updated = await res.json();
+                      setData((d) =>
+                        d ? { ...d, priorities: (d.priorities ?? []).map((x) => (x.id === p.id ? updated : x)) } : null
+                      );
+                    }
+                  }}
+                  className="rounded border border-neutral-600 bg-neutral-900 px-2 py-1 text-xs"
+                >
+                  <option value="todo">To do</option>
+                  <option value="in_progress">In progress</option>
+                  <option value="done">Done</option>
+                  <option value="blocked">Blocked</option>
+                </select>
+                <span className={p.status === "done" ? "text-neutral-500 line-through" : "text-neutral-300"}>
+                  {p.title}
+                </span>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!confirm("Remove this priority?")) return;
+                    const res = await fetch(`/api/ops/strategy-week/priorities/${p.id}`, { method: "DELETE" });
+                    if (res.ok && data)
+                      setData({ ...data, priorities: (data.priorities ?? []).filter((x) => x.id !== p.id) });
+                  }}
+                  className="ml-auto text-neutral-500 hover:text-red-400 text-xs"
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <Input
+              value={newPriorityTitle}
+              onChange={(e) => setNewPriorityTitle(e.target.value)}
+              placeholder="New priority…"
+              className="flex-1"
+              onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddPriority())}
+            />
+            <Button
+              size="sm"
+              onClick={handleAddPriority}
+              disabled={addingPriority || !newPriorityTitle.trim()}
+            >
+              {addingPriority ? "Adding…" : "Add"}
+            </Button>
+          </div>
+        </section>
+      )}
 
       <section className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-4">
         <h2 className="text-sm font-medium text-neutral-300 mb-3">Weekly review</h2>

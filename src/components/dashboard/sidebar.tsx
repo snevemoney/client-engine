@@ -14,6 +14,7 @@ import {
   BarChart3,
   TrendingUp,
   Quote,
+  ClipboardCheck,
   ClipboardList,
   Briefcase,
   MessageSquare,
@@ -26,13 +27,27 @@ import {
   Youtube,
   Megaphone,
   Compass,
+  Rss,
+  Users,
+  Calendar,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { Sheet } from "@/components/ui/sheet";
 
+const founderOsNav = [
+  { href: "/dashboard/overview", label: "Overview", icon: LayoutDashboard },
+  { href: "/dashboard/sales", label: "Sales", icon: TrendingUp },
+  { href: "/dashboard/strategy", label: "Strategy", icon: Compass },
+  { href: "/dashboard/team", label: "Team", icon: Users },
+  { href: "/dashboard/grow", label: "GROW", icon: Target },
+  { href: "/dashboard/planning", label: "Planning", icon: Calendar },
+  { href: "/dashboard/reviews", label: "Reviews", icon: ClipboardCheck },
+  { href: "/dashboard/scoreboard", label: "Scoreboard", icon: Target },
+  { href: "/dashboard/settings", label: "Settings", icon: Settings },
+];
+
 const primaryNav = [
   { href: "/dashboard/command", label: "Command Center", icon: LayoutDashboard },
-  { href: "/dashboard/strategy", label: "Strategy", icon: Compass },
   { href: "/dashboard/ops-health", label: "Ops Health", icon: Activity },
   { href: "/dashboard/sales-leak", label: "Sales Leak", icon: TrendingUp },
   { href: "/dashboard/results", label: "Results Ledger", icon: Target },
@@ -44,7 +59,7 @@ const primaryNav = [
   { href: "/dashboard/chat", label: "Chatbot", icon: MessageSquare },
   { href: "/dashboard/youtube", label: "YouTube Ingest", icon: Youtube },
   { href: "/dashboard/learning", label: "Learning", icon: BookOpen },
-  { href: "/dashboard/settings", label: "Settings", icon: Settings },
+  { href: "/dashboard/signals", label: "Signals", icon: Rss },
 ];
 
 const secondaryNav = [
@@ -68,7 +83,27 @@ function NavContent({ onLinkClick }: { onLinkClick?: () => void }) {
   return (
     <>
       <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-auto">
-        <div className="text-xs font-medium text-neutral-500 uppercase tracking-wider px-3 py-1">Main</div>
+        <div className="text-xs font-medium text-neutral-500 uppercase tracking-wider px-3 py-1">Founder OS</div>
+        {founderOsNav.map((item) => {
+          const active =
+            item.href === "/dashboard/overview"
+              ? pathname === "/dashboard/overview"
+              : item.href === "/dashboard/settings"
+                ? pathname.startsWith("/dashboard/settings")
+                : pathname.startsWith(item.href);
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={onLinkClick}
+              className={linkClass(!!active)}
+            >
+              <item.icon className="w-4 h-4 shrink-0" />
+              {item.label}
+            </Link>
+          );
+        })}
+        <div className="text-xs font-medium text-neutral-500 uppercase tracking-wider px-3 py-1 mt-2">Ops</div>
         {primaryNav.map((item) => {
           const active =
             item.href === "/dashboard/command"

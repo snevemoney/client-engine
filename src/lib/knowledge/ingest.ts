@@ -18,6 +18,27 @@ import {
 const SYSTEM_LEAD_SOURCE = "system";
 const SYSTEM_LEAD_TITLE = "Knowledge Engine Runs";
 
+async function getPromotedSuggestions(limit = 20): Promise<ExistingPromotedSuggestion[]> {
+  const lead = await db.lead.findFirst({
+    where: { source: SYSTEM_LEAD_SOURCE, title: SYSTEM_LEAD_TITLE },
+    select: { id: true },
+  });
+  if (!lead) return [];
+  const artifacts = await db.artifact.findMany({
+    where: { leadId: lead.id, type: KNOWLEDGE_ARTIFACT_TYPES.IMPROVEMENT_SUGGESTION },
+    orderBy: { createdAt: "desc" },
+    take: limit,
+    select: { title: true, meta: true },
+  });
+  const promoted: ExistingPromotedSuggestion[] = [];
+  for (const a of artifacts) {
+    const meta = a.meta as { status?: string; proposedChange?: string; systemArea?: string } | null;
+    if (meta?.status !== "applied" && meta?.status !== "reviewed") continue;
+    promoted.push({ title: a.title ?? "Suggestion", proposedChange: meta.proposedChange ?? "", systemArea: meta.systemArea ?? "Other" });
+  }
+  return promoted;
+}
+
 async function getOrCreateKnowledgeSystemLead(): Promise<string> {
   const existing = await db.lead.findFirst({
     where: { source: SYSTEM_LEAD_SOURCE, title: SYSTEM_LEAD_TITLE },
@@ -102,6 +123,8 @@ export async function ingestVideo(opts: IngestVideoOptions): Promise<KnowledgeRu
     publishedAt,
   };
 
+  const knowledgeProvenance = { source: "knowledge_ingest", stepName: "ingest_video", capturedAt: at };
+
   try {
     const transcriptArtifact = await db.artifact.create({
       data: {
@@ -109,7 +132,7 @@ export async function ingestVideo(opts: IngestVideoOptions): Promise<KnowledgeRu
         type: KNOWLEDGE_ARTIFACT_TYPES.YOUTUBE_VIDEO_TRANSCRIPT,
         title: `TRANSCRIPT_${videoId}`,
         content: transcriptText,
-        meta: metaWithTitle,
+        meta: { ...metaWithTitle, provenance: knowledgeProvenance },
       },
     });
     report.artifactIds.push(transcriptArtifact.id);
@@ -122,14 +145,15 @@ export async function ingestVideo(opts: IngestVideoOptions): Promise<KnowledgeRu
         type: KNOWLEDGE_ARTIFACT_TYPES.YOUTUBE_VIDEO_SUMMARY,
         title: `SUMMARY_${videoId}`,
         content: extraction.summary,
-        meta: metaWithTitle,
+        meta: { ...metaWithTitle, provenance: knowledgeProvenance },
       },
     });
     report.artifactIds.push(summaryArtifact.id);
 
     for (const ins of extraction.insights) {
-      const insightMeta: KnowledgeInsightMeta = {
+      const insightMeta: KnowledgeInsightMeta & { provenance?: object } = {
         ...metaWithTitle,
+        provenance: knowledgeProvenance,
         categories: ins.categories,
         principle: ins.kind === "principle",
         tactical: ins.kind === "tactical",
@@ -151,10 +175,12 @@ export async function ingestVideo(opts: IngestVideoOptions): Promise<KnowledgeRu
       report.artifactIds.push(a.id);
     }
 
-    const suggestions = await generateImprovementSuggestions(extraction, videoUrl);
+    const promoted = await getPromotedSuggestions();
+    const suggestions = await generateImprovementSuggestions(extraction, videoUrl, promoted);
     for (const s of suggestions) {
-      const sugMeta: ImprovementSuggestionMeta = {
+      const sugMeta: ImprovementSuggestionMeta & { provenance?: object } = {
         ...metaWithTitle,
+        provenance: knowledgeProvenance,
         problem: s.problem,
         proposedChange: s.proposedChange,
         expectedImpact: s.expectedImpact,
@@ -163,6 +189,7 @@ export async function ingestVideo(opts: IngestVideoOptions): Promise<KnowledgeRu
         sourceTranscriptRef: s.sourceTranscriptRef,
         sourceArtifactId: transcriptArtifact.id,
         status: "queued",
+        confidenceTier: s.confidenceTier,
       };
       const a = await db.artifact.create({
         data: {

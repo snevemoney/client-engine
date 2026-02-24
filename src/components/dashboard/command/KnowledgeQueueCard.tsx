@@ -18,7 +18,7 @@ export function KnowledgeQueueCard({
     <section className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-4">
       <h2 className="text-sm font-medium text-neutral-300 mb-2">Knowledge Queue</h2>
       <p className="text-xs text-neutral-500 mb-3">
-        Today: new transcripts, insights, improvement suggestions. All queued for review.
+        Transcripts, insights, suggestions. All queued for review.
       </p>
       <ul className="text-sm text-neutral-400 space-y-1 mb-3">
         <li>Transcripts today: {transcriptsToday}</li>

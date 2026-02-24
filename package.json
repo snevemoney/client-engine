@@ -10,6 +10,7 @@
     "worker": "npx tsx src/workers/index.ts",
     "db:migrate": "npx prisma migrate dev",
     "db:seed": "node prisma/seed.mjs",
+    "db:seed-integrations": "node prisma/seed-integrations.mjs",
     "reset-auth": "node prisma/reset-auth.mjs",
     "db:push": "npx prisma db push",
     "db:seed-projects": "node prisma/seed-projects.mjs",
@@ -45,6 +46,7 @@
     "nodemailer": "^7.0.13",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "rss-parser": "^3.13.0",
     "tailwind-merge": "^3.5.0",
     "youtube-transcript": "^1.2.1",
     "zod": "^4.3.6"

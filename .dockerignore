@@ -2,4 +2,11 @@ node_modules
 .next
 .git
 .env
+.env.*
 *.md
+test-results
+playwright-report
+.cursor
+coverage
+*.log
+dist

@@ -577,6 +577,22 @@ model MetaAdsSchedulerRunLog {
   @@index([accountId, startedAt])
 }
 
+// ----- Planning themes (year / quarter / month) -----
+
+/** High-level themes for planning. periodKey: "2025", "2025-Q1", "2025-01". */
+model PlanningTheme {
+  id         String   @id @default(cuid())
+  periodType String   // year | quarter | month
+  periodKey  String   // "2025" | "2025-Q1" | "2025-01"
+  theme      String   @db.Text
+  notes      String?  @db.Text
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([periodType, periodKey])
+  @@index([periodType])
+}
+
 // ----- Strategy Quadrant (weekly planning + review) -----
 
 /** Weekly strategy: phase, campaign, operator focus, sales target. */
@@ -593,9 +609,28 @@ model StrategyWeek {
   operatorImprovementFocus String? @db.Text
   salesTarget            String?  @db.Text
   notes                  String?  @db.Text
+  theme                  String?
+  monthlyFocus           String?
+  weeklyTargetValue      Decimal? @db.Decimal(18, 2)
+  weeklyTargetUnit       String?
+  declaredCommitment     String?  @db.Text
+  // Logic + Emotion (12 Building Blocks Phase 1)
+  keyMetric              String?  @db.Text
+  keyMetricTarget        String?  @db.Text
+  biggestBottleneck      String?  @db.Text  // planning-time / anticipated
+  missionStatement       String?  @db.Text
+  whyThisWeekMatters     String?  @db.Text
+  dreamStatement         String?  @db.Text
+  fuelStatement          String?  @db.Text
+  reviewDueAt            DateTime?
+  lastReviewedAt        DateTime?
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
   review                 StrategyWeekReview?
+  targets                StrategyWeekTarget[]
+  priorities             StrategyWeekPriority[]
+  risks                  StrategyWeekRisk[]
+  recruiting             StrategyWeekRecruitingTarget[]
 
   @@unique([weekStart])
   @@index([weekStart])
@@ -604,34 +639,194 @@ model StrategyWeek {
 
 /** End-of-week review checkmarks and notes. */
 model StrategyWeekReview {
-  id                String       @id @default(cuid())
-  strategyWeekId    String       @unique
-  strategyWeek      StrategyWeek @relation(fields: [strategyWeekId], references: [id], onDelete: Cascade)
-  campaignShipped   Boolean      @default(false)
-  systemImproved    Boolean      @default(false)
-  salesActionsDone  Boolean      @default(false)
-  proofCaptured     Boolean      @default(false)
-  biggestBottleneck String?      @db.Text
-  nextAutomation    String?      @db.Text
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
+  id                  String       @id @default(cuid())
+  strategyWeekId      String       @unique
+  strategyWeek        StrategyWeek @relation(fields: [strategyWeekId], references: [id], onDelete: Cascade)
+  campaignShipped     Boolean      @default(false)
+  systemImproved      Boolean      @default(false)
+  salesActionsDone    Boolean      @default(false)
+  proofCaptured       Boolean      @default(false)
+  biggestBottleneck   String?      @db.Text
+  nextAutomation      String?      @db.Text
+  score               Int?         // 0–100
+  whatWorked          String?      @db.Text
+  whatFailed          String?      @db.Text
+  whatChanged         String?      @db.Text
+  proofCapturedNotes  String?      @db.Text
+  nextWeekCommitments String?      @db.Text
+  completedAt         DateTime?
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+}
+
+model StrategyWeekTarget {
+  id             String       @id @default(cuid())
+  strategyWeekId String
+  strategyWeek   StrategyWeek @relation(fields: [strategyWeekId], references: [id], onDelete: Cascade)
+  category       String       // revenue | leads | calls | proposals | proof | custom
+  name           String
+  targetValue    Decimal      @db.Decimal(18, 2)
+  currentValue   Decimal?     @db.Decimal(18, 2)
+  unit           String       @default("count") // count | % | $
+  source         String       @default("manual") // manual | internal | meta_ads | ga4 | etc
+  status         String       @default("unknown") // on_track | off_track | at_risk | unknown
+  sortOrder      Int          @default(100)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([strategyWeekId])
+}
+
+model StrategyWeekPriority {
+  id             String       @id @default(cuid())
+  strategyWeekId String
+  strategyWeek   StrategyWeek @relation(fields: [strategyWeekId], references: [id], onDelete: Cascade)
+  title          String
+  description    String?      @db.Text
+  status         String       @default("todo") // todo | in_progress | done | blocked
+  priorityOrder  Int          @default(100)
+  dueDate        DateTime?    @db.Date
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([strategyWeekId])
+}
+
+model StrategyWeekRisk {
+  id             String       @id @default(cuid())
+  strategyWeekId String
+  strategyWeek   StrategyWeek @relation(fields: [strategyWeekId], references: [id], onDelete: Cascade)
+  title          String
+  description    String?      @db.Text
+  severity       String       @default("medium") // low | medium | high
+  likelihood     String       @default("medium") // low | medium | high
+  responsePlan   String?      @db.Text
+  status         String       @default("open") // open | monitoring | resolved
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([strategyWeekId])
+}
+
+model StrategyWeekRecruitingTarget {
+  id             String       @id @default(cuid())
+  strategyWeekId String
+  strategyWeek   StrategyWeek @relation(fields: [strategyWeekId], references: [id], onDelete: Cascade)
+  type           String       // client | partner | mentor | collaborator | hire
+  name           String
+  whyThisTarget  String?      @db.Text
+  status         String       @default("target") // target | contacted | in_progress | won | lost
+  nextAction     String?      @db.Text
+  dueDate        DateTime?    @db.Date
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([strategyWeekId])
 }
 
 // ----- Integration connections (Settings control center) -----
 
+/// Mode = operator choice. Status = technical reality.
+/// Example: mode=live + status=error means "I want live but it failed"
+enum IntegrationMode {
+  off
+  mock
+  manual
+  live
+}
+
 /** Per-provider integration config. Tokens stored in configJson; no encryption in V1. */
 model IntegrationConnection {
-  id             String    @id @default(cuid())
-  provider       String    @unique
-  status         String    @default("not_connected") // not_connected | connected | error | disabled
-  accountLabel   String?
-  configJson     Json      @default("{}")
-  isEnabled      Boolean   @default(true)
-  lastSyncedAt   DateTime?
-  lastTestedAt   DateTime?
-  lastError      String?   @db.Text
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  id              String          @id @default(cuid())
+  provider        String          @unique
+  status          String          @default("not_connected") // not_connected | connected | error | disabled
+  mode            IntegrationMode @default(off)
+  category        String?         // research | outreach | content | visibility | ops | delivery | analytics
+  prodOnly        Boolean         @default(false) // live only in production
+  providerLabel   String?         // legacy; prefer displayName
+  displayName     String?         // human-friendly label (e.g. "Google Search Console")
+  helpText        String?         @db.Text // short provider guidance
+  sortOrder       Int             @default(100)
+  accountLabel    String?
+  configJson      Json            @default("{}")
+  isEnabled       Boolean         @default(true)
+  notes           String?         @db.Text
+  lastSyncedAt    DateTime?
+  lastTestedAt    DateTime?
+  lastTestStatus  String?         @default("never") // never | pass | fail
+  lastError       String?         @db.Text
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
 
   @@index([provider])
+  @@index([category])
+}
+
+model IntegrationRun {
+  id             String   @id @default(cuid())
+  provider       String
+  action         String   // test | sync | import | disconnect
+  environment    String   @default("development") // development | production
+  status         String   // success | error
+  message        String?  @db.Text
+  payloadSummary Json?
+  createdAt      DateTime @default(now())
+
+  @@index([provider])
+  @@index([createdAt(sort: Desc)])
+}
+
+// ----- Signal Engine (RSS/News ingestion) -----
+
+model SignalSource {
+  id           String    @id @default(cuid())
+  name         String
+  type         String    @default("rss") // rss | atom
+  url          String
+  enabled      Boolean   @default(true)
+  mode         IntegrationMode @default(mock)
+  prodOnly     Boolean   @default(false)
+  lastSyncedAt DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  items SignalItem[]
+  logs  SignalSyncLog[]
+
+  @@unique([url])
+  @@index([enabled])
+}
+
+model SignalItem {
+  id         String   @id @default(cuid())
+  sourceId   String
+  source     SignalSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  url        String   @unique
+  title      String   @db.Text
+  publishedAt DateTime?
+  summary    String?  @db.Text
+  rawJson    Json?
+  score      Int      @default(0)
+  tags       String[]
+  status     String   @default("new") // new | read | archived
+  createdAt  DateTime @default(now())
+
+  @@index([sourceId])
+  @@index([publishedAt(sort: Desc)])
+  @@index([score])
+  @@index([status])
+}
+
+model SignalSyncLog {
+  id        String       @id @default(cuid())
+  sourceId  String
+  source    SignalSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  mode      String       // off | mock | manual | live
+  status    String       // success | error
+  message   String?      @db.Text
+  count     Int?
+  createdAt DateTime     @default(now())
+
+  @@index([sourceId])
+  @@index([createdAt(sort: Desc)])
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
+import { withRouteTiming } from "@/lib/api-utils";
 import { buildBrief } from "@/lib/orchestrator/brief";
 import { getLatestOperatorBrief } from "@/lib/ops/operatorBrief";
 import { getExecutiveBriefContext } from "@/lib/ops/executiveBrief";
@@ -64,8 +65,9 @@ function buildDynamicSuggestedActions(failures: {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  return withRouteTiming("POST /api/ops/chat", async () => {
+    const session = await auth();
+    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   let body: { message?: string };
   try {
@@ -189,4 +191,5 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
+  });
 }

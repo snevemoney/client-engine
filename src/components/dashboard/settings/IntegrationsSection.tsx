@@ -7,25 +7,41 @@ import { Badge } from "@/components/ui/badge";
 import { X } from "lucide-react";
 import type { IntegrationProvider } from "@/lib/integrations/providers";
 
+type IntegrationMode = "off" | "mock" | "manual" | "live";
+
 type Connection = {
-  id: string;
+  id: string | null;
   status: string;
+  mode: IntegrationMode;
+  category: string;
+  prodOnly: boolean;
+  displayName?: string | null;
+  helpText?: string | null;
   accountLabel: string | null;
   isEnabled: boolean;
   lastSyncedAt: string | null;
   lastTestedAt: string | null;
+  lastTestStatus: string;
   lastError: string | null;
-  configJson?: Record<string, unknown>;
+  configJson?: Record<string, unknown> | null;
 };
 
 type Item = IntegrationProvider & {
-  connection: Connection | null;
+  connection: Connection;
+};
+
+const MODE_HELPER: Record<IntegrationMode, string> = {
+  off: "Integration disabled",
+  mock: "Simulated local/test behavior",
+  manual: "Track/use manually without live API actions",
+  live: "Real external API usage",
 };
 
 function formatRelative(iso: string): string {
   try {
     const d = new Date(iso);
     const diff = Date.now() - d.getTime();
+    if (!Number.isFinite(diff) || diff < 0) return "";
     if (diff < 60_000) return "just now";
     if (diff < 3600_000) return `${Math.floor(diff / 60_000)}m ago`;
     if (diff < 86400_000) return `${Math.floor(diff / 3600_000)}h ago`;
@@ -49,6 +65,17 @@ function statusBadge(status: string, isEnabled: boolean) {
   }
 }
 
+function modeBadge(mode: IntegrationMode | string | undefined) {
+  const m = (mode ?? "off").toLowerCase() as IntegrationMode;
+  const styles: Record<IntegrationMode, string> = {
+    off: "bg-neutral-700/50 text-neutral-400 border-neutral-600",
+    mock: "bg-amber-600/30 text-amber-400 border-amber-700",
+    manual: "bg-blue-600/30 text-blue-400 border-blue-700",
+    live: "bg-emerald-600/30 text-emerald-400 border-emerald-700",
+  };
+  return <Badge variant="outline" className={styles[m] ?? styles.off}>{m.toUpperCase()}</Badge>;
+}
+
 export function IntegrationsSection() {
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,6 +83,8 @@ export function IntegrationsSection() {
   const [configAccessToken, setConfigAccessToken] = useState("");
   const [configAccountId, setConfigAccountId] = useState("");
   const [configBaseUrl, setConfigBaseUrl] = useState("");
+  const [configQueryParams, setConfigQueryParams] = useState<{ key: string; value: string }[]>([]);
+  const [configMode, setConfigMode] = useState<IntegrationMode>("off");
   const [configEnabled, setConfigEnabled] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testResult, setTestResult] = useState<string | null>(null);
@@ -70,10 +99,15 @@ export function IntegrationsSection() {
   function openConfig(item: Item) {
     const conn = item.connection;
     const config = conn?.configJson as Record<string, unknown> | undefined;
+    const qp =
+      (config?.additionalQueryParams as Record<string, string> | undefined) ??
+      (config?.queryParams as Record<string, string> | undefined);
     setConfigOpen(item);
     setConfigAccessToken((config?.accessToken as string) ?? "");
     setConfigAccountId((config?.accountId as string) ?? "");
     setConfigBaseUrl((config?.baseUrl as string) ?? "");
+    setConfigQueryParams(qp ? Object.entries(qp).map(([k, v]) => ({ key: k, value: String(v) })) : []);
+    setConfigMode((conn?.mode as IntegrationMode) ?? "off");
     setConfigEnabled(conn?.isEnabled ?? true);
     setTestResult(null);
   }
@@ -82,34 +116,59 @@ export function IntegrationsSection() {
     if (!configOpen) return;
     setSaving(true);
     try {
+      const existingConfig = (configOpen.connection.configJson as Record<string, unknown>) ?? {};
+      const qpEntries = configQueryParams
+        .filter((p) => p.key.trim())
+        .map((p) => [p.key.trim(), p.value] as [string, string]);
+      const hasDuplicateKeys = new Set(qpEntries.map(([k]) => k)).size < qpEntries.length;
+      if (hasDuplicateKeys) {
+        alert("Duplicate keys in query parameters. Remove duplicates.");
+        setSaving(false);
+        return;
+      }
+      const configJson: Record<string, unknown> = {
+        ...existingConfig,
+        accessToken: configAccessToken || undefined,
+        accountId: configAccountId || undefined,
+        baseUrl: configBaseUrl || undefined,
+      };
+      if (configOpen.supportsQueryParams) {
+        configJson.additionalQueryParams =
+          qpEntries.length > 0 ? Object.fromEntries(qpEntries) : undefined;
+      }
       const res = await fetch(`/api/integrations/${configOpen.key}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          configJson: {
-            accessToken: configAccessToken || undefined,
-            accountId: configAccountId || undefined,
-            baseUrl: configBaseUrl || undefined,
-          },
+          configJson,
           status: configAccessToken ? "connected" : "not_connected",
+          mode: configMode,
           isEnabled: configEnabled,
         }),
       });
+      const data = await res.json();
       if (res.ok) {
-        const data = await res.json();
         setItems((prev) =>
           prev.map((i) =>
             i.key === configOpen.key
               ? {
                   ...i,
                   connection: {
+                    ...i.connection,
                     id: data.id,
                     status: data.status,
+                    mode: data.mode ?? configMode,
+                    category: data.category ?? configOpen.connection.category,
+                    prodOnly: data.prodOnly ?? configOpen.connection.prodOnly,
+                    displayName: data.displayName ?? data.providerLabel ?? i.connection.displayName,
+                    helpText: data.helpText ?? i.connection.helpText,
                     accountLabel: data.accountLabel,
                     isEnabled: data.isEnabled,
                     lastSyncedAt: data.lastSyncedAt,
                     lastTestedAt: data.lastTestedAt,
+                    lastTestStatus: data.lastTestStatus ?? "never",
                     lastError: data.lastError,
+                    configJson: data.configJson ?? configJson,
                   },
                 }
               : i
@@ -117,8 +176,7 @@ export function IntegrationsSection() {
         );
         setConfigOpen(null);
       } else {
-        const err = await res.json();
-        alert(err.error ?? "Save failed");
+        alert(data?.error ?? data?.message ?? "Save failed");
       }
     } catch {
       alert("Save failed");
@@ -131,26 +189,32 @@ export function IntegrationsSection() {
     try {
       const res = await fetch(`/api/integrations/${item.key}/test`, { method: "POST" });
       const data = await res.json();
-      setTestResult(data.ok ? `OK: ${data.message}` : `Failed: ${data.message}`);
-      if (res.ok) {
+      const msg = data.message ?? (data.ok ? "OK" : "Failed");
+      if (data.ok) {
+        setTestResult(`✓ ${msg}`);
+      } else {
+        setTestResult(`✗ ${msg}`);
+      }
+      if (res.ok && data.ok) {
         const listRes = await fetch("/api/integrations");
         const listData = await listRes.json();
         setItems(listData?.items ?? items);
       }
     } catch {
-      setTestResult("Request failed");
+      setTestResult("✗ Request failed");
     }
   }
 
   async function disconnect(item: Item) {
-    if (!confirm(`Disconnect ${item.name}?`)) return;
+    const label = item.connection.displayName ?? item.name ?? item.key;
+    if (!confirm(`Disconnect ${label}?`)) return;
     try {
       const res = await fetch(`/api/integrations/${item.key}/disconnect`, { method: "POST" });
       if (res.ok) {
         setItems((prev) =>
           prev.map((i) =>
             i.key === item.key
-              ? { ...i, connection: { ...i.connection!, status: "not_connected", isEnabled: false } }
+              ? { ...i, connection: { ...i.connection, status: "not_connected", isEnabled: false } }
               : i
           )
         );
@@ -184,9 +248,21 @@ export function IntegrationsSection() {
               className="rounded-lg border border-neutral-700 bg-neutral-900/50 p-4 space-y-3"
             >
               <div className="flex items-start justify-between gap-2">
-                <div>
-                  <h3 className="font-medium text-neutral-200">{item.name}</h3>
-                  <p className="text-xs text-neutral-500 mt-0.5">{item.usedBy}</p>
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-medium text-neutral-200">
+                    {item.connection?.displayName ?? item.name ?? item.key}
+                  </h3>
+                  {item.usedBy && <p className="text-xs text-neutral-500 mt-0.5">{item.usedBy}</p>}
+                  {(item.connection?.helpText ?? item.helpText) && (
+                    <p className="text-xs text-neutral-500 mt-0.5 line-clamp-2">
+                      {item.connection?.helpText ?? item.helpText}
+                    </p>
+                  )}
+                  {item.connection?.category && (
+                    <span className="text-xs text-neutral-600 capitalize mt-0.5 inline-block">
+                      {(item.connection.category ?? "").replace(/_/g, " ")}
+                    </span>
+                  )}
                   {(item.connection?.lastTestedAt || item.connection?.lastSyncedAt) && (
                     <p className="text-xs text-neutral-500 mt-1">
                       {item.connection?.lastTestedAt && `Tested ${formatRelative(item.connection.lastTestedAt)}`}
@@ -195,11 +271,19 @@ export function IntegrationsSection() {
                     </p>
                   )}
                 </div>
-                {statusBadge(item.connection?.status ?? "not_connected", item.connection?.isEnabled ?? true)}
+                <div className="flex flex-col items-end gap-1">
+                  <div className="flex gap-1 flex-wrap justify-end">
+                    {modeBadge(item.connection?.mode ?? "off")}
+                    {item.connection?.prodOnly && (
+                      <Badge variant="outline" className="text-neutral-500 border-neutral-600" title="Live data only in production. Use MOCK or MANUAL locally.">Prod only</Badge>
+                    )}
+                    {statusBadge(item.connection?.status ?? "not_connected", item.connection?.isEnabled ?? true)}
+                  </div>
+                </div>
               </div>
               <div className="flex flex-wrap gap-2">
                 <Button size="sm" variant="outline" onClick={() => openConfig(item)}>
-                  {item.connection ? "Configure" : "Connect"}
+                  {item.connection?.id ? "Configure" : "Connect"}
                 </Button>
                 <Button size="sm" variant="ghost" onClick={() => testConnection(item)}>
                   Test
@@ -237,6 +321,32 @@ export function IntegrationsSection() {
             </div>
             <div className="space-y-3 text-sm">
               <div>
+                <label className="block text-xs text-neutral-500 mb-1">Mode</label>
+                <select
+                  value={configMode}
+                  onChange={(e) => setConfigMode(e.target.value as IntegrationMode)}
+                  className="w-full rounded-md border border-neutral-600 bg-neutral-900 px-3 py-2 text-neutral-200"
+                >
+                  <option value="off">OFF</option>
+                  <option value="mock">MOCK</option>
+                  <option value="manual">MANUAL</option>
+                  <option value="live" disabled={configOpen?.connection?.prodOnly && typeof window !== "undefined" && window.location?.hostname === "localhost"}>
+                    LIVE{configOpen?.connection?.prodOnly && typeof window !== "undefined" && window.location?.hostname === "localhost" ? " (prod only)" : ""}
+                  </option>
+                </select>
+                <p className="text-xs text-neutral-500 mt-1">{MODE_HELPER[configMode]}</p>
+                {configOpen?.connection?.prodOnly &&
+                  typeof window !== "undefined" &&
+                  window.location?.hostname === "localhost" && (
+                    <p className="text-xs text-amber-400/90 mt-2 rounded bg-amber-950/40 px-2 py-1.5">
+                      LIVE mode is production-only. Use MOCK or MANUAL in local/dev.
+                    </p>
+                  )}
+                {configOpen?.helpText && !configOpen?.connection?.prodOnly && (
+                  <p className="text-xs text-neutral-500 mt-2">{configOpen.helpText}</p>
+                )}
+              </div>
+              <div>
                 <label className="block text-xs text-neutral-500 mb-1">API token / access token</label>
                 <Input
                   type="password"
@@ -264,6 +374,64 @@ export function IntegrationsSection() {
                   className="w-full"
                 />
               </div>
+              {configOpen.supportsQueryParams && (
+                <div>
+                  <label className="block text-xs text-neutral-500 mb-1">
+                    Additional Query Parameters
+                  </label>
+                  <p className="text-xs text-neutral-600 mb-2">
+                    Optional provider-specific query parameters (key/value). Example: hl=en, gl=us
+                  </p>
+                  <div className="space-y-2">
+                    {configQueryParams.map((p, i) => (
+                      <div key={i} className="flex gap-2">
+                        <Input
+                          value={p.key}
+                          onChange={(e) =>
+                            setConfigQueryParams((prev) =>
+                              prev.map((x, j) => (j === i ? { ...x, key: e.target.value } : x))
+                            )
+                          }
+                          placeholder="key"
+                          className="flex-1"
+                        />
+                        <Input
+                          value={p.value}
+                          onChange={(e) =>
+                            setConfigQueryParams((prev) =>
+                              prev.map((x, j) => (j === i ? { ...x, value: e.target.value } : x))
+                            )
+                          }
+                          placeholder="value"
+                          className="flex-1"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() =>
+                            setConfigQueryParams((prev) => prev.filter((_, j) => j !== i))
+                          }
+                          className="text-neutral-500 shrink-0"
+                        >
+                          ×
+                        </Button>
+                      </div>
+                    ))}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const hasEmpty = configQueryParams.some((x) => !x.key.trim());
+                        if (!hasEmpty) setConfigQueryParams((prev) => [...prev, { key: "", value: "" }]);
+                      }}
+                    >
+                      Add row
+                    </Button>
+                  </div>
+                </div>
+              )}
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"

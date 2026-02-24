@@ -30,7 +30,7 @@ function SuggestionRow({
   id: string;
   title: string;
   content: string;
-  meta: { systemArea?: string; effort?: string; expectedImpact?: string; status?: string; produced?: string | null } | null;
+  meta: { systemArea?: string; effort?: string; expectedImpact?: string; status?: string; produced?: string | null; confidenceTier?: "high" | "medium" | "low" } | null;
   createdAt: string;
   status: string;
   produced: string;
@@ -53,7 +53,22 @@ function SuggestionRow({
   return (
     <li className="border border-neutral-800 rounded-lg p-3 bg-neutral-900/30">
       <div className="flex items-start justify-between gap-2">
-        <h3 className="font-medium text-neutral-200">{title}</h3>
+        <div className="flex items-center gap-2 min-w-0">
+          <h3 className="font-medium text-neutral-200">{title}</h3>
+          {meta?.confidenceTier && (
+            <span
+              className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] uppercase tracking-wider ${
+                meta.confidenceTier === "high"
+                  ? "bg-emerald-900/50 text-emerald-300"
+                  : meta.confidenceTier === "medium"
+                    ? "bg-amber-900/30 text-amber-300"
+                    : "bg-neutral-700/50 text-neutral-400"
+              }`}
+            >
+              {meta.confidenceTier}
+            </span>
+          )}
+        </div>
         <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
           <select
             value={status}
@@ -302,7 +317,7 @@ export function KnowledgePageClient({
         ) : (
           <ul className="space-y-3">
             {suggestions.map((s) => {
-              const meta = s.meta as { systemArea?: string; effort?: string; expectedImpact?: string; status?: string; produced?: string | null } | null;
+              const meta = s.meta as { systemArea?: string; effort?: string; expectedImpact?: string; status?: string; produced?: string | null; confidenceTier?: "high" | "medium" | "low" } | null;
               const currentStatus = meta?.status ?? "queued";
               const currentProduced = meta?.produced ?? "";
               return (

@@ -5,13 +5,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { INTEGRATION_PROVIDERS } from "@/lib/integrations/providers";
+import { getProviderDef, resolveProviderKey } from "@/lib/integrations/providerRegistry";
+import { resolveRequestedMode } from "@/lib/integrations/runtime";
+import { validateAdditionalQueryParams, mergeConfigWithQueryParams } from "@/lib/integrations/configValidators";
 import { jsonError, withRouteTiming } from "@/lib/api-utils";
 
 export const dynamic = "force-dynamic";
 
 const patchSchema = z.object({
   status: z.enum(["not_connected", "connected", "error", "disabled"]).optional(),
+  mode: z.enum(["off", "mock", "manual", "live"]).optional(),
   accountLabel: z.string().max(200).optional().nullable(),
   configJson: z.record(z.string(), z.unknown()).optional(),
   isEnabled: z.boolean().optional(),
@@ -26,8 +29,9 @@ export async function PATCH(
     if (!session?.user) return jsonError("Unauthorized", 401);
 
     const { provider } = await params;
-    const validProvider = INTEGRATION_PROVIDERS.some((p) => p.key === provider);
-    if (!validProvider) return jsonError("Unknown provider", 400);
+    const canonical = resolveProviderKey(provider);
+    const providerDef = getProviderDef(provider);
+    if (!providerDef) return jsonError("Unknown provider", 400);
 
     let body: unknown;
     try {
@@ -45,16 +49,58 @@ export async function PATCH(
     }
 
     const data = parsed.data;
+
+    // Validate additionalQueryParams if present in configJson
+    let configJson = data.configJson;
+    if (configJson && typeof configJson === "object" && "additionalQueryParams" in configJson) {
+      const v = validateAdditionalQueryParams(
+        (configJson as Record<string, unknown>).additionalQueryParams
+      );
+      if (!v.ok) return jsonError(v.error, 400);
+      configJson = mergeConfigWithQueryParams(
+        configJson as Record<string, unknown>,
+        Object.keys(v.params).length > 0 ? v.params : null
+      ) as Record<string, unknown>;
+    }
+
+    // Resolve mode against capabilities + prodOnly
+    let resolvedMode: "off" | "mock" | "manual" | "live" | undefined;
+    if (data.mode !== undefined) {
+      const result = resolveRequestedMode({
+        provider: canonical,
+        requestedMode: data.mode,
+        prodOnly: providerDef.prodOnly,
+        supportsLive: providerDef.supportsLive,
+        supportsMock: providerDef.supportsMock,
+        supportsManual: providerDef.supportsManual,
+      });
+      if (!result.ok) {
+        return NextResponse.json(
+          { error: result.message, resolvedMode: result.mode },
+          { status: 400 }
+        );
+      }
+      resolvedMode = result.mode;
+    }
+
     const update: Record<string, unknown> = {};
     if (data.status !== undefined) update.status = data.status;
+    if (resolvedMode !== undefined) update.mode = resolvedMode;
     if (data.accountLabel !== undefined) update.accountLabel = data.accountLabel;
-    if (data.configJson !== undefined) update.configJson = data.configJson;
+    if (configJson !== undefined) update.configJson = configJson;
     if (data.isEnabled !== undefined) update.isEnabled = data.isEnabled;
 
     const conn = await db.integrationConnection.upsert({
-      where: { provider },
+      where: { provider: canonical },
       create: {
-        provider,
+        provider: canonical,
+        mode: (resolvedMode ?? data.mode ?? providerDef.defaultMode) as "off" | "mock" | "manual" | "live",
+        category: providerDef.category,
+        prodOnly: providerDef.prodOnly,
+        providerLabel: providerDef.displayName,
+        displayName: providerDef.displayName,
+        helpText: providerDef.helpText ?? undefined,
+        sortOrder: providerDef.sortOrder,
         ...(update as Record<string, unknown>),
       },
       update,

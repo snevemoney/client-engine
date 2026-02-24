@@ -20,7 +20,10 @@ export function TodaysAIActivityCard({
     <section className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-4">
       <h2 className="text-sm font-medium text-neutral-300 mb-2">Today&apos;s AI Activity</h2>
       {lastRunAt && (
-        <p className="text-xs text-neutral-500 mb-2">Last run: {new Date(lastRunAt).toLocaleString()}</p>
+        <p className="text-xs text-neutral-500 mb-2">
+          Last run: {new Date(lastRunAt).toLocaleString()}
+          <span className="text-neutral-600 ml-1">· auto-refreshes after workday run</span>
+        </p>
       )}
       {lastRunContent ? (
         <pre className="text-xs text-neutral-400 whitespace-pre-wrap font-sans max-h-40 overflow-y-auto">

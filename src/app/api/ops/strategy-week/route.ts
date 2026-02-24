@@ -22,6 +22,18 @@ const createSchema = z.object({
   operatorImprovementFocus: z.string().optional(),
   salesTarget: z.string().optional(),
   notes: z.string().optional(),
+  theme: z.string().optional(),
+  monthlyFocus: z.string().optional(),
+  weeklyTargetValue: z.number().optional(),
+  weeklyTargetUnit: z.string().optional(),
+  declaredCommitment: z.string().optional(),
+  keyMetric: z.string().optional(),
+  keyMetricTarget: z.string().optional(),
+  biggestBottleneck: z.string().optional(),
+  missionStatement: z.string().optional(),
+  whyThisWeekMatters: z.string().optional(),
+  dreamStatement: z.string().optional(),
+  fuelStatement: z.string().optional(),
 });
 
 export async function GET() {
@@ -32,7 +44,7 @@ export async function GET() {
     const weekStart = getWeekStart();
     const record = await db.strategyWeek.findUnique({
       where: { weekStart },
-      include: { review: true },
+      include: { review: true, priorities: true, targets: true },
     });
     return NextResponse.json(record);
   });
@@ -71,13 +83,25 @@ export async function POST(req: NextRequest) {
       operatorImprovementFocus: data.operatorImprovementFocus ?? undefined,
       salesTarget: data.salesTarget ?? undefined,
       notes: data.notes ?? undefined,
+      theme: data.theme ?? undefined,
+      monthlyFocus: data.monthlyFocus ?? undefined,
+      weeklyTargetValue: data.weeklyTargetValue ?? undefined,
+      weeklyTargetUnit: data.weeklyTargetUnit ?? undefined,
+      declaredCommitment: data.declaredCommitment ?? undefined,
+      keyMetric: data.keyMetric ?? undefined,
+      keyMetricTarget: data.keyMetricTarget ?? undefined,
+      biggestBottleneck: data.biggestBottleneck ?? undefined,
+      missionStatement: data.missionStatement ?? undefined,
+      whyThisWeekMatters: data.whyThisWeekMatters ?? undefined,
+      dreamStatement: data.dreamStatement ?? undefined,
+      fuelStatement: data.fuelStatement ?? undefined,
     };
 
     const record = await db.strategyWeek.upsert({
       where: { weekStart },
       create: { weekStart, ...update },
       update,
-      include: { review: true },
+      include: { review: true, priorities: true, targets: true },
     });
     return NextResponse.json(record);
   });

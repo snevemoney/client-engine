@@ -120,4 +120,4 @@ When suggesting next actions (e.g. Copilot), prefer: sandbox, rollback, low-risk
 
 ---
 
-*For implementation details, schema, and “what ships now,” see PROJECT_CONTEXT.md. For Copilot behavior (what to flag, what to ignore, how to answer), see docs/COPILOT_DECISION_RUBRIC.md.*
+*For implementation details, schema, and “what ships now,” see PROJECT_CONTEXT.md. For Copilot behavior (what to flag, what to ignore, how to answer), see docs/COPILOT_DECISION_RUBRIC.md. For operator framework (positioning, habits, weak spots, checklists), see docs/OPERATOR_FRAMEWORK.md.*

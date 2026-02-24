@@ -134,6 +134,7 @@ export async function runResearchDiscoverAndPipeline(
             capturedAt: nowIso(),
             adapter: it.adapter,
             confidence: it.confidence ?? null,
+            provenance: { source: "research_discover", stepName: "discover", adapter: it.adapter },
           },
         },
       });

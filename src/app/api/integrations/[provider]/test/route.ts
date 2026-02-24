@@ -1,10 +1,12 @@
 /**
- * POST /api/integrations/[provider]/test — Test connection (placeholder or real for Meta)
+ * POST /api/integrations/[provider]/test — Test connection.
+ * Respects mode: OFF=skipped, MOCK=mock success, MANUAL=manual response, LIVE=real test (if implemented).
  */
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { INTEGRATION_PROVIDERS } from "@/lib/integrations/providers";
+import { getProviderDef, resolveProviderKey } from "@/lib/integrations/providerRegistry";
+import { canRunLiveIntegration } from "@/lib/integrations/runtime";
 import { jsonError, withRouteTiming } from "@/lib/api-utils";
 
 export const dynamic = "force-dynamic";
@@ -18,17 +20,57 @@ export async function POST(
     if (!session?.user) return jsonError("Unauthorized", 401);
 
     const { provider } = await params;
-    const def = INTEGRATION_PROVIDERS.find((p) => p.key === provider);
+    const canonical = resolveProviderKey(provider);
+    const def = getProviderDef(provider);
     if (!def) return jsonError("Unknown provider", 400);
 
     const conn = await db.integrationConnection.findUnique({
-      where: { provider },
+      where: { provider: canonical },
     });
+
+    const mode = conn?.mode ?? def.defaultMode;
+    const prodOnly = conn?.prodOnly ?? def.prodOnly;
+
+    // OFF => skipped
+    if (mode === "off") {
+      return NextResponse.json({ ok: false, message: "Integration is OFF — test skipped." });
+    }
+
+    // MOCK => mock success
+    if (mode === "mock") {
+      if (conn) {
+        await db.integrationConnection.update({
+          where: { provider: canonical },
+          data: {
+            lastTestedAt: new Date(),
+            lastTestStatus: "pass",
+            lastError: null,
+          },
+        });
+      }
+      return NextResponse.json({ ok: true, message: "MOCK mode — simulated success." });
+    }
+
+    // MANUAL => no live test
+    if (mode === "manual") {
+      return NextResponse.json({
+        ok: true,
+        message: "MANUAL mode — no live test. Data entered manually.",
+      });
+    }
+
+    // LIVE => run real test if supported and allowed
+    if (!canRunLiveIntegration({ provider, mode, prodOnly, supportsLive: def.supportsLive })) {
+      return NextResponse.json({
+        ok: false,
+        message: "LIVE not available (prodOnly in non-production or provider doesn't support live).",
+      });
+    }
 
     let ok = false;
     let message = "Test not implemented yet";
 
-    if (def.hasRealTest && provider === "meta") {
+    if (def.hasRealTest && canonical === "meta") {
       const token = process.env.META_ADS_ACCESS_TOKEN ?? (conn?.configJson as Record<string, unknown>)?.accessToken;
       if (token) {
         try {
@@ -49,9 +91,10 @@ export async function POST(
 
     if (conn) {
       await db.integrationConnection.update({
-        where: { provider },
+        where: { provider: canonical },
         data: {
           lastTestedAt: new Date(),
+          lastTestStatus: ok ? "pass" : "fail",
           lastError: ok ? null : message,
           status: ok ? "connected" : conn.status === "connected" ? "error" : conn.status,
         },

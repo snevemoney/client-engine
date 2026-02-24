@@ -6,13 +6,30 @@ import {
   CheckCircle,
   Clock,
   FileCheck,
+  Layers,
   UserCheck,
   Zap,
   XCircle,
 } from "lucide-react";
 import type { OpsHealth } from "@/lib/ops/opsHealth";
 
-export function OpsHealthPanel({ data }: { data: OpsHealth }) {
+type IntegrationSummary = {
+  total: number;
+  done: number;
+  partial: number;
+  missing: number;
+  backlog: number;
+  read: number;
+  write: number;
+};
+
+export function OpsHealthPanel({
+  data,
+  integrationSummary,
+}: {
+  data: OpsHealth;
+  integrationSummary?: IntegrationSummary;
+}) {
   const {
     workdayRun,
     failedJobs,

@@ -4,7 +4,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { INTEGRATION_PROVIDERS } from "@/lib/integrations/providers";
+import { getProviderDef, resolveProviderKey } from "@/lib/integrations/providerRegistry";
 import { jsonError, withRouteTiming } from "@/lib/api-utils";
 
 export const dynamic = "force-dynamic";
@@ -18,14 +18,22 @@ export async function POST(
     if (!session?.user) return jsonError("Unauthorized", 401);
 
     const { provider } = await params;
-    const validProvider = INTEGRATION_PROVIDERS.some((p) => p.key === provider);
-    if (!validProvider) return jsonError("Unknown provider", 400);
+    const canonical = resolveProviderKey(provider);
+    const providerDef = getProviderDef(provider);
+    if (!providerDef) return jsonError("Unknown provider", 400);
 
     await db.integrationConnection.upsert({
-      where: { provider },
+      where: { provider: canonical },
       create: {
-        provider,
+        provider: canonical,
         status: "not_connected",
+        mode: "off",
+        category: providerDef.category,
+        prodOnly: providerDef.prodOnly,
+        providerLabel: providerDef.displayName,
+        displayName: providerDef.displayName,
+        helpText: providerDef.helpText ?? undefined,
+        sortOrder: providerDef.sortOrder,
         isEnabled: false,
         configJson: {},
       },

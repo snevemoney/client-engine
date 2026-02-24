@@ -110,7 +110,7 @@ export async function getMoneyScorecard(): Promise<MoneyScorecard> {
       },
     },
   });
-  // Assumption: "calls booked" approximated by CALL-type touches (TouchType has no CALL_BOOKED)
+  // "Calls booked" = LeadTouch records with type CALL in last 7d (meetings/calls the operator logged as touch).
   const callsBooked7d = await db.leadTouch.count({
     where: {
       type: "CALL",

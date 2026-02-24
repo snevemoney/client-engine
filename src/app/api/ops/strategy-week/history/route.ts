@@ -43,6 +43,12 @@ export async function GET(req: NextRequest) {
         : 0,
       reviewTotal: 4,
       biggestBottleneck: r.review?.biggestBottleneck?.slice(0, 60) ?? null,
+      score: r.review?.score ?? null,
+      completedAt: r.review?.completedAt?.toISOString() ?? null,
+      whatWorked: r.review?.whatWorked ?? null,
+      whatFailed: r.review?.whatFailed ?? null,
+      whatChanged: r.review?.whatChanged ?? null,
+      nextWeekCommitments: r.review?.nextWeekCommitments ?? null,
     }));
 
     return NextResponse.json({ items });
