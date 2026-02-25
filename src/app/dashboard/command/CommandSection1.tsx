@@ -12,15 +12,14 @@ import { logSlow, PERF } from "@/lib/perf";
 
 /** First wave: ops health + money + sales leak + strategy. Shows as soon as these fetches complete. */
 export default async function CommandSection1() {
-  const start = Date.now();
+  const start = performance.now(); // eslint-disable-line react-hooks/purity -- timing for observability
   const [opsHealth, moneyScorecard, salesLeakReport, strategyWeek] = await Promise.all([
     getCachedOpsHealth(),
     getCachedMoneyScorecard(),
     getCachedSalesLeakReport(),
     getCachedCurrentStrategyWeek(),
   ]);
-  const ms = Date.now() - start;
-  if (ms > PERF.SLOW_PAGE_MS) logSlow("page", "/dashboard/command Section1", ms);
+  const ms = Math.round(performance.now() - start); // eslint-disable-line react-hooks/purity
 
   return (
     <>

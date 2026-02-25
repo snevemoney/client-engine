@@ -8,6 +8,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { ProposalStatus, ProposalPriceType } from "@prisma/client";
 import { jsonError, withRouteTiming } from "@/lib/api-utils";
+import { parsePaginationParams, buildPaginationMeta, paginatedResponse } from "@/lib/pagination";
 
 const STATUSES = ["draft", "ready", "sent", "viewed", "accepted", "rejected", "expired"] as const;
 const PRICE_TYPES = ["fixed", "range", "hourly", "custom"] as const;
@@ -109,7 +110,7 @@ export async function GET(req: NextRequest) {
     const status = url.searchParams.get("status") as ProposalStatus | null;
     const source = url.searchParams.get("source"); // intake | pipeline | all
     const search = url.searchParams.get("search") ?? url.searchParams.get("q");
-    const limit = Math.min(200, Math.max(1, parseInt(url.searchParams.get("limit") ?? "100", 10) || 100));
+    const pagination = parsePaginationParams(url.searchParams);
 
     const where: Record<string, unknown> = {};
     if (status && STATUSES.includes(status)) {
@@ -128,18 +129,23 @@ export async function GET(req: NextRequest) {
       ];
     }
 
-    const proposals = await db.proposal.findMany({
-      where,
-      orderBy: { updatedAt: "desc" },
-      take: limit,
-      include: {
-        intakeLead: { select: { id: true, title: true, status: true } },
-        pipelineLead: { select: { id: true, title: true, status: true } },
-      },
-    });
+    const [proposals, total] = await Promise.all([
+      db.proposal.findMany({
+        where,
+        orderBy: { updatedAt: "desc" },
+        skip: pagination.skip,
+        take: pagination.pageSize,
+        include: {
+          intakeLead: { select: { id: true, title: true, status: true } },
+          pipelineLead: { select: { id: true, title: true, status: true } },
+        },
+      }),
+      db.proposal.count({ where }),
+    ]);
 
+    const meta = buildPaginationMeta(total, pagination);
     return NextResponse.json(
-      proposals.map((p) => safeProposal(p)),
+      paginatedResponse(proposals.map((p) => safeProposal(p)), meta),
       { headers: { "Cache-Control": "private, no-store, max-age=0" } }
     );
   });

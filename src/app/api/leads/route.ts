@@ -66,21 +66,27 @@ export async function POST(req: NextRequest) {
     }
     const body = parsed.data;
 
-    const lead = await db.lead.create({
-      data: {
-        title: body.title,
-        source: body.source,
-        sourceUrl: body.sourceUrl ?? undefined,
-        description: body.description ?? undefined,
-        budget: body.budget ?? undefined,
-        timeline: body.timeline ?? undefined,
-        platform: body.platform ?? undefined,
-        techStack: body.techStack,
-        contactName: body.contactName ?? undefined,
-        contactEmail: body.contactEmail ?? undefined,
-        tags: body.tags,
-      },
-    });
+    let lead;
+    try {
+      lead = await db.lead.create({
+        data: {
+          title: body.title,
+          source: body.source,
+          sourceUrl: body.sourceUrl ?? undefined,
+          description: body.description ?? undefined,
+          budget: body.budget ?? undefined,
+          timeline: body.timeline ?? undefined,
+          platform: body.platform ?? undefined,
+          techStack: body.techStack,
+          contactName: body.contactName ?? undefined,
+          contactEmail: body.contactEmail ?? undefined,
+          tags: body.tags,
+        },
+      });
+    } catch (e) {
+      console.error("[api:error] POST /api/leads create failed", e);
+      return jsonError("Failed to create lead", 500, "DB_ERROR");
+    }
 
     void (async () => {
       try {

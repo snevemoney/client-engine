@@ -6,13 +6,14 @@ import {
 
 describe("resolveIntegration", () => {
   const origEnv = process.env.NODE_ENV;
+  const env = process.env as { NODE_ENV?: string };
 
   beforeEach(() => {
-    process.env.NODE_ENV = "development";
+    env.NODE_ENV = "development";
   });
 
   afterEach(() => {
-    process.env.NODE_ENV = origEnv;
+    env.NODE_ENV = origEnv;
   });
 
   it("OFF returns shouldRun=false", () => {
@@ -57,13 +58,14 @@ describe("resolveIntegration", () => {
 
 describe("resolveConnection", () => {
   const origEnv = process.env.NODE_ENV;
+  const env = process.env as { NODE_ENV?: string };
 
   beforeEach(() => {
-    process.env.NODE_ENV = "development";
+    env.NODE_ENV = "development";
   });
 
   afterEach(() => {
-    process.env.NODE_ENV = origEnv;
+    env.NODE_ENV = origEnv;
   });
 
   it("resolves from connection-like object", () => {

@@ -43,7 +43,21 @@
 
 **Integrations control center:** Settings → Integrations. See [INTEGRATIONS_SETTINGS.md](INTEGRATIONS_SETTINGS.md) if it exists.
 
+## Prod readiness simulations
+
+These flows are simulated so you can test before adding real credentials:
+
+| Flow | Env | How to test |
+|------|-----|-------------|
+| **OAuth (Google)** | `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` | Real OAuth when set. Get from [Google Cloud Console](https://console.cloud.google.com/apis/credentials). |
+| **OAuth simulation** | `OAUTH_SIMULATION=1` | "Simulate Google" on login; uses same credentials as email/password. E2E: `OAUTH_SIMULATION=1 npx playwright test tests/e2e/oauth-simulation.spec.ts` |
+| **API Bearer (cron)** | `RESEARCH_CRON_SECRET` | `POST /api/ops/workday-run` and `POST /api/research/run` accept `Authorization: Bearer <secret>`. E2E: set in .env to run Bearer tests. |
+| **Site leads form** | — | Public `POST /api/site/leads`. Smoke test and E2E cover it. |
+| **Redis** | `REDIS_URL` | Health check pings Redis when set. Optional for overall health. |
+
 ## Pre-deploy checks (before deploying)
+
+**Automated:** Run `./scripts/pre-deploy.sh` — runs lint, tsc, prisma validate, build, and unit tests. Exit 1 if any fail.
 
 1. **Build and lint pass locally:**
    ```bash

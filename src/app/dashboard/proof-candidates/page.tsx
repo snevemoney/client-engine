@@ -1,11 +1,14 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ExternalLink, Github, Video, FileText, CheckCircle2, XCircle } from "lucide-react";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { useUrlQueryState } from "@/hooks/useUrlQueryState";
+import { AsyncState } from "@/components/ui/AsyncState";
+import { formatDateSafe } from "@/lib/ui/date-safe";
 
 type Candidate = {
   id: string;
@@ -20,17 +23,6 @@ type Candidate = {
   promotedProofRecordId?: string | null;
   readiness?: { isReady: boolean; reasons: string[] };
 };
-
-function formatDate(iso: string | null): string {
-  if (!iso) return "—";
-  try {
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return "—";
-    return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
-  } catch {
-    return "—";
-  }
-}
 
 function StatusBadge({ status }: { status: string }) {
   const v = status?.toLowerCase() ?? "draft";
@@ -60,33 +52,63 @@ function TriggerBadge({ trigger }: { trigger: string }) {
 }
 
 export default function ProofCandidatesPage() {
-  const searchParams = useSearchParams();
+  const url = useUrlQueryState();
+  const [search, setSearch] = useState(() => url.getString("search"));
+  const debouncedSearch = useDebouncedValue(search, 300);
   const [list, setList] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [triggerFilter, setTriggerFilter] = useState("all");
-  const [search, setSearch] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const statusFilter = url.getString("status", "all");
+  const triggerFilter = url.getString("triggerType", "all");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const runIdRef = useRef(0);
 
   const fetchList = useCallback(async () => {
+    if (abortRef.current) abortRef.current.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const runId = ++runIdRef.current;
     setLoading(true);
+    setError(null);
     try {
       const params = new URLSearchParams();
       if (statusFilter !== "all") params.set("status", statusFilter);
       if (triggerFilter !== "all") params.set("triggerType", triggerFilter);
-      if (search.trim()) params.set("search", search.trim());
-      const res = await fetch(`/api/proof-candidates?${params}`, { credentials: "include", cache: "no-store" });
-      const data = await res.json().catch(() => []);
-      setList(Array.isArray(data) ? data : []);
-    } catch {
+      if (debouncedSearch.trim()) params.set("search", debouncedSearch.trim());
+      const res = await fetch(`/api/proof-candidates?${params}`, { credentials: "include", signal: controller.signal, cache: "no-store" });
+      const data = await res.json().catch(() => null);
+      if (controller.signal.aborted || runId !== runIdRef.current) return;
+      setList(Array.isArray(data?.items) ? data.items : []);
+    } catch (e) {
+      if (controller.signal.aborted || runId !== runIdRef.current) return;
+      if (e instanceof Error && (e.name === "AbortError" || e.message?.includes("aborted"))) return;
+      setError(e instanceof Error ? e.message : "Failed to load");
       setList([]);
     } finally {
-      setLoading(false);
+      if (runId === runIdRef.current) {
+        setLoading(false);
+        abortRef.current = null;
+      }
     }
-  }, [statusFilter, triggerFilter, search]);
+  }, [statusFilter, triggerFilter, debouncedSearch]);
+
+  useEffect(() => {
+    setSearch((prev) => {
+      const u = url.getString("search");
+      return u !== prev ? u : prev;
+    });
+  }, [url.searchParams]);
+
+  useEffect(() => {
+    if (debouncedSearch !== url.getString("search")) {
+      url.setSearch(debouncedSearch);
+    }
+  }, [debouncedSearch]);
 
   useEffect(() => {
     void fetchList();
+    return () => { if (abortRef.current) abortRef.current.abort(); };
   }, [fetchList]);
 
   const runAction = async (candidateId: string, fn: () => Promise<Response>) => {
@@ -123,7 +145,7 @@ export default function ProofCandidatesPage() {
         />
         <select
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
+          onChange={(e) => url.setFilter("status", e.target.value)}
           className="rounded-md border border-neutral-600 bg-neutral-800 px-3 py-2 text-sm"
         >
           <option value="all">Status: All</option>
@@ -134,7 +156,7 @@ export default function ProofCandidatesPage() {
         </select>
         <select
           value={triggerFilter}
-          onChange={(e) => setTriggerFilter(e.target.value)}
+          onChange={(e) => url.setFilter("triggerType", e.target.value)}
           className="rounded-md border border-neutral-600 bg-neutral-800 px-3 py-2 text-sm"
         >
           <option value="all">Trigger: All</option>
@@ -144,13 +166,14 @@ export default function ProofCandidatesPage() {
         </select>
       </div>
 
-      {loading ? (
-        <div className="py-12 text-center text-neutral-500">Loading…</div>
-      ) : list.length === 0 ? (
-        <div className="py-12 text-center text-neutral-500 border border-dashed border-neutral-700 rounded-lg">
-          No proof candidates. Create one from an intake lead.
-        </div>
-      ) : (
+      <AsyncState
+        loading={loading}
+        error={error}
+        empty={!loading && !error && list.length === 0}
+        emptyMessage="No proof candidates. Create one from an intake lead."
+        onRetry={fetchList}
+      >
+        {list.length > 0 ? (
         <div className="border border-neutral-700 rounded-lg overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -208,7 +231,7 @@ export default function ProofCandidatesPage() {
                       <td className="p-3">
                         <StatusBadge status={c.status} />
                       </td>
-                      <td className="p-3 text-neutral-400">{formatDate(c.updatedAt)}</td>
+                      <td className="p-3 text-neutral-400">{formatDateSafe(c.updatedAt, { month: "short", day: "numeric" })}</td>
                       <td className="p-3">
                         <div className="flex flex-wrap gap-1">
                           <Link href={`/dashboard/proof-candidates/${c.id}`}>
@@ -274,7 +297,8 @@ export default function ProofCandidatesPage() {
             </table>
           </div>
         </div>
-      )}
+        ) : null}
+      </AsyncState>
     </div>
   );
 }

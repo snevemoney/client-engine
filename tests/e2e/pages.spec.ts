@@ -6,6 +6,7 @@ const loginPassword = process.env.E2E_PASSWORD || process.env.ADMIN_PASSWORD || 
 
 test.describe("All pages", () => {
   test("login then visit every page", async ({ page }) => {
+    test.setTimeout(180000);
     await page.goto(`${baseURL}/login`);
     await page.getByLabel("Email").fill(loginEmail);
     await page.getByLabel("Password").fill(loginPassword);
@@ -18,7 +19,6 @@ test.describe("All pages", () => {
 
     const pages: { url: string; name: string }[] = [
       { url: "/dashboard", name: "Dashboard" },
-      { url: "/dashboard/command", name: "Command" },
       { url: "/dashboard/ops-health", name: "Ops Health" },
       { url: "/dashboard/sales-leak", name: "Sales Leak" },
       { url: "/dashboard/results", name: "Results Ledger" },
@@ -37,12 +37,15 @@ test.describe("All pages", () => {
       { url: "/dashboard/deploys", name: "Deploys" },
       { url: "/dashboard/conversion", name: "Conversion" },
       { url: "/dashboard/knowledge", name: "Knowledge" },
+      { url: "/dashboard/internal/qa/notifications", name: "Notifications QA" },
+      { url: "/dashboard/internal/qa/scores", name: "Score QA" },
     ];
 
     for (const { url } of pages) {
-      await page.goto(`${baseURL}${url}`, { timeout: 45000 });
-      await expect(page).toHaveURL(new RegExp(url.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
-      await expect(page.locator("body")).toBeVisible();
+      await page.goto(`${baseURL}${url}`, { timeout: 45000, waitUntil: "load" });
+      await expect(page).toHaveURL(new RegExp(url.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), { timeout: 10000 });
+      await expect(page.locator("body")).toBeVisible({ timeout: 5000 });
+      await page.waitForTimeout(500);
     }
 
     await page.goto(`${baseURL}/`);

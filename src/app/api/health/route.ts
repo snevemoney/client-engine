@@ -36,6 +36,24 @@ export async function GET() {
     detail: process.env.NEXTAUTH_URL ? undefined : "NEXTAUTH_URL not set (redirect loops in production)",
   };
 
-  const ok = Object.values(checks).every((c) => c.ok);
+  // Redis (optional): when REDIS_URL set, verify worker/queue connectivity
+  if (process.env.REDIS_URL) {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const Redis = require("ioredis");
+      const redis = new Redis(process.env.REDIS_URL, { maxRetriesPerRequest: 1, connectTimeout: 3000 });
+      await redis.ping();
+      redis.disconnect();
+      checks.redis = { ok: true };
+    } catch (e: unknown) {
+      checks.redis = {
+        ok: false,
+        detail: e instanceof Error ? e.message : "Redis ping failed",
+      };
+    }
+  }
+
+  const required = ["db", "pipelineTables", "authSecret", "nextAuthUrl"];
+  const ok = required.every((k) => checks[k]?.ok);
   return NextResponse.json({ ok, checks }, { status: ok ? 200 : 503 });
 }

@@ -1,10 +1,10 @@
 /**
  * GET /api/delivery-projects/gaps-summary — Delivery hygiene gaps.
  */
-import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { jsonError, withRouteTiming } from "@/lib/api-utils";
+import { withSummaryCache } from "@/lib/http/cached-handler";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +13,8 @@ export async function GET() {
     const session = await auth();
     if (!session?.user) return jsonError("Unauthorized", 401);
 
-    const projects = await db.deliveryProject.findMany({
+    return withSummaryCache("delivery-projects/gaps-summary", async () => {
+      const projects = await db.deliveryProject.findMany({
       where: { status: { notIn: ["archived"] } },
       include: {
         checklistItems: true,
@@ -36,11 +37,12 @@ export async function GET() {
       if (p.status === "completed" && !p.proofCandidateId) completedNoProofCandidate++;
     }
 
-    return NextResponse.json({
-      missingGithubLoom,
-      qaIncomplete,
-      handoffIncomplete,
-      completedNoProofCandidate,
-    });
+      return {
+        missingGithubLoom,
+        qaIncomplete,
+        handoffIncomplete,
+        completedNoProofCandidate,
+      };
+    }, 15_000);
   });
 }

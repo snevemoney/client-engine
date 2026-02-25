@@ -13,44 +13,59 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = await req.json();
+  let body: Record<string, unknown>;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+
   const { url, title, content, source, budget, timeline, platform, tags, contactName, contactEmail } = body;
 
-  if (!title) {
+  if (!title || typeof title !== "string") {
     return NextResponse.json({ error: "title is required" }, { status: 400 });
   }
 
-  const hash = computeHash(url, title, content);
-
-  const existing = await db.lead.findFirst({
-    where: {
-      OR: [
-        { contentHash: hash },
-        ...(url ? [{ sourceUrl: url }] : []),
-      ],
-    },
-  });
-
-  if (existing) {
-    return NextResponse.json({ message: "duplicate", leadId: existing.id }, { status: 200 });
-  }
-
-  const lead = await db.lead.create({
-    data: {
+  try {
+    const hash = computeHash(
+      typeof url === "string" ? url : undefined,
       title,
-      source: source || "capture",
-      sourceUrl: url || null,
-      contentHash: hash,
-      description: content || null,
-      budget: budget || null,
-      timeline: timeline || null,
-      platform: platform || null,
-      contactName: contactName || null,
-      contactEmail: contactEmail || null,
-      tags: Array.isArray(tags) ? tags : [],
-      techStack: [],
-    },
-  });
+      typeof content === "string" ? content : undefined
+    );
 
-  return NextResponse.json({ message: "created", leadId: lead.id }, { status: 201 });
+      const existing = await db.lead.findFirst({
+      where: {
+        OR: [
+          { contentHash: hash },
+          ...(typeof url === "string" && url ? [{ sourceUrl: url }] : []),
+        ],
+      },
+    });
+
+    if (existing) {
+      return NextResponse.json({ message: "duplicate", leadId: existing.id }, { status: 200 });
+    }
+
+    const lead = await db.lead.create({
+      data: {
+        title,
+        source: typeof source === "string" ? source : "capture",
+        sourceUrl: typeof url === "string" ? url : null,
+        contentHash: hash,
+        description: typeof content === "string" ? content : null,
+        budget: typeof budget === "string" ? budget : null,
+        timeline: typeof timeline === "string" ? timeline : null,
+        platform: typeof platform === "string" ? platform : null,
+        contactName: typeof contactName === "string" ? contactName : null,
+        contactEmail: typeof contactEmail === "string" ? contactEmail : null,
+        tags: Array.isArray(tags) ? tags : [],
+        techStack: [],
+      },
+    });
+
+    return NextResponse.json({ message: "created", leadId: lead.id }, { status: 201 });
+  } catch (e) {
+    console.error("[capture POST]", e);
+    return NextResponse.json({ error: "Failed to create lead" }, { status: 500 });
+  }
 }

@@ -1,10 +1,10 @@
 /**
  * GET /api/proposals/summary — Scoreboard counts.
  */
-import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { jsonError, withRouteTiming } from "@/lib/api-utils";
+import { withSummaryCache } from "@/lib/http/cached-handler";
 import { getWeekStart } from "@/lib/ops/weekStart";
 
 export const dynamic = "force-dynamic";
@@ -14,7 +14,8 @@ export async function GET() {
     const session = await auth();
     if (!session?.user) return jsonError("Unauthorized", 401);
 
-    const now = new Date();
+    return withSummaryCache("proposals/summary", async () => {
+      const now = new Date();
     const weekStart = getWeekStart(now);
     const endOfWeek = new Date(weekStart);
     endOfWeek.setDate(endOfWeek.getDate() + 6);
@@ -60,13 +61,14 @@ export async function GET() {
     const avgProposalValue =
       values.length > 0 ? Math.round(values.reduce((a, b) => a + b, 0) / values.length) : null;
 
-    return NextResponse.json({
-      drafts,
-      ready,
-      sentThisWeek,
-      acceptedThisWeek,
-      rejectedThisWeek,
-      avgProposalValue,
-    });
+      return {
+        drafts,
+        ready,
+        sentThisWeek,
+        acceptedThisWeek,
+        rejectedThisWeek,
+        avgProposalValue,
+      };
+    }, 15_000);
   });
 }

@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import { Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +10,12 @@ import { LeadSourceBadge } from "@/components/intake/LeadSourceBadge";
 import { LeadScoreBadge } from "@/components/intake/LeadScoreBadge";
 import { LeadFormModal } from "@/components/intake/LeadFormModal";
 import type { LeadFormData } from "@/components/intake/LeadFormModal";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { useUrlQueryState } from "@/hooks/useUrlQueryState";
+import { AsyncState } from "@/components/ui/AsyncState";
+import { PaginationControls } from "@/components/ui/PaginationControls";
+import { formatDateSafe } from "@/lib/ui/date-safe";
+import { normalizePagination } from "@/lib/ui/pagination-safe";
 
 interface IntakeLead {
   id: string;
@@ -27,16 +32,6 @@ interface IntakeLead {
 const STATUS_OPTIONS = ["all", "new", "qualified", "proposal_drafted", "sent", "won", "lost", "archived"];
 const SOURCE_OPTIONS = ["all", "upwork", "linkedin", "referral", "inbound", "rss", "other"];
 
-function formatDate(iso: string): string {
-  try {
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return "—";
-    return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
-  } catch {
-    return "—";
-  }
-}
-
 const QUICK_FILTERS = [
   { key: "all", label: "All" },
   { key: "needs-score", label: "Needs score" },
@@ -46,58 +41,104 @@ const QUICK_FILTERS = [
 ] as const;
 
 export default function IntakePage() {
-  const searchParams = useSearchParams();
-  const filterParam = searchParams.get("filter") ?? "all";
+  const url = useUrlQueryState();
+  const [search, setSearch] = useState(() => url.getString("search"));
+  const debouncedSearch = useDebouncedValue(search, 300);
   const [leads, setLeads] = useState<IntakeLead[]>([]);
-  const [search, setSearch] = useState("");
-  const [quickFilter, setQuickFilter] = useState<string>(filterParam);
-  useEffect(() => {
-    if (["needs-score", "ready", "followup-overdue", "won-missing-proof"].includes(filterParam)) {
-      setQuickFilter(filterParam);
-    }
-  }, [filterParam]);
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [sourceFilter, setSourceFilter] = useState("all");
+  const [pagination, setPagination] = useState(() => normalizePagination(null, 0));
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [createLoading, setCreateLoading] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
+  const runIdRef = useRef(0);
+
+  const quickFilter = url.getString("filter", "all");
+  const statusFilter = url.getString("status", "all");
+  const sourceFilter = url.getString("source", "all");
+  const page = url.getPage();
+  const pageSize = url.getPageSize();
+
+  useEffect(() => {
+    setSearch((prev) => {
+      const u = url.getString("search");
+      return u !== prev ? u : prev;
+    });
+  }, [url.searchParams]);
+
+  useEffect(() => {
+    if (debouncedSearch !== url.getString("search")) {
+      url.setSearch(debouncedSearch);
+    }
+  }, [debouncedSearch]);
 
   const fetchLeads = useCallback(async () => {
+    if (abortRef.current) abortRef.current.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const runId = ++runIdRef.current;
     setLoading(true);
     setError(null);
-    const controller = new AbortController();
     try {
       const params = new URLSearchParams();
-      if (search.trim()) params.set("search", search.trim());
+      if (debouncedSearch.trim()) params.set("search", debouncedSearch.trim());
       if (quickFilter !== "all") params.set("filter", quickFilter);
       else if (statusFilter !== "all") params.set("status", statusFilter);
       if (sourceFilter !== "all") params.set("source", sourceFilter);
+      params.set("page", String(page));
+      params.set("pageSize", String(pageSize));
       const res = await fetch(`/api/intake-leads?${params}`, {
         credentials: "include",
         signal: controller.signal,
         cache: "no-store",
       });
       const data = await res.json().catch(() => null);
+      if (controller.signal.aborted || runId !== runIdRef.current) return;
       if (!res.ok) {
         setError(typeof data?.error === "string" ? data.error : `Failed to load leads (${res.status})`);
         setLeads([]);
+        setPagination(normalizePagination(null, 0));
         return;
       }
-      setLeads(Array.isArray(data) ? data : []);
+      setLeads(Array.isArray(data?.items) ? data.items : []);
+      setPagination(normalizePagination(data?.pagination, data?.items?.length ?? 0));
     } catch (e) {
+      if (controller.signal.aborted || runId !== runIdRef.current) return;
+      if (e instanceof Error && (e.name === "AbortError" || e.message?.includes("aborted"))) return;
       setError(e instanceof Error ? e.message : "Failed to load leads");
       setLeads([]);
+      setPagination(normalizePagination(null, 0));
     } finally {
-      setLoading(false);
+      if (runId === runIdRef.current) {
+        setLoading(false);
+        abortRef.current = null;
+      }
     }
-  }, [search, quickFilter, statusFilter, sourceFilter]);
+  }, [debouncedSearch, quickFilter, statusFilter, sourceFilter, page, pageSize]);
 
   useEffect(() => {
     void fetchLeads();
+    return () => {
+      if (abortRef.current) abortRef.current.abort();
+    };
   }, [fetchLeads]);
 
+  const setQuickFilter = (v: string) => {
+    url.update({
+      filter: v === "all" ? null : v,
+      status: null,
+    }, true);
+  };
+  const setStatusFilter = (v: string) => {
+    url.update({
+      status: v === "all" ? null : v,
+      filter: null,
+    }, true);
+  };
+  const setSourceFilter = (v: string) => url.setFilter("source", v);
+
   const handleCreate = async (form: LeadFormData) => {
+    if (createLoading) return;
     setCreateLoading(true);
     try {
       const tags = form.tags
@@ -203,17 +244,13 @@ export default function IntakePage() {
         </div>
       </div>
 
-      {error && (
-        <p className="text-sm text-red-400">{error}</p>
-      )}
-
-      {loading ? (
-        <div className="py-12 text-center text-neutral-500">Loading…</div>
-      ) : leads.length === 0 ? (
-        <div className="py-12 text-center text-neutral-500 border border-dashed border-neutral-700 rounded-lg">
-          No leads found. Create one with &quot;New Lead&quot;.
-        </div>
-      ) : (
+      <AsyncState
+        loading={loading}
+        error={error}
+        empty={!loading && !error && leads.length === 0}
+        emptyMessage='No leads found. Create one with "New Lead".'
+        onRetry={fetchLeads}
+      >
         <div className="border border-neutral-700 rounded-lg overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -235,7 +272,7 @@ export default function IntakePage() {
                     key={lead.id}
                     className="border-b border-neutral-800 hover:bg-neutral-800/30 transition-colors"
                   >
-                    <td className="p-3 text-neutral-400">{formatDate(lead.createdAt)}</td>
+                    <td className="p-3 text-neutral-400">{formatDateSafe(lead.createdAt)}</td>
                     <td className="p-3">
                       <LeadSourceBadge source={lead.source} />
                     </td>
@@ -270,7 +307,22 @@ export default function IntakePage() {
             </table>
           </div>
         </div>
-      )}
+        {pagination.totalPages > 1 || pagination.total > pagination.pageSize ? (
+          <div className="mt-3 px-3 pb-3">
+            <PaginationControls
+              page={pagination.page}
+              pageSize={pagination.pageSize}
+              total={pagination.total}
+              totalPages={pagination.totalPages}
+              hasNext={pagination.hasNext}
+              hasPrev={pagination.hasPrev}
+              onPageChange={url.setPage}
+              onPageSizeChange={url.setPageSize}
+              isLoading={loading}
+            />
+          </div>
+        ) : null}
+      </AsyncState>
 
       <LeadFormModal
         open={modalOpen}

@@ -32,9 +32,12 @@ import {
   Users,
   Calendar,
   Package,
+  Award,
+  Layers,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { Sheet } from "@/components/ui/sheet";
+import { InboxBadge } from "@/components/dashboard/InboxBadge";
 
 const founderOsNav = [
   { href: "/dashboard/overview", label: "Overview", icon: LayoutDashboard },
@@ -52,13 +55,28 @@ const primaryNav = [
   { href: "/dashboard/command", label: "Command Center", icon: LayoutDashboard },
   { href: "/dashboard/command-center", label: "Daily Ops", icon: Target },
   { href: "/dashboard/ops-health", label: "Ops Health", icon: Activity },
+  { href: "/dashboard/observability", label: "Observability", icon: Activity },
+  { href: "/dashboard/audit", label: "Audit", icon: FileCheck },
   { href: "/dashboard/sales-leak", label: "Sales Leak", icon: TrendingUp },
   { href: "/dashboard/results", label: "Results Ledger", icon: Target },
   { href: "/dashboard/leads", label: "Leads", icon: Inbox },
   { href: "/dashboard/intake", label: "Lead Intake", icon: Target },
   { href: "/dashboard/followups", label: "Follow-ups", icon: Calendar },
   { href: "/dashboard/proposals", label: "Proposals", icon: FileText },
+  { href: "/dashboard/proposal-followups", label: "Proposal Follow-ups", icon: Calendar },
   { href: "/dashboard/delivery", label: "Delivery", icon: Package },
+  { href: "/dashboard/intelligence", label: "Intelligence", icon: BarChart3 },
+  { href: "/dashboard/operator", label: "Operator Score", icon: Award },
+  { href: "/dashboard/forecast", label: "Forecast", icon: TrendingUp },
+  { href: "/dashboard/reminders", label: "Reminders", icon: Calendar },
+  { href: "/dashboard/inbox", label: "Notification Inbox", icon: Inbox },
+  { href: "/dashboard/notifications", label: "Notification Events", icon: Activity },
+  { href: "/dashboard/notification-channels", label: "Channels", icon: Layers },
+  { href: "/dashboard/automation", label: "Automation", icon: Activity },
+  { href: "/dashboard/jobs", label: "Jobs", icon: Layers },
+  { href: "/dashboard/job-schedules", label: "Job Schedules", icon: Calendar },
+  { href: "/dashboard/handoffs", label: "Handoffs", icon: FileCheck },
+  { href: "/dashboard/retention", label: "Retention", icon: Target },
   { href: "/dashboard/build-ops", label: "Build Ops", icon: Wrench },
   { href: "/dashboard/metrics", label: "Metrics", icon: BarChart3 },
   { href: "/work", label: "Website / Work", icon: Briefcase },
@@ -69,6 +87,10 @@ const primaryNav = [
 ];
 
 const secondaryNav = [
+  { href: "/dashboard/internal/scoreboard", label: "Operational Scores", icon: BarChart3 },
+  { href: "/dashboard/internal/scores/alerts", label: "Score Alert Preferences", icon: Activity },
+  { href: "/dashboard/internal/qa/notifications", label: "QA: Notifications", icon: ClipboardCheck },
+  { href: "/dashboard/internal/qa/scores", label: "QA: Scores", icon: BarChart3 },
   { href: "/dashboard/proof", label: "Proof", icon: Quote },
   { href: "/dashboard/proof-candidates", label: "Proof Candidates", icon: FileCheck },
   { href: "/dashboard/checklist", label: "Checklist", icon: ClipboardList },
@@ -169,11 +191,12 @@ export function Sidebar() {
     <>
       {/* Desktop: fixed sidebar */}
       <aside className="hidden md:flex w-56 border-r border-neutral-800 bg-neutral-950 flex-col h-screen sticky top-0 shrink-0">
-        <div className="px-4 py-4 border-b border-neutral-800">
+        <div className="px-4 py-4 border-b border-neutral-800 flex items-center justify-between gap-2">
           <Link href="/" className="flex items-center gap-2">
             <LayoutDashboard className="w-5 h-5 text-neutral-400" />
             <span className="font-semibold text-sm tracking-tight">Client Engine</span>
           </Link>
+          <InboxBadge />
         </div>
         <NavContent />
       </aside>

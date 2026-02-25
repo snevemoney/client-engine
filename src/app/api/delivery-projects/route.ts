@@ -8,6 +8,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { DeliveryProjectStatus } from "@prisma/client";
 import { jsonError, withRouteTiming } from "@/lib/api-utils";
+import { parsePaginationParams, buildPaginationMeta, paginatedResponse } from "@/lib/pagination";
 import { computeProjectHealth } from "@/lib/delivery/readiness";
 import { buildDefaultDeliveryChecklist, buildDefaultMilestonesFromProposal } from "@/lib/delivery/templates";
 
@@ -84,7 +85,7 @@ export async function GET(req: NextRequest) {
     const health = url.searchParams.get("health");
     const due = url.searchParams.get("due"); // soon | overdue
     const search = url.searchParams.get("search") ?? url.searchParams.get("q");
-    const limit = Math.min(200, Math.max(1, parseInt(url.searchParams.get("limit") ?? "100", 10) || 100));
+    const pagination = parsePaginationParams(url.searchParams);
 
     const where: Record<string, unknown> = {};
     if (status && STATUSES.includes(status)) {
@@ -101,7 +102,7 @@ export async function GET(req: NextRequest) {
     const projects = await db.deliveryProject.findMany({
       where,
       orderBy: [{ dueDate: "asc" }, { updatedAt: "desc" }],
-      take: limit,
+      take: 500,
     });
 
     let filtered = projects.map((p) => safeProject(p));
@@ -114,9 +115,13 @@ export async function GET(req: NextRequest) {
       filtered = filtered.filter((p) => p.health === "overdue");
     }
 
-    return NextResponse.json(filtered, {
-      headers: { "Cache-Control": "private, no-store, max-age=0" },
-    });
+    const total = filtered.length;
+    const pageItems = filtered.slice(pagination.skip, pagination.skip + pagination.pageSize);
+    const meta = buildPaginationMeta(total, pagination);
+    return NextResponse.json(
+      paginatedResponse(pageItems, meta),
+      { headers: { "Cache-Control": "private, no-store, max-age=0" } }
+    );
   });
 }
 

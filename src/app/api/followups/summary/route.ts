@@ -1,11 +1,11 @@
 /**
  * GET /api/followups/summary — Metrics for scoreboard and reviews.
  */
-import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { LeadActivityType, IntakeLeadStatus } from "@prisma/client";
 import { jsonError, withRouteTiming } from "@/lib/api-utils";
+import { withSummaryCache } from "@/lib/http/cached-handler";
 import { getStartOfDay, getEndOfDay, isValidDate } from "@/lib/followup/dates";
 import { getWeekStart } from "@/lib/ops/weekStart";
 
@@ -16,7 +16,8 @@ export async function GET() {
     const session = await auth();
     if (!session?.user) return jsonError("Unauthorized", 401);
 
-    const now = new Date();
+    return withSummaryCache("followups/summary", async () => {
+      const now = new Date();
     const startToday = getStartOfDay(now);
     const endToday = getEndOfDay(now);
     const startOfWeek = getWeekStart(now);
@@ -93,13 +94,14 @@ export async function GET() {
           : nextFollowUp.followUpDueAt)
       : null;
 
-    return NextResponse.json({
-      followupsDueToday: todayCount ?? 0,
-      followupsOverdue: overdueCount ?? 0,
-      followupsCompletedThisWeek: completedThisWeek ?? 0,
-      callsLoggedThisWeek: callsThisWeek ?? 0,
-      emailsLoggedThisWeek: emailsThisWeek ?? 0,
-      nextFollowupDue: effectiveNext?.toISOString() ?? null,
-    });
+      return {
+        followupsDueToday: todayCount ?? 0,
+        followupsOverdue: overdueCount ?? 0,
+        followupsCompletedThisWeek: completedThisWeek ?? 0,
+        callsLoggedThisWeek: callsThisWeek ?? 0,
+        emailsLoggedThisWeek: emailsThisWeek ?? 0,
+        nextFollowupDue: effectiveNext?.toISOString() ?? null,
+      };
+    }, 15_000);
   });
 }

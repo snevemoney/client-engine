@@ -33,7 +33,7 @@ export async function POST(
     await db.$transaction(async (tx) => {
       await tx.proposal.update({
         where: { id },
-        data: { status: "rejected", rejectedAt: now, respondedAt: now },
+        data: { status: "rejected", rejectedAt: now, respondedAt: now, responseStatus: "rejected" },
       });
       await tx.proposalActivity.create({
         data: {

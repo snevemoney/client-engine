@@ -43,7 +43,7 @@ export async function POST(
     await db.$transaction(async (tx) => {
       await tx.proposal.update({
         where: { id },
-        data: { status: "accepted", acceptedAt: now, respondedAt: now },
+        data: { status: "accepted", acceptedAt: now, respondedAt: now, responseStatus: "accepted" },
       });
       await tx.proposalActivity.create({
         data: {

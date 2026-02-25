@@ -4,6 +4,11 @@ import { config } from "dotenv";
 
 config({ path: path.resolve(__dirname, ".env") });
 
+// E2E Bearer auth tests: ensure RESEARCH_CRON_SECRET is set so workday-run/research/run tests run.
+if (!process.env.RESEARCH_CRON_SECRET) {
+  process.env.RESEARCH_CRON_SECRET = "e2e-cron-secret-for-playwright";
+}
+
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3000";
 const projectRoot = path.resolve(__dirname);
 

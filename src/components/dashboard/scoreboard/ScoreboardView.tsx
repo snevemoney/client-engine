@@ -90,6 +90,10 @@ type ProposalFunnel = {
   sentNoResponseOver7d?: number;
   draftsIncomplete?: number;
   acceptedNoProject?: number;
+  sentNoFollowupDate?: number;
+  followupOverdue?: number;
+  stale?: number;
+  meetingBookedThisWeek?: number;
 } | null;
 
 type DeliveryOps = {
@@ -102,6 +106,16 @@ type DeliveryOps = {
   qaIncomplete?: number;
   handoffIncomplete?: number;
   completedNoProofCandidate?: number;
+  completedNoHandoff?: number;
+  handoffInProgress?: number;
+  clientConfirmed?: number;
+  handoffMissingClientConfirm?: number;
+  retentionDueToday?: number;
+  retentionOverdue?: number;
+  testimonialReceived?: number;
+  referralReceived?: number;
+  upsellOpen?: number;
+  retainerOpen?: number;
 } | null;
 
 export function ScoreboardView() {
@@ -113,6 +127,50 @@ export function ScoreboardView() {
   const [proofGapsSummary, setProofGapsSummary] = useState<ProofGapsSummary>(null);
   const [proposalFunnel, setProposalFunnel] = useState<ProposalFunnel>(null);
   const [deliveryOps, setDeliveryOps] = useState<DeliveryOps>(null);
+  const [metricsSummary, setMetricsSummary] = useState<{
+    conversion?: { proposalSentToAcceptedRate?: number; acceptedToDeliveryStartedRate?: number; deliveryCompletedToProofRate?: number };
+    revenue?: { acceptedValueThisWeek?: number; deliveredValueThisWeek?: number; avgAcceptedValue?: number; upsellOpenValue?: number };
+    bottlenecks?: Array<{ label: string; count: number }>;
+  } | null>(null);
+  const [operatorScore, setOperatorScore] = useState<{
+    weekly?: { score: number; grade: string; topRisks?: string[]; deltaVsPrev?: { delta: number } };
+  } | null>(null);
+  const [forecastData, setForecastData] = useState<{
+    weekly?: { metrics: Array<{ key: string; label: string; projected: number }> };
+    monthly?: { metrics: Array<{ key: string; label: string; projected: number }> };
+    behindPaceCount?: number;
+  } | null>(null);
+  const [remindersSummary, setRemindersSummary] = useState<{
+    open?: number;
+    overdue?: number;
+    today?: number;
+    doneThisWeek?: number;
+  } | null>(null);
+  const [automationSummary, setAutomationSummary] = useState<{
+    pending?: number;
+    highPriority?: number;
+    appliedThisWeek?: number;
+  } | null>(null);
+  const [observabilitySummary, setObservabilitySummary] = useState<{
+    errorsToday?: number;
+    slowEventsToday?: number;
+    topEventKeys?: { eventKey: string; count: number }[];
+  } | null>(null);
+  const [auditSummary, setAuditSummary] = useState<{
+    actionsToday?: number;
+    proposalsSentThisWeek?: number;
+    deliveriesCompletedThisWeek?: number;
+    proofsPromotedThisWeek?: number;
+  } | null>(null);
+  const [notificationSummary, setNotificationSummary] = useState<{
+    pending?: number;
+    sentToday?: number;
+    failedToday?: number;
+    criticalOpen?: number;
+    unreadInApp?: number;
+    deadLetterAlerts?: number;
+    staleJobAlerts?: number;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
   const [fetchedAt, setFetchedAt] = useState<number | null>(null);
 
@@ -127,12 +185,24 @@ export function ScoreboardView() {
       Promise.all([
         fetch("/api/proposals/summary").then((r) => (r.ok ? r.json() : null)).catch(() => null),
         fetch("/api/proposals/gaps-summary").then((r) => (r.ok ? r.json() : null)).catch(() => null),
-      ]).then(([sum, gaps]) => ({ sum, gaps })),
+        fetch("/api/proposals/followup-summary").then((r) => (r.ok ? r.json() : null)).catch(() => null),
+        fetch("/api/proposals/action-summary").then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      ]).then(([sum, gaps, followup, action]) => ({ sum, gaps, followup, action })),
       Promise.all([
         fetch("/api/delivery-projects/summary").then((r) => (r.ok ? r.json() : null)).catch(() => null),
         fetch("/api/delivery-projects/gaps-summary").then((r) => (r.ok ? r.json() : null)).catch(() => null),
-      ]).then(([sum, gaps]) => ({ sum, gaps })),
-    ]).then(([d, intake, followup, proofCand, action, proofGaps, proposalData, deliveryData]) => {
+        fetch("/api/delivery-projects/handoff-summary").then((r) => (r.ok ? r.json() : null)).catch(() => null),
+        fetch("/api/delivery-projects/retention-summary").then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      ]).then(([sum, gaps, handoff, retention]) => ({ sum, gaps, handoff, retention })),
+      fetch("/api/metrics/summary").then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch("/api/operator-score/current").then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch("/api/forecast/current").then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch("/api/reminders/summary").then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch("/api/automation-suggestions/summary").then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch("/api/ops-events/summary").then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch("/api/audit-actions/summary").then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch("/api/notifications/summary").then((r) => (r.ok ? r.json() : null)).catch(() => null),
+    ]).then(([d, intake, followup, proofCand, action, proofGaps, proposalData, deliveryData, metricsData, opScore, forecast, reminders, automation, obs, audit, notif]) => {
       if (d && typeof d === "object" && "weekStart" in d) {
         setData(d as ScoreboardData);
       } else {
@@ -143,14 +213,41 @@ export function ScoreboardView() {
       setProofCandidateSummary(proofCand && typeof proofCand === "object" ? proofCand as ProofCandidateSummary : null);
       setActionSummary(action && typeof action === "object" ? action as ActionSummary : null);
       setProofGapsSummary(proofGaps && typeof proofGaps === "object" ? proofGaps as ProofGapsSummary : null);
-      const pf = proposalData?.sum != null || proposalData?.gaps != null
-        ? { ...(proposalData?.sum ?? {}), ...(proposalData?.gaps ?? {}) }
+      const pf = proposalData?.sum != null || proposalData?.gaps != null || proposalData?.followup != null || proposalData?.action != null
+        ? {
+            ...(proposalData?.sum ?? {}),
+            ...(proposalData?.gaps ?? {}),
+            ...(proposalData?.followup ?? {}),
+            ...(proposalData?.action ?? {}),
+          }
         : {};
       setProposalFunnel(pf);
-      const do_ = deliveryData?.sum != null || deliveryData?.gaps != null
-        ? { ...(deliveryData?.sum ?? {}), ...(deliveryData?.gaps ?? {}) }
+      const sum = deliveryData?.sum ?? {};
+      const gaps = deliveryData?.gaps ?? {};
+      const handoff = deliveryData?.handoff ?? {};
+      const retention = deliveryData?.retention ?? {};
+      const do_ = deliveryData?.sum != null || deliveryData?.gaps != null || deliveryData?.handoff != null || deliveryData?.retention != null
+        ? {
+            ...sum,
+            ...gaps,
+            ...handoff,
+            retentionOverdue: retention.overdue ?? 0,
+            retentionDueToday: retention.dueToday ?? 0,
+            testimonialReceived: retention.testimonialReceived ?? 0,
+            referralReceived: retention.referralReceived ?? 0,
+            upsellOpen: retention.upsellOpen ?? 0,
+            retainerOpen: retention.retainerOpen ?? 0,
+          }
         : {};
       setDeliveryOps(do_);
+      setMetricsSummary(metricsData && typeof metricsData === "object" ? metricsData : null);
+      setOperatorScore(opScore && typeof opScore === "object" ? opScore : null);
+      setForecastData(forecast && typeof forecast === "object" ? forecast : null);
+      setRemindersSummary(reminders && typeof reminders === "object" ? reminders : null);
+      setAutomationSummary(automation && typeof automation === "object" ? automation : null);
+      setObservabilitySummary(obs && typeof obs === "object" ? obs : null);
+      setAuditSummary(audit && typeof audit === "object" ? audit : null);
+      setNotificationSummary(notif && typeof notif === "object" ? notif : null);
       setFetchedAt(Date.now());
     }).catch(() => setData(null))
       .finally(() => setLoading(false));
@@ -491,6 +588,22 @@ export function ScoreboardView() {
             <div className="text-xs text-neutral-500">No response &gt;7d</div>
           </div>
           <div>
+            <div className="font-semibold text-amber-400">{proposalFunnel?.sentNoFollowupDate ?? 0}</div>
+            <div className="text-xs text-neutral-500">No follow-up date</div>
+          </div>
+          <div>
+            <div className="font-semibold text-red-400">{proposalFunnel?.followupOverdue ?? 0}</div>
+            <div className="text-xs text-neutral-500">Follow-up overdue</div>
+          </div>
+          <div>
+            <div className="font-semibold text-red-400">{proposalFunnel?.stale ?? 0}</div>
+            <div className="text-xs text-neutral-500">Stale</div>
+          </div>
+          <div>
+            <div className="font-semibold text-emerald-400">{proposalFunnel?.meetingBookedThisWeek ?? 0}</div>
+            <div className="text-xs text-neutral-500">Meetings (wk)</div>
+          </div>
+          <div>
             <div className="font-semibold text-neutral-300">{proposalFunnel?.draftsIncomplete ?? 0}</div>
             <div className="text-xs text-neutral-500">Drafts incomplete</div>
           </div>
@@ -559,12 +672,383 @@ export function ScoreboardView() {
             <div className="text-xs text-neutral-500">Completed no proof</div>
           </div>
         </div>
+        {((deliveryOps?.completedNoHandoff ?? 0) > 0 || (deliveryOps?.handoffInProgress ?? 0) > 0 || (deliveryOps?.handoffMissingClientConfirm ?? 0) > 0) && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-sm mb-2 mt-2">
+            <div>
+              <Link href="/dashboard/handoffs?status=completed_no_handoff">
+                <div className="font-semibold text-amber-400 hover:underline">{deliveryOps?.completedNoHandoff ?? 0}</div>
+              </Link>
+              <div className="text-xs text-neutral-500">Completed no handoff</div>
+            </div>
+            <div>
+              <Link href="/dashboard/handoffs?status=handoff_in_progress">
+                <div className="font-semibold text-blue-400 hover:underline">{deliveryOps?.handoffInProgress ?? 0}</div>
+              </Link>
+              <div className="text-xs text-neutral-500">Handoff in progress</div>
+            </div>
+            <div>
+              <div className="font-semibold text-emerald-400">{deliveryOps?.clientConfirmed ?? 0}</div>
+              <div className="text-xs text-neutral-500">Client confirmed</div>
+            </div>
+            <div>
+              <Link href="/dashboard/handoffs?status=handoff_missing_client_confirm">
+                <div className="font-semibold text-amber-400 hover:underline">{deliveryOps?.handoffMissingClientConfirm ?? 0}</div>
+              </Link>
+              <div className="text-xs text-neutral-500">Missing client confirm</div>
+            </div>
+          </div>
+        )}
+        {((deliveryOps?.retentionDueToday ?? 0) > 0 || (deliveryOps?.retentionOverdue ?? 0) > 0 || (deliveryOps?.testimonialReceived ?? 0) > 0 || (deliveryOps?.upsellOpen ?? 0) > 0 || (deliveryOps?.retainerOpen ?? 0) > 0) && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-sm mb-2 mt-2">
+            <div>
+              <Link href="/dashboard/retention?bucket=overdue">
+                <div className="font-semibold text-red-400 hover:underline">{deliveryOps?.retentionOverdue ?? 0}</div>
+              </Link>
+              <div className="text-xs text-neutral-500">Retention overdue</div>
+            </div>
+            <div>
+              <Link href="/dashboard/retention?bucket=today">
+                <div className="font-semibold text-amber-400 hover:underline">{deliveryOps?.retentionDueToday ?? 0}</div>
+              </Link>
+              <div className="text-xs text-neutral-500">Due today</div>
+            </div>
+            <div>
+              <div className="font-semibold text-emerald-400">{deliveryOps?.testimonialReceived ?? 0}</div>
+              <div className="text-xs text-neutral-500">Testimonial received</div>
+            </div>
+            <div>
+              <Link href="/dashboard/retention?status=upsell_open">
+                <div className="font-semibold text-emerald-400 hover:underline">{deliveryOps?.upsellOpen ?? 0}</div>
+              </Link>
+              <div className="text-xs text-neutral-500">Upsell open</div>
+            </div>
+            <div>
+              <Link href="/dashboard/retention?status=retainer_open">
+                <div className="font-semibold text-emerald-400 hover:underline">{deliveryOps?.retainerOpen ?? 0}</div>
+              </Link>
+              <div className="text-xs text-neutral-500">Retainer open</div>
+            </div>
+          </div>
+        )}
         <Link href="/dashboard/delivery" className="inline-block mt-2">
           <Button variant="ghost" size="sm" className="text-amber-300 hover:text-amber-200">
             Open Delivery
           </Button>
         </Link>
       </section>
+
+      {metricsSummary && (
+        <>
+          <section className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-4">
+            <h2 className="text-sm font-medium text-neutral-300 mb-3 flex items-center gap-2">
+              <Target className="w-4 h-4" />
+              Conversion Health
+            </h2>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-sm mb-2">
+              <div>
+                <div className="font-semibold">{(metricsSummary.conversion?.proposalSentToAcceptedRate ?? 0) * 100}%</div>
+                <div className="text-xs text-neutral-500">Sent→Accepted</div>
+              </div>
+              <div>
+                <div className="font-semibold">{(metricsSummary.conversion?.acceptedToDeliveryStartedRate ?? 0) * 100}%</div>
+                <div className="text-xs text-neutral-500">Accepted→Delivery</div>
+              </div>
+              <div>
+                <div className="font-semibold">{(metricsSummary.conversion?.deliveryCompletedToProofRate ?? 0) * 100}%</div>
+                <div className="text-xs text-neutral-500">Delivery→Proof</div>
+              </div>
+              <div>
+                <div className="font-semibold text-amber-400 text-xs truncate" title={metricsSummary.bottlenecks?.[0]?.label}>
+                  {metricsSummary.bottlenecks?.[0]?.label ?? "—"}
+                </div>
+                <div className="text-xs text-neutral-500">Top leak</div>
+              </div>
+            </div>
+            <Link href="/dashboard/intelligence" className="inline-block mt-2">
+              <Button variant="ghost" size="sm" className="text-amber-300 hover:text-amber-200">
+                Open Intelligence
+              </Button>
+            </Link>
+          </section>
+          <section className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-4">
+            <h2 className="text-sm font-medium text-neutral-300 mb-3 flex items-center gap-2">
+              <Activity className="w-4 h-4" />
+              Revenue Health
+            </h2>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-sm mb-2">
+              <div>
+                <div className="font-semibold text-emerald-400">${(metricsSummary.revenue?.acceptedValueThisWeek ?? 0).toLocaleString()}</div>
+                <div className="text-xs text-neutral-500">Accepted (wk)</div>
+              </div>
+              <div>
+                <div className="font-semibold text-emerald-400">${(metricsSummary.revenue?.deliveredValueThisWeek ?? 0).toLocaleString()}</div>
+                <div className="text-xs text-neutral-500">Delivered (wk)</div>
+              </div>
+              <div>
+                <div className="font-semibold">${(metricsSummary.revenue?.avgAcceptedValue ?? 0).toLocaleString()}</div>
+                <div className="text-xs text-neutral-500">Avg accepted</div>
+              </div>
+              <div>
+                <div className="font-semibold text-amber-400">${(metricsSummary.revenue?.upsellOpenValue ?? 0).toLocaleString()}</div>
+                <div className="text-xs text-neutral-500">Upsell open</div>
+              </div>
+            </div>
+            <Link href="/dashboard/intelligence" className="inline-block mt-2">
+              <Button variant="ghost" size="sm" className="text-amber-300 hover:text-amber-200">
+                Open Intelligence
+              </Button>
+            </Link>
+          </section>
+        </>
+      )}
+
+      {operatorScore?.weekly != null && (
+        <section className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-4">
+          <h2 className="text-sm font-medium text-neutral-300 mb-3 flex items-center gap-2">
+            <Target className="w-4 h-4" />
+            Operator Score
+          </h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-sm mb-2">
+            <div>
+              <div className="font-semibold">{operatorScore.weekly.score}</div>
+              <div className="text-xs text-neutral-500">Weekly score</div>
+            </div>
+            <div>
+              <div className="font-semibold">{operatorScore.weekly.grade}</div>
+              <div className="text-xs text-neutral-500">Grade</div>
+            </div>
+            <div>
+              <div className="font-semibold text-amber-400 text-xs truncate" title={operatorScore.weekly.topRisks?.[0]}>
+                {operatorScore.weekly.topRisks?.[0] ?? "—"}
+              </div>
+              <div className="text-xs text-neutral-500">Top risk</div>
+            </div>
+            <div>
+              <div className="font-semibold">
+                {operatorScore.weekly.deltaVsPrev?.delta != null && operatorScore.weekly.deltaVsPrev.delta !== 0
+                  ? `${operatorScore.weekly.deltaVsPrev.delta > 0 ? "+" : ""}${operatorScore.weekly.deltaVsPrev.delta}`
+                  : "—"}
+              </div>
+              <div className="text-xs text-neutral-500">Δ vs last week</div>
+            </div>
+          </div>
+          <Link href="/dashboard/operator" className="inline-block mt-2">
+            <Button variant="ghost" size="sm" className="text-amber-300 hover:text-amber-200">
+              Open Operator Score
+            </Button>
+          </Link>
+        </section>
+      )}
+
+      {forecastData != null && ((forecastData.weekly?.metrics?.length ?? 0) > 0 || (forecastData.monthly?.metrics?.length ?? 0) > 0) && (
+        <section className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-4">
+          <h2 className="text-sm font-medium text-neutral-300 mb-3 flex items-center gap-2">
+            <Activity className="w-4 h-4" />
+            Forecast Health
+          </h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-sm mb-2">
+            {(() => {
+              const m = forecastData.weekly?.metrics ?? [];
+              const proposals = m.find((x) => x.key === "proposals_sent");
+              const deliveries = m.find((x) => x.key === "delivery_completed");
+              const value = m.find((x) => x.key === "delivered_value");
+              return (
+                <>
+                  <div>
+                    <div className="font-semibold">{proposals?.projected ?? "—"}</div>
+                    <div className="text-xs text-neutral-500">Proposals sent (proj)</div>
+                  </div>
+                  <div>
+                    <div className="font-semibold">{deliveries?.projected ?? "—"}</div>
+                    <div className="text-xs text-neutral-500">Deliveries (proj)</div>
+                  </div>
+                  <div>
+                    <div className="font-semibold text-emerald-400">
+                      {(() => {
+                        const monthlyValue = forecastData.monthly?.metrics?.find((x) => x.key === "delivered_value");
+                        return monthlyValue != null ? `$${monthlyValue.projected.toLocaleString()}` : "—";
+                      })()}
+                    </div>
+                    <div className="text-xs text-neutral-500">Delivered value (mo)</div>
+                  </div>
+                  <div>
+                    <div className="font-semibold text-amber-400">{forecastData.behindPaceCount ?? 0}</div>
+                    <div className="text-xs text-neutral-500">Behind pace</div>
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+          <Link href="/dashboard/forecast" className="inline-block mt-2">
+            <Button variant="ghost" size="sm" className="text-amber-300 hover:text-amber-200">
+              Open Forecast
+            </Button>
+          </Link>
+        </section>
+      )}
+
+      {remindersSummary != null && ((remindersSummary.open ?? 0) > 0 || (remindersSummary.doneThisWeek ?? 0) > 0) && (
+        <section className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-4">
+          <h2 className="text-sm font-medium text-neutral-300 mb-3 flex items-center gap-2">
+            <Calendar className="w-4 h-4" />
+            Reminder Queue
+          </h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-sm mb-2">
+            <div>
+              <div className="font-semibold">{remindersSummary.open ?? 0}</div>
+              <div className="text-xs text-neutral-500">Open</div>
+            </div>
+            <div>
+              <div className="font-semibold text-red-400">{remindersSummary.overdue ?? 0}</div>
+              <div className="text-xs text-neutral-500">Overdue</div>
+            </div>
+            <div>
+              <div className="font-semibold text-amber-400">{remindersSummary.today ?? 0}</div>
+              <div className="text-xs text-neutral-500">Due today</div>
+            </div>
+            <div>
+              <div className="font-semibold text-emerald-400">{remindersSummary.doneThisWeek ?? 0}</div>
+              <div className="text-xs text-neutral-500">Done (wk)</div>
+            </div>
+          </div>
+          <Link href="/dashboard/reminders" className="inline-block mt-2">
+            <Button variant="ghost" size="sm" className="text-amber-300 hover:text-amber-200">
+              Open Reminders
+            </Button>
+          </Link>
+        </section>
+      )}
+
+      {notificationSummary != null && (
+        <section className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-4">
+          <h2 className="text-sm font-medium text-neutral-300 mb-3 flex items-center gap-2">
+            <Inbox className="w-4 h-4" />
+            Notifications Health
+          </h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-sm mb-2">
+            <div>
+              <div className="font-semibold">{notificationSummary.pending ?? 0}</div>
+              <div className="text-xs text-neutral-500">Pending</div>
+            </div>
+            <div>
+              <div className="font-semibold text-red-400">{notificationSummary.failedToday ?? 0}</div>
+              <div className="text-xs text-neutral-500">Failed today</div>
+            </div>
+            <div>
+              <div className="font-semibold text-red-400">{notificationSummary.criticalOpen ?? 0}</div>
+              <div className="text-xs text-neutral-500">Critical open</div>
+            </div>
+            <div>
+              <div className="font-semibold">{notificationSummary.unreadInApp ?? 0}</div>
+              <div className="text-xs text-neutral-500">Unread in-app</div>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-2 gap-2 text-center text-sm mb-2">
+            <div>
+              <div className="font-semibold text-amber-400">{notificationSummary.deadLetterAlerts ?? 0}</div>
+              <div className="text-xs text-neutral-500">Dead-letter (7d)</div>
+            </div>
+            <div>
+              <div className="font-semibold text-amber-400">{notificationSummary.staleJobAlerts ?? 0}</div>
+              <div className="text-xs text-neutral-500">Stale jobs (7d)</div>
+            </div>
+          </div>
+          <Link href="/dashboard/inbox" className="inline-block mt-2">
+            <Button variant="ghost" size="sm" className="text-amber-300 hover:text-amber-200">
+              Open Inbox
+            </Button>
+          </Link>
+        </section>
+      )}
+
+      {(observabilitySummary != null || auditSummary != null) && (
+        <>
+          <section className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-4">
+            <h2 className="text-sm font-medium text-neutral-300 mb-3 flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4" />
+              Observability Health
+            </h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-center text-sm mb-2">
+              <div>
+                <div className="font-semibold text-red-400">{observabilitySummary?.errorsToday ?? 0}</div>
+                <div className="text-xs text-neutral-500">Errors today</div>
+              </div>
+              <div>
+                <div className="font-semibold text-amber-400">{observabilitySummary?.slowEventsToday ?? 0}</div>
+                <div className="text-xs text-neutral-500">Slow events</div>
+              </div>
+              <div>
+                <div className="font-semibold text-xs truncate" title={observabilitySummary?.topEventKeys?.[0]?.eventKey ?? undefined}>
+                  {observabilitySummary?.topEventKeys?.[0]?.eventKey ?? "—"}
+                </div>
+                <div className="text-xs text-neutral-500">Top event</div>
+              </div>
+            </div>
+            <Link href="/dashboard/observability" className="inline-block mt-2">
+              <Button variant="ghost" size="sm" className="text-amber-300 hover:text-amber-200">
+                Open Observability
+              </Button>
+            </Link>
+          </section>
+          <section className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-4">
+            <h2 className="text-sm font-medium text-neutral-300 mb-3 flex items-center gap-2">
+              <FileCheck className="w-4 h-4" />
+              Audit Activity
+            </h2>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-sm mb-2">
+              <div>
+                <div className="font-semibold">{auditSummary?.actionsToday ?? 0}</div>
+                <div className="text-xs text-neutral-500">Actions today</div>
+              </div>
+              <div>
+                <div className="font-semibold text-emerald-400">{auditSummary?.proposalsSentThisWeek ?? 0}</div>
+                <div className="text-xs text-neutral-500">Proposals sent (wk)</div>
+              </div>
+              <div>
+                <div className="font-semibold text-emerald-400">{auditSummary?.deliveriesCompletedThisWeek ?? 0}</div>
+                <div className="text-xs text-neutral-500">Deliveries done (wk)</div>
+              </div>
+              <div>
+                <div className="font-semibold text-emerald-400">{auditSummary?.proofsPromotedThisWeek ?? 0}</div>
+                <div className="text-xs text-neutral-500">Proofs promoted (wk)</div>
+              </div>
+            </div>
+            <Link href="/dashboard/audit" className="inline-block mt-2">
+              <Button variant="ghost" size="sm" className="text-amber-300 hover:text-amber-200">
+                Open Audit
+              </Button>
+            </Link>
+          </section>
+        </>
+      )}
+
+      {automationSummary != null && ((automationSummary.pending ?? 0) > 0 || (automationSummary.appliedThisWeek ?? 0) > 0) && (
+        <section className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-4">
+          <h2 className="text-sm font-medium text-neutral-300 mb-3 flex items-center gap-2">
+            <Activity className="w-4 h-4" />
+            Automation Suggestions
+          </h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-center text-sm mb-2">
+            <div>
+              <div className="font-semibold">{automationSummary.pending ?? 0}</div>
+              <div className="text-xs text-neutral-500">Pending</div>
+            </div>
+            <div>
+              <div className="font-semibold text-amber-400">{automationSummary.highPriority ?? 0}</div>
+              <div className="text-xs text-neutral-500">High priority</div>
+            </div>
+            <div>
+              <div className="font-semibold text-emerald-400">{automationSummary.appliedThisWeek ?? 0}</div>
+              <div className="text-xs text-neutral-500">Applied (wk)</div>
+            </div>
+          </div>
+          <Link href="/dashboard/automation" className="inline-block mt-2">
+            <Button variant="ghost" size="sm" className="text-amber-300 hover:text-amber-200">
+              Open Automation
+            </Button>
+          </Link>
+        </section>
+      )}
 
       <section className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-4">
         <h2 className="text-sm font-medium text-neutral-300 mb-3 flex items-center gap-2">

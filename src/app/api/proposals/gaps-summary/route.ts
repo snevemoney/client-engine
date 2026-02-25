@@ -1,11 +1,11 @@
 /**
  * GET /api/proposals/gaps-summary — Proposal hygiene gaps.
  */
-import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { Prisma } from "@prisma/client";
 import { jsonError, withRouteTiming } from "@/lib/api-utils";
+import { withSummaryCache } from "@/lib/http/cached-handler";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +16,8 @@ export async function GET() {
     const session = await auth();
     if (!session?.user) return jsonError("Unauthorized", 401);
 
-    const cutoff = new Date(Date.now() - SEVEN_DAYS_MS);
+    return withSummaryCache("proposals/gaps-summary", async () => {
+      const cutoff = new Date(Date.now() - SEVEN_DAYS_MS);
 
     const [readyNotSent, sentNoResponseOver7d, acceptedNoProject] = await Promise.all([
       db.proposal.count({ where: { status: "ready" } }),
@@ -47,11 +48,12 @@ export async function GET() {
       },
     });
 
-    return NextResponse.json({
-      readyNotSent,
-      sentNoResponseOver7d,
-      draftsIncomplete,
-      acceptedNoProject,
-    });
+      return {
+        readyNotSent,
+        sentNoResponseOver7d,
+        draftsIncomplete,
+        acceptedNoProject,
+      };
+    }, 15_000);
   });
 }

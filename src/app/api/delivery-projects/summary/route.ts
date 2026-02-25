@@ -1,10 +1,10 @@
 /**
  * GET /api/delivery-projects/summary — This week metrics.
  */
-import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { jsonError, withRouteTiming } from "@/lib/api-utils";
+import { withSummaryCache } from "@/lib/http/cached-handler";
 import { getWeekStart } from "@/lib/ops/weekStart";
 import { computeProjectHealth } from "@/lib/delivery/readiness";
 
@@ -15,7 +15,8 @@ export async function GET() {
     const session = await auth();
     if (!session?.user) return jsonError("Unauthorized", 401);
 
-    const now = new Date();
+    return withSummaryCache("delivery-projects/summary", async () => {
+      const now = new Date();
     const weekStart = getWeekStart(now);
     const endOfWeek = new Date(weekStart);
     endOfWeek.setDate(endOfWeek.getDate() + 6);
@@ -52,12 +53,13 @@ export async function GET() {
       if (p.proofRequestedAt && !p.proofCandidateId) proofRequestedPending++;
     }
 
-    return NextResponse.json({
-      inProgress,
-      dueSoon,
-      overdue,
-      completedThisWeek,
-      proofRequestedPending,
-    });
+      return {
+        inProgress,
+        dueSoon,
+        overdue,
+        completedThisWeek,
+        proofRequestedPending,
+      };
+    }, 15_000);
   });
 }

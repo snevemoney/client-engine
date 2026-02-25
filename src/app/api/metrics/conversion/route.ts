@@ -1,68 +1,45 @@
-import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
-import { db } from "@/lib/db";
+/**
+ * GET /api/metrics/conversion — Conversion metrics with range param.
+ * Query: range = this_week | last_4_weeks | last_12_weeks | all (default: last_4_weeks)
+ */
+import { NextRequest, NextResponse } from "next/server";
+import { jsonError, requireAuth, withRouteTiming } from "@/lib/api-utils";
+import { computeConversionMetrics } from "@/lib/metrics/conversion";
+import { fetchConversionInput } from "@/lib/metrics/fetch-metrics";
+import type { MetricsRange } from "@/lib/metrics/date-range";
 
-function median(nums: number[]): number | null {
-  if (nums.length === 0) return null;
-  const s = [...nums].sort((a, b) => a - b);
-  const mid = Math.floor(s.length / 2);
-  return s.length % 2 ? s[mid]! : (s[mid - 1]! + s[mid]!) / 2;
-}
+export const dynamic = "force-dynamic";
 
-export async function GET() {
-  const session = await auth();
-  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+const VALID_RANGES: MetricsRange[] = ["this_week", "last_4_weeks", "last_12_weeks", "all"];
 
-  const leads = await db.lead.findMany({
-    select: {
-      createdAt: true,
-      proposalSentAt: true,
-      approvedAt: true,
-      buildStartedAt: true,
-      buildCompletedAt: true,
-      dealOutcome: true,
-    },
-    orderBy: { createdAt: "desc" },
-    take: 500,
-  });
+export async function GET(req: NextRequest) {
+  return withRouteTiming("GET /api/metrics/conversion", async () => {
+    const session = await requireAuth();
+    if (!session) return jsonError("Unauthorized", 401);
 
-  const total = leads.length;
-  const proposalSent = leads.filter((l) => !!l.proposalSentAt).length;
-  const approved = leads.filter((l) => !!l.approvedAt).length;
-  const buildStarted = leads.filter((l) => !!l.buildStartedAt).length;
-  const buildCompleted = leads.filter((l) => !!l.buildCompletedAt).length;
-  const won = leads.filter((l) => l.dealOutcome === "won").length;
-  const lost = leads.filter((l) => l.dealOutcome === "lost").length;
+    const rangeParam = req.nextUrl.searchParams.get("range") ?? "last_4_weeks";
+    const range = VALID_RANGES.includes(rangeParam as MetricsRange) ? (rangeParam as MetricsRange) : "last_4_weeks";
 
-  const deltas = {
-    created_to_proposalSent: leads
-      .filter((l) => l.proposalSentAt)
-      .map((l) => +new Date(l.proposalSentAt!) - +new Date(l.createdAt)),
-    proposalSent_to_approved: leads
-      .filter((l) => l.proposalSentAt && l.approvedAt)
-      .map((l) => +new Date(l.approvedAt!) - +new Date(l.proposalSentAt!)),
-    approved_to_buildStarted: leads
-      .filter((l) => l.approvedAt && l.buildStartedAt)
-      .map((l) => +new Date(l.buildStartedAt!) - +new Date(l.approvedAt!)),
-    buildStarted_to_buildCompleted: leads
-      .filter((l) => l.buildStartedAt && l.buildCompletedAt)
-      .map((l) => +new Date(l.buildCompletedAt!) - +new Date(l.buildStartedAt!)),
-  };
+    try {
+      const input = await fetchConversionInput(range);
+      const metrics = computeConversionMetrics({
+        intakeCount: input.intakeCount,
+        promotedCount: input.promotedCount,
+        proposalCreatedCount: input.proposalCreatedCount,
+        proposalSentCount: input.proposalSentCount,
+        acceptedCount: input.acceptedCount,
+        deliveryStartedCount: input.deliveryStartedCount,
+        deliveryCompletedCount: input.deliveryCompletedCount,
+        proofCreatedCount: input.proofCreatedCount,
+      });
 
-  return NextResponse.json({
-    counts: { total, proposalSent, approved, buildStarted, buildCompleted, won, lost },
-    rates: {
-      proposalSentRate: total ? proposalSent / total : 0,
-      approvedRate: proposalSent ? approved / proposalSent : 0,
-      buildStartRate: approved ? buildStarted / approved : 0,
-      buildCompleteRate: buildStarted ? buildCompleted / buildStarted : 0,
-      winRate: approved ? won / approved : 0,
-    },
-    medianMs: {
-      created_to_proposalSent: median(deltas.created_to_proposalSent),
-      proposalSent_to_approved: median(deltas.proposalSent_to_approved),
-      approved_to_buildStarted: median(deltas.approved_to_buildStarted),
-      buildStarted_to_buildCompleted: median(deltas.buildStarted_to_buildCompleted),
-    },
+      return NextResponse.json({
+        range,
+        ...metrics,
+      });
+    } catch (err) {
+      console.error("[metrics/conversion]", err);
+      return jsonError("Failed to load conversion metrics", 500);
+    }
   });
 }

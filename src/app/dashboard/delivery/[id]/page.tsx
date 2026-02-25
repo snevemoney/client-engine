@@ -4,6 +4,8 @@ import { use, useState, useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { DeliveryHandoffRetention } from "@/components/delivery/DeliveryHandoffRetention";
+import { DeliveryChecklist } from "@/components/delivery/DeliveryChecklist";
 
 type Project = {
   id: string;
@@ -27,6 +29,32 @@ type Project = {
   milestones: { id: string; title: string; status: string }[];
   checklistItems: { id: string; category: string; label: string; isDone: boolean; isRequired: boolean }[];
   readiness: { canComplete: boolean; reasons: string[] };
+  handoffStartedAt?: string | null;
+  handoffCompletedAt?: string | null;
+  handoffOwner?: string | null;
+  handoffSummary?: string | null;
+  clientConfirmedAt?: string | null;
+  testimonialRequestedAt?: string | null;
+  testimonialReceivedAt?: string | null;
+  testimonialStatus?: string;
+  testimonialQuote?: string | null;
+  testimonialSourceUrl?: string | null;
+  reviewRequestedAt?: string | null;
+  reviewReceivedAt?: string | null;
+  reviewPlatform?: string | null;
+  reviewUrl?: string | null;
+  referralRequestedAt?: string | null;
+  referralReceivedAt?: string | null;
+  referralStatus?: string;
+  referralNotes?: string | null;
+  retentionStatus?: string;
+  retentionNextFollowUpAt?: string | null;
+  retentionLastContactedAt?: string | null;
+  retentionFollowUpCount?: number;
+  retentionOutcome?: string | null;
+  upsellOpportunity?: string | null;
+  upsellValueEstimate?: number | null;
+  postDeliveryHealth?: string;
 };
 
 function formatDate(iso: string | null): string {
@@ -114,17 +142,15 @@ export default function DeliveryDetailPage({ params }: { params: Promise<{ id: s
         </ul>
       </div>
 
-      <div>
-        <h2 className="text-sm font-medium text-neutral-500 mb-2">Checklist</h2>
-        <ul className="space-y-1">
-          {project.checklistItems.map((c) => (
-            <li key={c.id} className="flex items-center gap-2">
-              <span className={c.isDone ? "text-emerald-400 line-through" : ""}>{c.label}</span>
-              {c.isRequired && <span className="text-xs text-neutral-500">required</span>}
-            </li>
-          ))}
-        </ul>
-      </div>
+      <DeliveryChecklist
+        projectId={project.id}
+        items={project.checklistItems}
+        onUpdate={(updated) =>
+          setProject((p) =>
+            p ? { ...p, checklistItems: updated } : null
+          )
+        }
+      />
 
       {!project.completedAt && (
         <div className="flex flex-wrap gap-2">
@@ -138,6 +164,40 @@ export default function DeliveryDetailPage({ params }: { params: Promise<{ id: s
           </Button>
         </div>
       )}
+
+      <DeliveryHandoffRetention
+        project={{
+          id: project.id,
+          status: project.status,
+          handoffStartedAt: project.handoffStartedAt ?? null,
+          handoffCompletedAt: project.handoffCompletedAt ?? null,
+          handoffOwner: project.handoffOwner ?? null,
+          handoffSummary: project.handoffSummary ?? null,
+          clientConfirmedAt: project.clientConfirmedAt ?? null,
+          testimonialRequestedAt: project.testimonialRequestedAt ?? null,
+          testimonialReceivedAt: project.testimonialReceivedAt ?? null,
+          testimonialStatus: project.testimonialStatus ?? "none",
+          testimonialQuote: project.testimonialQuote ?? null,
+          testimonialSourceUrl: project.testimonialSourceUrl ?? null,
+          reviewRequestedAt: project.reviewRequestedAt ?? null,
+          reviewReceivedAt: project.reviewReceivedAt ?? null,
+          reviewPlatform: project.reviewPlatform ?? null,
+          reviewUrl: project.reviewUrl ?? null,
+          referralRequestedAt: project.referralRequestedAt ?? null,
+          referralReceivedAt: project.referralReceivedAt ?? null,
+          referralStatus: project.referralStatus ?? "none",
+          referralNotes: project.referralNotes ?? null,
+          retentionStatus: project.retentionStatus ?? "none",
+          retentionNextFollowUpAt: project.retentionNextFollowUpAt ?? null,
+          retentionLastContactedAt: project.retentionLastContactedAt ?? null,
+          retentionFollowUpCount: project.retentionFollowUpCount ?? 0,
+          retentionOutcome: project.retentionOutcome ?? null,
+          upsellOpportunity: project.upsellOpportunity ?? null,
+          upsellValueEstimate: project.upsellValueEstimate ?? null,
+          postDeliveryHealth: project.postDeliveryHealth ?? "green",
+        }}
+        onReload={() => window.location.reload()}
+      />
     </div>
   );
 }

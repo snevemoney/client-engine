@@ -10,11 +10,12 @@ export async function POST(
   _req: unknown,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  return withRouteTiming("POST /api/proof-candidates/[id]/promote", async () => {
+  const { id } = await params;
+  return withRouteTiming(
+    "POST /api/proof-candidates/[id]/promote",
+    async () => {
     const session = await auth();
     if (!session?.user) return jsonError("Unauthorized", 401);
-
-    const { id } = await params;
     const candidate = await db.proofCandidate.findUnique({
       where: { id },
       include: { intakeLead: true },
@@ -98,6 +99,16 @@ export async function POST(
       return record;
     });
 
+    const { createAuditActionSafe } = await import("@/lib/audit/log");
+    createAuditActionSafe({
+      actionKey: "proof_candidate.promote",
+      actionLabel: "Promote proof candidate to record",
+      sourceType: "proof_candidate",
+      sourceId: id,
+      sourceLabel: candidate.title,
+      afterJson: { proofRecordId: result.id },
+    });
+
     return NextResponse.json({
       ok: true,
       proofRecord: {
@@ -114,5 +125,7 @@ export async function POST(
         promotedProofRecordId: result.id,
       },
     });
-  });
+  },
+    { eventKey: "proof_candidate.promote", method: "POST", sourceType: "proof_candidate", sourceId: id }
+  );
 }

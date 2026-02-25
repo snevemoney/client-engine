@@ -50,6 +50,32 @@ function safeProject(p: {
   pipelineLeadId: string | null;
   createdAt: Date;
   updatedAt: Date;
+  handoffStartedAt?: Date | null;
+  handoffCompletedAt?: Date | null;
+  handoffOwner?: string | null;
+  handoffSummary?: string | null;
+  clientConfirmedAt?: Date | null;
+  testimonialRequestedAt?: Date | null;
+  testimonialReceivedAt?: Date | null;
+  testimonialStatus?: string | null;
+  testimonialQuote?: string | null;
+  testimonialSourceUrl?: string | null;
+  reviewRequestedAt?: Date | null;
+  reviewReceivedAt?: Date | null;
+  reviewPlatform?: string | null;
+  reviewUrl?: string | null;
+  referralRequestedAt?: Date | null;
+  referralReceivedAt?: Date | null;
+  referralStatus?: string | null;
+  referralNotes?: string | null;
+  retentionStatus?: string | null;
+  retentionNextFollowUpAt?: Date | null;
+  retentionLastContactedAt?: Date | null;
+  retentionFollowUpCount?: number | null;
+  retentionOutcome?: string | null;
+  upsellOpportunity?: string | null;
+  upsellValueEstimate?: number | null;
+  postDeliveryHealth?: string | null;
 }) {
   const health = computeProjectHealth({ status: p.status, dueDate: p.dueDate });
   return {
@@ -78,6 +104,32 @@ function safeProject(p: {
     health,
     createdAt: p.createdAt.toISOString(),
     updatedAt: p.updatedAt.toISOString(),
+    handoffStartedAt: p.handoffStartedAt?.toISOString() ?? null,
+    handoffCompletedAt: p.handoffCompletedAt?.toISOString() ?? null,
+    handoffOwner: p.handoffOwner ?? null,
+    handoffSummary: p.handoffSummary ?? null,
+    clientConfirmedAt: p.clientConfirmedAt?.toISOString() ?? null,
+    testimonialRequestedAt: p.testimonialRequestedAt?.toISOString() ?? null,
+    testimonialReceivedAt: p.testimonialReceivedAt?.toISOString() ?? null,
+    testimonialStatus: p.testimonialStatus ?? "none",
+    testimonialQuote: p.testimonialQuote ?? null,
+    testimonialSourceUrl: p.testimonialSourceUrl ?? null,
+    reviewRequestedAt: p.reviewRequestedAt?.toISOString() ?? null,
+    reviewReceivedAt: p.reviewReceivedAt?.toISOString() ?? null,
+    reviewPlatform: p.reviewPlatform ?? null,
+    reviewUrl: p.reviewUrl ?? null,
+    referralRequestedAt: p.referralRequestedAt?.toISOString() ?? null,
+    referralReceivedAt: p.referralReceivedAt?.toISOString() ?? null,
+    referralStatus: p.referralStatus ?? "none",
+    referralNotes: p.referralNotes ?? null,
+    retentionStatus: p.retentionStatus ?? "none",
+    retentionNextFollowUpAt: p.retentionNextFollowUpAt?.toISOString() ?? null,
+    retentionLastContactedAt: p.retentionLastContactedAt?.toISOString() ?? null,
+    retentionFollowUpCount: p.retentionFollowUpCount ?? 0,
+    retentionOutcome: p.retentionOutcome ?? null,
+    upsellOpportunity: p.upsellOpportunity ?? null,
+    upsellValueEstimate: p.upsellValueEstimate ?? null,
+    postDeliveryHealth: p.postDeliveryHealth ?? "green",
   };
 }
 

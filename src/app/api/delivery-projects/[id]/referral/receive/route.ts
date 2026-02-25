@@ -1,0 +1,60 @@
+/**
+ * POST /api/delivery-projects/[id]/referral/receive — Receive referral.
+ */
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
+import { DeliveryActivityType } from "@prisma/client";
+import { jsonError, withRouteTiming } from "@/lib/api-utils";
+
+const PostSchema = z.object({
+  notes: z.string().max(5000).optional().nullable(),
+  note: z.string().max(2000).optional().nullable(),
+});
+
+export async function POST(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  return withRouteTiming("POST /api/delivery-projects/[id]/referral/receive", async () => {
+    const session = await auth();
+    if (!session?.user) return jsonError("Unauthorized", 401);
+
+    const { id } = await params;
+    const project = await db.deliveryProject.findUnique({ where: { id } });
+    if (!project) return jsonError("Project not found", 404);
+
+    const raw = await req.json().catch(() => ({}));
+    const parsed = PostSchema.safeParse(raw);
+    const body = parsed.success ? parsed.data : { notes: null, note: null };
+    const notes = body.notes?.trim() || body.note?.trim() || project.referralNotes || null;
+
+    const now = new Date();
+
+    await db.$transaction(async (tx) => {
+      await tx.deliveryProject.update({
+        where: { id },
+        data: {
+          referralReceivedAt: now,
+          referralStatus: "received",
+          referralNotes: notes ?? undefined,
+        },
+      });
+      await tx.deliveryActivity.create({
+        data: {
+          deliveryProjectId: id,
+          type: "referral_received" as DeliveryActivityType,
+          message: body.note ?? "Referral received",
+          metaJson: { notes },
+        },
+      });
+    });
+
+    return NextResponse.json({
+      referralReceivedAt: now.toISOString(),
+      referralStatus: "received",
+      referralNotes: notes ?? null,
+    });
+  });
+}

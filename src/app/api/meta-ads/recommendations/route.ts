@@ -59,7 +59,7 @@ export async function GET(req: NextRequest) {
 
     const lastGenerated = recommendations[0]?.createdAt ?? null;
 
-    let lastActionByEntity: Record<string, { createdAt: string; status: string; actionType: string }> = {};
+    const lastActionByEntity: Record<string, { createdAt: string; status: string; actionType: string }> = {};
     if (recommendations.length > 0) {
       const entityKeys = new Set(recommendations.map((r) => `${r.entityType}:${r.entityId}`));
       const recentActions = await db.metaAdsActionLog.findMany({

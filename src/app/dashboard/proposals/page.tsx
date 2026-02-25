@@ -1,10 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Plus, Search } from "lucide-react";
+import { Plus, Search } from "lucide-react";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { useUrlQueryState } from "@/hooks/useUrlQueryState";
+import { AsyncState } from "@/components/ui/AsyncState";
+import { PaginationControls } from "@/components/ui/PaginationControls";
+import { formatDateSafe } from "@/lib/ui/date-safe";
+import { normalizePagination } from "@/lib/ui/pagination-safe";
 
 type Proposal = {
   id: string;
@@ -19,17 +25,6 @@ type Proposal = {
   pipelineLead: { id: string; title: string; status: string } | null;
   updatedAt: string;
 };
-
-function formatDate(iso: string | null): string {
-  if (!iso) return "—";
-  try {
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return "—";
-    return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-  } catch {
-    return "—";
-  }
-}
 
 function formatPrice(p: Proposal): string {
   if (p.priceMin != null && p.priceMax != null && p.priceMin !== p.priceMax) {
@@ -46,31 +41,83 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export default function ProposalsPage() {
+  const url = useUrlQueryState();
+  const [search, setSearch] = useState(() => url.getString("search"));
+  const debouncedSearch = useDebouncedValue(search, 300);
   const [proposals, setProposals] = useState<Proposal[]>([]);
+  const [pagination, setPagination] = useState(() => normalizePagination(null, 0));
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [sourceFilter, setSourceFilter] = useState("all");
+  const [error, setError] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const runIdRef = useRef(0);
+
+  const statusFilter = url.getString("status", "all");
+  const sourceFilter = url.getString("source", "all");
+  const page = url.getPage();
+  const pageSize = url.getPageSize();
 
   useEffect(() => {
-    async function load() {
-      setLoading(true);
-      try {
-        const params = new URLSearchParams();
-        if (search.trim()) params.set("search", search.trim());
-        if (statusFilter !== "all") params.set("status", statusFilter);
-        if (sourceFilter !== "all") params.set("source", sourceFilter);
-        const res = await fetch(`/api/proposals?${params}`, { cache: "no-store" });
-        const data = await res.json().catch(() => []);
-        setProposals(Array.isArray(data) ? data : []);
-      } catch {
+    setSearch((prev) => {
+      const u = url.getString("search");
+      return u !== prev ? u : prev;
+    });
+  }, [url.searchParams]);
+
+  useEffect(() => {
+    if (debouncedSearch !== url.getString("search")) {
+      url.setSearch(debouncedSearch);
+    }
+  }, [debouncedSearch]);
+
+  const load = useCallback(async () => {
+    if (abortRef.current) abortRef.current.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const runId = ++runIdRef.current;
+    setLoading(true);
+    setError(null);
+    try {
+      const params = new URLSearchParams();
+      if (debouncedSearch.trim()) params.set("search", debouncedSearch.trim());
+      if (statusFilter !== "all") params.set("status", statusFilter);
+      if (sourceFilter !== "all") params.set("source", sourceFilter);
+      params.set("page", String(page));
+      params.set("pageSize", String(pageSize));
+      const res = await fetch(`/api/proposals?${params}`, {
+        credentials: "include",
+        signal: controller.signal,
+        cache: "no-store",
+      });
+      const data = await res.json().catch(() => null);
+      if (controller.signal.aborted || runId !== runIdRef.current) return;
+      if (!res.ok) {
+        setError(typeof data?.error === "string" ? data.error : `Failed to load (${res.status})`);
         setProposals([]);
-      } finally {
+        setPagination(normalizePagination(null, 0));
+        return;
+      }
+      setProposals(Array.isArray(data?.items) ? data.items : []);
+      setPagination(normalizePagination(data?.pagination, data?.items?.length ?? 0));
+    } catch (e) {
+      if (controller.signal.aborted || runId !== runIdRef.current) return;
+      if (e instanceof Error && (e.name === "AbortError" || e.message?.includes("aborted"))) return;
+      setError(e instanceof Error ? e.message : "Failed to load");
+      setProposals([]);
+      setPagination(normalizePagination(null, 0));
+    } finally {
+      if (runId === runIdRef.current) {
         setLoading(false);
+        abortRef.current = null;
       }
     }
+  }, [debouncedSearch, statusFilter, sourceFilter, page, pageSize]);
+
+  useEffect(() => {
     void load();
-  }, [search, statusFilter, sourceFilter]);
+    return () => {
+      if (abortRef.current) abortRef.current.abort();
+    };
+  }, [load]);
 
   return (
     <div className="space-y-6 min-w-0">
@@ -94,7 +141,7 @@ export default function ProposalsPage() {
         </div>
         <select
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
+          onChange={(e) => url.setFilter("status", e.target.value)}
           className="rounded-md bg-neutral-900 border border-neutral-800 px-3 py-2 text-sm"
         >
           <option value="all">All statuses</option>
@@ -107,7 +154,7 @@ export default function ProposalsPage() {
         </select>
         <select
           value={sourceFilter}
-          onChange={(e) => setSourceFilter(e.target.value)}
+          onChange={(e) => url.setFilter("source", e.target.value)}
           className="rounded-md bg-neutral-900 border border-neutral-800 px-3 py-2 text-sm"
         >
           <option value="all">All sources</option>
@@ -122,13 +169,14 @@ export default function ProposalsPage() {
         </Link>
       </div>
 
-      {loading ? (
-        <div className="py-12 text-center text-neutral-500">Loading…</div>
-      ) : proposals.length === 0 ? (
-        <div className="py-12 text-center text-neutral-500 rounded-lg border border-neutral-800">
-          No proposals yet. Create one manually or from an intake lead.
-        </div>
-      ) : (
+      <AsyncState
+        loading={loading}
+        error={error}
+        empty={!loading && !error && proposals.length === 0}
+        emptyMessage="No proposals yet. Create one manually or from an intake lead."
+        onRetry={load}
+      >
+        {proposals.length > 0 ? (
         <div className="rounded-lg border border-neutral-800 overflow-hidden">
           <table className="w-full text-sm">
             <thead>
@@ -156,7 +204,7 @@ export default function ProposalsPage() {
                   <td className="p-3 text-neutral-500 text-xs">
                     {p.intakeLead ? "Intake" : p.pipelineLead ? "Pipeline" : "—"}
                   </td>
-                  <td className="p-3 text-neutral-400">{formatDate(p.updatedAt)}</td>
+                  <td className="p-3 text-neutral-400">{formatDateSafe(p.updatedAt, { month: "short", day: "numeric" })}</td>
                   <td className="p-3 text-right">
                     <Link href={`/dashboard/proposals/${p.id}`}>
                       <Button variant="ghost" size="sm">Open</Button>
@@ -167,7 +215,23 @@ export default function ProposalsPage() {
             </tbody>
           </table>
         </div>
-      )}
+        ) : null}
+        {pagination.totalPages > 1 || pagination.total > pagination.pageSize ? (
+          <div className="mt-3 px-3 pb-3">
+            <PaginationControls
+              page={pagination.page}
+              pageSize={pagination.pageSize}
+              total={pagination.total}
+              totalPages={pagination.totalPages}
+              hasNext={pagination.hasNext}
+              hasPrev={pagination.hasPrev}
+              onPageChange={url.setPage}
+              onPageSizeChange={url.setPageSize}
+              isLoading={loading}
+            />
+          </div>
+        ) : null}
+      </AsyncState>
     </div>
   );
 }

@@ -9,6 +9,7 @@ import { getFollowUpDisciplineMetrics } from "@/lib/ops/followUpDiscipline";
 import { getReferralEngineMetrics } from "@/lib/ops/referralEngine";
 import { getProspectingSourceMetrics } from "@/lib/ops/prospectingSources";
 import { getChannelRoleCritique } from "@/lib/ops/channelRoleMap";
+import { getNotificationSummary } from "@/lib/notifications/summary";
 import { getBuildOpsSummary } from "@/lib/ops/buildTasks";
 import { getReusableAssetSummary } from "@/lib/ops/reusableAssetSummary";
 import { getLeverageScore } from "@/lib/ops/leverageScore";
@@ -41,12 +42,13 @@ import { ChannelRoleCard } from "@/components/dashboard/command/ChannelRoleCard"
 import { OwnedAudienceCard } from "@/components/dashboard/command/OwnedAudienceCard";
 import { NetworkingEventsCard } from "@/components/dashboard/command/NetworkingEventsCard";
 import { PatTomWeeklyScorecardCard } from "@/components/dashboard/command/PatTomWeeklyScorecardCard";
+import { NotificationsCard } from "@/components/dashboard/command/NotificationsCard";
 import { FollowUpQueueCard } from "@/components/dashboard/command/FollowUpQueueCard";
 import { logSlow, PERF } from "@/lib/perf";
 
 /** Second wave: all remaining cards. Streams in after Section 1. */
 export default async function CommandSection2() {
-  const start = Date.now();
+  const start = performance.now(); // eslint-disable-line react-hooks/purity
   const [
     brief,
     queue,
@@ -69,6 +71,7 @@ export default async function CommandSection2() {
     referralEngine,
     prospectingSources,
     channelRoleCritique,
+    notificationSummary,
   ] = await Promise.all([
     buildBrief(),
     getQueueSummary(),
@@ -98,8 +101,9 @@ export default async function CommandSection2() {
     getReferralEngineMetrics(),
     getProspectingSourceMetrics(),
     getChannelRoleCritique(),
+    getNotificationSummary(),
   ]);
-  const ms = Date.now() - start;
+  const ms = Math.round(performance.now() - start); // eslint-disable-line react-hooks/purity
   if (ms > PERF.SLOW_PAGE_MS) logSlow("page", "/dashboard/command Section2", ms);
 
   const feedbackNoteItems = feedbackNotes.map((n) => ({
@@ -114,6 +118,7 @@ export default async function CommandSection2() {
         <FollowUpDisciplineCard data={followUpDiscipline} />
         <ReferralEngineCard data={referralEngine} />
       </div>
+      <NotificationsCard data={notificationSummary} />
       <ProspectingSourcesCard data={prospectingSources} />
       <ChannelRoleCard data={channelRoleCritique} />
       <OwnedAudienceCard />

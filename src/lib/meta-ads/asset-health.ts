@@ -75,10 +75,10 @@ export async function fetchAssetHealth(accountId: string): Promise<AssetHealthRe
 
   let account = { id: acc, name: undefined as string | undefined, status: undefined as string | undefined, currency: undefined as string | undefined, timezone_name: undefined as string | undefined };
   let pages: AssetHealthResult["pages"] = [];
-  let instagramAccounts: AssetHealthResult["instagramAccounts"] = [];
+  const instagramAccounts: AssetHealthResult["instagramAccounts"] = [];
   let pixels: AssetHealthResult["pixels"] = [];
   let whatsapp: AssetHealthResult["whatsapp"] = { status: "unknown" as const };
-  let permissions = { ...defaultPerms };
+  const permissions = { ...defaultPerms };
 
   // 1) Account info — requires ads_read
   try {

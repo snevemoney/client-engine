@@ -729,6 +729,57 @@ model StrategyWeekRecruitingTarget {
   @@index([strategyWeekId])
 }
 
+// ----- Internal Settings (Phase 3.4: Score Alerts) -----
+
+/** Key-value store for internal operator config. Key is unique. */
+model InternalSetting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  valueJson Json     @default("{}")
+  updatedAt DateTime @updatedAt
+
+  @@index([key])
+}
+
+// ----- Score Engine (Phase 3.1) -----
+
+/** Periodic score snapshots for operational entities (reviews, command_center, etc.). */
+model ScoreSnapshot {
+  id          String   @id @default(cuid())
+  entityType  String   // review_stream | command_center | etc.
+  entityId    String
+  score       Float
+  band        String   // healthy | warning | critical
+  delta       Float?   // difference from previous snapshot
+  factorsJson Json?    // factor breakdown
+  reasonsJson Json?    // top reasons
+  computedAt  DateTime
+  createdAt   DateTime @default(now())
+
+  @@index([entityType, entityId, computedAt(sort: Desc)])
+  @@index([band, computedAt(sort: Desc)])
+  @@index([createdAt(sort: Desc)])
+}
+
+/** Significant score transitions for alerting/audit. */
+model ScoreEvent {
+  id          String   @id @default(cuid())
+  entityType  String
+  entityId    String
+  eventType   String   // threshold_breach | sharp_drop | recovery
+  fromScore   Float
+  toScore     Float
+  delta       Float
+  fromBand    String
+  toBand      String
+  reasonsJson Json?
+  dedupeKey   String?
+  createdAt   DateTime @default(now())
+
+  @@index([dedupeKey])
+  @@index([entityType, entityId, createdAt(sort: Desc)])
+}
+
 // ----- Integration connections (Settings control center) -----
 
 /// Mode = operator choice. Status = technical reality.
@@ -1054,6 +1105,23 @@ enum ProposalActivityType {
   accepted
   rejected
   note
+  followup_scheduled
+  followup_completed
+  followup_snoozed
+  followup_email
+  followup_call
+  response_logged
+  meeting_booked
+}
+
+enum ProposalResponseStatus {
+  none
+  viewed
+  replied
+  meeting_booked
+  negotiating
+  accepted
+  rejected
 }
 
 model Proposal {
@@ -1088,6 +1156,17 @@ model Proposal {
   createdBy       String?
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
+  // Phase 2.1: Proposal response & follow-up
+  lastContactedAt    DateTime?
+  nextFollowUpAt     DateTime?
+  followUpCompletedAt DateTime?
+  followUpCount      Int               @default(0)
+  meetingBookedAt    DateTime?
+  responseStatus     ProposalResponseStatus @default(none)
+  responseSummary    String?           @db.Text
+  bookingUrlUsed     String?
+  staleAfterDays     Int?
+  finalValue         Int?            // Phase 2.3: accepted/deal value for revenue metrics
   versions        ProposalVersion[]
   activities      ProposalActivity[]
   intakeLeadsAsLatest IntakeLead[]   @relation("LatestProposal")
@@ -1096,6 +1175,8 @@ model Proposal {
   @@index([status])
   @@index([intakeLeadId])
   @@index([pipelineLeadId])
+  @@index([nextFollowUpAt])
+  @@index([responseStatus])
 }
 
 model ProposalVersion {
@@ -1160,6 +1241,51 @@ enum DeliveryActivityType {
   qa
   handoff
   completed
+  handoff_started
+  handoff_completed
+  client_confirmed
+  testimonial_requested
+  testimonial_received
+  review_requested
+  review_received
+  referral_requested
+  referral_received
+  retention_followup_scheduled
+  retention_followup_completed
+  retention_followup_email
+  retention_followup_call
+  retention_status_changed
+  upsell_logged
+}
+
+enum TestimonialStatus {
+  none
+  requested
+  received
+  declined
+}
+
+enum ReferralStatus {
+  none
+  requested
+  received
+  declined
+}
+
+enum RetentionStatus {
+  none
+  monitoring
+  followup_due
+  upsell_open
+  retainer_open
+  closed_won
+  closed_lost
+}
+
+enum PostDeliveryHealth {
+  green
+  yellow
+  red
 }
 
 model DeliveryProject {
@@ -1194,12 +1320,42 @@ model DeliveryProject {
   milestones        DeliveryMilestone[]
   checklistItems    DeliveryChecklistItem[]
   activities        DeliveryActivity[]
+  // Phase 2.2: Handoff + Retention
+  handoffStartedAt      DateTime?
+  handoffCompletedAt   DateTime?
+  handoffOwner         String?
+  handoffSummary       String?              @db.Text
+  clientConfirmedAt    DateTime?
+  testimonialRequestedAt DateTime?
+  testimonialReceivedAt  DateTime?
+  testimonialStatus     TestimonialStatus   @default(none)
+  testimonialQuote      String?             @db.Text
+  testimonialSourceUrl  String?
+  reviewRequestedAt     DateTime?
+  reviewReceivedAt     DateTime?
+  reviewPlatform        String?
+  reviewUrl             String?
+  referralRequestedAt   DateTime?
+  referralReceivedAt    DateTime?
+  referralStatus       ReferralStatus      @default(none)
+  referralNotes        String?             @db.Text
+  retentionStatus      RetentionStatus     @default(none)
+  retentionNextFollowUpAt DateTime?
+  retentionLastContactedAt DateTime?
+  retentionFollowUpCount Int               @default(0)
+  retentionOutcome     String?             @db.Text
+  upsellOpportunity    String?             @db.Text
+  upsellValueEstimate  Int?
+  postDeliveryHealth   PostDeliveryHealth  @default(green)
+  finalValue           Int?                // Phase 2.3: delivered value for revenue metrics
 
   @@index([status])
   @@index([dueDate])
   @@index([pipelineLeadId])
   @@index([proposalId])
   @@index([intakeLeadId])
+  @@index([retentionNextFollowUpAt])
+  @@index([retentionStatus])
 }
 
 model DeliveryMilestone {
@@ -1245,4 +1401,438 @@ model DeliveryActivity {
 
   @@index([deliveryProjectId])
   @@index([deliveryProjectId, createdAt(sort: Desc)])
+}
+
+// ----- Phase 2.3: Revenue Intelligence -----
+
+model WeeklyMetricSnapshot {
+  id          String   @id @default(cuid())
+  weekStart   DateTime
+  metricKey   String
+  metricGroup String
+  metricLabel String
+  metricValue Float
+  metricCount Int?
+  metaJson    Json?
+  createdAt   DateTime @default(now())
+
+  @@unique([weekStart, metricKey])
+  @@index([weekStart])
+  @@index([metricKey])
+  @@index([metricGroup])
+}
+
+// ----- Phase 2.4: Operator Score + Forecasting -----
+
+model OperatorScoreSnapshot {
+  id            String   @id @default(cuid())
+  periodType    String    // weekly | monthly
+  periodStart   DateTime
+  score         Int      // 0–100
+  grade         String   // A, B, C, D, F
+  summary       String?  @db.Text
+  breakdownJson Json     @default("{}")
+  createdAt     DateTime @default(now())
+
+  @@unique([periodType, periodStart])
+  @@index([periodType])
+  @@index([periodStart])
+}
+
+model ForecastSnapshot {
+  id            String   @id @default(cuid())
+  periodType    String    // weekly | monthly
+  periodStart   DateTime
+  forecastKey   String
+  forecastLabel String
+  forecastValue Float
+  confidence    String?  // low | medium | high
+  metaJson      Json?
+  createdAt     DateTime @default(now())
+
+  @@unique([periodType, periodStart, forecastKey])
+  @@index([periodType])
+  @@index([periodStart])
+  @@index([forecastKey])
+}
+
+// ----- Phase 2.5: Automation Hooks + Reminder System -----
+
+model OpsReminder {
+  id              String    @id @default(cuid())
+  kind            String    // proposal_followup, intake_followup, delivery_due, proof_gap, etc.
+  title           String
+  description     String?   @db.Text
+  status          String    @default("open") // open, snoozed, done, dismissed
+  priority        String    @default("medium") // low, medium, high, critical
+  dueAt           DateTime?
+  snoozedUntil    DateTime?
+  sourceType      String?
+  sourceId        String?
+  actionUrl       String?
+  suggestedAction String?   @db.Text
+  metaJson        Json?
+  createdByRule   String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  completedAt     DateTime?
+  dismissedAt     DateTime?
+
+  @@index([status])
+  @@index([dueAt])
+  @@index([priority])
+  @@index([sourceType, sourceId])
+  @@index([status, dueAt])
+  @@index([snoozedUntil])
+}
+
+model AutomationSuggestion {
+  id          String    @id @default(cuid())
+  type        String    // create_followup, request_testimonial, create_proof_candidate, etc.
+  title       String
+  reason      String    @db.Text
+  status      String    @default("pending") // pending, accepted, rejected, applied, expired
+  priority    String    @default("medium")
+  sourceType  String?
+  sourceId    String?
+  payloadJson Json?
+  actionUrl   String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  resolvedAt  DateTime?
+
+  @@index([status])
+  @@index([priority])
+  @@index([type])
+  @@index([sourceType, sourceId])
+}
+
+// ----- Phase 2.7: Observability + Audit + Action Telemetry -----
+
+enum OpsEventLevel {
+  info
+  warn
+  error
+}
+
+enum OpsEventCategory {
+  ui_action
+  api_action
+  page_view
+  system
+  audit
+  automation
+  integration
+  data_quality
+}
+
+enum OpsEventStatus {
+  started
+  success
+  failure
+  skipped
+}
+
+model OpsEvent {
+  id           String           @id @default(cuid())
+  createdAt    DateTime         @default(now())
+  level       OpsEventLevel     @default(info)
+  category    OpsEventCategory
+  status      OpsEventStatus    @default(success)
+  actorType   String?
+  actorId     String?
+  actorLabel  String?
+  eventKey    String
+  eventLabel  String?
+  sourceType  String?
+  sourceId    String?
+  route       String?
+  method      String?
+  requestKey  String?
+  durationMs  Int?
+  errorCode   String?
+  errorMessage String?          @db.Text
+  metaJson    Json?
+  fingerprint String?
+
+  @@index([createdAt])
+  @@index([category, createdAt])
+  @@index([eventKey, createdAt])
+  @@index([sourceType, sourceId, createdAt])
+  @@index([level, createdAt])
+  @@index([fingerprint])
+}
+
+model AuditAction {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  actionKey   String
+  actionLabel String
+  sourceType  String
+  sourceId    String
+  sourceLabel String?
+  beforeJson  Json?
+  afterJson   Json?
+  note        String?  @db.Text
+  actorId     String?
+  actorLabel  String?
+  metaJson    Json?
+
+  @@index([sourceType, sourceId, createdAt])
+  @@index([actionKey, createdAt])
+}
+
+// ----- Phase 2.8.4: Job Queue (Postgres-backed, no Redis) -----
+
+enum JobRunStatus {
+  queued
+  running
+  succeeded
+  failed
+  canceled
+  dead_letter
+}
+
+enum JobLogLevel {
+  info
+  warn
+  error
+}
+
+model JobRun {
+  id                 String       @id @default(cuid())
+  jobType            String
+  status             JobRunStatus @default(queued)
+  priority           Int          @default(50)
+  idempotencyKey     String?
+  dedupeKey          String?
+  payloadJson        Json?
+  resultJson         Json?
+  errorMessage       String?      @db.Text
+  errorCode          String?
+  attempts           Int          @default(0)
+  maxAttempts        Int          @default(3)
+  runAfter           DateTime     @default(now())
+  lockedAt           DateTime?
+  lockOwner          String?
+  startedAt          DateTime?
+  finishedAt         DateTime?
+  createdByUserId    String?
+  sourceType         String?
+  sourceId           String?
+  cancelRequestedAt  DateTime?
+  canceledAt         DateTime?
+  timeoutSeconds     Int?
+  heartbeatAt        DateTime?
+  workerVersion      String?
+  deadLetteredAt     DateTime?
+  lastErrorAt        DateTime?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  logs JobLog[]
+
+  @@index([status, runAfter, priority])
+  @@index([lockOwner])
+  @@index([dedupeKey])
+  @@index([idempotencyKey])
+  @@index([jobType])
+  @@index([createdAt(sort: Desc)])
+}
+
+enum JobScheduleCadenceType {
+  interval
+  daily
+  weekly
+  monthly
+}
+
+model JobSchedule {
+  id                  String              @id @default(cuid())
+  key                 String              @unique
+  title               String
+  description         String?             @db.Text
+  jobType             String
+  isEnabled           Boolean             @default(true)
+  cadenceType         JobScheduleCadenceType
+  intervalMinutes     Int?
+  dayOfWeek           Int?                // 0=Sun..6=Sat
+  dayOfMonth         Int?                // 1-31
+  hour                Int?                // 0-23
+  minute              Int?                // 0-59
+  timezone            String?
+  payloadTemplateJson Json?
+  dedupeWindowMinutes Int?                @default(60)
+  priority            Int                 @default(50)
+  maxAttempts         Int                 @default(3)
+  timeoutSeconds      Int?
+  lastEnqueuedAt      DateTime?
+  lastRunJobId        String?
+  nextRunAt           DateTime?
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  @@index([isEnabled, nextRunAt])
+  @@index([jobType])
+}
+
+model JobLog {
+  id        String     @id @default(cuid())
+  jobId     String
+  job       JobRun     @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  level     JobLogLevel @default(info)
+  message   String     @db.Text
+  metaJson  Json?
+  createdAt DateTime   @default(now())
+
+  @@index([jobId])
+  @@index([jobId, createdAt])
+}
+
+// ----- Phase 2.8.6: Notifications + Escalations -----
+
+enum NotificationChannelType {
+  in_app
+  webhook
+  email
+  discord_webhook
+}
+
+enum NotificationSeverity {
+  info
+  warning
+  critical
+}
+
+enum NotificationEventStatus {
+  pending
+  queued
+  sent
+  failed
+  suppressed
+}
+
+enum NotificationDeliveryStatus {
+  queued
+  sending
+  sent
+  failed
+  skipped
+}
+
+model NotificationChannel {
+  id               String                 @id @default(cuid())
+  key              String                 @unique
+  title            String
+  type             NotificationChannelType
+  isEnabled        Boolean                @default(true)
+  isDefault        Boolean                @default(false)
+  severityMin      NotificationSeverity?
+  configJson       Json?
+  secretRef        String?
+  lastTestedAt     DateTime?
+  lastSuccessAt    DateTime?
+  lastErrorAt      DateTime?
+  lastErrorMessage String?                @db.Text
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+
+  deliveries NotificationDelivery[]
+
+  @@index([isEnabled])
+  @@index([type])
+}
+
+model NotificationEvent {
+  id            String                 @id @default(cuid())
+  eventKey      String
+  title         String
+  message       String                 @db.Text
+  severity      NotificationSeverity
+  sourceType    String?
+  sourceId      String?
+  actionUrl     String?
+  metaJson      Json?
+  dedupeKey     String?
+  status        NotificationEventStatus @default(pending)
+  occurredAt    DateTime
+  queuedAt      DateTime?
+  sentAt        DateTime?
+  failedAt      DateTime?
+  errorMessage  String?                @db.Text
+  createdByRule String?
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+
+  deliveries         NotificationDelivery[]
+  inAppNotification InAppNotification?
+
+  @@index([status])
+  @@index([severity])
+  @@index([occurredAt(sort: Desc)])
+  @@index([sourceType, sourceId])
+  @@index([dedupeKey])
+}
+
+model NotificationDelivery {
+  id                   String                    @id @default(cuid())
+  notificationEventId  String
+  notificationEvent    NotificationEvent         @relation(fields: [notificationEventId], references: [id], onDelete: Cascade)
+  channelId            String
+  channel              NotificationChannel       @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  status               NotificationDeliveryStatus @default(queued)
+  attempt              Int                       @default(0)
+  maxAttempts          Int                       @default(3)
+  runAfter             DateTime?
+  queuedJobRunId       String?
+  providerMessageId    String?
+  requestPayloadJson   Json?
+  responsePayloadJson  Json?
+  sentAt               DateTime?
+  failedAt             DateTime?
+  errorCode            String?
+  errorMessage         String?                   @db.Text
+  dedupeKey            String?
+  createdAt            DateTime                  @default(now())
+  updatedAt            DateTime                  @updatedAt
+
+  @@index([status, runAfter])
+  @@index([channelId, status])
+  @@index([notificationEventId])
+  @@index([dedupeKey])
+}
+
+model InAppNotification {
+  id                  String             @id @default(cuid())
+  notificationEventId String?            @unique
+  notificationEvent   NotificationEvent? @relation(fields: [notificationEventId], references: [id], onDelete: SetNull)
+  title               String
+  message             String             @db.Text
+  severity            NotificationSeverity
+  actionUrl           String?
+  isRead              Boolean            @default(false)
+  readAt              DateTime?
+  createdAt           DateTime           @default(now())
+
+  @@index([isRead])
+  @@index([createdAt(sort: Desc)])
+}
+
+model EscalationRule {
+  id                  String               @id @default(cuid())
+  key                 String               @unique
+  title               String
+  isEnabled           Boolean              @default(true)
+  sourceType          String
+  triggerType         String
+  severity            NotificationSeverity
+  delayMinutes        Int                  @default(0)
+  dedupeWindowMinutes Int                  @default(60)
+  channelTargetsJson  Json?
+  conditionsJson      Json?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+
+  @@index([isEnabled])
+  @@index([sourceType, triggerType])
 }

@@ -2,6 +2,19 @@ import { NextRequest, NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 import { db } from "@/lib/db";
 import { sendLeadEvent } from "@/lib/meta-capi";
+import { rateLimit } from "@/lib/rate-limit";
+
+const SITE_LEADS_LIMIT = 10;
+const SITE_LEADS_WINDOW_MS = 60_000; // 10 per minute per IP
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
 
 function buildLeadEmailPayload(opts: {
   name: string;
@@ -18,11 +31,11 @@ function buildLeadEmailPayload(opts: {
   ]
     .filter(Boolean)
     .join("\n");
-  const subject = `Website lead: ${opts.title}`;
+  const subject = `Website lead: ${escapeHtml(opts.title)}`;
   const text = `${opts.name} <${opts.email}> wrote:\n\n${body || "(No message)"}`;
   const html = [
-    `<p><strong>${opts.name}</strong> &lt;${opts.email}&gt;</p>`,
-    body ? `<pre style="white-space:pre-wrap;">${body.replace(/</g, "&lt;")}</pre>` : "<p>(No message)</p>",
+    `<p><strong>${escapeHtml(opts.name)}</strong> &lt;${escapeHtml(opts.email)}&gt;</p>`,
+    body ? `<pre style="white-space:pre-wrap;">${escapeHtml(body)}</pre>` : "<p>(No message)</p>",
     `<p><a href="mailto:${opts.email}">Reply to ${opts.email}</a></p>`,
   ].join("");
   return { subject, text, html };
@@ -97,18 +110,38 @@ async function sendLeadNotification(opts: {
   }
 }
 
+const MAX_EMAIL = 255;
+const MAX_NAME = 255;
+const MAX_COMPANY = 255;
+const MAX_WEBSITE = 500;
+const MAX_MESSAGE = 2000;
+
+function truncate(s: string, max: number): string {
+  return s.length > max ? s.slice(0, max) : s;
+}
+
 export async function POST(req: NextRequest) {
+  const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? req.headers.get("x-real-ip") ?? "unknown";
+  const rlKey = `site-leads:${clientIp}`;
+  const rl = rateLimit(rlKey, SITE_LEADS_LIMIT, SITE_LEADS_WINDOW_MS);
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: "Too many requests. Please try again later." },
+      { status: 429, headers: { "Retry-After": String(Math.ceil((rl.resetAt - Date.now()) / 1000)) } }
+    );
+  }
+
   let body: { name?: string; email?: string; company?: string; website?: string; message?: string };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
-  const name = typeof body.name === "string" ? body.name.trim() : "";
-  const email = typeof body.email === "string" ? body.email.trim() : "";
-  const company = typeof body.company === "string" ? body.company.trim() : undefined;
-  const website = typeof body.website === "string" ? body.website.trim() : undefined;
-  const message = typeof body.message === "string" ? body.message.trim() : "";
+  const name = truncate((typeof body.name === "string" ? body.name.trim() : ""), MAX_NAME);
+  const email = truncate((typeof body.email === "string" ? body.email.trim() : ""), MAX_EMAIL);
+  const company = typeof body.company === "string" ? truncate(body.company.trim(), MAX_COMPANY) || undefined : undefined;
+  const website = typeof body.website === "string" ? truncate(body.website.trim(), MAX_WEBSITE) || undefined : undefined;
+  const message = truncate((typeof body.message === "string" ? body.message.trim() : ""), MAX_MESSAGE);
   if (!email) return NextResponse.json({ error: "Email is required" }, { status: 400 });
   const title = company ? `${company} (website)` : name ? `${name} (website)` : "Website inquiry";
   const description = [message, company ? `Company: ${company}` : "", website ? `Website: ${website}` : ""].filter(Boolean).join("\n");

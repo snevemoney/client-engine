@@ -1,15 +1,17 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { withRouteTiming } from "@/lib/api-utils";
+import { jsonError, withRouteTiming } from "@/lib/api-utils";
+import { withSummaryCache } from "@/lib/http/cached-handler";
 
 /** GET /api/intake-leads/summary — counts for scoreboard card */
 export async function GET() {
   return withRouteTiming("GET /api/intake-leads/summary", async () => {
     const session = await auth();
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!session?.user) return jsonError("Unauthorized", 401);
 
-    const now = new Date();
+    return withSummaryCache("intake-leads/summary", async () => {
+      const now = new Date();
     const weekStart = new Date(now);
     weekStart.setDate(now.getDate() - now.getDay());
     weekStart.setHours(0, 0, 0, 0);
@@ -49,14 +51,15 @@ export async function GET() {
       }),
     ]);
 
-    return NextResponse.json({
-      newThisWeek,
-      qualified,
-      sent,
-      won,
-      sentThisWeek,
-      wonThisWeek,
-      proofCreatedThisWeek,
-    });
+      return {
+        newThisWeek,
+        qualified,
+        sent,
+        won,
+        sentThisWeek,
+        wonThisWeek,
+        proofCreatedThisWeek,
+      };
+    }, 15_000);
   });
 }

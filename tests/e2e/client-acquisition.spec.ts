@@ -17,11 +17,12 @@ const password = process.env.ADMIN_PASSWORD || process.env.E2E_PASSWORD || "chan
 
 test.describe("Client-acquisition E2E", () => {
   test.beforeEach(async ({ page }) => {
+    test.setTimeout(45000);
     await page.goto("/login");
     await page.getByLabel("Email").fill(email);
     await page.getByLabel("Password").fill(password);
     await page.getByRole("button", { name: /sign in/i }).click();
-    await page.waitForURL(/\/(dashboard|login)/, { timeout: 15000 });
+    await page.waitForURL(/\/dashboard/, { timeout: 15000 });
     if (page.url().includes("/login")) {
       const err = await page.getByText(/invalid|required|error|exception/i).first().textContent().catch(() => "");
       test.skip(true, `Login failed: ${err || "still on login"}`);

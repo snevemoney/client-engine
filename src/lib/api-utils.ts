@@ -5,6 +5,15 @@
 import { NextResponse } from "next/server";
 import type { Session } from "next-auth";
 import { logSlow, PERF } from "@/lib/perf";
+import { logOpsEventSafe } from "@/lib/ops-events/log";
+import { sanitizeErrorMessage } from "@/lib/ops-events/sanitize";
+
+export type OpsEventConfig = {
+  eventKey: string;
+  method?: string;
+  sourceType?: string;
+  sourceId?: string;
+};
 
 /** Standard error response shape: { error: string, code?: string } */
 export function jsonError(
@@ -27,7 +36,8 @@ export async function requireAuth(): Promise<Session | null> {
 /** Wrap a route handler with timing + slow-route log. Uses [SLOW] format at 500ms. */
 export async function withRouteTiming(
   routeLabel: string,
-  handler: () => Promise<NextResponse>
+  handler: () => Promise<NextResponse>,
+  opsConfig?: OpsEventConfig
 ): Promise<NextResponse> {
   const start = Date.now();
   try {
@@ -36,10 +46,39 @@ export async function withRouteTiming(
     if (ms > PERF.SLOW_API_MS) {
       logSlow("api", routeLabel, ms);
     }
+    if (opsConfig) {
+      logOpsEventSafe({
+        category: "api_action",
+        eventKey: opsConfig.eventKey,
+        eventLabel: routeLabel,
+        route: routeLabel,
+        method: opsConfig.method ?? "GET",
+        status: res.ok ? "success" : "failure",
+        durationMs: ms,
+        sourceType: opsConfig.sourceType,
+        sourceId: opsConfig.sourceId,
+        level: res.ok ? "info" : "error",
+      });
+    }
     return res;
   } catch (err) {
     const ms = Date.now() - start;
     logSlow("api", routeLabel, ms, `error=${err instanceof Error ? err.message : "unknown"}`);
+    if (opsConfig) {
+      logOpsEventSafe({
+        category: "api_action",
+        eventKey: opsConfig.eventKey,
+        eventLabel: routeLabel,
+        route: routeLabel,
+        method: opsConfig.method ?? "GET",
+        status: "failure",
+        durationMs: ms,
+        errorMessage: sanitizeErrorMessage(err),
+        sourceType: opsConfig.sourceType,
+        sourceId: opsConfig.sourceId,
+        level: "error",
+      });
+    }
     console.error(`[api:error] ${routeLabel} failed after ${ms}ms`, err);
     throw err;
   }

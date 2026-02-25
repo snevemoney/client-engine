@@ -57,12 +57,12 @@ export default function NewLeadPage() {
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5 sm:col-span-2">
-            <label className="text-sm font-medium">Title *</label>
-            <Input name="title" required placeholder="e.g. E-commerce site for local bakery" />
+            <label htmlFor="lead-title" className="text-sm font-medium">Title *</label>
+            <Input id="lead-title" name="title" required placeholder="e.g. E-commerce site for local bakery" />
           </div>
           <div className="space-y-1.5">
-            <label className="text-sm font-medium">Source</label>
-            <Input name="source" placeholder="upwork, facebook, referral..." defaultValue="manual" />
+            <label htmlFor="lead-source" className="text-sm font-medium">Source</label>
+            <Input id="lead-source" name="source" placeholder="upwork, facebook, referral..." defaultValue="manual" />
           </div>
           <div className="space-y-1.5">
             <label className="text-sm font-medium">Source URL</label>

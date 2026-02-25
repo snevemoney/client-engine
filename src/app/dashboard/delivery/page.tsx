@@ -1,11 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Package, Plus, Search } from "lucide-react";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { useUrlQueryState } from "@/hooks/useUrlQueryState";
+import { AsyncState } from "@/components/ui/AsyncState";
+import { PaginationControls } from "@/components/ui/PaginationControls";
+import { formatDateSafe } from "@/lib/ui/date-safe";
+import { normalizePagination } from "@/lib/ui/pagination-safe";
 
 type DeliveryProject = {
   id: string;
@@ -26,17 +31,6 @@ type Summary = {
   completedThisWeek: number;
 };
 
-function formatDate(iso: string | null): string {
-  if (!iso) return "—";
-  try {
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return "—";
-    return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-  } catch {
-    return "—";
-  }
-}
-
 function HealthBadge({ health }: { health: string }) {
   const v = health ?? "on_track";
   const map: Record<string, { label: string; className: string }> = {
@@ -55,39 +49,80 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export default function DeliveryPage() {
-  const searchParams = useSearchParams();
-  const dueParam = searchParams.get("due");
+  const url = useUrlQueryState();
+  const [search, setSearch] = useState(() => url.getString("search"));
+  const debouncedSearch = useDebouncedValue(search, 300);
   const [projects, setProjects] = useState<DeliveryProject[]>([]);
+  const [pagination, setPagination] = useState(() => normalizePagination(null, 0));
   const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [error, setError] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const runIdRef = useRef(0);
+
+  const statusFilter = url.getString("status", "all");
+  const dueParam = url.getString("due", "");
+  const page = url.getPage();
+  const pageSize = url.getPageSize();
 
   useEffect(() => {
-    async function load() {
-      setLoading(true);
-      try {
-        const params = new URLSearchParams();
-        if (search.trim()) params.set("search", search.trim());
-        if (statusFilter !== "all") params.set("status", statusFilter);
-        if (dueParam === "soon" || dueParam === "overdue") params.set("due", dueParam);
-        const [listRes, summaryRes] = await Promise.all([
-          fetch(`/api/delivery-projects?${params}`, { cache: "no-store" }),
-          fetch("/api/delivery-projects/summary", { cache: "no-store" }),
-        ]);
-        const list = await listRes.json().catch(() => []);
-        const sum = await summaryRes.json().catch(() => null);
-        setProjects(Array.isArray(list) ? list : []);
-        setSummary(sum && typeof sum === "object" ? sum : null);
-      } catch {
-        setProjects([]);
-        setSummary(null);
-      } finally {
+    setSearch((prev) => {
+      const u = url.getString("search");
+      return u !== prev ? u : prev;
+    });
+  }, [url.searchParams]);
+
+  useEffect(() => {
+    if (debouncedSearch !== url.getString("search")) {
+      url.setSearch(debouncedSearch);
+    }
+  }, [debouncedSearch]);
+
+  const load = useCallback(async () => {
+    if (abortRef.current) abortRef.current.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const runId = ++runIdRef.current;
+    setLoading(true);
+    setError(null);
+    try {
+      const params = new URLSearchParams();
+      if (debouncedSearch.trim()) params.set("search", debouncedSearch.trim());
+      if (statusFilter !== "all") params.set("status", statusFilter);
+      if (dueParam === "soon" || dueParam === "overdue") params.set("due", dueParam);
+      params.set("page", String(page));
+      params.set("pageSize", String(pageSize));
+      const [listRes, summaryRes] = await Promise.all([
+        fetch(`/api/delivery-projects?${params}`, { credentials: "include", signal: controller.signal, cache: "no-store" }),
+        fetch("/api/delivery-projects/summary", { credentials: "include", signal: controller.signal, cache: "no-store" }),
+      ]);
+      const listRaw = await listRes.json().catch(() => null);
+      const list = Array.isArray(listRaw?.items) ? listRaw.items : (Array.isArray(listRaw) ? listRaw : []);
+      const sum = await summaryRes.json().catch(() => null);
+      if (controller.signal.aborted || runId !== runIdRef.current) return;
+      const items = Array.isArray(list) ? list : [];
+      setProjects(items);
+      setPagination(normalizePagination(listRaw?.pagination, items.length));
+      setSummary(sum && typeof sum === "object" ? sum : null);
+    } catch (e) {
+      if (controller.signal.aborted || runId !== runIdRef.current) return;
+      if (e instanceof Error && (e.name === "AbortError" || e.message?.includes("aborted"))) return;
+      setError(e instanceof Error ? e.message : "Failed to load");
+      setProjects([]);
+      setPagination(normalizePagination(null, 0));
+      setSummary(null);
+    } finally {
+      if (runId === runIdRef.current) {
         setLoading(false);
+        abortRef.current = null;
       }
     }
+  }, [debouncedSearch, statusFilter, dueParam, page, pageSize]);
+
+  useEffect(() => {
     void load();
-  }, [search, statusFilter, dueParam]);
+    return () => { if (abortRef.current) abortRef.current.abort(); };
+  }, [load]);
 
   const s = summary ?? { inProgress: 0, dueSoon: 0, overdue: 0, completedThisWeek: 0 };
 
@@ -132,7 +167,7 @@ export default function DeliveryPage() {
         </div>
         <select
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
+          onChange={(e) => url.setFilter("status", e.target.value)}
           className="rounded-md bg-neutral-900 border border-neutral-800 px-3 py-2 text-sm"
         >
           <option value="all">All statuses</option>
@@ -151,13 +186,14 @@ export default function DeliveryPage() {
         </Link>
       </div>
 
-      {loading ? (
-        <div className="py-12 text-center text-neutral-500">Loading…</div>
-      ) : projects.length === 0 ? (
-        <div className="py-12 text-center text-neutral-500 rounded-lg border border-neutral-800">
-          No delivery projects yet. Create one from an accepted proposal or manually.
-        </div>
-      ) : (
+      <AsyncState
+        loading={loading}
+        error={error}
+        empty={!loading && !error && projects.length === 0}
+        emptyMessage="No delivery projects yet. Create one from an accepted proposal or manually."
+        onRetry={load}
+      >
+        {projects.length > 0 ? (
         <div className="rounded-lg border border-neutral-800 overflow-hidden">
           <table className="w-full text-sm">
             <thead>
@@ -184,7 +220,7 @@ export default function DeliveryPage() {
                   </td>
                   <td className="p-3"><StatusBadge status={p.status} /></td>
                   <td className="p-3"><HealthBadge health={p.health} /></td>
-                  <td className="p-3 text-neutral-400">{formatDate(p.dueDate)}</td>
+                  <td className="p-3 text-neutral-400">{formatDateSafe(p.dueDate, { month: "short", day: "numeric" })}</td>
                   <td className="p-3">
                     {p.proofCandidateId ? (
                       <span className="text-emerald-400 text-xs">Linked</span>
@@ -202,7 +238,23 @@ export default function DeliveryPage() {
             </tbody>
           </table>
         </div>
-      )}
+        ) : null}
+        {pagination.totalPages > 1 || pagination.total > pagination.pageSize ? (
+          <div className="mt-3 px-3 pb-3">
+            <PaginationControls
+              page={pagination.page}
+              pageSize={pagination.pageSize}
+              total={pagination.total}
+              totalPages={pagination.totalPages}
+              hasNext={pagination.hasNext}
+              hasPrev={pagination.hasPrev}
+              onPageChange={url.setPage}
+              onPageSizeChange={url.setPageSize}
+              isLoading={loading}
+            />
+          </div>
+        ) : null}
+      </AsyncState>
     </div>
   );
 }

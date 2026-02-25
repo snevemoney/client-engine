@@ -41,6 +41,17 @@ else
   FAIL=1
 fi
 
+# Site leads form (public): POST creates lead
+code=$(curl -s -o /tmp/site-leads.json -w "%{http_code}" -X POST "$BASE_URL/api/site/leads" \
+  -H "Content-Type: application/json" \
+  -d "{\"name\":\"Smoke\",\"email\":\"smoke-$(date +%s)@example.com\",\"message\":\"Smoke test\"}" 2>/dev/null || echo "000")
+if [ "$code" = "200" ] && grep -q '"ok"[[:space:]]*:[[:space:]]*true' /tmp/site-leads.json 2>/dev/null; then
+  echo "  OK   POST /api/site/leads -> 200, ok: true"
+else
+  echo "  FAIL POST /api/site/leads -> code=$code"
+  FAIL=1
+fi
+
 # Optional: SSL cert present (if https)
 if [[ "$BASE_URL" == https://* ]]; then
   host="${BASE_URL#https://}"

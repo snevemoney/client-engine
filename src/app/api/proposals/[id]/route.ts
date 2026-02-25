@@ -51,10 +51,19 @@ function safeProposal(p: {
   version: number;
   sentAt: Date | null;
   viewedAt: Date | null;
+  respondedAt: Date | null;
   acceptedAt: Date | null;
   rejectedAt: Date | null;
   expiresAt: Date | null;
   lastEditedAt: Date | null;
+  lastContactedAt?: Date | null;
+  nextFollowUpAt?: Date | null;
+  followUpCompletedAt?: Date | null;
+  followUpCount?: number;
+  meetingBookedAt?: Date | null;
+  responseStatus?: string | null;
+  responseSummary?: string | null;
+  bookingUrlUsed?: string | null;
   intakeLeadId: string | null;
   pipelineLeadId: string | null;
   createdAt: Date;
@@ -82,9 +91,18 @@ function safeProposal(p: {
     version: p.version ?? 1,
     sentAt: p.sentAt?.toISOString() ?? null,
     viewedAt: p.viewedAt?.toISOString() ?? null,
+    respondedAt: (p as { respondedAt?: Date | null }).respondedAt?.toISOString() ?? null,
     acceptedAt: p.acceptedAt?.toISOString() ?? null,
     rejectedAt: p.rejectedAt?.toISOString() ?? null,
     expiresAt: p.expiresAt?.toISOString() ?? null,
+    lastContactedAt: (p as { lastContactedAt?: Date | null }).lastContactedAt?.toISOString() ?? null,
+    nextFollowUpAt: (p as { nextFollowUpAt?: Date | null }).nextFollowUpAt?.toISOString() ?? null,
+    followUpCompletedAt: (p as { followUpCompletedAt?: Date | null }).followUpCompletedAt?.toISOString() ?? null,
+    followUpCount: (p as { followUpCount?: number }).followUpCount ?? 0,
+    meetingBookedAt: (p as { meetingBookedAt?: Date | null }).meetingBookedAt?.toISOString() ?? null,
+    responseStatus: (p as { responseStatus?: string | null }).responseStatus ?? "none",
+    responseSummary: (p as { responseSummary?: string | null }).responseSummary ?? null,
+    bookingUrlUsed: (p as { bookingUrlUsed?: string | null }).bookingUrlUsed ?? null,
     lastEditedAt: p.lastEditedAt?.toISOString() ?? null,
     intakeLeadId: p.intakeLeadId ?? null,
     pipelineLeadId: p.pipelineLeadId ?? null,

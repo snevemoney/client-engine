@@ -4,6 +4,7 @@ import { use, useState, useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { ProposalResponseFollowup } from "@/components/proposals/ProposalResponseFollowup";
 
 type Phase2Proposal = {
   id: string;
@@ -21,6 +22,16 @@ type Phase2Proposal = {
   intakeLead: { id: string; title: string; status: string } | null;
   pipelineLead: { id: string; title: string; status: string } | null;
   readiness: { isReady: boolean; reasons: string[]; warnings: string[] };
+  sentAt?: string | null;
+  viewedAt?: string | null;
+  respondedAt?: string | null;
+  meetingBookedAt?: string | null;
+  lastContactedAt?: string | null;
+  nextFollowUpAt?: string | null;
+  followUpCount?: number;
+  responseStatus?: string;
+  responseSummary?: string | null;
+  bookingUrlUsed?: string | null;
 };
 
 export default function ProposalDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -111,6 +122,14 @@ export default function ProposalDetailPage({ params }: { params: Promise<{ id: s
           </Link>
         )}
       </div>
+
+      {["sent", "viewed"].includes(proposal.status) && (
+        <ProposalResponseFollowup
+          proposal={proposal}
+          onAction={runAction}
+          actionLoading={actionLoading}
+        />
+      )}
 
       {proposal.readiness && (
         <div className="rounded-lg border border-neutral-800 p-4">

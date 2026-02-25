@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { IntakeLeadStatus } from "@prisma/client";
 import { withRouteTiming } from "@/lib/api-utils";
+import { parsePaginationParams, buildPaginationMeta, paginatedResponse } from "@/lib/pagination";
 import {
   getStartOfDay,
   getEndOfDay,
@@ -88,6 +89,7 @@ export async function GET(req: NextRequest) {
     const search = url.searchParams.get("search")?.trim();
     const source = url.searchParams.get("source")?.trim();
     const statusFilter = url.searchParams.get("status")?.trim();
+    const pagination = parsePaginationParams(url.searchParams);
 
     const now = new Date();
     const startToday = getStartOfDay(now);
@@ -123,7 +125,7 @@ export async function GET(req: NextRequest) {
     const rows = await db.intakeLead.findMany({
       where,
       orderBy: [{ nextActionDueAt: "asc" }, { followUpDueAt: "asc" }],
-      take: 200,
+      take: 500,
     });
 
     const items = rows.map(toItem);
@@ -141,6 +143,13 @@ export async function GET(req: NextRequest) {
       else if (b === "upcoming") upcoming.push(item);
     }
 
+    const totals = {
+      overdue: overdue.length,
+      today: today.length,
+      upcoming: upcoming.length,
+      all: items.length,
+    };
+
     if (bucket && bucket !== "all") {
       const filtered =
         bucket === "overdue"
@@ -150,27 +159,24 @@ export async function GET(req: NextRequest) {
             : bucket === "upcoming"
               ? upcoming
               : items;
+      const pageItems = filtered.slice(pagination.skip, pagination.skip + pagination.pageSize);
+      const meta = buildPaginationMeta(filtered.length, pagination);
       return NextResponse.json({
-        [bucket]: filtered,
-        totals: {
-          overdue: overdue.length,
-          today: today.length,
-          upcoming: upcoming.length,
-          all: items.length,
-        },
+        items: pageItems,
+        pagination: meta,
+        totals,
       });
     }
 
+    const pageItems = items.slice(pagination.skip, pagination.skip + pagination.pageSize);
+    const meta = buildPaginationMeta(items.length, pagination);
     return NextResponse.json({
+      items: pageItems,
+      pagination: meta,
       overdue,
       today,
       upcoming,
-      totals: {
-        overdue: overdue.length,
-        today: today.length,
-        upcoming: upcoming.length,
-        all: items.length,
-      },
+      totals,
     });
   });
 }

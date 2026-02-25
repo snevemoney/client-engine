@@ -1,11 +1,11 @@
 /**
  * GET /api/proof-gaps/summary — Proof gap metrics for command center.
  */
-import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { ProofCandidateStatus } from "@prisma/client";
 import { jsonError, withRouteTiming } from "@/lib/api-utils";
+import { withSummaryCache } from "@/lib/http/cached-handler";
 import { getWeekStart } from "@/lib/ops/weekStart";
 
 export const dynamic = "force-dynamic";
@@ -15,7 +15,8 @@ export async function GET() {
     const session = await auth();
     if (!session?.user) return jsonError("Unauthorized", 401);
 
-    const now = new Date();
+    return withSummaryCache("proof-gaps/summary", async () => {
+      const now = new Date();
     const startOfWeek = getWeekStart(now);
     const endOfWeek = new Date(startOfWeek);
     endOfWeek.setDate(endOfWeek.getDate() + 6);
@@ -55,11 +56,12 @@ export async function GET() {
       }),
     ]);
 
-    return NextResponse.json({
-      wonLeadsWithoutProofCandidate: wonLeadsWithoutProofCandidate ?? 0,
-      readyCandidatesPendingPromotion: readyCandidatesPendingPromotion ?? 0,
-      proofRecordsMissingFields: proofRecordsMissingFields ?? 0,
-      promotedThisWeek: promotedThisWeek ?? 0,
-    });
+      return {
+        wonLeadsWithoutProofCandidate: wonLeadsWithoutProofCandidate ?? 0,
+        readyCandidatesPendingPromotion: readyCandidatesPendingPromotion ?? 0,
+        proofRecordsMissingFields: proofRecordsMissingFields ?? 0,
+        promotedThisWeek: promotedThisWeek ?? 0,
+      };
+    }, 15_000);
   });
 }

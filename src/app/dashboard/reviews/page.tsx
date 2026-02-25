@@ -5,9 +5,16 @@ import { IntakeWeeklyStats } from "@/components/dashboard/reviews/IntakeWeeklySt
 import { FollowupWeeklyStats } from "@/components/dashboard/reviews/FollowupWeeklyStats";
 import { ProposalWeeklyStats } from "@/components/dashboard/reviews/ProposalWeeklyStats";
 import { DeliveryWeeklyStats } from "@/components/dashboard/reviews/DeliveryWeeklyStats";
+import { HandoffWeeklyStats } from "@/components/dashboard/reviews/HandoffWeeklyStats";
+import { RetentionWeeklyStats } from "@/components/dashboard/reviews/RetentionWeeklyStats";
+import { RevenueIntelligenceWeeklyStats } from "@/components/dashboard/reviews/RevenueIntelligenceWeeklyStats";
+import { OperatorForecastWeeklyStats } from "@/components/dashboard/reviews/OperatorForecastWeeklyStats";
+import { ExecutionAssistWeeklyStats } from "@/components/dashboard/reviews/ExecutionAssistWeeklyStats";
 import { DeliveryProofWeeklyStats } from "@/components/dashboard/reviews/DeliveryProofWeeklyStats";
 import { PipelineHygieneWeeklyStats } from "@/components/dashboard/reviews/PipelineHygieneWeeklyStats";
 import { ProofGapWeeklyStats } from "@/components/dashboard/reviews/ProofGapWeeklyStats";
+import { OpsObservabilityWeeklyStats } from "@/components/dashboard/reviews/OpsObservabilityWeeklyStats";
+import { NotificationsWeeklyStats } from "@/components/dashboard/reviews/NotificationsWeeklyStats";
 
 export const dynamic = "force-dynamic";
 
@@ -27,9 +34,16 @@ export default async function ReviewsPage() {
       <FollowupWeeklyStats />
       <ProposalWeeklyStats />
       <DeliveryWeeklyStats />
+      <HandoffWeeklyStats />
+      <RetentionWeeklyStats />
+      <RevenueIntelligenceWeeklyStats />
+      <OperatorForecastWeeklyStats />
+      <ExecutionAssistWeeklyStats />
       <PipelineHygieneWeeklyStats />
       <DeliveryProofWeeklyStats />
       <ProofGapWeeklyStats />
+      <OpsObservabilityWeeklyStats />
+      <NotificationsWeeklyStats />
       <ReviewsList />
     </div>
   );

@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { IntakeLeadSource, IntakeLeadUrgency, IntakeLeadStatus } from "@prisma/client";
 import { jsonError, withRouteTiming } from "@/lib/api-utils";
 import { getStartOfDay } from "@/lib/followup/dates";
+import { parsePaginationParams, buildPaginationMeta, paginatedResponse } from "@/lib/pagination";
 
 const SOURCES = ["upwork", "linkedin", "referral", "inbound", "rss", "other"] as const;
 const URGENCIES = ["low", "medium", "high"] as const;
@@ -79,7 +80,7 @@ export async function GET(req: NextRequest) {
     const source = url.searchParams.get("source");
     const filter = url.searchParams.get("filter");
     const search = url.searchParams.get("search") ?? url.searchParams.get("q");
-    const limit = Math.min(200, Math.max(1, parseInt(url.searchParams.get("limit") ?? "100", 10) || 100));
+    const pagination = parsePaginationParams(url.searchParams);
 
     const filterWhere: Record<string, unknown> = {};
     if (filter === "needs-score") {
@@ -123,21 +124,28 @@ export async function GET(req: NextRequest) {
           ? searchWhere
           : filterWhere;
 
-    const leads = await db.intakeLead.findMany({
-      where,
-      orderBy: { createdAt: "desc" },
-      take: limit,
-    });
+    const [leads, total] = await Promise.all([
+      db.intakeLead.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip: pagination.skip,
+        take: pagination.pageSize,
+      }),
+      db.intakeLead.count({ where }),
+    ]);
 
+    const meta = buildPaginationMeta(total, pagination);
     return NextResponse.json(
-      leads.map((l) => safeLead(l)),
+      paginatedResponse(leads.map((l) => safeLead(l)), meta),
       { headers: { "Cache-Control": "private, no-store, max-age=0" } }
     );
   });
 }
 
 export async function POST(req: NextRequest) {
-  return withRouteTiming("POST /api/intake-leads", async () => {
+  return withRouteTiming(
+    "POST /api/intake-leads",
+    async () => {
     const session = await auth();
     if (!session?.user) return jsonError("Unauthorized", 401);
 
@@ -165,6 +173,17 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    const { createAuditActionSafe } = await import("@/lib/audit/log");
+    createAuditActionSafe({
+      actionKey: "intake.create",
+      actionLabel: "Create intake lead",
+      sourceType: "intake_lead",
+      sourceId: lead.id,
+      sourceLabel: lead.title,
+    });
+
     return NextResponse.json(safeLead(lead), { status: 201 });
-  });
+  },
+    { eventKey: "intake.create", method: "POST" }
+  );
 }

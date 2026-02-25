@@ -1,10 +1,10 @@
 /**
  * GET /api/proof-candidates/summary — Weekly metrics for scoreboard/reviews.
  */
-import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { jsonError, withRouteTiming } from "@/lib/api-utils";
+import { withSummaryCache } from "@/lib/http/cached-handler";
 import { getWeekStart } from "@/lib/ops/weekStart";
 import { ProofCandidateStatus } from "@prisma/client";
 
@@ -15,7 +15,8 @@ export async function GET() {
     const session = await auth();
     if (!session?.user) return jsonError("Unauthorized", 401);
 
-    const now = new Date();
+    return withSummaryCache("proof-candidates/summary", async () => {
+      const now = new Date();
     const startOfWeek = getWeekStart(now);
     const endOfWeek = new Date(startOfWeek);
     endOfWeek.setDate(endOfWeek.getDate() + 6);
@@ -51,12 +52,13 @@ export async function GET() {
       }),
     ]);
 
-    return NextResponse.json({
-      createdThisWeek: createdThisWeek ?? 0,
-      readyThisWeek: readyThisWeek ?? 0,
-      promotedThisWeek: promotedThisWeek ?? 0,
-      pendingDrafts: pendingDrafts ?? 0,
-      pendingReady: pendingReady ?? 0,
-    });
+      return {
+        createdThisWeek: createdThisWeek ?? 0,
+        readyThisWeek: readyThisWeek ?? 0,
+        promotedThisWeek: promotedThisWeek ?? 0,
+        pendingDrafts: pendingDrafts ?? 0,
+        pendingReady: pendingReady ?? 0,
+      };
+    }, 15_000);
   });
 }

@@ -9,7 +9,23 @@ export const revalidate = 60;
 
 export default async function ProjectPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const project = await db.project.findUnique({ where: { slug } });
+  let project;
+  try {
+    project = await db.project.findUnique({ where: { slug } });
+  } catch (e) {
+    console.error("[work/[slug]] DB query failed", { slug }, e);
+    return (
+      <div className="min-h-screen bg-neutral-950 text-neutral-100 flex items-center justify-center">
+        <div className="text-center px-6">
+          <h1 className="text-xl font-medium text-neutral-200 mb-2">Something went wrong</h1>
+          <p className="text-neutral-400 text-sm">We couldn&apos;t load this project. Please try again later.</p>
+          <Link href="/work" className="mt-4 inline-block text-sm text-emerald-400 hover:text-emerald-300">
+            Back to Work
+          </Link>
+        </div>
+      </div>
+    );
+  }
   if (!project) notFound();
 
   return (

@@ -10,11 +10,12 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  return withRouteTiming("POST /api/intake-leads/[id]/promote", async () => {
+  const { id } = await params;
+  return withRouteTiming(
+    "POST /api/intake-leads/[id]/promote",
+    async () => {
     const session = await auth();
     if (!session?.user) return jsonError("Unauthorized", 401);
-
-    const { id } = await params;
     const intake = await db.intakeLead.findUnique({
       where: { id },
       include: { promotedLead: true },
@@ -95,6 +96,16 @@ export async function POST(
       }),
     ]);
 
+    const { createAuditActionSafe } = await import("@/lib/audit/log");
+    createAuditActionSafe({
+      actionKey: "intake.promote",
+      actionLabel: "Promote to pipeline",
+      sourceType: "intake_lead",
+      sourceId: id,
+      sourceLabel: intake.title,
+      afterJson: { promotedLeadId: lead.id },
+    });
+
     return NextResponse.json({
       ok: true,
       promotedLeadId: lead.id,
@@ -106,5 +117,7 @@ export async function POST(
         createdAt: lead.createdAt.toISOString(),
       },
     });
-  });
+  },
+    { eventKey: "intake.promote", method: "POST", sourceType: "intake_lead", sourceId: id }
+  );
 }

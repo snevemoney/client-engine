@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { ProofCandidateStatus, ProofCandidateSourceType, ProofCandidateTriggerType } from "@prisma/client";
 import { jsonError, withRouteTiming } from "@/lib/api-utils";
+import { parsePaginationParams, buildPaginationMeta, paginatedResponse } from "@/lib/pagination";
 import { computeProofCandidateReadiness } from "@/lib/proof-candidates/readiness";
 
 function toItem(c: {
@@ -92,13 +93,19 @@ export async function GET(req: NextRequest) {
       where.status = ProofCandidateStatus.ready;
     }
 
-    const list = await db.proofCandidate.findMany({
-      where,
-      orderBy: { updatedAt: "desc" },
-      take: 100,
-    });
+    const pagination = parsePaginationParams(url.searchParams);
+    const [list, total] = await Promise.all([
+      db.proofCandidate.findMany({
+        where,
+        orderBy: { updatedAt: "desc" },
+        skip: pagination.skip,
+        take: pagination.pageSize,
+      }),
+      db.proofCandidate.count({ where }),
+    ]);
 
-    return NextResponse.json(list.map(toItem));
+    const meta = buildPaginationMeta(total, pagination);
+    return NextResponse.json(paginatedResponse(list.map(toItem), meta));
   });
 }
 

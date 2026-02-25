@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { AsyncState } from "@/components/ui/AsyncState";
 import { FollowupBucketTable, type FollowUpItem } from "@/components/followup/FollowupBucketTable";
 import { FollowupCompleteModal } from "@/components/followup/FollowupCompleteModal";
 import { FollowupSnoozeModal } from "@/components/followup/FollowupSnoozeModal";
@@ -25,6 +27,7 @@ export default function FollowupsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search, 300);
   const [bucketFilter, setBucketFilter] = useState<(typeof BUCKET_OPTIONS)[number]>("all");
   const [sourceFilter, setSourceFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -33,21 +36,29 @@ export default function FollowupsPage() {
   const [snoozeItem, setSnoozeItem] = useState<FollowUpItem | null>(null);
   const [logItem, setLogItem] = useState<FollowUpItem | null>(null);
   const [logKind, setLogKind] = useState<"call" | "email">("call");
+  const abortRef = useRef<AbortController | null>(null);
+  const runIdRef = useRef(0);
 
   const fetchData = useCallback(async () => {
+    if (abortRef.current) abortRef.current.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const runId = ++runIdRef.current;
     setLoading(true);
     setError(null);
     try {
       const params = new URLSearchParams();
-      if (search.trim()) params.set("search", search.trim());
+      if (debouncedSearch.trim()) params.set("search", debouncedSearch.trim());
       if (bucketFilter !== "all") params.set("bucket", bucketFilter);
       if (sourceFilter !== "all") params.set("source", sourceFilter);
       if (statusFilter !== "all") params.set("status", statusFilter);
       const res = await fetch(`/api/followups?${params}`, {
         credentials: "include",
+        signal: controller.signal,
         cache: "no-store",
       });
       const json = await res.json().catch(() => null);
+      if (controller.signal.aborted || runId !== runIdRef.current) return;
       if (!res.ok) {
         setError(typeof json?.error === "string" ? json.error : `Failed to load (${res.status})`);
         setData(null);
@@ -55,15 +66,23 @@ export default function FollowupsPage() {
       }
       setData(json);
     } catch (e) {
+      if (controller.signal.aborted || runId !== runIdRef.current) return;
+      if (e instanceof Error && (e.name === "AbortError" || e.message?.includes("aborted"))) return;
       setError(e instanceof Error ? e.message : "Failed to load");
       setData(null);
     } finally {
-      setLoading(false);
+      if (runId === runIdRef.current) {
+        setLoading(false);
+        abortRef.current = null;
+      }
     }
-  }, [search, bucketFilter, sourceFilter, statusFilter]);
+  }, [debouncedSearch, bucketFilter, sourceFilter, statusFilter]);
 
   useEffect(() => {
     void fetchData();
+    return () => {
+      if (abortRef.current) abortRef.current.abort();
+    };
   }, [fetchData]);
 
   const runAction = async (
@@ -227,15 +246,14 @@ export default function FollowupsPage() {
         </div>
       </div>
 
-      {error && <p className="text-sm text-red-400">{error}</p>}
-
-      {loading ? (
-        <div className="py-12 text-center text-neutral-500">Loading…</div>
-      ) : !data ? (
-        <div className="py-12 text-center text-neutral-500 border border-dashed border-neutral-700 rounded-lg">
-          No data.
-        </div>
-      ) : (
+      <AsyncState
+        loading={loading}
+        error={error}
+        empty={!loading && !error && !data}
+        emptyMessage="No follow-ups match these filters."
+        onRetry={fetchData}
+      >
+        {data ? (
         <div className="space-y-6">
           {bucketFilter === "all" || bucketFilter === "overdue" ? (
             <section className="rounded-lg border border-neutral-700 bg-neutral-900/50 overflow-hidden">
@@ -291,7 +309,8 @@ export default function FollowupsPage() {
             </section>
           ) : null}
         </div>
-      )}
+        ) : null}
+      </AsyncState>
 
       {completeItem && (
         <FollowupCompleteModal
