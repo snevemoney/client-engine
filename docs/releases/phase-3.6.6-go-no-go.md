@@ -113,7 +113,7 @@ USE_EXISTING_SERVER=1 npx playwright test tests/e2e/api-auth.spec.ts tests/e2e/i
 
 | Item | Value |
 |------|-------|
-| **Commit SHA** | `f39db36` |
+| **Commit SHA** | `193ad17` |
 | **Tag** | `phase-3.6.6-go` |
 | **DB backup** | `./backups/db_20260225_145508.sql.gz` |
 
