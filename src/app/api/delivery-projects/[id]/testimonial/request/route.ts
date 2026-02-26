@@ -4,7 +4,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { DeliveryActivityType } from "@prisma/client";
-import { jsonError, requireDeliveryProject, withRouteTiming } from "@/lib/api-utils";
+import { requireDeliveryProject, withRouteTiming } from "@/lib/api-utils";
 
 export async function POST(
   _req: NextRequest,

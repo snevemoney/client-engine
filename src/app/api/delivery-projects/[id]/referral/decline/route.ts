@@ -3,7 +3,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { jsonError, requireDeliveryProject, withRouteTiming } from "@/lib/api-utils";
+import { requireDeliveryProject, withRouteTiming } from "@/lib/api-utils";
 
 export async function POST(
   _req: NextRequest,

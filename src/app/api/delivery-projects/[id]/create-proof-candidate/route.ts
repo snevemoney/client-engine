@@ -8,7 +8,7 @@ import {
   ProofCandidateSourceType,
   ProofCandidateTriggerType,
 } from "@prisma/client";
-import { jsonError, requireDeliveryProject, withRouteTiming } from "@/lib/api-utils";
+import { requireDeliveryProject, withRouteTiming } from "@/lib/api-utils";
 
 function pickTrigger(project: { githubUrl: string | null; loomUrl: string | null }): ProofCandidateTriggerType {
   if (project.githubUrl?.trim()) return "github";

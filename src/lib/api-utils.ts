@@ -45,12 +45,14 @@ export async function requireAuth(): Promise<Session | null> {
 /**
  * Shared auth + project lookup for delivery project API routes.
  * Returns { session, project } or a NextResponse error.
+ * Callers should cast project to the expected type when using `include`.
  */
 export async function requireDeliveryProject(
   projectId: string,
   opts?: { include?: Record<string, unknown> }
 ): Promise<
-  | { ok: true; session: Session; project: NonNullable<Awaited<ReturnType<typeof import("@/lib/db").db.deliveryProject.findUnique>>> }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  | { ok: true; session: Session; project: any }
   | { ok: false; response: NextResponse }
 > {
   const session = await requireAuth();
@@ -63,7 +65,7 @@ export async function requireDeliveryProject(
   });
   if (!project) return { ok: false, response: jsonError("Project not found", 404) };
 
-  return { ok: true, session, project: project as NonNullable<typeof project> };
+  return { ok: true, session, project };
 }
 
 /** Wrap a route handler with timing + slow-route log. Uses [SLOW] format at 500ms. */

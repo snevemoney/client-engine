@@ -110,7 +110,7 @@ export default function RetentionPage() {
     return () => { if (abortRef.current) abortRef.current.abort(); };
   }, [fetchData]);
 
-  const run = async (id: string, fn: () => Promise<Response>) => {
+  const _run = async (id: string, fn: () => Promise<Response>) => {
     setActionLoading(id);
     try {
       const res = await fn();

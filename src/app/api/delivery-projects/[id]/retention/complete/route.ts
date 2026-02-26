@@ -4,8 +4,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { DeliveryActivityType, RetentionStatus } from "@prisma/client";
-import { jsonError, requireDeliveryProject, withRouteTiming } from "@/lib/api-utils";
+import { DeliveryActivityType } from "@prisma/client";
+import { requireDeliveryProject, withRouteTiming } from "@/lib/api-utils";
 
 const RETENTION_STATUSES = [
   "none",

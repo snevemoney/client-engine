@@ -5,7 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { DeliveryActivityType } from "@prisma/client";
-import { jsonError, requireDeliveryProject, withRouteTiming } from "@/lib/api-utils";
+import { requireDeliveryProject, withRouteTiming } from "@/lib/api-utils";
 
 const PostSchema = z.object({
   notes: z.string().max(5000).optional().nullable(),

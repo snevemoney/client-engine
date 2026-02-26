@@ -19,7 +19,6 @@ export async function POST(
     const { id } = await params;
     const result = await requireDeliveryProject(id);
     if (!result.ok) return result.response;
-    const { project } = result;
 
     const raw = await req.json().catch(() => null);
     const parsed = PostSchema.safeParse(raw);

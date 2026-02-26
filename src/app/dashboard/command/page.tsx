@@ -5,6 +5,8 @@ import { FlywheelSimCard } from "@/components/dashboard/command/FlywheelSimCard"
 import CommandSection1 from "./CommandSection1";
 import CommandSection2 from "./CommandSection2";
 
+const IS_PROD = process.env.NODE_ENV === "production";
+
 export const dynamic = "force-dynamic";
 
 function Section2Fallback() {
@@ -29,7 +31,7 @@ export default function CommandCenterPage() {
       <CommandHeader />
 
       <RiskNBACard />
-      <FlywheelSimCard />
+      {!IS_PROD && <FlywheelSimCard />}
       <Suspense fallback={<div className="h-24 animate-pulse rounded-lg bg-muted" />}>
         <CommandSection1 />
       </Suspense>

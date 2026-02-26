@@ -3,12 +3,14 @@
  * Creates a realistic lead, runs it through all 6 flywheel stages,
  * and returns a summary of each stage's outcome.
  *
- * This is for operator demonstration purposes only.
+ * DISABLED IN PRODUCTION — only available in development/staging.
  * All money-path gates are respected (mock artifacts when AI unavailable).
  */
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { jsonError, requireAuth, withRouteTiming } from "@/lib/api-utils";
+
+const IS_PROD = process.env.NODE_ENV === "production";
 
 const SCENARIOS = [
   {
@@ -39,6 +41,8 @@ const SCENARIOS = [
 
 export async function POST() {
   return withRouteTiming("POST /api/flywheel/simulate", async () => {
+    if (IS_PROD) return jsonError("Simulation disabled in production", 403, "PROD_DISABLED");
+
     const session = await requireAuth();
     if (!session) return jsonError("Unauthorized", 401);
 
@@ -73,7 +77,7 @@ export async function POST() {
       } catch { /* AI unavailable */ }
 
       if (!enrichOk) {
-        await db.leadArtifact.create({
+        await db.artifact.create({
           data: {
             leadId: lead.id,
             type: "notes",
@@ -99,7 +103,7 @@ export async function POST() {
       } catch { /* AI unavailable */ }
 
       if (!proposeOk) {
-        await db.leadArtifact.create({
+        await db.artifact.create({
           data: {
             leadId: lead.id,
             type: "proposal",
@@ -151,7 +155,7 @@ export async function POST() {
       });
       const referral = await db.leadReferral.create({
         data: {
-          leadId: lead.id,
+          sourceLeadId: lead.id,
           referredName: scenario.referralName,
           referredCompany: scenario.referralCompany,
           status: "received",
