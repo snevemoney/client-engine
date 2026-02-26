@@ -21,7 +21,8 @@ export type IntegrationPurpose =
   | "content"
   | "ops"
   | "enrichment"
-  | "visibility";
+  | "visibility"
+  | "research";
 
 export type IntegrationMode = "off" | "mock" | "manual" | "live";
 
@@ -32,6 +33,18 @@ export type ProspectingCapability = {
   bestFor: string[];
   /** If true, location in criteria boosts this source's relevance */
   locationAware: boolean;
+};
+
+export type ConfigField = {
+  /** Key in configJson — must match what credentials/clients expect */
+  key: string;
+  label: string;
+  type: "text" | "password";
+  required?: boolean;
+  placeholder?: string;
+  /** Env var name for placeholder hint (e.g. META_ACCESS_TOKEN) */
+  envVar?: string;
+  helpText?: string;
 };
 
 export type ProviderDef = {
@@ -55,51 +68,112 @@ export type ProviderDef = {
   platformUrl?: string;
   /** Where to generate / manage API keys specifically */
   apiKeyUrl?: string;
+  /** Per-provider config fields. Omit = fallback to generic accessToken/accountId/baseUrl. */
+  configFields?: ConfigField[];
 };
 
 /** All providers in the registry. Keys must match IntegrationConnection.provider. */
 export const PROVIDER_REGISTRY: ProviderDef[] = [
   // ── Monitoring / Analytics ──
-  { provider: "meta", displayName: "Meta Ads", category: "analytics", purposes: ["monitoring", "analytics"], prodOnly: true, defaultMode: "off", helpText: "Only works in live mode when deployed.", supportsLive: true, supportsMock: true, supportsManual: true, sortOrder: 10, hasRealTest: true, platformUrl: "https://business.facebook.com", apiKeyUrl: "https://developers.facebook.com/tools/explorer/" },
-  { provider: "ga4", displayName: "Google Analytics 4", category: "analytics", purposes: ["analytics"], prodOnly: true, defaultMode: "off", helpText: "Only works in live mode when deployed.", supportsLive: true, supportsMock: true, supportsManual: true, sortOrder: 80, platformUrl: "https://analytics.google.com", apiKeyUrl: "https://console.cloud.google.com/apis/credentials" },
-  { provider: "google-ads", displayName: "Google Ads", category: "analytics", purposes: ["analytics", "monitoring"], prodOnly: true, defaultMode: "off", helpText: "Only works in live mode when deployed.", supportsLive: true, supportsMock: true, supportsManual: true, sortOrder: 150, platformUrl: "https://ads.google.com", apiKeyUrl: "https://console.cloud.google.com/apis/credentials" },
+  { provider: "meta", displayName: "Meta Ads", category: "analytics", purposes: ["monitoring", "analytics"], prodOnly: true, defaultMode: "off", helpText: "Only works in live mode when deployed.", supportsLive: true, supportsMock: true, supportsManual: true, sortOrder: 10, hasRealTest: true, platformUrl: "https://business.facebook.com", apiKeyUrl: "https://developers.facebook.com/tools/explorer/", configFields: [
+    { key: "accessToken", label: "Graph API Token", type: "password", envVar: "META_ACCESS_TOKEN", helpText: "From Graph API Explorer. Used for dashboard, campaigns, insights.", placeholder: "EAAU..." },
+    { key: "accountId", label: "Ad Account ID", type: "text", required: true, envVar: "META_AD_ACCOUNT_ID", placeholder: "act_123456789" },
+    { key: "pixelId", label: "Pixel ID", type: "text", required: true, envVar: "META_PIXEL_ID", helpText: "For Conversions API and attribution.", placeholder: "123456789012345" },
+    { key: "capiToken", label: "Conversions API Token", type: "password", envVar: "META_CAPI_ACCESS_TOKEN", helpText: "Server-side events (Lead, Purchase). Same pixel, different token.", placeholder: "EAAU..." },
+  ] },
+  { provider: "ga4", displayName: "Google Analytics 4", category: "analytics", purposes: ["analytics"], prodOnly: true, defaultMode: "off", helpText: "Only works in live mode when deployed.", supportsLive: true, supportsMock: true, supportsManual: true, sortOrder: 80, platformUrl: "https://analytics.google.com", apiKeyUrl: "https://console.cloud.google.com/apis/credentials", configFields: [
+    { key: "accessToken", label: "OAuth token or Service Account JSON", type: "password", envVar: "GA4_ACCESS_TOKEN", placeholder: "ya29..." },
+    { key: "accountId", label: "Property ID", type: "text", envVar: "GA4_PROPERTY_ID", placeholder: "123456789" },
+  ] },
+  { provider: "google-ads", displayName: "Google Ads", category: "analytics", purposes: ["analytics", "monitoring"], prodOnly: true, defaultMode: "off", helpText: "Only works in live mode when deployed.", supportsLive: true, supportsMock: true, supportsManual: true, sortOrder: 150, platformUrl: "https://ads.google.com", apiKeyUrl: "https://console.cloud.google.com/apis/credentials", configFields: [
+    { key: "accessToken", label: "OAuth token", type: "password", envVar: "GOOGLE_ADS_ACCESS_TOKEN" },
+    { key: "accountId", label: "Customer ID", type: "text", envVar: "GOOGLE_ADS_CUSTOMER_ID", placeholder: "123-456-7890" },
+  ] },
 
   // ── Research / Signals ──
-  { provider: "rss", displayName: "RSS / News", category: "research", purposes: ["monitoring"], prodOnly: false, defaultMode: "mock", helpText: "Add your news feed links here. You can add filters in the settings.", supportsLive: true, supportsMock: true, supportsManual: true, sortOrder: 30, supportsQueryParams: true },
-  { provider: "upwork", displayName: "Upwork", category: "research", purposes: ["prospecting", "monitoring"], prospecting: { finds: "Job posts from clients actively hiring", bestFor: ["freelancers", "agencies", "consultants", "developers", "designers", "writers", "marketers", "coaches", "anyone hiring"], locationAware: true }, prodOnly: false, defaultMode: "manual", supportsLive: true, supportsMock: true, supportsManual: true, sortOrder: 20, platformUrl: "https://www.upwork.com/nx/find-work/best-matches" },
+  { provider: "rss", displayName: "RSS / News", category: "research", purposes: ["monitoring"], prodOnly: false, defaultMode: "mock", helpText: "Add your news feed links here. You can add filters in the settings.", supportsLive: true, supportsMock: true, supportsManual: true, sortOrder: 30, supportsQueryParams: true, configFields: [
+    { key: "baseUrl", label: "Feed URL", type: "text", placeholder: "https://example.com/feed.xml", helpText: "Primary feed. Or use feedUrls in Extra settings for multiple." },
+  ] },
+  { provider: "upwork", displayName: "Upwork", category: "research", purposes: ["prospecting", "monitoring"], prospecting: { finds: "Job posts from clients actively hiring", bestFor: ["freelancers", "agencies", "consultants", "developers", "designers", "writers", "marketers", "coaches", "anyone hiring"], locationAware: true }, prodOnly: false, defaultMode: "manual", supportsLive: true, supportsMock: true, supportsManual: true, sortOrder: 20, platformUrl: "https://www.upwork.com/nx/find-work/best-matches", configFields: [
+    { key: "baseUrl", label: "RSS Feed URL", type: "text", required: true, placeholder: "https://www.upwork.com/ab/feed/jobs/rss?q=coaching", helpText: "Saved search RSS from Upwork. No API key needed." },
+  ] },
 
   // ── Prospecting (dedicated) ──
-  { provider: "google_places", displayName: "Google Places", category: "research", purposes: ["prospecting"], prospecting: { finds: "Local businesses by type and location", bestFor: ["coaches", "gyms", "restaurants", "salons", "clinics", "therapists", "dentists", "lawyers", "accountants", "real estate agents", "local businesses", "brick-and-mortar", "service providers"], locationAware: true }, prodOnly: false, defaultMode: "off", helpText: "Find local businesses. Requires Google Cloud API key with Places API.", supportsLive: true, supportsMock: true, supportsManual: false, sortOrder: 15, platformUrl: "https://console.cloud.google.com/google/maps-apis", apiKeyUrl: "https://console.cloud.google.com/apis/credentials" },
-  { provider: "serpapi", displayName: "Web Search (SerpAPI)", category: "research", purposes: ["prospecting"], prospecting: { finds: "Businesses and people via Google search results", bestFor: ["any", "coaches", "agencies", "startups", "SaaS", "ecommerce", "freelancers", "consultants", "local businesses", "creators", "influencers"], locationAware: true }, prodOnly: false, defaultMode: "off", helpText: "Search Google programmatically. Free tier: 100 searches/month.", supportsLive: true, supportsMock: true, supportsManual: false, sortOrder: 16, platformUrl: "https://serpapi.com/dashboard", apiKeyUrl: "https://serpapi.com/manage-api-key" },
-  { provider: "apollo", displayName: "Apollo.io", category: "research", purposes: ["prospecting", "enrichment"], prospecting: { finds: "Professionals and companies with contact info", bestFor: ["B2B", "SaaS founders", "executives", "decision makers", "startups", "agencies", "consultants", "coaches", "anyone by job title"], locationAware: true }, prodOnly: false, defaultMode: "off", helpText: "Sales intelligence platform. Free tier: 10k credits/month.", supportsLive: true, supportsMock: true, supportsManual: false, sortOrder: 17, platformUrl: "https://app.apollo.io", apiKeyUrl: "https://app.apollo.io/settings/integrations/api-keys" },
-  { provider: "hunter", displayName: "Hunter.io", category: "research", purposes: ["enrichment", "prospecting"], prospecting: { finds: "Email addresses for any domain", bestFor: ["email lookup", "contact enrichment", "domain search", "outreach prep"], locationAware: false }, prodOnly: false, defaultMode: "off", helpText: "Find professional emails by domain. Free: 25 searches/month.", supportsLive: true, supportsMock: true, supportsManual: false, sortOrder: 18, platformUrl: "https://hunter.io/dashboard", apiKeyUrl: "https://hunter.io/api-keys" },
-  { provider: "yelp", displayName: "Yelp", category: "research", purposes: ["prospecting"], prospecting: { finds: "Local businesses with reviews and ratings", bestFor: ["restaurants", "salons", "gyms", "coaches", "therapists", "spas", "local businesses", "service providers", "home services"], locationAware: true }, prodOnly: false, defaultMode: "off", helpText: "Search local businesses. Free tier: 5k API calls/day.", supportsLive: true, supportsMock: true, supportsManual: false, sortOrder: 19, platformUrl: "https://www.yelp.com", apiKeyUrl: "https://www.yelp.com/developers/v3/manage_app" },
+  { provider: "google_places", displayName: "Google Places", category: "research", purposes: ["prospecting"], prospecting: { finds: "Local businesses by type and location", bestFor: ["coaches", "gyms", "restaurants", "salons", "clinics", "therapists", "dentists", "lawyers", "accountants", "real estate agents", "local businesses", "brick-and-mortar", "service providers"], locationAware: true }, prodOnly: false, defaultMode: "off", helpText: "Find local businesses. Requires Google Cloud API key with Places API.", supportsLive: true, supportsMock: true, supportsManual: false, sortOrder: 15, platformUrl: "https://console.cloud.google.com/google/maps-apis", apiKeyUrl: "https://console.cloud.google.com/apis/credentials", configFields: [
+    { key: "accessToken", label: "Google Cloud API Key", type: "password", required: true, envVar: "GOOGLE_PLACES_API_KEY" },
+  ] },
+  { provider: "serpapi", displayName: "Web Search (SerpAPI)", category: "research", purposes: ["prospecting"], prospecting: { finds: "Businesses and people via Google search results", bestFor: ["any", "coaches", "agencies", "startups", "SaaS", "ecommerce", "freelancers", "consultants", "local businesses", "creators", "influencers"], locationAware: true }, prodOnly: false, defaultMode: "off", helpText: "Search Google programmatically. Free tier: 100 searches/month.", supportsLive: true, supportsMock: true, supportsManual: false, sortOrder: 16, platformUrl: "https://serpapi.com/dashboard", apiKeyUrl: "https://serpapi.com/manage-api-key", configFields: [
+    { key: "accessToken", label: "API Key", type: "password", required: true },
+  ] },
+  { provider: "apollo", displayName: "Apollo.io", category: "research", purposes: ["prospecting", "enrichment"], prospecting: { finds: "Professionals and companies with contact info", bestFor: ["B2B", "SaaS founders", "executives", "decision makers", "startups", "agencies", "consultants", "coaches", "anyone by job title"], locationAware: true }, prodOnly: false, defaultMode: "off", helpText: "Sales intelligence platform. Free tier: 10k credits/month.", supportsLive: true, supportsMock: true, supportsManual: false, sortOrder: 17, platformUrl: "https://app.apollo.io", apiKeyUrl: "https://app.apollo.io/settings/integrations/api-keys", configFields: [
+    { key: "accessToken", label: "API Key", type: "password", required: true },
+  ] },
+  { provider: "hunter", displayName: "Hunter.io", category: "research", purposes: ["enrichment", "prospecting"], prospecting: { finds: "Email addresses for any domain", bestFor: ["email lookup", "contact enrichment", "domain search", "outreach prep"], locationAware: false }, prodOnly: false, defaultMode: "off", helpText: "Find professional emails by domain. Free: 25 searches/month.", supportsLive: true, supportsMock: true, supportsManual: false, sortOrder: 18, platformUrl: "https://hunter.io/dashboard", apiKeyUrl: "https://hunter.io/api-keys", configFields: [
+    { key: "accessToken", label: "API Key", type: "password", required: true },
+    { key: "baseUrl", label: "Domain (for enrichment)", type: "text", placeholder: "example.com", helpText: "When used for domain search, provide default domain." },
+  ] },
+  { provider: "yelp", displayName: "Yelp", category: "research", purposes: ["prospecting"], prospecting: { finds: "Local businesses with reviews and ratings", bestFor: ["restaurants", "salons", "gyms", "coaches", "therapists", "spas", "local businesses", "service providers", "home services"], locationAware: true }, prodOnly: false, defaultMode: "off", helpText: "Search local businesses. Free tier: 5k API calls/day.", supportsLive: true, supportsMock: true, supportsManual: false, sortOrder: 19, platformUrl: "https://www.yelp.com", apiKeyUrl: "https://www.yelp.com/developers/v3/manage_app", configFields: [
+    { key: "accessToken", label: "API Key", type: "password", required: true },
+  ] },
 
   // ── Outreach ──
-  { provider: "linkedin", displayName: "LinkedIn", category: "outreach", purposes: ["prospecting", "visibility"], prospecting: { finds: "Professionals and companies", bestFor: ["B2B", "founders", "executives", "consultants", "coaches", "agencies"], locationAware: true }, prodOnly: true, defaultMode: "manual", helpText: "Only works in live mode when deployed.", supportsLive: true, supportsMock: true, supportsManual: true, sortOrder: 40, platformUrl: "https://www.linkedin.com/feed/", apiKeyUrl: "https://www.linkedin.com/developers/apps" },
+  { provider: "linkedin", displayName: "LinkedIn", category: "outreach", purposes: ["prospecting", "visibility"], prospecting: { finds: "Professionals and companies", bestFor: ["B2B", "founders", "executives", "consultants", "coaches", "agencies"], locationAware: true }, prodOnly: true, defaultMode: "manual", helpText: "Only works in live mode when deployed.", supportsLive: true, supportsMock: true, supportsManual: true, sortOrder: 40, platformUrl: "https://www.linkedin.com/feed/", apiKeyUrl: "https://www.linkedin.com/developers/apps", configFields: [
+    { key: "accessToken", label: "OAuth Access Token", type: "password", envVar: "LINKEDIN_ACCESS_TOKEN" },
+  ] },
 
   // ── CRM / Delivery ──
-  { provider: "crm", displayName: "CRM (Internal)", category: "delivery", purposes: ["crm"], prodOnly: false, defaultMode: "manual", supportsLive: true, supportsMock: true, supportsManual: true, sortOrder: 50 },
-  { provider: "hubspot", displayName: "HubSpot", category: "delivery", purposes: ["crm"], prodOnly: false, defaultMode: "manual", supportsLive: true, supportsMock: true, supportsManual: true, sortOrder: 52, platformUrl: "https://app.hubspot.com", apiKeyUrl: "https://app.hubspot.com/settings/private-apps" },
-  { provider: "pipedrive", displayName: "Pipedrive", category: "delivery", purposes: ["crm"], prodOnly: false, defaultMode: "manual", supportsLive: true, supportsMock: true, supportsManual: true, sortOrder: 54, platformUrl: "https://app.pipedrive.com", apiKeyUrl: "https://app.pipedrive.com/settings/api" },
-  { provider: "stripe", displayName: "Stripe", category: "delivery", purposes: ["crm"], prodOnly: false, defaultMode: "off", supportsLive: true, supportsMock: true, supportsManual: true, sortOrder: 140, platformUrl: "https://dashboard.stripe.com", apiKeyUrl: "https://dashboard.stripe.com/apikeys" },
+  { provider: "crm", displayName: "CRM (Internal)", category: "delivery", purposes: ["crm"], prodOnly: false, defaultMode: "manual", supportsLive: true, supportsMock: true, supportsManual: true, sortOrder: 50, configFields: [] },
+  { provider: "hubspot", displayName: "HubSpot", category: "delivery", purposes: ["crm"], prodOnly: false, defaultMode: "manual", supportsLive: true, supportsMock: true, supportsManual: true, sortOrder: 52, platformUrl: "https://app.hubspot.com", apiKeyUrl: "https://app.hubspot.com/settings/private-apps", configFields: [
+    { key: "accessToken", label: "Private App Access Token", type: "password", required: true },
+  ] },
+  { provider: "pipedrive", displayName: "Pipedrive", category: "delivery", purposes: ["crm"], prodOnly: false, defaultMode: "manual", supportsLive: true, supportsMock: true, supportsManual: true, sortOrder: 54, platformUrl: "https://app.pipedrive.com", apiKeyUrl: "https://app.pipedrive.com/settings/api", configFields: [
+    { key: "accessToken", label: "API Token", type: "password", required: true },
+  ] },
+  { provider: "stripe", displayName: "Stripe", category: "delivery", purposes: ["crm"], prodOnly: false, defaultMode: "off", supportsLive: true, supportsMock: true, supportsManual: true, sortOrder: 140, platformUrl: "https://dashboard.stripe.com", apiKeyUrl: "https://dashboard.stripe.com/apikeys", configFields: [
+    { key: "accessToken", label: "Secret Key", type: "password", required: true, envVar: "STRIPE_SECRET_KEY" },
+  ] },
 
   // ── Scheduling ──
-  { provider: "calendly", displayName: "Calendly", category: "delivery", purposes: ["scheduling"], prodOnly: false, defaultMode: "manual", supportsLive: true, supportsMock: true, supportsManual: true, sortOrder: 60, platformUrl: "https://calendly.com/event_types/user/me", apiKeyUrl: "https://calendly.com/integrations/api_webhooks" },
-  { provider: "calcom", displayName: "Cal.com", category: "delivery", purposes: ["scheduling"], prodOnly: false, defaultMode: "manual", supportsLive: true, supportsMock: true, supportsManual: true, sortOrder: 62, platformUrl: "https://app.cal.com", apiKeyUrl: "https://app.cal.com/settings/developer/api-keys" },
+  { provider: "calendly", displayName: "Calendly", category: "delivery", purposes: ["scheduling"], prodOnly: false, defaultMode: "manual", supportsLive: true, supportsMock: true, supportsManual: true, sortOrder: 60, platformUrl: "https://calendly.com/event_types/user/me", apiKeyUrl: "https://calendly.com/integrations/api_webhooks", configFields: [
+    { key: "accessToken", label: "API Token", type: "password" },
+    { key: "bookingUrl", label: "Booking URL (manual mode)", type: "text", placeholder: "https://calendly.com/you" },
+    { key: "displayName", label: "Display name", type: "text", placeholder: "Strategy Call" },
+  ] },
+  { provider: "calcom", displayName: "Cal.com", category: "delivery", purposes: ["scheduling"], prodOnly: false, defaultMode: "manual", supportsLive: true, supportsMock: true, supportsManual: true, sortOrder: 62, platformUrl: "https://app.cal.com", apiKeyUrl: "https://app.cal.com/settings/developer/api-keys", configFields: [
+    { key: "accessToken", label: "API Key", type: "password" },
+    { key: "bookingUrl", label: "Booking URL (manual mode)", type: "text", placeholder: "https://app.cal.com/you" },
+    { key: "displayName", label: "Display name", type: "text", placeholder: "Strategy Call" },
+  ] },
 
   // ── Content ──
-  { provider: "loom", displayName: "Loom", category: "content", purposes: ["content"], prodOnly: false, defaultMode: "manual", supportsLive: true, supportsMock: true, supportsManual: true, sortOrder: 70, platformUrl: "https://www.loom.com/looms/videos", apiKeyUrl: "https://www.loom.com/developer-portal" },
-  { provider: "youtube", displayName: "YouTube", category: "content", purposes: ["content", "prospecting"], prospecting: { finds: "Creators and channels by topic", bestFor: ["creators", "coaches", "influencers", "educators", "content creators", "fitness", "wellness"], locationAware: false }, prodOnly: false, defaultMode: "off", supportsLive: true, supportsMock: true, supportsManual: true, sortOrder: 130, platformUrl: "https://studio.youtube.com", apiKeyUrl: "https://console.cloud.google.com/apis/credentials" },
+  { provider: "loom", displayName: "Loom", category: "content", purposes: ["content"], prodOnly: false, defaultMode: "manual", supportsLive: true, supportsMock: true, supportsManual: true, sortOrder: 70, platformUrl: "https://www.loom.com/looms/videos", apiKeyUrl: "https://www.loom.com/developer-portal", configFields: [
+    { key: "accessToken", label: "API Key", type: "password" },
+  ] },
+  { provider: "youtube", displayName: "YouTube", category: "content", purposes: ["content", "prospecting"], prospecting: { finds: "Creators and channels by topic", bestFor: ["creators", "coaches", "influencers", "educators", "content creators", "fitness", "wellness"], locationAware: false }, prodOnly: false, defaultMode: "off", supportsLive: true, supportsMock: true, supportsManual: true, sortOrder: 130, platformUrl: "https://studio.youtube.com", apiKeyUrl: "https://console.cloud.google.com/apis/credentials", configFields: [
+    { key: "accessToken", label: "API Key", type: "password", envVar: "YOUTUBE_API_KEY" },
+  ] },
 
   // ── Visibility ──
-  { provider: "search_console", displayName: "Google Search Console", category: "visibility", purposes: ["analytics", "visibility"], prodOnly: true, defaultMode: "manual", helpText: "Only works in live mode when deployed.", supportsLive: true, supportsMock: true, supportsManual: true, sortOrder: 90, platformUrl: "https://search.google.com/search-console", apiKeyUrl: "https://console.cloud.google.com/apis/credentials" },
-  { provider: "instagram", displayName: "Instagram", category: "visibility", purposes: ["visibility", "content"], prodOnly: false, defaultMode: "manual", supportsLive: true, supportsMock: true, supportsManual: true, sortOrder: 100, platformUrl: "https://www.instagram.com", apiKeyUrl: "https://developers.facebook.com/apps/" },
-  { provider: "x", displayName: "X (Twitter)", category: "visibility", purposes: ["visibility", "content"], prodOnly: false, defaultMode: "manual", supportsLive: true, supportsMock: true, supportsManual: true, sortOrder: 110, platformUrl: "https://x.com", apiKeyUrl: "https://developer.x.com/en/portal/dashboard" },
-  { provider: "google_business_profile", displayName: "Google Business Profile", category: "visibility", purposes: ["visibility"], prodOnly: true, defaultMode: "manual", helpText: "Only works in live mode when deployed.", supportsLive: true, supportsMock: true, supportsManual: true, sortOrder: 120, platformUrl: "https://business.google.com", apiKeyUrl: "https://console.cloud.google.com/apis/credentials" },
+  { provider: "search_console", displayName: "Google Search Console", category: "visibility", purposes: ["analytics", "visibility"], prodOnly: true, defaultMode: "manual", helpText: "Only works in live mode when deployed.", supportsLive: true, supportsMock: true, supportsManual: true, sortOrder: 90, platformUrl: "https://search.google.com/search-console", apiKeyUrl: "https://console.cloud.google.com/apis/credentials", configFields: [
+    { key: "accessToken", label: "OAuth token", type: "password" },
+    { key: "baseUrl", label: "Site URL", type: "text", envVar: "SEARCH_CONSOLE_SITE_URL", placeholder: "https://example.com" },
+  ] },
+  { provider: "instagram", displayName: "Instagram", category: "visibility", purposes: ["visibility", "content"], prodOnly: false, defaultMode: "manual", supportsLive: true, supportsMock: true, supportsManual: true, sortOrder: 100, platformUrl: "https://www.instagram.com", apiKeyUrl: "https://developers.facebook.com/apps/", configFields: [
+    { key: "accessToken", label: "Access Token", type: "password" },
+    { key: "accountId", label: "Business ID", type: "text", envVar: "INSTAGRAM_BUSINESS_ID" },
+  ] },
+  { provider: "x", displayName: "X (Twitter)", category: "visibility", purposes: ["visibility", "content"], prodOnly: false, defaultMode: "manual", supportsLive: true, supportsMock: true, supportsManual: true, sortOrder: 110, platformUrl: "https://x.com", apiKeyUrl: "https://developer.x.com/en/portal/dashboard", configFields: [
+    { key: "accessToken", label: "Bearer Token", type: "password", envVar: "X_BEARER_TOKEN" },
+  ] },
+  { provider: "google_business_profile", displayName: "Google Business Profile", category: "visibility", purposes: ["visibility"], prodOnly: true, defaultMode: "manual", helpText: "Only works in live mode when deployed.", supportsLive: true, supportsMock: true, supportsManual: true, sortOrder: 120, platformUrl: "https://business.google.com", apiKeyUrl: "https://console.cloud.google.com/apis/credentials", configFields: [
+    { key: "accessToken", label: "OAuth token", type: "password" },
+    { key: "accountId", label: "Account ID", type: "text", envVar: "GBP_ACCOUNT_ID" },
+  ] },
 
   // ── Ops ──
-  { provider: "github", displayName: "GitHub", category: "ops", purposes: ["ops"], prodOnly: false, defaultMode: "manual", supportsLive: true, supportsMock: true, supportsManual: true, sortOrder: 160, platformUrl: "https://github.com", apiKeyUrl: "https://github.com/settings/tokens" },
+  { provider: "github", displayName: "GitHub", category: "ops", purposes: ["ops", "research"], prodOnly: false, defaultMode: "manual", supportsLive: true, supportsMock: true, supportsManual: true, sortOrder: 160, platformUrl: "https://github.com", apiKeyUrl: "https://github.com/settings/tokens", configFields: [
+    { key: "accessToken", label: "Personal Access Token", type: "password", required: true },
+  ] },
 ];
 
 /** Get all providers that serve a specific purpose */
@@ -130,6 +204,26 @@ const PROVIDER_ALIASES: Record<string, string> = {
 /** Resolve provider key to canonical form (for DB and registry lookup). */
 export function resolveProviderKey(provider: string): string {
   return PROVIDER_ALIASES[provider] ?? provider;
+}
+
+/** Sync check: does config have enough credentials for this provider? */
+export function configHasCredentials(provider: string, config: Record<string, unknown>): boolean {
+  const def = getProviderDef(provider);
+  const fields = def?.configFields;
+  if (fields && fields.length > 0) {
+    const required = fields.filter((f) => f.required);
+    if (required.length > 0) {
+      return required.every((f) => {
+        const v = config[f.key];
+        return typeof v === "string" && v.trim().length > 0;
+      });
+    }
+    return fields.some((f) => {
+      const v = config[f.key];
+      return typeof v === "string" && v.trim().length > 0;
+    });
+  }
+  return !!(config.accessToken && String(config.accessToken).trim());
 }
 
 export function getProviderDef(provider: string): ProviderDef | undefined {

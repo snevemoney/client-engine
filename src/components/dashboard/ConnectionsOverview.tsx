@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Wifi, WifiOff, Settings } from "lucide-react";
+import type { IntegrationPurpose } from "@/lib/integrations/providerRegistry";
 
 type ConnectionInfo = {
   provider: string;
@@ -13,17 +14,32 @@ type ConnectionInfo = {
   lastSyncedAt: string | null;
 };
 
-export function ConnectionsOverview() {
+type ConnectionsOverviewProps = {
+  /** When set, only integrations serving this purpose are shown. Omit for all. */
+  purpose?: IntegrationPurpose | IntegrationPurpose[];
+};
+
+export function ConnectionsOverview({ purpose }: ConnectionsOverviewProps = {}) {
   const [connections, setConnections] = useState<ConnectionInfo[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const purposeParam =
+    purpose !== undefined
+      ? typeof purpose === "string"
+        ? purpose
+        : purpose.join(",")
+      : "";
+
   useEffect(() => {
-    fetch("/api/integrations/data?statuses=1")
+    const url = purposeParam
+      ? `/api/integrations/data?statuses=1&purpose=${encodeURIComponent(purposeParam)}`
+      : "/api/integrations/data?statuses=1";
+    fetch(url)
       .then((r) => r.json())
       .then((d) => setConnections(d.statuses ?? []))
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+  }, [purposeParam]);
 
   if (loading) return null;
 

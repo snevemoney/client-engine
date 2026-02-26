@@ -6,6 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { X, ExternalLink, Key } from "lucide-react";
 import type { IntegrationProvider } from "@/lib/integrations/providers";
+import type { ConfigField } from "@/lib/integrations/providerRegistry";
+
+const DEFAULT_CONFIG_FIELDS: ConfigField[] = [
+  { key: "accessToken", label: "Access token", type: "password", placeholder: "Paste your token (optional)" },
+  { key: "accountId", label: "Account ID", type: "text", placeholder: "e.g. act_123" },
+  { key: "baseUrl", label: "Website address or link", type: "text", placeholder: "Optional" },
+];
 
 type IntegrationMode = "off" | "mock" | "manual" | "live";
 
@@ -44,6 +51,7 @@ type Item = IntegrationProvider & {
   platformUrl?: string;
   apiKeyUrl?: string;
   credentials?: Credentials | null;
+  configFields?: ConfigField[] | null;
 };
 
 const MODE_HELPER: Record<IntegrationMode, string> = {
@@ -125,11 +133,7 @@ export function IntegrationsSection() {
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
   const [configOpen, setConfigOpen] = useState<Item | null>(null);
-  const [configAccessToken, setConfigAccessToken] = useState("");
-  const [configAccountId, setConfigAccountId] = useState("");
-  const [configBaseUrl, setConfigBaseUrl] = useState("");
-  const [configBookingUrl, setConfigBookingUrl] = useState("");
-  const [configDisplayName, setConfigDisplayName] = useState("");
+  const [configValues, setConfigValues] = useState<Record<string, string>>({});
   const [configQueryParams, setConfigQueryParams] = useState<{ key: string; value: string }[]>([]);
   const [configMode, setConfigMode] = useState<IntegrationMode>("off");
   const [configEnabled, setConfigEnabled] = useState(true);
@@ -148,21 +152,27 @@ export function IntegrationsSection() {
     const config = conn?.configJson as Record<string, unknown> | undefined;
     const creds = item.credentials;
     const hasConfig = config && Object.keys(config).length > 0;
+    const fields = item.configFields && item.configFields.length > 0 ? item.configFields : DEFAULT_CONFIG_FIELDS;
+
+    const credKeyMap: Record<string, keyof Credentials> = {
+      accountId: "accountId",
+      pixelId: "pixelId",
+      baseUrl: "baseUrl",
+      bookingUrl: "bookingUrl",
+    };
+    const values: Record<string, string> = {};
+    for (const f of fields) {
+      const fromConfig = config?.[f.key];
+      const credKey = credKeyMap[f.key];
+      const fromCreds = !hasConfig && creds && credKey && creds[credKey];
+      values[f.key] = (typeof fromConfig === "string" ? fromConfig : fromCreds ?? "") as string;
+    }
+
     const qp =
       (config?.additionalQueryParams as Record<string, string> | undefined) ??
       (config?.queryParams as Record<string, string> | undefined);
     setConfigOpen(item);
-    setConfigAccessToken((config?.accessToken as string) ?? "");
-    setConfigAccountId(
-      (config?.accountId as string) ?? (!hasConfig && creds?.accountId ? creds.accountId : ""),
-    );
-    setConfigBaseUrl(
-      (config?.baseUrl as string) ?? (!hasConfig && creds?.baseUrl ? creds.baseUrl : ""),
-    );
-    setConfigBookingUrl(
-      (config?.bookingUrl as string) ?? (!hasConfig && creds?.bookingUrl ? creds.bookingUrl : ""),
-    );
-    setConfigDisplayName((config?.displayName as string) ?? "");
+    setConfigValues(values);
     setConfigQueryParams(qp ? Object.entries(qp).map(([k, v]) => ({ key: k, value: String(v) })) : []);
     setConfigMode((conn?.mode as IntegrationMode) ?? "off");
     setConfigEnabled(conn?.isEnabled ?? true);
@@ -174,6 +184,12 @@ export function IntegrationsSection() {
     setSaving(true);
     try {
       const existingConfig = (configOpen.connection.configJson as Record<string, unknown>) ?? {};
+      const fields = configOpen.configFields && configOpen.configFields.length > 0 ? configOpen.configFields : DEFAULT_CONFIG_FIELDS;
+      const configJson: Record<string, unknown> = { ...existingConfig };
+      for (const f of fields) {
+        const v = configValues[f.key]?.trim();
+        configJson[f.key] = v || undefined;
+      }
       const qpEntries = configQueryParams
         .filter((p) => p.key.trim())
         .map((p) => [p.key.trim(), p.value] as [string, string]);
@@ -183,24 +199,17 @@ export function IntegrationsSection() {
         setSaving(false);
         return;
       }
-      const configJson: Record<string, unknown> = {
-        ...existingConfig,
-        accessToken: configAccessToken || undefined,
-        accountId: configAccountId || undefined,
-        baseUrl: configBaseUrl || undefined,
-        bookingUrl: configBookingUrl || undefined,
-        displayName: configDisplayName || undefined,
-      };
       if (configOpen.supportsQueryParams) {
         configJson.additionalQueryParams =
           qpEntries.length > 0 ? Object.fromEntries(qpEntries) : undefined;
       }
+      const hasCredentials = fields.some((f) => (configValues[f.key] ?? "").trim().length > 0);
       const res = await fetch(`/api/integrations/${configOpen.key}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           configJson,
-          status: configAccessToken ? "connected" : "not_connected",
+          status: hasCredentials ? "connected" : "not_connected",
           mode: configMode,
           isEnabled: configEnabled,
         }),
@@ -449,64 +458,26 @@ export function IntegrationsSection() {
                   <p className="text-xs text-neutral-500 mt-2">{configOpen.helpText}</p>
                 )}
               </div>
-              <div>
-                <label className="block text-xs text-neutral-500 mb-1">Access token</label>
-                <Input
-                  type="password"
-                  value={configAccessToken}
-                  onChange={(e) => setConfigAccessToken(e.target.value)}
-                  placeholder={
-                    configOpen.credentials?.maskedAccessToken
-                      ? `${configOpen.credentials.maskedAccessToken} (from .env)`
-                      : "Paste your token here (optional)"
-                  }
-                  className="w-full"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-neutral-500 mb-1">Account ID</label>
-                <Input
-                  value={configAccountId}
-                  onChange={(e) => setConfigAccountId(e.target.value)}
-                  placeholder="e.g. act_123"
-                  className="w-full"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-neutral-500 mb-1">Website address or link</label>
-                <Input
-                  value={configBaseUrl}
-                  onChange={(e) => setConfigBaseUrl(e.target.value)}
-                  placeholder="Optional"
-                  className="w-full"
-                />
-              </div>
-              {(configOpen.key === "calendly" || configOpen.key === "calcom") && (
-                <>
-                  <div>
-                    <label className="block text-xs text-neutral-500 mb-1">Booking URL (manual mode)</label>
-                    <Input
-                      value={configBookingUrl}
-                      onChange={(e) => setConfigBookingUrl(e.target.value)}
-                      placeholder="https://calendly.com/you or Cal.com link"
-                      className="w-full"
-                    />
-                    <p className="text-xs text-neutral-600 mt-1">Your scheduling link for manual mode.</p>
-                  </div>
-                  <div>
-                    <label className="block text-xs text-neutral-500 mb-1">Display name (optional)</label>
-                    <Input
-                      value={configDisplayName}
-                      onChange={(e) => setConfigDisplayName(e.target.value)}
-                      placeholder="e.g. Strategy Call"
-                      className="w-full"
-                    />
-                  </div>
-                  {configBookingUrl && (
-                    <p className="text-xs text-emerald-500">Manual link configured</p>
-                  )}
-                </>
-              )}
+              {(configOpen.configFields && configOpen.configFields.length > 0 ? configOpen.configFields : DEFAULT_CONFIG_FIELDS).map((field) => (
+                <div key={field.key}>
+                  <label className="block text-xs text-neutral-500 mb-1">{field.label}{field.required ? " *" : ""}</label>
+                  <Input
+                    type={field.type}
+                    value={configValues[field.key] ?? ""}
+                    onChange={(e) => setConfigValues((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                    placeholder={
+                      field.key === "accessToken" && configOpen.credentials?.maskedAccessToken
+                        ? `${configOpen.credentials.maskedAccessToken} (from .env)`
+                        : field.key === "capiToken" && configOpen.credentials?.maskedCapiToken
+                          ? `${configOpen.credentials.maskedCapiToken} (from .env)`
+                          : field.placeholder ?? (field.envVar ? `Or set ${field.envVar}` : "")
+                    }
+                    required={field.required}
+                    className="w-full"
+                  />
+                  {field.helpText && <p className="text-xs text-neutral-600 mt-1">{field.helpText}</p>}
+                </div>
+              ))}
               {configOpen.supportsQueryParams && (
                 <div>
                   <label className="block text-xs text-neutral-500 mb-1">

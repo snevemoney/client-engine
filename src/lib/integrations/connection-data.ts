@@ -1,10 +1,15 @@
 /**
  * Server-side helper to fetch live data from an integration connection.
  * Used by dashboard pages to display connection-sourced data.
+ *
+ * Use purpose filtering when fetching for a specific context so only
+ * relevant integrations are returned.
  */
 import { db } from "@/lib/db";
 import { runProvider } from "./clients";
-import type { IntegrationMode } from "./providerRegistry";
+import { filterProvidersByPurpose } from "./purpose-context";
+import { configHasCredentials } from "./providerRegistry";
+import type { IntegrationMode, IntegrationPurpose } from "./providerRegistry";
 
 export type ConnectionStatus = {
   provider: string;
@@ -21,7 +26,7 @@ export async function getConnectionStatus(provider: string): Promise<ConnectionS
   });
   if (!conn) return null;
   const config = (conn.configJson ?? {}) as Record<string, unknown>;
-  const hasCredentials = !!(config.accessToken || process.env[`${provider.toUpperCase()}_ACCESS_TOKEN`]);
+  const hasCredentials = configHasCredentials(conn.provider, config);
   return {
     provider: conn.provider,
     isEnabled: conn.isEnabled,
@@ -48,19 +53,37 @@ export async function fetchConnectionData(provider: string) {
   return { ...result, status: conn };
 }
 
-export async function getAllConnectionStatuses(): Promise<ConnectionStatus[]> {
+export async function getAllConnectionStatuses(
+  purpose?: IntegrationPurpose | IntegrationPurpose[],
+): Promise<ConnectionStatus[]> {
   const connections = await db.integrationConnection.findMany({
     orderBy: { provider: "asc" },
   });
-  return connections.map((conn) => {
-    const config = (conn.configJson ?? {}) as Record<string, unknown>;
-    return {
-      provider: conn.provider,
-      isEnabled: conn.isEnabled,
-      mode: conn.mode as IntegrationMode,
-      status: conn.status,
-      lastSyncedAt: conn.lastSyncedAt?.toISOString() ?? null,
-      hasCredentials: !!config.accessToken,
-    };
-  });
+
+  const purposes = purpose
+    ? Array.isArray(purpose)
+      ? purpose
+      : [purpose]
+    : [];
+
+  const filtered = purposes.length > 0
+    ? filterProvidersByPurpose(
+        connections.map((c) => c.provider),
+        purposes,
+      )
+    : connections.map((c) => c.provider);
+
+  return connections
+    .filter((conn) => filtered.includes(conn.provider))
+    .map((conn) => {
+      const config = (conn.configJson ?? {}) as Record<string, unknown>;
+      return {
+        provider: conn.provider,
+        isEnabled: conn.isEnabled,
+        mode: conn.mode as IntegrationMode,
+        status: conn.status,
+        lastSyncedAt: conn.lastSyncedAt?.toISOString() ?? null,
+        hasCredentials: configHasCredentials(conn.provider, config),
+      };
+    });
 }

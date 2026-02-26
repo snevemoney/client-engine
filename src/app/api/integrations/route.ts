@@ -5,7 +5,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { PROVIDER_REGISTRY, getProviderDef } from "@/lib/integrations/providerRegistry";
+import { PROVIDER_REGISTRY, getProviderDef, type ProviderDef } from "@/lib/integrations/providerRegistry";
 import { getCredentialsSummary } from "@/lib/integrations/credentials";
 import { jsonError, withRouteTiming } from "@/lib/api-utils";
 
@@ -41,6 +41,7 @@ export async function GET() {
             helpText: p.helpText,
             sortOrder: p.sortOrder,
             supportsQueryParams: p.supportsQueryParams ?? false,
+            configFields: p.configFields ?? null,
             platformUrl: p.platformUrl ?? null,
             apiKeyUrl: p.apiKeyUrl ?? null,
             credentials: creds,
@@ -111,6 +112,7 @@ export async function GET() {
         prodOnly: fallback.prodOnly,
         helpText: fallback.helpText,
         sortOrder: fallback.sortOrder,
+        configFields: Array.isArray((fallback as ProviderDef).configFields) ? (fallback as ProviderDef).configFields! : null,
         supportsQueryParams: false,
         platformUrl: null,
         apiKeyUrl: null,

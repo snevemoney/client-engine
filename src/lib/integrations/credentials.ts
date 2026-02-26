@@ -86,6 +86,25 @@ const ENV_MAP: Record<string, EnvMapping> = {
   },
   upwork: {
     accessToken: "UPWORK_ACCESS_TOKEN",
+    baseUrl: "UPWORK_RSS_URL",
+  },
+  google_places: {
+    accessToken: "GOOGLE_PLACES_API_KEY",
+  },
+  serpapi: {
+    accessToken: "SERPAPI_KEY",
+  },
+  apollo: {
+    accessToken: "APOLLO_API_KEY",
+  },
+  hunter: {
+    accessToken: "HUNTER_API_KEY",
+  },
+  yelp: {
+    accessToken: "YELP_API_KEY",
+  },
+  linkedin: {
+    accessToken: "LINKEDIN_ACCESS_TOKEN",
   },
 };
 

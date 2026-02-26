@@ -1,16 +1,21 @@
 /**
  * Bridge between the research engine adapter pattern and IntegrationConnection.
  * Creates ResearchSourceAdapter instances from active DB connections.
+ *
+ * Only includes connections whose provider serves monitoring, crm, or research.
  */
 import { db } from "@/lib/db";
 import { resolveConnection } from "@/lib/integrations/resolver";
 import { getCredentials } from "@/lib/integrations/credentials";
+import { filterProvidersByPurpose } from "@/lib/integrations/purpose-context";
 import { fetchRssFeed } from "@/lib/integrations/clients/rss";
 import { fetchUpworkJobs } from "@/lib/integrations/clients/upwork";
 import { fetchHubSpotContacts } from "@/lib/integrations/clients/hubspot";
 import { searchGithubUsers } from "@/lib/integrations/clients/github";
 import type { RawOpportunity, ResearchSourceAdapter } from "../types";
-import type { IntegrationMode } from "@/lib/integrations/providerRegistry";
+import type { IntegrationMode, IntegrationPurpose } from "@/lib/integrations/providerRegistry";
+
+const RESEARCH_PURPOSES: IntegrationPurpose[] = ["monitoring", "crm", "research"];
 
 type DBConnection = {
   provider: string;
@@ -149,16 +154,24 @@ const ADAPTER_FACTORY: Record<string, (conn: DBConnection) => ResearchSourceAdap
 };
 
 /**
- * Load all active integration connections from the DB and return
- * ResearchSourceAdapter instances for those that have adapter support.
+ * Load active integration connections from the DB and return
+ * ResearchSourceAdapter instances for those that:
+ * - Have adapter support
+ * - Serve monitoring, crm, or research purpose
  */
 export async function getConnectionAdapters(): Promise<ResearchSourceAdapter[]> {
   const connections = await db.integrationConnection.findMany({
     where: { isEnabled: true, mode: { not: "off" } },
   });
 
+  const allowed = filterProvidersByPurpose(
+    connections.map((c) => c.provider),
+    RESEARCH_PURPOSES,
+  );
+
   const adapters: ResearchSourceAdapter[] = [];
   for (const conn of connections) {
+    if (!allowed.includes(conn.provider)) continue;
     const factory = ADAPTER_FACTORY[conn.provider];
     if (factory) {
       adapters.push(
