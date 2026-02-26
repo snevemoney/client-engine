@@ -1,54 +1,43 @@
 /**
- * Prospect search engine.
- * Orchestrates searches across all enabled integration connections
- * based on criteria (client type, industry, keywords, etc.).
- * No hard limit — exhausts all available sources.
+ * Prospect search engine with smart source routing.
+ *
+ * Instead of blindly querying every enabled connection, the engine:
+ * 1. Filters to only providers tagged with purpose "prospecting"
+ * 2. Scores each source's relevance to the search criteria
+ * 3. Queries only the relevant ones, passing tailored params
+ * 4. Returns results ranked by confidence
  */
 import { db } from "@/lib/db";
 import { getCredentials } from "@/lib/integrations/credentials";
 import { resolveConnection } from "@/lib/integrations/resolver";
-import { searchGithubUsers, fetchGithubRepos } from "@/lib/integrations/clients/github";
-import { fetchRssFeed } from "@/lib/integrations/clients/rss";
-import { fetchUpworkJobs } from "@/lib/integrations/clients/upwork";
-import { searchLinkedInCompanies, fetchLinkedInProfile } from "@/lib/integrations/clients/linkedin";
-import { fetchHubSpotContacts, searchHubSpotCompanies } from "@/lib/integrations/clients/hubspot";
-import { fetchStripeCustomers } from "@/lib/integrations/clients/stripe";
-import { fetchCalendlyEvents } from "@/lib/integrations/clients/calendly";
+import { getProspectingProviders } from "@/lib/integrations/providerRegistry";
+import type { IntegrationMode, ProspectingCapability } from "@/lib/integrations/providerRegistry";
 import { trackApiUsage } from "@/lib/integrations/usage";
-import type { IntegrationMode } from "@/lib/integrations/providerRegistry";
+
+import { searchGooglePlaces } from "@/lib/integrations/clients/google-places";
+import { searchSerpApi } from "@/lib/integrations/clients/serpapi";
+import { searchApolloPeople, searchApolloCompanies } from "@/lib/integrations/clients/apollo";
+import { searchHunterDomain } from "@/lib/integrations/clients/hunter";
+import { searchYelpBusinesses } from "@/lib/integrations/clients/yelp";
+import { searchYouTubeChannels } from "@/lib/integrations/clients/youtube-search";
+import { fetchUpworkJobs } from "@/lib/integrations/clients/upwork";
+import { searchLinkedInCompanies } from "@/lib/integrations/clients/linkedin";
+
 import type { ProspectCriteria, ProspectResult, ProspectRunReport } from "./types";
+
+// ── Helpers ──
+
+function makeId(): string {
+  return `pr-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
 
 function buildSearchQuery(criteria: ProspectCriteria): string {
   const parts: string[] = [];
   if (criteria.clientType) parts.push(criteria.clientType);
   if (criteria.industry) parts.push(criteria.industry);
   if (criteria.keywords?.length) parts.push(...criteria.keywords);
-  if (criteria.location) parts.push(criteria.location);
   return parts.join(" ");
 }
-
-function matchesCriteria(text: string, criteria: ProspectCriteria): boolean {
-  const lower = text.toLowerCase();
-  const terms = [
-    criteria.clientType,
-    criteria.industry,
-    ...(criteria.keywords ?? []),
-  ].filter(Boolean).map((t) => t!.toLowerCase());
-  if (terms.length === 0) return true;
-  return terms.some((term) => lower.includes(term));
-}
-
-function makeId(): string {
-  return `pr-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-}
-
-type ConnectionRow = {
-  provider: string;
-  mode: IntegrationMode;
-  prodOnly: boolean;
-  configJson: unknown;
-  isEnabled: boolean;
-};
 
 function mergeConfig(
   configJson: unknown,
@@ -64,195 +53,286 @@ function mergeConfig(
   };
 }
 
+// ── Source relevance scoring ──
+
+function scoreSourceRelevance(
+  capability: ProspectingCapability,
+  criteria: ProspectCriteria,
+): number {
+  let score = 0;
+  const criteriaTerms = [
+    criteria.clientType,
+    criteria.industry,
+    ...(criteria.keywords ?? []),
+  ]
+    .filter(Boolean)
+    .map((t) => t!.toLowerCase());
+
+  // "any" in bestFor means this source is universally useful
+  if (capability.bestFor.includes("any")) {
+    score += 0.5;
+  }
+
+  // Check how many criteria terms match bestFor keywords
+  for (const term of criteriaTerms) {
+    for (const bestFor of capability.bestFor) {
+      if (
+        bestFor.toLowerCase().includes(term) ||
+        term.includes(bestFor.toLowerCase())
+      ) {
+        score += 1;
+        break;
+      }
+    }
+  }
+
+  // Boost location-aware sources when location is provided
+  if (criteria.location && capability.locationAware) {
+    score += 0.5;
+  }
+
+  return score;
+}
+
+// ── Source searchers (only prospecting-capable providers) ──
+
 type SourceSearcher = {
   name: string;
-  search: (conn: ConnectionRow, mode: IntegrationMode, config: Record<string, unknown>, criteria: ProspectCriteria) => Promise<ProspectResult[]>;
+  search: (
+    mode: IntegrationMode,
+    config: Record<string, unknown>,
+    criteria: ProspectCriteria,
+  ) => Promise<ProspectResult[]>;
 };
 
 const SOURCE_SEARCHERS: Record<string, SourceSearcher> = {
-  github: {
-    name: "GitHub",
-    async search(_conn, mode, config, criteria) {
-      const query = buildSearchQuery(criteria);
-      const result = await searchGithubUsers(mode, config, query);
+  google_places: {
+    name: "Google Places",
+    async search(mode, config, criteria) {
+      const query = criteria.clientType;
+      const result = await searchGooglePlaces(mode, config, query, criteria.location);
       if (!result.ok || !result.data) return [];
-      return result.data.map((u): ProspectResult => ({
+      return result.data.map((p): ProspectResult => ({
         id: makeId(),
-        source: "github",
-        title: u.login,
-        description: `GitHub ${u.type}: ${u.login}`,
-        url: u.html_url,
-        contactPath: u.html_url,
-        tags: [`type:${u.type}`],
-        confidence: 0.6,
-        meta: { avatar_url: u.avatar_url },
+        source: "google_places",
+        title: p.name,
+        description: [p.address, p.rating ? `${p.rating}★ (${p.totalRatings ?? 0} reviews)` : null].filter(Boolean).join(" — "),
+        url: p.website || p.mapsUrl,
+        contactPath: p.phone,
+        tags: [
+          ...p.types.slice(0, 3),
+          ...(p.website ? [] : ["no-website"]),
+        ],
+        confidence: p.website ? 0.7 : 0.85,
+        meta: { rating: p.rating, totalRatings: p.totalRatings, website: p.website, phone: p.phone },
       }));
     },
   },
-  rss: {
-    name: "RSS/News",
-    async search(_conn, mode, config, criteria) {
-      const result = await fetchRssFeed(mode, config);
+
+  serpapi: {
+    name: "Web Search",
+    async search(mode, config, criteria) {
+      const query = `${criteria.clientType}${criteria.industry ? ` ${criteria.industry}` : ""}${criteria.location ? ` ${criteria.location}` : ""}`;
+      const result = await searchSerpApi(mode, config, query, criteria.location);
+      if (!result.ok || !result.data) return [];
+      return result.data.map((r): ProspectResult => ({
+        id: makeId(),
+        source: "serpapi",
+        title: r.title,
+        description: r.snippet,
+        url: r.link,
+        tags: [`domain:${r.domain}`],
+        confidence: r.position <= 3 ? 0.75 : r.position <= 10 ? 0.6 : 0.45,
+        meta: { position: r.position, domain: r.domain },
+      }));
+    },
+  },
+
+  apollo: {
+    name: "Apollo.io",
+    async search(mode, config, criteria) {
+      const query = buildSearchQuery(criteria);
+      const results: ProspectResult[] = [];
+
+      const [peopleRes, companiesRes] = await Promise.allSettled([
+        searchApolloPeople(mode, config, query, criteria.location),
+        searchApolloCompanies(mode, config, query, criteria.location),
+      ]);
+
+      if (peopleRes.status === "fulfilled" && peopleRes.value.ok && peopleRes.value.data) {
+        for (const p of peopleRes.value.data) {
+          results.push({
+            id: makeId(),
+            source: "apollo",
+            title: p.name,
+            description: [p.title, p.company, [p.city, p.state, p.country].filter(Boolean).join(", ")].filter(Boolean).join(" — "),
+            url: p.linkedinUrl,
+            contactPath: p.email,
+            tags: [
+              ...(p.title ? [`title:${p.title}`] : []),
+              ...(p.company ? [`company:${p.company}`] : []),
+            ],
+            confidence: p.email ? 0.85 : 0.65,
+            meta: { email: p.email, company: p.company, companyDomain: p.companyDomain },
+          });
+        }
+      }
+
+      if (companiesRes.status === "fulfilled" && companiesRes.value.ok && companiesRes.value.data) {
+        for (const c of companiesRes.value.data) {
+          results.push({
+            id: makeId(),
+            source: "apollo",
+            title: c.name,
+            description: [c.industry, c.domain, c.employeeCount ? `~${c.employeeCount} employees` : null, [c.city, c.country].filter(Boolean).join(", ")].filter(Boolean).join(" — "),
+            url: c.website || c.linkedinUrl,
+            tags: [
+              ...(c.industry ? [`industry:${c.industry}`] : []),
+              ...(c.employeeCount ? [`size:${c.employeeCount}`] : []),
+            ],
+            confidence: 0.7,
+            meta: { domain: c.domain, employeeCount: c.employeeCount },
+          });
+        }
+      }
+
+      return results;
+    },
+  },
+
+  hunter: {
+    name: "Hunter.io",
+    async search(mode, config, criteria) {
+      // Hunter works best as enrichment — needs a domain to search.
+      // We use baseUrl from config if set, or skip entirely.
+      const domain = typeof config.baseUrl === "string" ? config.baseUrl : null;
+      if (!domain) return [];
+
+      const cleanDomain = domain.replace(/^https?:\/\//, "").replace(/\/.*$/, "");
+      const result = await searchHunterDomain(mode, config, cleanDomain);
+      if (!result.ok || !result.data) return [];
+
+      return result.data.emails.map((e): ProspectResult => ({
+        id: makeId(),
+        source: "hunter",
+        title: [e.firstName, e.lastName].filter(Boolean).join(" ") || e.email,
+        description: [e.position, e.department, result.data!.organization].filter(Boolean).join(" — "),
+        contactPath: e.email,
+        url: e.linkedinUrl,
+        tags: [`confidence:${e.confidence}%`],
+        confidence: e.confidence / 100,
+        meta: { email: e.email, organization: result.data!.organization },
+      }));
+    },
+  },
+
+  yelp: {
+    name: "Yelp",
+    async search(mode, config, criteria) {
+      const query = criteria.clientType;
+      const result = await searchYelpBusinesses(mode, config, query, criteria.location);
       if (!result.ok || !result.data) return [];
       return result.data
-        .filter((item) => matchesCriteria(`${item.title} ${item.summary ?? ""}`, criteria))
-        .map((item): ProspectResult => ({
+        .filter((b) => !b.isClosed)
+        .map((b): ProspectResult => ({
           id: makeId(),
-          source: "rss",
-          title: item.title,
-          description: item.summary ?? item.title,
-          url: item.url,
-          tags: [],
-          confidence: 0.5,
-          meta: { publishedAt: item.publishedAt },
+          source: "yelp",
+          title: b.name,
+          description: [
+            b.categories.join(", "),
+            `${b.rating}★ (${b.reviewCount} reviews)`,
+            [b.address, b.city, b.state].filter(Boolean).join(", "),
+          ].filter(Boolean).join(" — "),
+          url: b.url,
+          contactPath: b.phone,
+          tags: b.categories.map((c) => `category:${c}`),
+          confidence: b.reviewCount > 10 ? 0.75 : 0.6,
+          meta: { rating: b.rating, reviewCount: b.reviewCount, phone: b.phone, city: b.city },
         }));
     },
   },
+
+  youtube: {
+    name: "YouTube",
+    async search(mode, config, criteria) {
+      const query = `${criteria.clientType}${criteria.industry ? ` ${criteria.industry}` : ""}`;
+      const result = await searchYouTubeChannels(mode, config, query);
+      if (!result.ok || !result.data) return [];
+      return result.data.map((ch): ProspectResult => ({
+        id: makeId(),
+        source: "youtube",
+        title: ch.title,
+        description: [
+          ch.description.slice(0, 120),
+          ch.subscriberCount ? `${(ch.subscriberCount / 1000).toFixed(1)}k subs` : null,
+          ch.videoCount ? `${ch.videoCount} videos` : null,
+        ].filter(Boolean).join(" — "),
+        url: ch.channelUrl,
+        tags: [
+          ...(ch.subscriberCount ? [`subs:${ch.subscriberCount}`] : []),
+        ],
+        confidence: ch.subscriberCount && ch.subscriberCount > 1000 ? 0.7 : 0.5,
+        meta: { subscriberCount: ch.subscriberCount, videoCount: ch.videoCount },
+      }));
+    },
+  },
+
   upwork: {
     name: "Upwork",
-    async search(_conn, mode, config, criteria) {
+    async search(mode, config, criteria) {
       const result = await fetchUpworkJobs(mode, config);
       if (!result.ok || !result.data) return [];
+      const query = buildSearchQuery(criteria).toLowerCase();
+      const terms = query.split(/\s+/).filter(Boolean);
       return result.data
-        .filter((job) => matchesCriteria(`${job.title} ${job.description ?? ""}`, criteria))
+        .filter((job) => {
+          const text = `${job.title} ${job.description ?? ""}`.toLowerCase();
+          return terms.some((t) => text.includes(t));
+        })
         .map((job): ProspectResult => ({
           id: makeId(),
           source: "upwork",
           title: job.title,
           description: job.description ?? job.title,
-          url: undefined,
           tags: job.budget ? [`budget:${job.budget}`] : [],
           confidence: 0.75,
           meta: { postedAt: job.postedAt, budget: job.budget },
         }));
     },
   },
+
   linkedin: {
     name: "LinkedIn",
-    async search(_conn, mode, config, criteria) {
+    async search(mode, config, criteria) {
       const query = buildSearchQuery(criteria);
-      const companiesResult = await searchLinkedInCompanies(mode, config, query);
-      const results: ProspectResult[] = [];
-      if (companiesResult.ok && companiesResult.data) {
-        for (const c of companiesResult.data) {
-          results.push({
-            id: makeId(),
-            source: "linkedin",
-            title: c.name,
-            description: [c.description, c.industry, c.staffCount ? `~${c.staffCount} staff` : null].filter(Boolean).join(" — "),
-            url: c.vanityName ? `https://linkedin.com/company/${c.vanityName}` : undefined,
-            tags: c.industry ? [`industry:${c.industry}`] : [],
-            confidence: 0.7,
-            meta: { staffCount: c.staffCount },
-          });
-        }
-      }
-      const profileResult = await fetchLinkedInProfile(mode, config);
-      if (profileResult.ok && profileResult.data) {
-        results.push({
-          id: makeId(),
-          source: "linkedin",
-          title: profileResult.data.name,
-          description: profileResult.data.headline ?? "LinkedIn profile",
-          tags: [],
-          confidence: 0.5,
-          meta: { connectionsCount: profileResult.data.connectionsCount },
-        });
-      }
-      return results;
-    },
-  },
-  hubspot: {
-    name: "HubSpot",
-    async search(_conn, mode, config, criteria) {
-      const query = buildSearchQuery(criteria);
-      const results: ProspectResult[] = [];
-      const companiesResult = await searchHubSpotCompanies(mode, config, query);
-      if (companiesResult.ok && companiesResult.data) {
-        for (const c of companiesResult.data) {
-          results.push({
-            id: makeId(),
-            source: "hubspot",
-            title: c.name,
-            description: [c.domain, c.industry, c.city].filter(Boolean).join(" — "),
-            url: `https://app.hubspot.com/contacts/companies/${c.id}`,
-            tags: c.industry ? [`industry:${c.industry}`] : [],
-            confidence: 0.7,
-            meta: { domain: c.domain },
-          });
-        }
-      }
-      const contactsResult = await fetchHubSpotContacts(mode, config);
-      if (contactsResult.ok && contactsResult.data) {
-        const filtered = contactsResult.data.filter((c) =>
-          matchesCriteria([c.firstName, c.lastName, c.company, c.email].filter(Boolean).join(" "), criteria)
-        );
-        for (const c of filtered) {
-          results.push({
-            id: makeId(),
-            source: "hubspot",
-            title: [c.firstName, c.lastName].filter(Boolean).join(" ") || c.email || "Contact",
-            description: [c.company, c.email, c.website].filter(Boolean).join(" — "),
-            url: `https://app.hubspot.com/contacts/${c.id}`,
-            contactPath: c.email,
-            tags: c.company ? [`company:${c.company}`] : [],
-            confidence: 0.65,
-          });
-        }
-      }
-      return results;
-    },
-  },
-  stripe: {
-    name: "Stripe",
-    async search(_conn, mode, config, criteria) {
-      const result = await fetchStripeCustomers(mode, config);
+      const result = await searchLinkedInCompanies(mode, config, query);
       if (!result.ok || !result.data) return [];
-      return result.data
-        .filter((c) => matchesCriteria([c.name, c.email, c.description].filter(Boolean).join(" "), criteria))
-        .map((c): ProspectResult => ({
-          id: makeId(),
-          source: "stripe",
-          title: c.name ?? c.email ?? c.id,
-          description: [c.email, c.description].filter(Boolean).join(" — "),
-          url: `https://dashboard.stripe.com/customers/${c.id}`,
-          contactPath: c.email,
-          tags: c.currency ? [`currency:${c.currency}`] : [],
-          confidence: 0.6,
-        }));
-    },
-  },
-  calendly: {
-    name: "Calendly",
-    async search(_conn, mode, config, criteria) {
-      const result = await fetchCalendlyEvents(mode, config);
-      if (!result.ok || !result.data) return [];
-      return result.data
-        .filter((e) => matchesCriteria(e.name, criteria))
-        .map((e): ProspectResult => ({
-          id: makeId(),
-          source: "calendly",
-          title: e.name,
-          description: `Event: ${e.name} (${e.status})`,
-          url: e.uri,
-          tags: [`status:${e.status}`],
-          confidence: 0.5,
-          meta: { startTime: e.startTime, endTime: e.endTime },
-        }));
-    },
-  },
-  calcom: {
-    name: "Cal.com",
-    async search(conn, mode, config, criteria) {
-      return SOURCE_SEARCHERS.calendly.search(conn, mode, config, criteria);
+      return result.data.map((c): ProspectResult => ({
+        id: makeId(),
+        source: "linkedin",
+        title: c.name,
+        description: [c.description, c.industry, c.staffCount ? `~${c.staffCount} staff` : null].filter(Boolean).join(" — "),
+        url: c.vanityName ? `https://linkedin.com/company/${c.vanityName}` : undefined,
+        tags: c.industry ? [`industry:${c.industry}`] : [],
+        confidence: 0.7,
+        meta: { staffCount: c.staffCount },
+      }));
     },
   },
 };
 
-/**
- * Run prospect search across all enabled connections.
- * Returns results from every source that has a client and is not OFF.
- */
+// ── Types for the routing report ──
+
+export type SourceSelection = {
+  provider: string;
+  displayName: string;
+  relevanceScore: number;
+  reason: string;
+  selected: boolean;
+};
+
+// ── Main search function ──
+
 export async function runProspectSearch(criteria: ProspectCriteria): Promise<ProspectRunReport> {
   const report: ProspectRunReport = {
     id: makeId(),
@@ -261,46 +341,99 @@ export async function runProspectSearch(criteria: ProspectCriteria): Promise<Pro
     status: "running",
     results: [],
     sourcesSearched: [],
+    sourceSelections: [],
     totalApiCalls: 0,
     errors: [],
   };
 
+  // 1. Get all prospecting-capable provider definitions
+  const prospectingProviders = getProspectingProviders();
+
+  // 2. Get all enabled connections from DB
   const connections = await db.integrationConnection.findMany({
     where: { isEnabled: true },
   });
+  const connectionMap = new Map(connections.map((c) => [c.provider, c]));
 
-  const tasks = connections.map(async (conn) => {
+  // 3. Score and select sources
+  const selections: SourceSelection[] = [];
+  for (const providerDef of prospectingProviders) {
+    const capability = providerDef.prospecting!;
+    const score = scoreSourceRelevance(capability, criteria);
+    const conn = connectionMap.get(providerDef.provider);
+
+    let reason: string;
+    let selected = false;
+
+    if (!conn) {
+      reason = "Not configured — set up in Settings > Connections";
+    } else if (score === 0) {
+      reason = `Low relevance — best for: ${capability.bestFor.slice(0, 4).join(", ")}`;
+    } else {
+      const resolved = resolveConnection({
+        provider: conn.provider,
+        mode: conn.mode as IntegrationMode,
+        prodOnly: conn.prodOnly,
+      });
+      if (!resolved.shouldRun) {
+        reason = `Mode is ${conn.mode} — won't run`;
+      } else if (!SOURCE_SEARCHERS[providerDef.provider]) {
+        reason = "No search client available";
+      } else {
+        reason = `Matched: ${capability.finds}`;
+        selected = true;
+      }
+    }
+
+    selections.push({
+      provider: providerDef.provider,
+      displayName: providerDef.displayName,
+      relevanceScore: score,
+      reason,
+      selected,
+    });
+  }
+
+  // Sort by relevance, selected first
+  selections.sort((a, b) => {
+    if (a.selected !== b.selected) return a.selected ? -1 : 1;
+    return b.relevanceScore - a.relevanceScore;
+  });
+
+  report.sourceSelections = selections;
+
+  // 4. Execute searches on selected sources
+  const selectedSources = selections.filter((s) => s.selected);
+
+  const tasks = selectedSources.map(async (sel) => {
+    const conn = connectionMap.get(sel.provider)!;
     const resolved = resolveConnection({
       provider: conn.provider,
       mode: conn.mode as IntegrationMode,
       prodOnly: conn.prodOnly,
     });
-    if (!resolved.shouldRun) return;
-
-    const searcher = SOURCE_SEARCHERS[conn.provider];
-    if (!searcher) return;
-
-    report.sourcesSearched.push(searcher.name);
     const creds = await getCredentials(conn.provider);
     const config = mergeConfig(conn.configJson, creds);
+    const searcher = SOURCE_SEARCHERS[sel.provider]!;
+
+    report.sourcesSearched.push(sel.displayName);
 
     try {
-      const results = await searcher.search(
-        conn as unknown as ConnectionRow,
-        resolved.effectiveMode,
-        config,
-        criteria,
-      );
+      const results = await searcher.search(resolved.effectiveMode, config, criteria);
       report.results.push(...results);
       report.totalApiCalls++;
     } catch (err) {
-      const msg = `${searcher.name}: ${err instanceof Error ? err.message : String(err)}`;
+      const msg = `${sel.displayName}: ${err instanceof Error ? err.message : String(err)}`;
       report.errors.push(msg);
     }
   });
 
   await Promise.allSettled(tasks);
 
+  // 5. Sort results by confidence (highest first)
+  report.results.sort((a, b) => b.confidence - a.confidence);
+
+  // 6. Log usage
   await trackApiUsage({
     provider: "prospect-engine",
     action: "prospect",
@@ -308,6 +441,7 @@ export async function runProspectSearch(criteria: ProspectCriteria): Promise<Pro
     meta: {
       criteria,
       sourcesSearched: report.sourcesSearched,
+      sourceSelections: selections.map((s) => ({ provider: s.provider, score: s.relevanceScore, selected: s.selected })),
       resultsCount: report.results.length,
     },
   });

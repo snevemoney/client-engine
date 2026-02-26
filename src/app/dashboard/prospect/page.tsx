@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Search, ExternalLink, Plus, Loader2, AlertCircle } from "lucide-react";
+import { Search, ExternalLink, Plus, Loader2, AlertCircle, CheckCircle2, XCircle, CircleDashed, Mail, Phone, Globe, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -17,6 +17,14 @@ type ProspectResult = {
   meta?: Record<string, unknown>;
 };
 
+type SourceSelection = {
+  provider: string;
+  displayName: string;
+  relevanceScore: number;
+  reason: string;
+  selected: boolean;
+};
+
 type ProspectReport = {
   id: string;
   criteria: Record<string, unknown>;
@@ -25,19 +33,31 @@ type ProspectReport = {
   status: "running" | "completed" | "error";
   results: ProspectResult[];
   sourcesSearched: string[];
+  sourceSelections: SourceSelection[];
   totalApiCalls: number;
   errors: string[];
 };
 
 const SOURCE_COLORS: Record<string, string> = {
-  github: "bg-neutral-700 text-neutral-200",
-  rss: "bg-orange-900/50 text-orange-300",
+  google_places: "bg-blue-900/50 text-blue-300",
+  serpapi: "bg-violet-900/50 text-violet-300",
+  apollo: "bg-indigo-900/50 text-indigo-300",
+  hunter: "bg-orange-900/50 text-orange-300",
+  yelp: "bg-red-900/50 text-red-300",
+  youtube: "bg-red-900/50 text-red-300",
   upwork: "bg-green-900/50 text-green-300",
   linkedin: "bg-blue-900/50 text-blue-300",
-  hubspot: "bg-orange-900/50 text-orange-300",
-  stripe: "bg-purple-900/50 text-purple-300",
-  calendly: "bg-sky-900/50 text-sky-300",
-  calcom: "bg-sky-900/50 text-sky-300",
+};
+
+const SOURCE_LABELS: Record<string, string> = {
+  google_places: "Google Places",
+  serpapi: "Web Search",
+  apollo: "Apollo.io",
+  hunter: "Hunter.io",
+  yelp: "Yelp",
+  youtube: "YouTube",
+  upwork: "Upwork",
+  linkedin: "LinkedIn",
 };
 
 export default function ProspectPage() {
@@ -48,6 +68,7 @@ export default function ProspectPage() {
   const [loading, setLoading] = useState(false);
   const [report, setReport] = useState<ProspectReport | null>(null);
   const [converting, setConverting] = useState<Set<string>>(new Set());
+  const [showRouting, setShowRouting] = useState(false);
 
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -97,12 +118,15 @@ export default function ProspectPage() {
     }
   }
 
+  const selectedCount = report?.sourceSelections?.filter((s) => s.selected).length ?? 0;
+  const totalSources = report?.sourceSelections?.length ?? 0;
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Prospect Research</h1>
         <p className="text-sm text-neutral-400 mt-1">
-          Search across all your connected integrations to find prospects matching your criteria.
+          The system picks the best data sources based on what you&apos;re looking for.
         </p>
       </div>
 
@@ -113,7 +137,7 @@ export default function ProspectPage() {
             <Input
               value={clientType}
               onChange={(e) => setClientType(e.target.value)}
-              placeholder="e.g. SaaS founders, ecommerce operators, agencies"
+              placeholder="e.g. coaches, restaurants, SaaS founders"
               required
               className="bg-neutral-900 border-neutral-700"
             />
@@ -123,7 +147,7 @@ export default function ProspectPage() {
             <Input
               value={industry}
               onChange={(e) => setIndustry(e.target.value)}
-              placeholder="e.g. healthcare, fintech, real estate"
+              placeholder="e.g. coaching, healthcare, fintech"
               className="bg-neutral-900 border-neutral-700"
             />
           </div>
@@ -134,7 +158,7 @@ export default function ProspectPage() {
             <Input
               value={keywords}
               onChange={(e) => setKeywords(e.target.value)}
-              placeholder="e.g. automation, CRM, sales ops"
+              placeholder="e.g. needs website, booking system, online course"
               className="bg-neutral-900 border-neutral-700"
             />
           </div>
@@ -143,7 +167,7 @@ export default function ProspectPage() {
             <Input
               value={location}
               onChange={(e) => setLocation(e.target.value)}
-              placeholder="e.g. US, Europe, remote"
+              placeholder="e.g. New York, Toronto, United States"
               className="bg-neutral-900 border-neutral-700"
             />
           </div>
@@ -155,17 +179,64 @@ export default function ProspectPage() {
             ) : (
               <Search className="h-4 w-4 mr-2" />
             )}
-            {loading ? "Searching all sources…" : "Search prospects"}
+            {loading ? "Searching…" : "Search prospects"}
           </Button>
           {report && (
             <span className="text-xs text-neutral-500">
-              {report.results.length} results from {report.sourcesSearched.length} sources
+              {report.results.length} results from {selectedCount} of {totalSources} sources
               {report.totalApiCalls > 0 && ` · ${report.totalApiCalls} API calls`}
             </span>
           )}
         </div>
       </form>
 
+      {/* Source routing panel */}
+      {report?.sourceSelections && report.sourceSelections.length > 0 && (
+        <div className="border border-neutral-800 rounded-lg overflow-hidden">
+          <button
+            onClick={() => setShowRouting(!showRouting)}
+            className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-neutral-900/50 transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium text-neutral-300">Source routing</span>
+              <span className="text-[10px] text-neutral-600">
+                {selectedCount} selected · {totalSources - selectedCount} skipped
+              </span>
+            </div>
+            {showRouting ? <ChevronUp className="h-3.5 w-3.5 text-neutral-500" /> : <ChevronDown className="h-3.5 w-3.5 text-neutral-500" />}
+          </button>
+          {showRouting && (
+            <div className="border-t border-neutral-800 divide-y divide-neutral-800/50">
+              {report.sourceSelections.map((sel) => (
+                <div key={sel.provider} className="flex items-center gap-3 px-4 py-2.5">
+                  {sel.selected ? (
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                  ) : sel.relevanceScore > 0 ? (
+                    <CircleDashed className="h-3.5 w-3.5 text-neutral-600 shrink-0" />
+                  ) : (
+                    <XCircle className="h-3.5 w-3.5 text-neutral-700 shrink-0" />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs font-medium ${sel.selected ? "text-neutral-200" : "text-neutral-500"}`}>
+                        {sel.displayName}
+                      </span>
+                      {sel.relevanceScore > 0 && (
+                        <span className="text-[10px] text-neutral-600 tabular-nums">
+                          relevance: {sel.relevanceScore.toFixed(1)}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-neutral-600 truncate">{sel.reason}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Errors */}
       {report?.errors.length ? (
         <div className="border border-amber-800/50 rounded-lg p-4 bg-amber-950/20">
           <div className="flex items-start gap-2 text-xs text-amber-400">
@@ -182,6 +253,7 @@ export default function ProspectPage() {
         </div>
       ) : null}
 
+      {/* Results */}
       {report && report.results.length > 0 && (
         <div className="space-y-3">
           <div className="flex items-center gap-3 flex-wrap">
@@ -196,7 +268,7 @@ export default function ProspectPage() {
                     SOURCE_COLORS[source] ?? "bg-neutral-800 text-neutral-300"
                   }`}
                 >
-                  {source} ({report.results.filter((r) => r.source === source).length})
+                  {SOURCE_LABELS[source] ?? source} ({report.results.filter((r) => r.source === source).length})
                 </span>
               ))}
             </div>
@@ -216,7 +288,7 @@ export default function ProspectPage() {
                           SOURCE_COLORS[result.source] ?? "bg-neutral-800 text-neutral-300"
                         }`}
                       >
-                        {result.source}
+                        {SOURCE_LABELS[result.source] ?? result.source}
                       </span>
                       <span className="text-[10px] text-neutral-600 tabular-nums">
                         {Math.round(result.confidence * 100)}% match
@@ -228,18 +300,32 @@ export default function ProspectPage() {
                     <p className="text-xs text-neutral-500 mt-0.5 line-clamp-2">
                       {result.description}
                     </p>
-                    {result.tags.length > 0 && (
-                      <div className="flex gap-1 mt-1.5 flex-wrap">
-                        {result.tags.map((tag) => (
-                          <span
-                            key={tag}
-                            className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] bg-neutral-800/80 text-neutral-400"
-                          >
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                    )}
+                    <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                      {result.tags.length > 0 && (
+                        <div className="flex gap-1 flex-wrap">
+                          {result.tags.slice(0, 4).map((tag) => (
+                            <span
+                              key={tag}
+                              className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] bg-neutral-800/80 text-neutral-400"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      {result.contactPath && (
+                        <span className="inline-flex items-center gap-1 text-[10px] text-neutral-500">
+                          {result.contactPath.includes("@") ? (
+                            <Mail className="h-2.5 w-2.5" />
+                          ) : result.contactPath.startsWith("+") || /^\d/.test(result.contactPath) ? (
+                            <Phone className="h-2.5 w-2.5" />
+                          ) : (
+                            <Globe className="h-2.5 w-2.5" />
+                          )}
+                          {result.contactPath}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
                     {result.url && (
@@ -248,6 +334,7 @@ export default function ProspectPage() {
                         target="_blank"
                         rel="noopener noreferrer"
                         className="p-1.5 rounded hover:bg-neutral-800 text-neutral-500 hover:text-neutral-300 transition-colors"
+                        title="Open link"
                       >
                         <ExternalLink className="h-3.5 w-3.5" />
                       </a>
@@ -272,7 +359,9 @@ export default function ProspectPage() {
         <div className="border border-neutral-800 rounded-lg p-8 text-center">
           <p className="text-sm text-neutral-500">No prospects found matching your criteria.</p>
           <p className="text-xs text-neutral-600 mt-1">
-            Try broader search terms, or check that your integrations are configured and enabled in Settings.
+            {selectedCount === 0
+              ? "No prospecting sources are configured. Go to Settings → Connections to set up Google Places, SerpAPI, Apollo.io, Yelp, or other prospecting APIs."
+              : "Try broader search terms, or add more prospecting connections in Settings."}
           </p>
         </div>
       )}

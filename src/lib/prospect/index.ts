@@ -1,2 +1,2 @@
 export { runProspectSearch } from "./search";
-export type { ProspectCriteria, ProspectResult, ProspectRunReport } from "./types";
+export type { ProspectCriteria, ProspectResult, ProspectRunReport, SourceSelection } from "./types";

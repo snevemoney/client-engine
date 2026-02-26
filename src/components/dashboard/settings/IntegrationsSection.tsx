@@ -317,11 +317,23 @@ export function IntegrationsSection() {
                       {item.connection?.helpText ?? item.helpText}
                     </p>
                   )}
-                  {item.connection?.category && (
-                    <span className="text-xs text-neutral-600 capitalize mt-0.5 inline-block">
-                      {(item.connection.category ?? "").replace(/_/g, " ")}
-                    </span>
-                  )}
+                  <div className="flex gap-1 mt-0.5 flex-wrap">
+                    {item.purposes?.includes("prospecting") && (
+                      <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium bg-violet-600/20 text-violet-400 border border-violet-700/50">
+                        Prospecting
+                      </span>
+                    )}
+                    {item.purposes?.includes("enrichment") && (
+                      <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium bg-cyan-600/20 text-cyan-400 border border-cyan-700/50">
+                        Enrichment
+                      </span>
+                    )}
+                    {!item.purposes?.includes("prospecting") && !item.purposes?.includes("enrichment") && item.connection?.category && (
+                      <span className="text-xs text-neutral-600 capitalize">
+                        {(item.connection.category ?? "").replace(/_/g, " ")}
+                      </span>
+                    )}
+                  </div>
                   {credentialSummary(item.credentials ?? undefined) && (
                     <p className="text-[11px] text-neutral-600 mt-0.5 font-mono truncate">
                       {credentialSummary(item.credentials ?? undefined)}

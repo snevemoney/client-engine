@@ -19,6 +19,14 @@ export type ProspectResult = {
   meta?: Record<string, unknown>;
 };
 
+export type SourceSelection = {
+  provider: string;
+  displayName: string;
+  relevanceScore: number;
+  reason: string;
+  selected: boolean;
+};
+
 export type ProspectRunReport = {
   id: string;
   criteria: ProspectCriteria;
@@ -27,6 +35,8 @@ export type ProspectRunReport = {
   status: "running" | "completed" | "error";
   results: ProspectResult[];
   sourcesSearched: string[];
+  /** Which sources were considered, their relevance scores, and why they were included/excluded */
+  sourceSelections: SourceSelection[];
   totalApiCalls: number;
   errors: string[];
 };

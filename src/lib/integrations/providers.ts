@@ -4,6 +4,7 @@
  */
 
 import { PROVIDER_REGISTRY } from "./providerRegistry";
+import type { IntegrationPurpose } from "./providerRegistry";
 
 export type IntegrationStatus = "not_connected" | "connected" | "error" | "disabled";
 
@@ -24,6 +25,7 @@ export type IntegrationProvider = {
   usedBy: string;
   hasRealTest: boolean;
   category: IntegrationCategory;
+  purposes: IntegrationPurpose[];
   prodOnly: boolean;
   sortOrder: number;
   helpText?: string;
@@ -37,6 +39,7 @@ export const INTEGRATION_PROVIDERS: IntegrationProvider[] = PROVIDER_REGISTRY.ma
   usedBy: "",
   hasRealTest: p.hasRealTest ?? false,
   category: p.category,
+  purposes: p.purposes,
   prodOnly: p.prodOnly,
   sortOrder: p.sortOrder,
   helpText: p.helpText,

@@ -13,6 +13,11 @@ import { fetchCalendlyEvents } from "./calendly";
 import { fetchGithubRepos } from "./github";
 import { fetchHubSpotContacts } from "./hubspot";
 import { fetchStripeCustomers } from "./stripe";
+import { searchGooglePlaces } from "./google-places";
+import { searchSerpApi } from "./serpapi";
+import { searchApolloPeople } from "./apollo";
+import { searchYelpBusinesses } from "./yelp";
+import { searchYouTubeChannels } from "./youtube-search";
 import type { ProviderClientResult } from "./types";
 
 export { fetchUpworkJobs } from "./upwork";
@@ -36,6 +41,24 @@ export type { HubSpotContact, HubSpotCompany } from "./hubspot";
 export { fetchStripeCustomers } from "./stripe";
 export type { StripeCustomer } from "./stripe";
 
+export { searchGooglePlaces } from "./google-places";
+export type { PlaceBusiness } from "./google-places";
+
+export { searchSerpApi } from "./serpapi";
+export type { SerpResult } from "./serpapi";
+
+export { searchApolloPeople, searchApolloCompanies } from "./apollo";
+export type { ApolloPerson, ApolloCompany } from "./apollo";
+
+export { searchHunterDomain, findHunterEmail } from "./hunter";
+export type { HunterEmail, HunterDomainResult } from "./hunter";
+
+export { searchYelpBusinesses } from "./yelp";
+export type { YelpBusiness } from "./yelp";
+
+export { searchYouTubeChannels } from "./youtube-search";
+export type { YouTubeChannel } from "./youtube-search";
+
 export type { ProviderClientResult, ConnectionContext } from "./types";
 
 type ConnectionLike = { provider: string; mode: "off" | "mock" | "manual" | "live"; prodOnly?: boolean; configJson?: Record<string, unknown> };
@@ -50,6 +73,11 @@ const CLIENTS: Record<string, (mode: "off" | "mock" | "manual" | "live", config:
   github: (m, c) => fetchGithubRepos(m, c),
   hubspot: (m, c) => fetchHubSpotContacts(m, c),
   stripe: (m, c) => fetchStripeCustomers(m, c),
+  google_places: (m, c) => searchGooglePlaces(m, c, ""),
+  serpapi: (m, c) => searchSerpApi(m, c, ""),
+  apollo: (m, c) => searchApolloPeople(m, c, ""),
+  yelp: (m, c) => searchYelpBusinesses(m, c, ""),
+  youtube: (m, c) => searchYouTubeChannels(m, c, ""),
 };
 
 /**
