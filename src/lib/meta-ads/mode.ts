@@ -24,6 +24,8 @@ export function getMetaMode(): MetaMode {
   if (env === "mock") return "mock";
   if (env === "live") return "live";
 
+  // Env check is intentionally synchronous for fast mode detection.
+  // Actual credentials are resolved via @/lib/integrations/credentials at call time (DB-first, env fallback).
   const isProd = process.env.NODE_ENV === "production";
   const hasToken = !!process.env.META_ACCESS_TOKEN?.trim();
   const hasAccount = !!process.env.META_AD_ACCOUNT_ID?.trim();

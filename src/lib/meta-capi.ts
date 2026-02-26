@@ -1,10 +1,11 @@
 /**
  * Meta Conversions API (CAPI) - server-side event tracking.
  * Sends Lead events when website form submissions create leads.
- * Requires META_PIXEL_ID and META_CAPI_ACCESS_TOKEN in env.
+ * Credentials resolved via @/lib/integrations/credentials (DB-first, env fallback).
  */
 
 import { createHash } from "node:crypto";
+import { getCredentials } from "@/lib/integrations/credentials";
 
 function sha256hex(input: string): string {
   return createHash("sha256").update(input, "utf8").digest("hex");
@@ -30,9 +31,10 @@ export type SendLeadEventOpts = {
  * Fires asynchronously; does not throw. Logs errors.
  */
 export async function sendLeadEvent(opts: SendLeadEventOpts): Promise<void> {
-  const pixelId = process.env.META_PIXEL_ID;
-  const token = process.env.META_CAPI_ACCESS_TOKEN;
-  if (!pixelId?.trim() || !token?.trim()) return;
+  const creds = await getCredentials("meta");
+  const pixelId = creds.pixelId;
+  const token = creds.capiToken;
+  if (!pixelId || !token) return;
 
   try {
     const normalizedEmail = normalizeEmail(opts.email);

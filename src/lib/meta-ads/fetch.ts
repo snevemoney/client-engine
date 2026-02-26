@@ -4,6 +4,7 @@
  * In META_MODE=mock, returns mock data without calling Meta API.
  */
 
+import { getMetaAccessToken, getMetaAccountId } from "@/lib/integrations/credentials";
 import { getMetaMode } from "./mode";
 import { getMockDashboardData } from "./mock-provider";
 import {
@@ -114,7 +115,8 @@ export async function fetchMetaAdsDashboard(
   options?: { skipCache?: boolean }
 ): Promise<MetaAdsDashboardData | MetaAdsDashboardError> {
   const mode = getMetaMode();
-  const account = process.env.META_AD_ACCOUNT_ID?.trim() || accountId;
+  const resolvedAccountId = await getMetaAccountId();
+  const account = resolvedAccountId?.trim() || accountId;
   const acc =
     mode === "mock"
       ? (account?.startsWith("act_") ? account : account ? `act_${account}` : "act_mock")
@@ -128,7 +130,7 @@ export async function fetchMetaAdsDashboard(
   if (!acc) {
     return { ok: false, error: "META_AD_ACCOUNT_ID not configured", code: "NO_ACCOUNT" };
   }
-  const token = process.env.META_ACCESS_TOKEN?.trim();
+  const token = await getMetaAccessToken();
   if (!token) {
     return { ok: false, error: "META_ACCESS_TOKEN not configured", code: "NO_TOKEN" };
   }

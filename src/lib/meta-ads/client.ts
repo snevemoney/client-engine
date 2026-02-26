@@ -1,12 +1,27 @@
 /**
  * Meta Marketing API (Graph API) client — read-only.
  * Fetches ad account insights, campaigns, ad sets, ads.
- * Requires META_ACCESS_TOKEN and META_AD_ACCOUNT_ID.
+ * Credentials resolved via @/lib/integrations/credentials (DB-first, env fallback).
  */
+
+import { getMetaAccessToken } from "@/lib/integrations/credentials";
 
 const API_VERSION = process.env.META_API_VERSION ?? "v21.0";
 const BASE = `https://graph.facebook.com/${API_VERSION}`;
 const TIMEOUT_MS = 30000;
+
+let _cachedToken: string | null = null;
+let _tokenCachedAt = 0;
+const TOKEN_TTL_MS = 60_000;
+
+async function resolveToken(): Promise<string> {
+  if (_cachedToken && Date.now() - _tokenCachedAt < TOKEN_TTL_MS) return _cachedToken;
+  const token = await getMetaAccessToken();
+  if (!token) throw new Error("META_ACCESS_TOKEN not set");
+  _cachedToken = token;
+  _tokenCachedAt = Date.now();
+  return token;
+}
 
 export type DatePreset = "today" | "yesterday" | "last_7d" | "last_14d" | "last_30d";
 
@@ -26,8 +41,7 @@ const INSIGHT_FIELDS = [
 type GraphError = { message: string; type: string; code?: number };
 
 async function metaFetch<T>(path: string, params: Record<string, string> = {}): Promise<T> {
-  const token = process.env.META_ACCESS_TOKEN?.trim();
-  if (!token) throw new Error("META_ACCESS_TOKEN not set");
+  const token = await resolveToken();
 
   const url = new URL(`${BASE}/${path}`);
   url.searchParams.set("access_token", token);
@@ -53,8 +67,7 @@ async function metaFetch<T>(path: string, params: Record<string, string> = {}): 
 
 /** POST to Meta Graph API (e.g. status updates). Requires ads_management. */
 async function metaPost(path: string, body: Record<string, string>): Promise<{ success?: boolean }> {
-  const token = process.env.META_ACCESS_TOKEN?.trim();
-  if (!token) throw new Error("META_ACCESS_TOKEN not set");
+  const token = await resolveToken();
 
   const url = new URL(`${BASE}/${path}`);
   const params = new URLSearchParams({ access_token: token, ...body });

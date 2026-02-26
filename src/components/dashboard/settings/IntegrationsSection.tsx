@@ -4,10 +4,22 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { X } from "lucide-react";
+import { X, ExternalLink, Key } from "lucide-react";
 import type { IntegrationProvider } from "@/lib/integrations/providers";
 
 type IntegrationMode = "off" | "mock" | "manual" | "live";
+
+type Credentials = {
+  hasAccessToken: boolean;
+  hasCapiToken: boolean;
+  accountId: string | null;
+  pixelId: string | null;
+  baseUrl: string | null;
+  bookingUrl: string | null;
+  source: "db" | "env" | "none";
+  maskedAccessToken: string | null;
+  maskedCapiToken: string | null;
+};
 
 type Connection = {
   id: string | null;
@@ -24,10 +36,13 @@ type Connection = {
   lastTestStatus: string;
   lastError: string | null;
   configJson?: Record<string, unknown> | null;
+  credentials?: Credentials;
 };
 
 type Item = IntegrationProvider & {
   connection: Connection;
+  platformUrl?: string;
+  apiKeyUrl?: string;
 };
 
 const MODE_HELPER: Record<IntegrationMode, string> = {
@@ -77,6 +92,34 @@ function modeBadge(mode: IntegrationMode | string | undefined) {
   return <Badge variant="outline" className={styles[m] ?? styles.off}>{labels[m] ?? m}</Badge>;
 }
 
+function sourceBadge(source: Credentials["source"] | undefined) {
+  if (source === "env") {
+    return (
+      <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium bg-amber-600/20 text-amber-400 border border-amber-700/50">
+        from .env
+      </span>
+    );
+  }
+  if (source === "db") {
+    return (
+      <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium bg-emerald-600/20 text-emerald-400 border border-emerald-700/50">
+        Saved
+      </span>
+    );
+  }
+  return null;
+}
+
+function credentialSummary(creds: Credentials | undefined) {
+  if (!creds) return null;
+  const parts: string[] = [];
+  if (creds.maskedAccessToken) parts.push(`Token: ${creds.maskedAccessToken}`);
+  if (creds.accountId) parts.push(`Account: ${creds.accountId}`);
+  if (creds.pixelId) parts.push(`Pixel: ${creds.pixelId}`);
+  if (parts.length === 0) return null;
+  return parts.join(" · ");
+}
+
 export function IntegrationsSection() {
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
@@ -102,14 +145,22 @@ export function IntegrationsSection() {
   function openConfig(item: Item) {
     const conn = item.connection;
     const config = conn?.configJson as Record<string, unknown> | undefined;
+    const creds = conn?.credentials;
+    const hasConfig = config && Object.keys(config).length > 0;
     const qp =
       (config?.additionalQueryParams as Record<string, string> | undefined) ??
       (config?.queryParams as Record<string, string> | undefined);
     setConfigOpen(item);
     setConfigAccessToken((config?.accessToken as string) ?? "");
-    setConfigAccountId((config?.accountId as string) ?? "");
-    setConfigBaseUrl((config?.baseUrl as string) ?? "");
-    setConfigBookingUrl((config?.bookingUrl as string) ?? "");
+    setConfigAccountId(
+      (config?.accountId as string) ?? (!hasConfig && creds?.accountId ? creds.accountId : ""),
+    );
+    setConfigBaseUrl(
+      (config?.baseUrl as string) ?? (!hasConfig && creds?.baseUrl ? creds.baseUrl : ""),
+    );
+    setConfigBookingUrl(
+      (config?.bookingUrl as string) ?? (!hasConfig && creds?.bookingUrl ? creds.bookingUrl : ""),
+    );
     setConfigDisplayName((config?.displayName as string) ?? "");
     setConfigQueryParams(qp ? Object.entries(qp).map(([k, v]) => ({ key: k, value: String(v) })) : []);
     setConfigMode((conn?.mode as IntegrationMode) ?? "off");
@@ -270,6 +321,11 @@ export function IntegrationsSection() {
                       {(item.connection.category ?? "").replace(/_/g, " ")}
                     </span>
                   )}
+                  {credentialSummary(item.connection?.credentials) && (
+                    <p className="text-[11px] text-neutral-600 mt-0.5 font-mono truncate">
+                      {credentialSummary(item.connection?.credentials)}
+                    </p>
+                  )}
                   {(item.connection?.lastTestedAt || item.connection?.lastSyncedAt) && (
                     <p className="text-xs text-neutral-500 mt-1">
                       {item.connection?.lastTestedAt && `Tested ${formatRelative(item.connection.lastTestedAt)}`}
@@ -285,6 +341,7 @@ export function IntegrationsSection() {
                       <Badge variant="outline" className="text-neutral-500 border-neutral-600" title="Only works in live mode when deployed">Live only</Badge>
                     )}
                     {statusBadge(item.connection?.status ?? "not_connected", item.connection?.isEnabled ?? true)}
+                    {sourceBadge(item.connection?.credentials?.source)}
                   </div>
                 </div>
               </div>
@@ -301,6 +358,32 @@ export function IntegrationsSection() {
                   </Button>
                 )}
               </div>
+              {(item.platformUrl || item.apiKeyUrl) && (
+                <div className="flex gap-3">
+                  {item.platformUrl && (
+                    <a
+                      href={item.platformUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs text-neutral-500 hover:text-neutral-300 transition-colors"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      Open {item.name}
+                    </a>
+                  )}
+                  {item.apiKeyUrl && (
+                    <a
+                      href={item.apiKeyUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs text-neutral-500 hover:text-neutral-300 transition-colors"
+                    >
+                      <Key className="w-3 h-3" />
+                      Get API key
+                    </a>
+                  )}
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -359,7 +442,11 @@ export function IntegrationsSection() {
                   type="password"
                   value={configAccessToken}
                   onChange={(e) => setConfigAccessToken(e.target.value)}
-                  placeholder="Paste your token here (optional)"
+                  placeholder={
+                    configOpen.connection?.credentials?.maskedAccessToken
+                      ? `${configOpen.connection.credentials.maskedAccessToken} (from .env)`
+                      : "Paste your token here (optional)"
+                  }
                   className="w-full"
                 />
               </div>

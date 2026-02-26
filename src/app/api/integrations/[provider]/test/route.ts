@@ -6,6 +6,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { getProviderDef, resolveProviderKey } from "@/lib/integrations/providerRegistry";
+import { getMetaAccessToken } from "@/lib/integrations/credentials";
 import { canRunLiveIntegration } from "@/lib/integrations/runtime";
 import { jsonError, withRouteTiming } from "@/lib/api-utils";
 
@@ -71,7 +72,7 @@ export async function POST(
     let message = "Test not implemented yet";
 
     if (def.hasRealTest && canonical === "meta") {
-      const token = process.env.META_ADS_ACCESS_TOKEN ?? (conn?.configJson as Record<string, unknown>)?.accessToken;
+      const token = await getMetaAccessToken();
       if (token) {
         try {
           const res = await fetch(

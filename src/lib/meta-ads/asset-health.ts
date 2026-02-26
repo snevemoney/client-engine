@@ -2,17 +2,32 @@
  * Best-effort Meta asset health diagnostics.
  * Fetches account, permissions (via trial), pages, IG, pixels, WhatsApp.
  * Does not crash on partial failures.
+ * Credentials resolved via @/lib/integrations/credentials (DB-first, env fallback).
  */
+
+import { getMetaAccessToken } from "@/lib/integrations/credentials";
 
 const API_VERSION = process.env.META_API_VERSION ?? "v21.0";
 const BASE = `https://graph.facebook.com/${API_VERSION}`;
 const TIMEOUT_MS = 15000;
 
+let _cachedToken: string | null = null;
+let _tokenCachedAt = 0;
+const TOKEN_TTL_MS = 60_000;
+
+async function resolveToken(): Promise<string> {
+  if (_cachedToken && Date.now() - _tokenCachedAt < TOKEN_TTL_MS) return _cachedToken;
+  const token = await getMetaAccessToken();
+  if (!token) throw new Error("META_ACCESS_TOKEN not set");
+  _cachedToken = token;
+  _tokenCachedAt = Date.now();
+  return token;
+}
+
 type HealthCheck = { key: string; label: string; status: "pass" | "warn" | "fail"; detail: string };
 
 async function metaGet(path: string, params: Record<string, string> = {}): Promise<unknown> {
-  const token = process.env.META_ACCESS_TOKEN?.trim();
-  if (!token) throw new Error("META_ACCESS_TOKEN not set");
+  const token = await resolveToken();
 
   const url = new URL(`${BASE}/${path}`);
   url.searchParams.set("access_token", token);
@@ -118,7 +133,8 @@ export async function fetchAssetHealth(accountId: string): Promise<AssetHealthRe
   if (appId && appSecret && permissions.ads_read) {
     try {
       const appToken = `${appId}|${appSecret}`;
-      const debugRes = (await fetch(`${BASE}/debug_token?input_token=${encodeURIComponent(process.env.META_ACCESS_TOKEN!)}&access_token=${encodeURIComponent(appToken)}`).then((r) => r.json())) as {
+      const inputToken = await resolveToken();
+      const debugRes = (await fetch(`${BASE}/debug_token?input_token=${encodeURIComponent(inputToken)}&access_token=${encodeURIComponent(appToken)}`).then((r) => r.json())) as {
         data?: { scopes?: string[] };
       };
       const scopes = debugRes.data?.scopes ?? [];

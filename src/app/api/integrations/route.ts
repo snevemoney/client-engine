@@ -1,11 +1,12 @@
 /**
  * GET /api/integrations — List all integration connections + provider definitions.
- * Uses provider registry; returns virtual rows for providers missing in DB.
+ * Surfaces credential status (masked), platform URLs, and env-var fallback info.
  */
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { PROVIDER_REGISTRY, getProviderDef } from "@/lib/integrations/providerRegistry";
+import { getCredentialsSummary } from "@/lib/integrations/credentials";
 import { jsonError, withRouteTiming } from "@/lib/api-utils";
 
 export const dynamic = "force-dynamic";
@@ -21,61 +22,68 @@ export async function GET() {
 
     const byProvider = Object.fromEntries(connections.map((c) => [c.provider, c]));
 
-    const items = [...PROVIDER_REGISTRY]
-      .sort((a, b) => a.sortOrder - b.sortOrder)
-      .map((p) => {
-        const c = byProvider[p.provider];
-        return {
-          key: p.provider,
-          name: p.displayName,
-          usedBy: "",
-          hasRealTest: p.hasRealTest ?? false,
-          category: p.category,
-          prodOnly: p.prodOnly,
-          helpText: p.helpText,
-          sortOrder: p.sortOrder,
-          supportsQueryParams: p.supportsQueryParams ?? false,
-          connection: c
-            ? {
-                id: c.id,
-                status: c.status,
-                mode: c.mode,
-                category: c.category ?? p.category,
-                prodOnly: c.prodOnly ?? p.prodOnly,
-                displayName: c.displayName ?? c.providerLabel ?? p.displayName,
-                helpText: c.helpText ?? p.helpText,
-                providerLabel: c.providerLabel ?? c.displayName ?? p.displayName,
-                sortOrder: c.sortOrder ?? p.sortOrder,
-                accountLabel: c.accountLabel,
-                isEnabled: c.isEnabled,
-                lastSyncedAt: c.lastSyncedAt?.toISOString() ?? null,
-                lastTestedAt: c.lastTestedAt?.toISOString() ?? null,
-                lastTestStatus: c.lastTestStatus ?? "never",
-                lastError: c.lastError,
-                configJson: c.configJson,
-              }
-            : {
-                id: null,
-                status: "not_connected",
-                mode: p.defaultMode,
-                category: p.category,
-                prodOnly: p.prodOnly,
-                displayName: p.displayName,
-                helpText: p.helpText,
-                providerLabel: p.displayName,
-                sortOrder: p.sortOrder,
-                accountLabel: null,
-                isEnabled: true,
-                lastSyncedAt: null,
-                lastTestedAt: null,
-                lastTestStatus: "never" as const,
-                lastError: null,
-                configJson: null,
-              },
-        };
-      });
+    const items = await Promise.all(
+      [...PROVIDER_REGISTRY]
+        .sort((a, b) => a.sortOrder - b.sortOrder)
+        .map(async (p) => {
+          const c = byProvider[p.provider];
+          const creds = await getCredentialsSummary(p.provider);
+          const envConfigured = creds.source !== "none";
 
-    // Include unknown providers from DB (not in registry) with safe defaults
+          return {
+            key: p.provider,
+            name: p.displayName,
+            usedBy: "",
+            hasRealTest: p.hasRealTest ?? false,
+            category: p.category,
+            prodOnly: p.prodOnly,
+            helpText: p.helpText,
+            sortOrder: p.sortOrder,
+            supportsQueryParams: p.supportsQueryParams ?? false,
+            platformUrl: p.platformUrl ?? null,
+            apiKeyUrl: p.apiKeyUrl ?? null,
+            credentials: creds,
+            connection: c
+              ? {
+                  id: c.id,
+                  status: c.status,
+                  mode: c.mode,
+                  category: c.category ?? p.category,
+                  prodOnly: c.prodOnly ?? p.prodOnly,
+                  displayName: c.displayName ?? c.providerLabel ?? p.displayName,
+                  helpText: c.helpText ?? p.helpText,
+                  providerLabel: c.providerLabel ?? c.displayName ?? p.displayName,
+                  sortOrder: c.sortOrder ?? p.sortOrder,
+                  accountLabel: c.accountLabel,
+                  isEnabled: c.isEnabled,
+                  lastSyncedAt: c.lastSyncedAt?.toISOString() ?? null,
+                  lastTestedAt: c.lastTestedAt?.toISOString() ?? null,
+                  lastTestStatus: c.lastTestStatus ?? "never",
+                  lastError: c.lastError,
+                  configJson: c.configJson,
+                }
+              : {
+                  id: null,
+                  status: envConfigured ? "connected" : "not_connected",
+                  mode: p.defaultMode,
+                  category: p.category,
+                  prodOnly: p.prodOnly,
+                  displayName: p.displayName,
+                  helpText: p.helpText,
+                  providerLabel: p.displayName,
+                  sortOrder: p.sortOrder,
+                  accountLabel: null,
+                  isEnabled: true,
+                  lastSyncedAt: null,
+                  lastTestedAt: null,
+                  lastTestStatus: "never" as const,
+                  lastError: null,
+                  configJson: null,
+                },
+          };
+        })
+    );
+
     const registryKeys = new Set(PROVIDER_REGISTRY.map((r) => r.provider));
     for (const c of connections) {
       if (registryKeys.has(c.provider)) continue;
@@ -100,6 +108,13 @@ export async function GET() {
         helpText: fallback.helpText,
         sortOrder: fallback.sortOrder,
         supportsQueryParams: false,
+        platformUrl: null,
+        apiKeyUrl: null,
+        credentials: {
+          hasAccessToken: false, hasCapiToken: false,
+          accountId: null, pixelId: null, baseUrl: null, bookingUrl: null,
+          source: "none" as const, maskedAccessToken: null, maskedCapiToken: null,
+        },
         connection: {
           id: c.id,
           status: c.status,
@@ -121,7 +136,6 @@ export async function GET() {
       });
     }
 
-    // Re-sort by sortOrder
     items.sort((a, b) => (a.sortOrder ?? 100) - (b.sortOrder ?? 100));
 
     return NextResponse.json({ items });

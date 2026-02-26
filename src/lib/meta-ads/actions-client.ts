@@ -1,17 +1,32 @@
 /**
  * V3 Meta Ads write actions — pause, resume, budget.
  * Isolated from read client. Supports dry-run.
+ * Credentials resolved via @/lib/integrations/credentials (DB-first, env fallback).
  */
+
+import { getMetaAccessToken } from "@/lib/integrations/credentials";
 
 const API_VERSION = process.env.META_API_VERSION ?? "v21.0";
 const BASE = `https://graph.facebook.com/${API_VERSION}`;
 const TIMEOUT_MS = 15000;
 
+let _cachedToken: string | null = null;
+let _tokenCachedAt = 0;
+const TOKEN_TTL_MS = 60_000;
+
+async function resolveToken(): Promise<string> {
+  if (_cachedToken && Date.now() - _tokenCachedAt < TOKEN_TTL_MS) return _cachedToken;
+  const token = await getMetaAccessToken();
+  if (!token) throw new Error("META_ACCESS_TOKEN not set");
+  _cachedToken = token;
+  _tokenCachedAt = Date.now();
+  return token;
+}
+
 type GraphError = { message: string; code?: number };
 
 async function metaPost(path: string, body: Record<string, string>): Promise<{ success?: boolean }> {
-  const token = process.env.META_ACCESS_TOKEN?.trim();
-  if (!token) throw new Error("META_ACCESS_TOKEN not set");
+  const token = await resolveToken();
 
   const params = new URLSearchParams({ access_token: token, ...body });
   const res = await fetch(`${BASE}/${path}`, {
@@ -28,8 +43,7 @@ async function metaPost(path: string, body: Record<string, string>): Promise<{ s
 }
 
 async function metaGet<T>(path: string, params: Record<string, string> = {}): Promise<T> {
-  const token = process.env.META_ACCESS_TOKEN?.trim();
-  if (!token) throw new Error("META_ACCESS_TOKEN not set");
+  const token = await resolveToken();
 
   const url = new URL(`${BASE}/${path}`);
   url.searchParams.set("access_token", token);
