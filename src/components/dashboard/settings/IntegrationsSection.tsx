@@ -43,6 +43,7 @@ type Item = IntegrationProvider & {
   connection: Connection;
   platformUrl?: string;
   apiKeyUrl?: string;
+  credentials?: Credentials | null;
 };
 
 const MODE_HELPER: Record<IntegrationMode, string> = {
@@ -145,7 +146,7 @@ export function IntegrationsSection() {
   function openConfig(item: Item) {
     const conn = item.connection;
     const config = conn?.configJson as Record<string, unknown> | undefined;
-    const creds = conn?.credentials;
+    const creds = item.credentials;
     const hasConfig = config && Object.keys(config).length > 0;
     const qp =
       (config?.additionalQueryParams as Record<string, string> | undefined) ??
@@ -321,9 +322,9 @@ export function IntegrationsSection() {
                       {(item.connection.category ?? "").replace(/_/g, " ")}
                     </span>
                   )}
-                  {credentialSummary(item.connection?.credentials) && (
+                  {credentialSummary(item.credentials ?? undefined) && (
                     <p className="text-[11px] text-neutral-600 mt-0.5 font-mono truncate">
-                      {credentialSummary(item.connection?.credentials)}
+                      {credentialSummary(item.credentials ?? undefined)}
                     </p>
                   )}
                   {(item.connection?.lastTestedAt || item.connection?.lastSyncedAt) && (
@@ -341,7 +342,7 @@ export function IntegrationsSection() {
                       <Badge variant="outline" className="text-neutral-500 border-neutral-600" title="Only works in live mode when deployed">Live only</Badge>
                     )}
                     {statusBadge(item.connection?.status ?? "not_connected", item.connection?.isEnabled ?? true)}
-                    {sourceBadge(item.connection?.credentials?.source)}
+                    {sourceBadge(item.credentials?.source)}
                   </div>
                 </div>
               </div>
@@ -443,8 +444,8 @@ export function IntegrationsSection() {
                   value={configAccessToken}
                   onChange={(e) => setConfigAccessToken(e.target.value)}
                   placeholder={
-                    configOpen.connection?.credentials?.maskedAccessToken
-                      ? `${configOpen.connection.credentials.maskedAccessToken} (from .env)`
+                    configOpen.credentials?.maskedAccessToken
+                      ? `${configOpen.credentials.maskedAccessToken} (from .env)`
                       : "Paste your token here (optional)"
                   }
                   className="w-full"
