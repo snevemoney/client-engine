@@ -215,17 +215,19 @@ export function IntegrationsSection() {
           isEnabled: configEnabled,
         }),
       });
-      let data: { error?: string; message?: string; id?: string; status?: string; mode?: string; category?: string; prodOnly?: boolean; displayName?: string; providerLabel?: string; helpText?: string; accountLabel?: string; isEnabled?: boolean; lastSyncedAt?: string; lastTestedAt?: string; lastTestStatus?: string; lastError?: string; configJson?: Record<string, unknown> } | null = null;
+      type PatchResponse = { error?: string; message?: string; details?: { formErrors?: string[] }; id?: string; status?: string; mode?: string; category?: string; prodOnly?: boolean; displayName?: string; providerLabel?: string; helpText?: string; accountLabel?: string; isEnabled?: boolean; lastSyncedAt?: string; lastTestedAt?: string; lastTestStatus?: string; lastError?: string; configJson?: Record<string, unknown> };
+      let data: PatchResponse | null = null;
       try {
         const text = await res.text();
-        data = text ? (JSON.parse(text) as typeof data) : null;
+        data = text ? (JSON.parse(text) as PatchResponse) : null;
       } catch {
         if (res.status === 401) alert("Session expired. Please sign in again.");
         else alert(`Save failed (${res.status}): response was not valid JSON`);
         setSaving(false);
         return;
       }
-      if (res.ok) {
+      if (res.ok && data) {
+        const conn = data;
         setItems((prev) =>
           prev.map((i) =>
             i.key === configOpen.key
@@ -233,20 +235,20 @@ export function IntegrationsSection() {
                   ...i,
                   connection: {
                     ...i.connection,
-                    id: data.id,
-                    status: data.status,
-                    mode: data.mode ?? configMode,
-                    category: data.category ?? configOpen.connection.category,
-                    prodOnly: data.prodOnly ?? configOpen.connection.prodOnly,
-                    displayName: data.displayName ?? data.providerLabel ?? i.connection.displayName,
-                    helpText: data.helpText ?? i.connection.helpText,
-                    accountLabel: data.accountLabel,
-                    isEnabled: data.isEnabled,
-                    lastSyncedAt: data.lastSyncedAt,
-                    lastTestedAt: data.lastTestedAt,
-                    lastTestStatus: data.lastTestStatus ?? "never",
-                    lastError: data.lastError,
-                    configJson: data.configJson ?? configJson,
+                    id: conn.id ?? null,
+                    status: conn.status ?? i.connection.status,
+                    mode: (conn.mode ?? configMode) as IntegrationMode,
+                    category: conn.category ?? configOpen.connection.category ?? i.connection.category,
+                    prodOnly: conn.prodOnly ?? configOpen.connection.prodOnly ?? false,
+                    displayName: conn.displayName ?? conn.providerLabel ?? i.connection.displayName ?? null,
+                    helpText: conn.helpText ?? i.connection.helpText ?? null,
+                    accountLabel: conn.accountLabel ?? null,
+                    isEnabled: conn.isEnabled ?? true,
+                    lastSyncedAt: conn.lastSyncedAt ?? null,
+                    lastTestedAt: conn.lastTestedAt ?? null,
+                    lastTestStatus: conn.lastTestStatus ?? "never",
+                    lastError: conn.lastError ?? null,
+                    configJson: (conn.configJson ?? configJson) as Record<string, unknown> | null,
                   },
                 }
               : i
@@ -254,7 +256,7 @@ export function IntegrationsSection() {
         );
         setConfigOpen(null);
       } else {
-        const err = data?.error ?? data?.message ?? (data as { details?: { formErrors?: string[] } })?.details?.formErrors?.[0];
+        const err = data?.error ?? data?.message ?? data?.details?.formErrors?.[0];
         alert(err ?? `Save failed (${res.status})`);
       }
     } catch (e) {
