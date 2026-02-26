@@ -74,6 +74,7 @@ const navGroups: NavGroup[] = [
     label: "Pipeline",
     defaultOpen: false,
     items: [
+      { href: "/dashboard/prospect", label: "Prospect Research", icon: Search },
       { href: "/dashboard/intake", label: "Lead Intake", icon: Target },
       { href: "/dashboard/proposal-followups", label: "Proposal Follow-ups", icon: Calendar },
       { href: "/dashboard/delivery", label: "Delivery", icon: Package },

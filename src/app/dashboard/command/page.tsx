@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { CommandHeader } from "@/components/dashboard/command/CommandHeader";
 import { RiskNBACard } from "@/components/dashboard/command/RiskNBACard";
 import { FlywheelSimCard } from "@/components/dashboard/command/FlywheelSimCard";
+import { ConnectionsOverview } from "@/components/dashboard/ConnectionsOverview";
 import CommandSection1 from "./CommandSection1";
 import CommandSection2 from "./CommandSection2";
 
@@ -39,6 +40,8 @@ export default function CommandCenterPage() {
       <Suspense fallback={<Section2Fallback />}>
         <CommandSection2 />
       </Suspense>
+
+      <ConnectionsOverview />
     </div>
   );
 }

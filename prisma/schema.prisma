@@ -834,6 +834,26 @@ model IntegrationRun {
   @@index([createdAt(sort: Desc)])
 }
 
+model ApiUsageLog {
+  id              String   @id @default(cuid())
+  provider        String
+  action          String   // fetch | search | list | create | test | prospect
+  endpoint        String?  // e.g. "GET /repos" or "POST /events"
+  requestCount    Int      @default(1)
+  tokensUsed      Int?     // for AI-based calls
+  responseBytes   Int?
+  latencyMs       Int?
+  estimatedCostUsd Float?  @default(0)
+  status          String   @default("success") // success | error | rate_limited
+  errorMessage    String?  @db.Text
+  meta            Json?
+  createdAt       DateTime @default(now())
+
+  @@index([provider])
+  @@index([createdAt(sort: Desc)])
+  @@index([provider, createdAt(sort: Desc)])
+}
+
 // ----- Signal Engine (RSS/News ingestion) -----
 
 model SignalSource {

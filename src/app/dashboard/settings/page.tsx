@@ -4,6 +4,7 @@ import { getMonetizationMap } from "@/lib/ops/monetization";
 import { MonetizationMapSection } from "@/components/dashboard/settings/MonetizationMapSection";
 import { CashAndGraduationSection } from "@/components/dashboard/settings/CashAndGraduationSection";
 import { IntegrationsSection } from "@/components/dashboard/settings/IntegrationsSection";
+import { ApiUsageSection } from "@/components/dashboard/settings/ApiUsageSection";
 import { OperatorSettingsPanel } from "@/components/dashboard/settings/OperatorSettingsPanel";
 
 export const dynamic = "force-dynamic";
@@ -54,6 +55,8 @@ export default async function SettingsPage() {
       <MonetizationMapSection initialProjects={projects} initialMap={monetizationMap} />
 
       <IntegrationsSection />
+
+      <ApiUsageSection />
 
       {/* Activity overview */}
       <section className="border border-neutral-800 rounded-lg p-6 space-y-4">

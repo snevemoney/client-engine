@@ -11,6 +11,8 @@ import { fetchRssFeed } from "./rss";
 import { fetchLinkedInProfile } from "./linkedin";
 import { fetchCalendlyEvents } from "./calendly";
 import { fetchGithubRepos } from "./github";
+import { fetchHubSpotContacts } from "./hubspot";
+import { fetchStripeCustomers } from "./stripe";
 import type { ProviderClientResult } from "./types";
 
 export { fetchUpworkJobs } from "./upwork";
@@ -19,14 +21,20 @@ export type { UpworkJob } from "./upwork";
 export { fetchRssFeed } from "./rss";
 export type { RssItem } from "./rss";
 
-export { fetchLinkedInProfile } from "./linkedin";
-export type { LinkedInProfile } from "./linkedin";
+export { fetchLinkedInProfile, searchLinkedInCompanies } from "./linkedin";
+export type { LinkedInProfile, LinkedInCompany } from "./linkedin";
 
 export { fetchCalendlyEvents } from "./calendly";
 export type { CalendlyEvent } from "./calendly";
 
-export { fetchGithubRepos } from "./github";
-export type { GithubRepo } from "./github";
+export { fetchGithubRepos, searchGithubUsers } from "./github";
+export type { GithubRepo, GithubUser } from "./github";
+
+export { fetchHubSpotContacts, searchHubSpotCompanies } from "./hubspot";
+export type { HubSpotContact, HubSpotCompany } from "./hubspot";
+
+export { fetchStripeCustomers } from "./stripe";
+export type { StripeCustomer } from "./stripe";
 
 export type { ProviderClientResult, ConnectionContext } from "./types";
 
@@ -38,8 +46,10 @@ const CLIENTS: Record<string, (mode: "off" | "mock" | "manual" | "live", config:
   rss_news: (m, c) => fetchRssFeed(m, c),
   linkedin: (m, c) => fetchLinkedInProfile(m, c),
   calendly: (m, c) => fetchCalendlyEvents(m, c),
-  calcom: (m, c) => fetchCalendlyEvents(m, c), // same client for Cal.com
+  calcom: (m, c) => fetchCalendlyEvents(m, c),
   github: (m, c) => fetchGithubRepos(m, c),
+  hubspot: (m, c) => fetchHubSpotContacts(m, c),
+  stripe: (m, c) => fetchStripeCustomers(m, c),
 };
 
 /**

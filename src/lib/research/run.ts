@@ -10,6 +10,7 @@ import { canonicalizeSourceUrl } from "./canonicalize";
 import { shouldSkipLowSignal } from "./filter";
 import { rssAdapter } from "./adapters/rss";
 import { upworkAdapter } from "./adapters/upwork";
+import { getConnectionAdapters } from "./adapters/connection-bridge";
 import type { RawOpportunity, ResearchRunReport } from "./types";
 
 const RESEARCH_SNAPSHOT_TITLE = "RESEARCH_SNAPSHOT";
@@ -17,7 +18,7 @@ const RESEARCH_RUN_REPORT_TITLE = "RESEARCH_RUN_REPORT";
 const SYSTEM_LEAD_SOURCE = "system";
 const SYSTEM_LEAD_TITLE = "Research Engine Runs";
 
-const ADAPTERS = [upworkAdapter, rssAdapter];
+const BASE_ADAPTERS = [upworkAdapter, rssAdapter];
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -70,6 +71,9 @@ export async function runResearchDiscoverAndPipeline(
     errors: [],
     leadIds: [],
   };
+
+  const connectionAdapters = await getConnectionAdapters();
+  const ADAPTERS = [...BASE_ADAPTERS, ...connectionAdapters];
 
   const allCandidates: RawOpportunity[] = [];
   for (const adapter of ADAPTERS) {
