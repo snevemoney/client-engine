@@ -207,6 +207,7 @@ export function IntegrationsSection() {
       const res = await fetch(`/api/integrations/${configOpen.key}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           configJson,
           status: hasCredentials ? "connected" : "not_connected",
@@ -214,7 +215,16 @@ export function IntegrationsSection() {
           isEnabled: configEnabled,
         }),
       });
-      const data = await res.json();
+      let data: { error?: string; message?: string; id?: string; status?: string; mode?: string; category?: string; prodOnly?: boolean; displayName?: string; providerLabel?: string; helpText?: string; accountLabel?: string; isEnabled?: boolean; lastSyncedAt?: string; lastTestedAt?: string; lastTestStatus?: string; lastError?: string; configJson?: Record<string, unknown> } | null = null;
+      try {
+        const text = await res.text();
+        data = text ? (JSON.parse(text) as typeof data) : null;
+      } catch {
+        if (res.status === 401) alert("Session expired. Please sign in again.");
+        else alert(`Save failed (${res.status}): response was not valid JSON`);
+        setSaving(false);
+        return;
+      }
       if (res.ok) {
         setItems((prev) =>
           prev.map((i) =>
@@ -244,10 +254,11 @@ export function IntegrationsSection() {
         );
         setConfigOpen(null);
       } else {
-        alert(data?.error ?? data?.message ?? "Save failed");
+        const err = data?.error ?? data?.message ?? (data as { details?: { formErrors?: string[] } })?.details?.formErrors?.[0];
+        alert(err ?? `Save failed (${res.status})`);
       }
-    } catch {
-      alert("Save failed");
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Save failed");
     }
     setSaving(false);
   }
