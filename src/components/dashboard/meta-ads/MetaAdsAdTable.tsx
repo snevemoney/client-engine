@@ -5,7 +5,7 @@ import { META_ADS_INSIGHTS } from "@/lib/meta-ads/constants";
 import { MetaAdsStatusActions } from "./MetaAdsStatusActions";
 
 function fmt(v: number, isMoney = false): string {
-  return isMoney ? `$${v.toFixed(2)}` : v.toLocaleString(undefined, { maximumFractionDigits: 1 });
+  return isMoney ? `$${v.toFixed(2)}` : v.toLocaleString("en-US", { maximumFractionDigits: 1 });
 }
 
 function RowBadges({ ad }: { ad: MetaAdsAd }) {

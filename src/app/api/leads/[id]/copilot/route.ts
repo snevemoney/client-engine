@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { auth } from "@/lib/auth";
+import { requireAuth } from "@/lib/api-utils";
 import { db } from "@/lib/db";
 import { chat } from "@/lib/llm";
 import { getLeadIntelligenceForLead } from "@/lib/pipeline/getLeadIntelligenceForLead";
@@ -54,8 +54,8 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth();
-  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const session = await requireAuth();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id: leadId } = await params;
   let body: unknown;

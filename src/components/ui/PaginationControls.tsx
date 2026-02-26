@@ -47,7 +47,7 @@ export function PaginationControls({
       )}
     >
       <div className="flex items-center gap-2 text-neutral-400">
-        <span>{total.toLocaleString()} items</span>
+        <span>{total.toLocaleString("en-US")} items</span>
         {totalPages > 1 && (
           <span className="text-neutral-500">
             · Page {page} of {totalPages}

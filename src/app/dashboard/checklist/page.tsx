@@ -125,7 +125,7 @@ export default function ChecklistPage() {
             {checklists.slice(0, 15).map((a) => (
               <li key={a.id} className="px-6 py-4 hover:bg-neutral-900/30">
                 <div className="text-xs text-neutral-500">
-                  {new Date(a.createdAt).toLocaleString()}
+                  {new Date(a.createdAt).toLocaleString("en-US")}
                   {a.meta?.keywords?.length ? ` · ${(a.meta.keywords as string[]).join(", ")}` : ""}
                 </div>
                 <pre className="mt-2 text-sm text-neutral-300 whitespace-pre-wrap font-sans line-clamp-6">{a.content}</pre>

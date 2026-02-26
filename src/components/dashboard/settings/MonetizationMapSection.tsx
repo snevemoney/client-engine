@@ -56,12 +56,12 @@ export function MonetizationMapSection({
 
   return (
     <section className="border border-neutral-800 rounded-lg p-6 space-y-4">
-      <h2 className="text-sm font-medium text-neutral-300">Website / Project monetization</h2>
+      <h2 className="text-base font-medium text-neutral-200">Project roles</h2>
       <p className="text-xs text-neutral-500">
-        Map each project/page to its monetization role: trust, lead_capture, conversion, delivery, proof, upsell.
+        Pick what each project does in your sales process — builds trust, captures leads, converts, delivers, proves results, or upsells.
       </p>
       {projects.length === 0 ? (
-        <p className="text-sm text-neutral-500">No projects yet. Deploy projects to assign roles.</p>
+        <p className="text-sm text-neutral-500">No projects yet. Add projects to assign roles.</p>
       ) : (
         <>
           <div className="overflow-x-auto">
@@ -102,7 +102,7 @@ export function MonetizationMapSection({
               disabled={saving}
               className="rounded-md bg-neutral-100 text-neutral-900 px-3 py-2 text-sm font-medium hover:bg-neutral-200 disabled:opacity-50"
             >
-              {saving ? "Saving…" : "Save mapping"}
+              {saving ? "Saving…" : "Save roles"}
             </button>
             {message && <span className="text-sm text-neutral-400">{message}</span>}
           </div>

@@ -207,14 +207,14 @@ export async function getOpsHealth(): Promise<OpsHealth> {
         ok: researchOk,
         lastRunAt: researchLastRun,
         message: researchLastRun
-          ? `Last run ${new Date(researchLastRun).toLocaleString()}`
+          ? `Last run ${new Date(researchLastRun).toLocaleString("en-US")}`
           : "No workday run yet.",
       },
       knowledge: {
         ok: knowledgeOk,
         lastRunAt: knowledgeLastRun,
         message: knowledgeLastRun
-          ? `Last run ${new Date(knowledgeLastRun).toLocaleString()}`
+          ? `Last run ${new Date(knowledgeLastRun).toLocaleString("en-US")}`
           : "No workday run yet.",
       },
       auth: authOk,

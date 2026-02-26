@@ -144,6 +144,8 @@ enum TouchType {
   FOLLOW_UP
   REFERRAL_ASK
   CHECK_IN
+  CALL_BOOKED
+  CALL_COMPLETED
 }
 
 model Artifact {

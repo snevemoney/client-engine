@@ -31,10 +31,10 @@ type Item = IntegrationProvider & {
 };
 
 const MODE_HELPER: Record<IntegrationMode, string> = {
-  off: "Integration disabled",
-  mock: "Simulated local/test behavior",
-  manual: "Track/use manually without live API actions",
-  live: "Real external API usage",
+  off: "Turned off",
+  mock: "Test mode — no real data sent",
+  manual: "You handle it yourself, we just track it",
+  live: "Fully connected and active",
 };
 
 function formatRelative(iso: string): string {
@@ -73,7 +73,8 @@ function modeBadge(mode: IntegrationMode | string | undefined) {
     manual: "bg-blue-600/30 text-blue-400 border-blue-700",
     live: "bg-emerald-600/30 text-emerald-400 border-emerald-700",
   };
-  return <Badge variant="outline" className={styles[m] ?? styles.off}>{m.toUpperCase()}</Badge>;
+  const labels: Record<IntegrationMode, string> = { off: "Off", mock: "Test", manual: "Manual", live: "Live" };
+  return <Badge variant="outline" className={styles[m] ?? styles.off}>{labels[m] ?? m}</Badge>;
 }
 
 export function IntegrationsSection() {
@@ -234,7 +235,7 @@ export function IntegrationsSection() {
   if (loading) {
     return (
       <section className="border border-neutral-800 rounded-lg p-6">
-        <h2 className="text-sm font-medium text-neutral-300">Integrations</h2>
+        <h2 className="text-base font-medium text-neutral-200">Connections</h2>
         <p className="text-xs text-neutral-500 mt-2">Loading…</p>
       </section>
     );
@@ -243,9 +244,9 @@ export function IntegrationsSection() {
   return (
     <>
       <section className="border border-neutral-800 rounded-lg p-6 space-y-4">
-        <h2 className="text-sm font-medium text-neutral-300">Integrations</h2>
+        <h2 className="text-base font-medium text-neutral-200">Connections</h2>
         <p className="text-xs text-neutral-500">
-          Manage platform connections. V1: config stored; most platforms are placeholders until OAuth/API flows are built.
+          Connect your tools and platforms. Turn them on or off, or test if they&apos;re working.
         </p>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((item) => (
@@ -281,7 +282,7 @@ export function IntegrationsSection() {
                   <div className="flex gap-1 flex-wrap justify-end">
                     {modeBadge(item.connection?.mode ?? "off")}
                     {item.connection?.prodOnly && (
-                      <Badge variant="outline" className="text-neutral-500 border-neutral-600" title="Live data only in production. Use MOCK or MANUAL locally.">Prod only</Badge>
+                      <Badge variant="outline" className="text-neutral-500 border-neutral-600" title="Only works in live mode when deployed">Live only</Badge>
                     )}
                     {statusBadge(item.connection?.status ?? "not_connected", item.connection?.isEnabled ?? true)}
                   </div>
@@ -333,11 +334,11 @@ export function IntegrationsSection() {
                   onChange={(e) => setConfigMode(e.target.value as IntegrationMode)}
                   className="w-full rounded-md border border-neutral-600 bg-neutral-900 px-3 py-2 text-neutral-200"
                 >
-                  <option value="off">OFF</option>
-                  <option value="mock">MOCK</option>
-                  <option value="manual">MANUAL</option>
+                  <option value="off">Off</option>
+                  <option value="mock">Test mode</option>
+                  <option value="manual">Manual</option>
                   <option value="live" disabled={configOpen?.connection?.prodOnly && typeof window !== "undefined" && window.location?.hostname === "localhost"}>
-                    LIVE{configOpen?.connection?.prodOnly && typeof window !== "undefined" && window.location?.hostname === "localhost" ? " (prod only)" : ""}
+                    Live{configOpen?.connection?.prodOnly && typeof window !== "undefined" && window.location?.hostname === "localhost" ? " (production only)" : ""}
                   </option>
                 </select>
                 <p className="text-xs text-neutral-500 mt-1">{MODE_HELPER[configMode]}</p>
@@ -345,7 +346,7 @@ export function IntegrationsSection() {
                   typeof window !== "undefined" &&
                   window.location?.hostname === "localhost" && (
                     <p className="text-xs text-amber-400/90 mt-2 rounded bg-amber-950/40 px-2 py-1.5">
-                      LIVE mode is production-only. Use MOCK or MANUAL in local/dev.
+                      Live mode only works in production. Use Test or Manual for now.
                     </p>
                   )}
                 {configOpen?.helpText && !configOpen?.connection?.prodOnly && (
@@ -353,12 +354,12 @@ export function IntegrationsSection() {
                 )}
               </div>
               <div>
-                <label className="block text-xs text-neutral-500 mb-1">API token / access token</label>
+                <label className="block text-xs text-neutral-500 mb-1">Access token</label>
                 <Input
                   type="password"
                   value={configAccessToken}
                   onChange={(e) => setConfigAccessToken(e.target.value)}
-                  placeholder="Optional; use env vars for secrets"
+                  placeholder="Paste your token here (optional)"
                   className="w-full"
                 />
               </div>
@@ -372,7 +373,7 @@ export function IntegrationsSection() {
                 />
               </div>
               <div>
-                <label className="block text-xs text-neutral-500 mb-1">Base URL / webhook</label>
+                <label className="block text-xs text-neutral-500 mb-1">Website address or link</label>
                 <Input
                   value={configBaseUrl}
                   onChange={(e) => setConfigBaseUrl(e.target.value)}
@@ -390,7 +391,7 @@ export function IntegrationsSection() {
                       placeholder="https://calendly.com/you or Cal.com link"
                       className="w-full"
                     />
-                    <p className="text-xs text-neutral-600 mt-1">Stored when mode is MANUAL. No OAuth required.</p>
+                    <p className="text-xs text-neutral-600 mt-1">Your scheduling link for manual mode.</p>
                   </div>
                   <div>
                     <label className="block text-xs text-neutral-500 mb-1">Display name (optional)</label>
@@ -409,10 +410,10 @@ export function IntegrationsSection() {
               {configOpen.supportsQueryParams && (
                 <div>
                   <label className="block text-xs text-neutral-500 mb-1">
-                    Additional Query Parameters
+                    Extra settings
                   </label>
                   <p className="text-xs text-neutral-600 mb-2">
-                    Optional provider-specific query parameters (key/value). Example: hl=en, gl=us
+                    Optional key/value pairs for advanced configuration.
                   </p>
                   <div className="space-y-2">
                     {configQueryParams.map((p, i) => (

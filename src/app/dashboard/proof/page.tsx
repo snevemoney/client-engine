@@ -299,7 +299,7 @@ export default function ProofPage() {
                     <div className="text-sm font-medium text-neutral-200">{r.title}</div>
                     {r.company && <div className="text-xs text-neutral-500">{r.company}</div>}
                     <div className="text-xs text-neutral-500 mt-1">
-                      {new Date(r.createdAt).toLocaleString()}
+                      {new Date(r.createdAt).toLocaleString("en-US")}
                       {r.intakeLeadId && (
                         <Link href={`/dashboard/intake/${r.intakeLeadId}`} className="ml-2 text-blue-400 hover:underline">
                           View intake
@@ -351,7 +351,7 @@ export default function ProofPage() {
                 <Link href={`/dashboard/leads/${a.lead.id}`} className="block">
                   <div className="text-sm text-neutral-200">{a.lead.title}</div>
                   <div className="text-xs text-neutral-500 mt-0.5">
-                    {new Date(a.createdAt).toLocaleString()}
+                    {new Date(a.createdAt).toLocaleString("en-US")}
                   </div>
                 </Link>
                 <pre className="mt-2 text-xs text-neutral-400 whitespace-pre-wrap font-sans line-clamp-3">{a.content}</pre>

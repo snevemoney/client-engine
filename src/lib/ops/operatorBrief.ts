@@ -41,7 +41,7 @@ export async function generateOperatorBrief(): Promise<OperatorBrief> {
     whatWasCreated.push(`Proposals ready: ${brief.readyProposals.map((l) => l.title).slice(0, 3).join("; ")}${brief.readyProposals.length > 3 ? "…" : ""}`);
 
   const whatFailed: string[] = recentErrors.map(
-    (r) => `Lead ${r.leadId}: ${r.lastErrorCode ?? "error"} at ${r.lastErrorAt ? new Date(r.lastErrorAt).toLocaleString() : "—"}`
+    (r) => `Lead ${r.leadId}: ${r.lastErrorCode ?? "error"} at ${r.lastErrorAt ? new Date(r.lastErrorAt).toLocaleString("en-US") : "—"}`
   );
 
   const needsApproval: string[] = [];
@@ -55,7 +55,7 @@ export async function generateOperatorBrief(): Promise<OperatorBrief> {
   const actionPlan = brief.nextActions.slice(0, 5).map((a) => `${a.action}: ${a.title}`);
 
   const summaryParts: string[] = [];
-  summaryParts.push(`Brief for ${new Date(at).toLocaleString()}.`);
+  summaryParts.push(`Brief for ${new Date(at).toLocaleString("en-US")}.`);
   if (brief.qualifiedLeads.length > 0)
     summaryParts.push(`${brief.qualifiedLeads.length} qualified leads.`);
   if (brief.readyProposals.length > 0)

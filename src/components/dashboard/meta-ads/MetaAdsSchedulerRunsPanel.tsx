@@ -56,7 +56,7 @@ export function MetaAdsSchedulerRunsPanel({ className = "", refreshKey = 0 }: { 
             <div key={r.id} className="rounded border border-neutral-700 bg-neutral-800/50 p-2 text-sm">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-[10px] px-1.5 py-0.5 rounded text-neutral-500">
-                  {new Date(r.startedAt).toLocaleString()}
+                  {new Date(r.startedAt).toLocaleString("en-US")}
                 </span>
                 <span className={`text-[10px] px-1.5 py-0.5 rounded ${statusCls(r.status)}`}>{r.status}</span>
                 <span className="text-[10px] text-neutral-500">{r.trigger}</span>

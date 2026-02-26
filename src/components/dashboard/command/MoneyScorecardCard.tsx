@@ -43,14 +43,14 @@ export function MoneyScorecardCard({ data }: { data: MoneyScorecard | null }) {
         <div className="min-w-0">
           <p className="text-neutral-500 text-xs uppercase tracking-wider">Cash collected</p>
           <p className="text-emerald-300 font-semibold">
-            {data.cashCollected != null ? `$${data.cashCollected.toLocaleString()}` : "—"}
+            {data.cashCollected != null ? `$${data.cashCollected.toLocaleString("en-US")}` : "—"}
           </p>
           <p className="text-[10px] text-neutral-500">Set in Settings</p>
         </div>
         <div className="min-w-0">
           <p className="text-neutral-500 text-xs uppercase tracking-wider">Revenue won (30d)</p>
           <p className="text-neutral-200 font-semibold">
-            {data.revenueWon30d != null ? `$${data.revenueWon30d.toLocaleString()}` : "—"}
+            {data.revenueWon30d != null ? `$${data.revenueWon30d.toLocaleString("en-US")}` : "—"}
           </p>
         </div>
         <div className="min-w-0">
@@ -96,13 +96,13 @@ export function MoneyScorecardCard({ data }: { data: MoneyScorecard | null }) {
         <div className="min-w-0">
           <p className="text-neutral-500 text-xs uppercase tracking-wider">Revenue won (30d)</p>
           <p className="text-neutral-200 font-medium">
-            {data.revenueWon30d != null ? `$${data.revenueWon30d.toLocaleString()}` : "—"}
+            {data.revenueWon30d != null ? `$${data.revenueWon30d.toLocaleString("en-US")}` : "—"}
           </p>
         </div>
         <div className="min-w-0">
           <p className="text-neutral-500 text-xs uppercase tracking-wider">Avg deal size</p>
           <p className="text-neutral-200 font-medium">
-            {data.avgDealSizeEstimate != null ? `$${data.avgDealSizeEstimate.toLocaleString()}` : "—"}
+            {data.avgDealSizeEstimate != null ? `$${data.avgDealSizeEstimate.toLocaleString("en-US")}` : "—"}
           </p>
         </div>
         <div className="min-w-0">

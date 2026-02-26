@@ -115,7 +115,7 @@ export function FollowUpQueueCard() {
                 <span>Score: {item.qualificationTotal}/12</span>
                 {item.nextAction && <span className="truncate max-w-[140px]">{item.nextAction}</span>}
                 {item.nextActionDueAt && (
-                  <span>{new Date(item.nextActionDueAt).toLocaleDateString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+                  <span>{new Date(item.nextActionDueAt).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
                 )}
               </div>
             </Link>

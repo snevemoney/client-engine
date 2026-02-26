@@ -26,9 +26,9 @@ function formatDate(iso: string): string {
     if (Number.isNaN(d.getTime())) return iso;
     const now = new Date();
     const diff = now.getTime() - d.getTime();
-    if (diff < 86400000) return d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
-    if (diff < 604800000) return d.toLocaleDateString(undefined, { weekday: "short", hour: "2-digit", minute: "2-digit" });
-    return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+    if (diff < 86400000) return d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+    if (diff < 604800000) return d.toLocaleDateString("en-US", { weekday: "short", hour: "2-digit", minute: "2-digit" });
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
   } catch {
     return iso;
   }

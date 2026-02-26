@@ -77,7 +77,7 @@ export function OpsHealthPanel({
               <p className={`font-medium ${statusColor}`}>{statusLabel}</p>
               {workdayRun.lastRunAt && (
                 <p className="text-xs text-neutral-500">
-                  Last: {new Date(workdayRun.lastRunAt).toLocaleString()}
+                  Last: {new Date(workdayRun.lastRunAt).toLocaleString("en-US")}
                 </p>
               )}
             </div>
@@ -104,7 +104,7 @@ export function OpsHealthPanel({
             <AlertTriangle className="w-4 h-4 text-amber-500" />
             <p className="text-sm text-amber-200">
               No successful workday run in over 24h. Last success:{" "}
-              {new Date(workdayRun.lastSuccessAt).toLocaleString()}.
+              {new Date(workdayRun.lastSuccessAt).toLocaleString("en-US")}.
             </p>
           </div>
         )}
@@ -186,7 +186,7 @@ export function OpsHealthPanel({
                     </Link>
                     <span className="text-neutral-500 text-xs ml-1">
                       {e.lastErrorCode ?? "error"}
-                      {e.lastErrorAt ? ` · ${new Date(e.lastErrorAt).toLocaleString()}` : ""}
+                      {e.lastErrorAt ? ` · ${new Date(e.lastErrorAt).toLocaleString("en-US")}` : ""}
                     </span>
                   </li>
                 ))}

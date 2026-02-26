@@ -253,7 +253,7 @@ export function AlertsPreferencesPanel({ compact = false }: Props) {
         </Button>
         {p.updatedAt && (
           <span className="text-xs text-neutral-500 ml-2">
-            Updated {new Date(p.updatedAt).toLocaleString()}
+            Updated {new Date(p.updatedAt).toLocaleString("en-US")}
           </span>
         )}
       </div>

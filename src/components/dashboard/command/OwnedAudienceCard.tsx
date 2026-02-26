@@ -103,7 +103,7 @@ export function OwnedAudienceCard() {
             {health.trend === "flat" && <Minus className="w-4 h-4 text-neutral-500" />}
           </div>
           <p className="text-[10px] text-neutral-600">
-            Latest snapshot: {new Date(health.at).toLocaleDateString()}
+            Latest snapshot: {new Date(health.at).toLocaleDateString("en-US")}
           </p>
         </div>
       )}

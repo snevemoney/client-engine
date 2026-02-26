@@ -202,7 +202,7 @@ export function SalesProcessPanel({
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs text-neutral-500">Touch count: {touchCount}</span>
           {nextContactAt && (
-            <span className="text-xs text-neutral-500">Next: {new Date(nextContactAt).toLocaleDateString()}</span>
+            <span className="text-xs text-neutral-500">Next: {new Date(nextContactAt).toLocaleDateString("en-US")}</span>
           )}
           <Button
             variant="outline"
@@ -276,7 +276,7 @@ export function SalesProcessPanel({
           <ul className="mt-2 space-y-1.5 text-sm">
             {touches.slice(0, 10).map((t) => (
               <li key={t.id} className="flex flex-wrap items-baseline gap-2 border-b border-neutral-800/50 pb-1.5">
-                <span className="text-neutral-500 text-xs">{new Date(t.createdAt).toLocaleString()}</span>
+                <span className="text-neutral-500 text-xs">{new Date(t.createdAt).toLocaleString("en-US")}</span>
                 <Badge variant="outline" className="text-[10px]">{t.type.replace(/_/g, " ")}</Badge>
                 <span className="text-neutral-300">{t.summary.slice(0, 80)}{t.summary.length > 80 ? "…" : ""}</span>
                 {t.outcome && <span className="text-neutral-500 text-xs">→ {t.outcome}</span>}

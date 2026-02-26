@@ -21,7 +21,7 @@ export function StrategySnapshotCard({ data }: { data: StrategyWeekSummary | nul
     );
   }
 
-  const weekLabel = new Date(data.weekStart).toLocaleDateString(undefined, {
+  const weekLabel = new Date(data.weekStart).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
     year: "numeric",

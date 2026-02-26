@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { auth } from "@/lib/auth";
+import { requireAuth } from "@/lib/api-utils";
 import { db } from "@/lib/db";
 import { LeadStatus } from "@prisma/client";
 import { jsonError, withRouteTiming } from "@/lib/api-utils";
@@ -21,8 +21,8 @@ const PostLeadSchema = z.object({
 
 export async function GET(req: NextRequest) {
   return withRouteTiming("GET /api/leads", async () => {
-    const session = await auth();
-    if (!session?.user) return jsonError("Unauthorized", 401);
+    const session = await requireAuth();
+    if (!session) return jsonError("Unauthorized", 401);
 
     const url = new URL(req.url);
     const status = url.searchParams.get("status") as LeadStatus | null;
@@ -55,8 +55,8 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   return withRouteTiming("POST /api/leads", async () => {
-    const session = await auth();
-    if (!session?.user) return jsonError("Unauthorized", 401);
+    const session = await requireAuth();
+    if (!session) return jsonError("Unauthorized", 401);
 
     const raw = await req.json().catch(() => null);
     const parsed = PostLeadSchema.safeParse(raw);

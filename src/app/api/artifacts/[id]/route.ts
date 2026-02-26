@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { auth } from "@/lib/auth";
+import { jsonError, requireAuth } from "@/lib/api-utils";
 import { db } from "@/lib/db";
 import {
   parseProposalSections,
@@ -47,8 +47,8 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth();
-  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const session = await requireAuth();
+  if (!session) return jsonError("Unauthorized", 401);
 
   const { id } = await params;
   const artifact = await db.artifact.findUnique({
@@ -81,8 +81,8 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth();
-  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const session = await requireAuth();
+  if (!session) return jsonError("Unauthorized", 401);
 
   const { id } = await params;
   const artifact = await db.artifact.findUnique({ where: { id } });

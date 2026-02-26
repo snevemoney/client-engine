@@ -60,7 +60,7 @@ export function MetaAdsActionHistoryPanel() {
             <tbody>
               {actions.map((a) => (
                 <tr key={a.id} className="border-b border-neutral-800/50">
-                  <td className="py-2 px-2 text-neutral-500 text-xs">{new Date(a.createdAt).toLocaleString()}</td>
+                  <td className="py-2 px-2 text-neutral-500 text-xs">{new Date(a.createdAt).toLocaleString("en-US")}</td>
                   <td className="py-2 px-2 text-neutral-300 truncate max-w-[120px]" title={a.entityName}>{a.entityName}</td>
                   <td className="py-2 px-2 text-neutral-400">{a.actionType}</td>
                   <td className="py-2 px-2 text-neutral-500 text-xs">{a.mode}</td>

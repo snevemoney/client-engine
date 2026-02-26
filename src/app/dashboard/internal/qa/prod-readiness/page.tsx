@@ -101,7 +101,7 @@ export default function ProdReadinessPage() {
         </p>
         {lastRun && (
           <p className="text-xs text-neutral-500 mt-1">
-            Last run: {new Date(lastRun).toLocaleString()}
+            Last run: {new Date(lastRun).toLocaleString("en-US")}
           </p>
         )}
       </div>
@@ -116,6 +116,18 @@ export default function ProdReadinessPage() {
         <Link href="/dashboard/internal/qa/scores" data-testid="prod-readiness-link-scores-qa">
           <Button variant="outline" size="sm">
             Scores QA
+            <ExternalLink className="w-3 h-3 ml-1" />
+          </Button>
+        </Link>
+        <Link href="/dashboard/internal/qa/risk" data-testid="prod-readiness-link-risk-qa">
+          <Button variant="outline" size="sm">
+            Risk QA
+            <ExternalLink className="w-3 h-3 ml-1" />
+          </Button>
+        </Link>
+        <Link href="/dashboard/internal/qa/next-actions" data-testid="prod-readiness-link-next-actions-qa">
+          <Button variant="outline" size="sm">
+            Next Actions QA
             <ExternalLink className="w-3 h-3 ml-1" />
           </Button>
         </Link>
@@ -159,7 +171,7 @@ export default function ProdReadinessPage() {
               <span className="flex-1 font-medium">{item.label}</span>
               {item.lastRunAt && (
                 <span className="text-xs text-neutral-500">
-                  {new Date(item.lastRunAt).toLocaleString()}
+                  {new Date(item.lastRunAt).toLocaleString("en-US")}
                 </span>
               )}
               <div className="flex gap-2">

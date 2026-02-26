@@ -2,6 +2,8 @@
  * Phase 2.6: Centralized safe date formatting.
  */
 
+const LOCALE = "en-US";
+
 export function formatDateSafe(
   input: Date | string | null | undefined,
   options?: Intl.DateTimeFormatOptions
@@ -10,7 +12,7 @@ export function formatDateSafe(
   const d = typeof input === "string" ? new Date(input) : input;
   if (!(d instanceof Date) || Number.isNaN(d.getTime())) return "—";
   try {
-    return d.toLocaleDateString(undefined, options ?? { month: "short", day: "numeric", year: "numeric" });
+    return d.toLocaleDateString(LOCALE, options ?? { month: "short", day: "numeric", year: "numeric" });
   } catch {
     return "—";
   }
@@ -23,7 +25,7 @@ export function formatDateTimeSafe(
   const d = typeof input === "string" ? new Date(input) : input;
   if (!(d instanceof Date) || Number.isNaN(d.getTime())) return "—";
   try {
-    return d.toLocaleString(undefined, {
+    return d.toLocaleString(LOCALE, {
       month: "short",
       day: "numeric",
       hour: "2-digit",

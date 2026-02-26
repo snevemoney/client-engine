@@ -80,7 +80,7 @@ export function OperatorForecastWeeklyStats() {
         )}
         {(stats.projectedDeliveredValueMonth ?? 0) > 0 && (
           <Link href="/dashboard/forecast" className="text-emerald-400 hover:underline">
-            Projected delivered (mo): <strong>${stats.projectedDeliveredValueMonth!.toLocaleString()}</strong>
+            Projected delivered (mo): <strong>${stats.projectedDeliveredValueMonth!.toLocaleString("en-US")}</strong>
           </Link>
         )}
         {(stats.behindPaceCount ?? 0) > 0 && (

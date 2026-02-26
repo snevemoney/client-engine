@@ -41,8 +41,8 @@ export async function syncRssSource(
 
   // LIVE only in production
   if (modeStr === "live" && !isProduction) {
-    await logSync(sourceId, modeStr, "success", "LIVE runs only in production; skipped locally", 0);
-    return { ok: true, count: 0, message: "LIVE runs only in production; skipped locally" };
+    await logSync(sourceId, modeStr, "success", "Live mode only works when deployed; skipped", 0);
+    return { ok: true, count: 0, message: "Live mode only works when deployed; skipped" };
   }
 
   // MANUAL = no auto sync (allow manual paste/import later)

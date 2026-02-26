@@ -70,7 +70,7 @@ export function RevenueIntelligenceWeeklyStats() {
         )}
         {(stats.deliveredValueThisWeek ?? 0) > 0 && (
           <Link href="/dashboard/intelligence" className="text-emerald-400 hover:underline">
-            <strong>${stats.deliveredValueThisWeek!.toLocaleString()}</strong> delivered (wk)
+            <strong>${stats.deliveredValueThisWeek!.toLocaleString("en-US")}</strong> delivered (wk)
           </Link>
         )}
         {(stats.avgSentToAcceptedDays ?? 0) > 0 && (

@@ -1,9 +1,17 @@
 /**
  * Phase 3.1: Unit tests for score latest endpoint response shape.
- * Tests the data shape returned; auth is covered by e2e api-auth.
+ * Auth contract: unauthenticated -> 401 (fast route test when E2E flakes).
  */
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
+
+vi.mock("@/lib/api-utils", () => ({
+  requireAuth: vi.fn(),
+  jsonError: (msg: string, status: number) =>
+    new Response(JSON.stringify({ error: msg }), { status, headers: { "Content-Type": "application/json" } }),
+  withRouteTiming: (_: string, fn: () => Promise<Response>) => fn(),
+}));
 
 describe("scores latest response shape", () => {
   const ENTITY = "test_latest_shape";
@@ -99,5 +107,25 @@ describe("scores latest response shape", () => {
       }),
     ]);
     expect(latest).toBeNull();
+  });
+});
+
+describe("GET /api/internal/scores/latest auth contract", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns 401 when unauthenticated", async () => {
+    const { requireAuth } = await import("@/lib/api-utils");
+    vi.mocked(requireAuth).mockResolvedValue(null);
+
+    const { GET } = await import("./route");
+    const req = new NextRequest(
+      "http://x/api/internal/scores/latest?entityType=command_center&entityId=command_center"
+    );
+    const res = await GET(req);
+    expect(res.status).toBe(401);
+    const data = await res.json();
+    expect(data.error).toBe("Unauthorized");
   });
 });

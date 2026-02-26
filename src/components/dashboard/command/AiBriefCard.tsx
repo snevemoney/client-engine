@@ -20,7 +20,7 @@ export function AiBriefCard({ latestBrief }: { latestBrief: Brief | null }) {
         <div className="text-sm text-neutral-400 space-y-1">
           <p>{latestBrief.summary}</p>
           <p className="text-xs text-neutral-500">
-            At {new Date(latestBrief.at).toLocaleString()} · Leads: {latestBrief.counts.newLeads} ·
+            At {new Date(latestBrief.at).toLocaleString("en-US")} · Leads: {latestBrief.counts.newLeads} ·
             Proposals: {latestBrief.counts.proposalsReady} · Build ready: {latestBrief.counts.buildReady}
           </p>
         </div>

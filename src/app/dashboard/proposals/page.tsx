@@ -28,10 +28,10 @@ type Proposal = {
 
 function formatPrice(p: Proposal): string {
   if (p.priceMin != null && p.priceMax != null && p.priceMin !== p.priceMax) {
-    return `${p.priceCurrency} ${p.priceMin.toLocaleString()} – ${p.priceMax.toLocaleString()}`;
+    return `${p.priceCurrency} ${p.priceMin.toLocaleString("en-US")} – ${p.priceMax.toLocaleString("en-US")}`;
   }
-  if (p.priceMin != null) return `${p.priceCurrency} ${p.priceMin.toLocaleString()}`;
-  if (p.priceMax != null) return `${p.priceCurrency} ${p.priceMax.toLocaleString()}`;
+  if (p.priceMin != null) return `${p.priceCurrency} ${p.priceMin.toLocaleString("en-US")}`;
+  if (p.priceMax != null) return `${p.priceCurrency} ${p.priceMax.toLocaleString("en-US")}`;
   return "—";
 }
 

@@ -285,7 +285,7 @@ export function ScoreboardView() {
       })()
     : null;
   const weekLabel = weekDate
-    ? weekDate.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
+    ? weekDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
     : "—";
 
   const checks = data?.review
@@ -506,7 +506,7 @@ export function ScoreboardView() {
           </div>
           {followupSummary.nextFollowupDue && (
             <p className="text-xs text-neutral-500">
-              Next due: {new Date(followupSummary.nextFollowupDue).toLocaleDateString()}
+              Next due: {new Date(followupSummary.nextFollowupDue).toLocaleDateString("en-US")}
             </p>
           )}
           <Link href="/dashboard/followups" className="inline-block mt-3">
@@ -777,19 +777,19 @@ export function ScoreboardView() {
             </h2>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-sm mb-2">
               <div>
-                <div className="font-semibold text-emerald-400">${(metricsSummary.revenue?.acceptedValueThisWeek ?? 0).toLocaleString()}</div>
+                <div className="font-semibold text-emerald-400">${(metricsSummary.revenue?.acceptedValueThisWeek ?? 0).toLocaleString("en-US")}</div>
                 <div className="text-xs text-neutral-500">Accepted (wk)</div>
               </div>
               <div>
-                <div className="font-semibold text-emerald-400">${(metricsSummary.revenue?.deliveredValueThisWeek ?? 0).toLocaleString()}</div>
+                <div className="font-semibold text-emerald-400">${(metricsSummary.revenue?.deliveredValueThisWeek ?? 0).toLocaleString("en-US")}</div>
                 <div className="text-xs text-neutral-500">Delivered (wk)</div>
               </div>
               <div>
-                <div className="font-semibold">${(metricsSummary.revenue?.avgAcceptedValue ?? 0).toLocaleString()}</div>
+                <div className="font-semibold">${(metricsSummary.revenue?.avgAcceptedValue ?? 0).toLocaleString("en-US")}</div>
                 <div className="text-xs text-neutral-500">Avg accepted</div>
               </div>
               <div>
-                <div className="font-semibold text-amber-400">${(metricsSummary.revenue?.upsellOpenValue ?? 0).toLocaleString()}</div>
+                <div className="font-semibold text-amber-400">${(metricsSummary.revenue?.upsellOpenValue ?? 0).toLocaleString("en-US")}</div>
                 <div className="text-xs text-neutral-500">Upsell open</div>
               </div>
             </div>
@@ -866,7 +866,7 @@ export function ScoreboardView() {
                     <div className="font-semibold text-emerald-400">
                       {(() => {
                         const monthlyValue = forecastData.monthly?.metrics?.find((x) => x.key === "delivered_value");
-                        return monthlyValue != null ? `$${monthlyValue.projected.toLocaleString()}` : "—";
+                        return monthlyValue != null ? `$${monthlyValue.projected.toLocaleString("en-US")}` : "—";
                       })()}
                     </div>
                     <div className="text-xs text-neutral-500">Delivered value (mo)</div>

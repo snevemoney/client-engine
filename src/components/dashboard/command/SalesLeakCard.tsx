@@ -3,7 +3,7 @@ import type { SalesLeakReport } from "@/lib/ops/types";
 function formatWeekRange(weekStart: string, weekEnd: string): string {
   const s = new Date(weekStart);
   const e = new Date(weekEnd);
-  return `${s.toLocaleDateString(undefined, { month: "short", day: "numeric" })} – ${e.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}`;
+  return `${s.toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${e.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
 }
 
 export function SalesLeakCard({ data }: { data: SalesLeakReport }) {

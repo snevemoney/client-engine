@@ -53,13 +53,14 @@ export function CashAndGraduationSection({
 
   return (
     <section className="border border-neutral-800 rounded-lg p-6 space-y-4">
-      <h2 className="text-sm font-medium text-neutral-300">Cash & graduation</h2>
+      <h2 className="text-base font-medium text-neutral-200">Revenue &amp; goals</h2>
       <p className="text-xs text-neutral-500">
-        Cash collected = money in bank (set weekly/monthly). Graduation trigger = repeatable wins (90d) before moving to productized. Shown on Command Center.
+        Track money collected and set your targets. These numbers show on your dashboard.
       </p>
       <div className="grid gap-3 text-sm">
         <div>
-          <label className="text-neutral-500 text-xs block mb-1">Cash collected ($)</label>
+          <label className="text-sm text-neutral-300 block mb-1">Money collected ($)</label>
+          <p className="text-xs text-neutral-500 mb-1">Total cash in the bank — update weekly or monthly</p>
           <Input
             type="text"
             inputMode="numeric"
@@ -70,7 +71,8 @@ export function CashAndGraduationSection({
           />
         </div>
         <div>
-          <label className="text-neutral-500 text-xs block mb-1">Graduation target (repeatable wins in 90d)</label>
+          <label className="text-sm text-neutral-300 block mb-1">Win target (last 90 days)</label>
+          <p className="text-xs text-neutral-500 mb-1">How many repeatable wins before you level up</p>
           <Input
             type="text"
             inputMode="numeric"
@@ -81,10 +83,11 @@ export function CashAndGraduationSection({
           />
         </div>
         <div>
-          <label className="text-neutral-500 text-xs block mb-1">Next milestone (optional)</label>
+          <label className="text-sm text-neutral-300 block mb-1">Next milestone</label>
+          <p className="text-xs text-neutral-500 mb-1">Your current focus or goal (optional)</p>
           <Input
             type="text"
-            placeholder="e.g. Productized offer readiness: 60%"
+            placeholder="e.g. Launch productized offer"
             value={milestone}
             onChange={(e) => setMilestone(e.target.value)}
             className="max-w-md bg-neutral-900 border-neutral-700"

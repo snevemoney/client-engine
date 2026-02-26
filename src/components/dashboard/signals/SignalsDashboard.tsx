@@ -295,7 +295,7 @@ export function SignalsDashboard() {
                   <td className="px-4 py-2 text-neutral-400">{item.sourceName}</td>
                   <td className="px-4 py-2 text-neutral-500">
                     {item.publishedAt
-                      ? new Date(item.publishedAt).toLocaleDateString(undefined, {
+                      ? new Date(item.publishedAt).toLocaleDateString("en-US", {
                           month: "short",
                           day: "numeric",
                         })

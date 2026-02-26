@@ -31,7 +31,7 @@ export function MetaAdsExplainabilityCard({
         <li>Target CPL: {targetCpl != null ? `$${targetCpl}` : "account avg"}</li>
         <li>Min spend: ${minSpend} · Min impressions: {minImpressions}</li>
         {lastGenerated && (
-          <li>Last generated: {new Date(lastGenerated).toLocaleString()}</li>
+          <li>Last generated: {new Date(lastGenerated).toLocaleString("en-US")}</li>
         )}
         <li className="pt-1 text-neutral-400">Trends compare current selected range vs prior equal period.</li>
         <li className="text-neutral-400">Mark false positives to help tune thresholds over time.</li>

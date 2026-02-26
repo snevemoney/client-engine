@@ -95,7 +95,7 @@ function statusBadge(status: string) {
 
 function fmtDate(d: string | null) {
   if (!d) return "—";
-  return new Date(d).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  return new Date(d).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
 function fmtDuration(sec: number | null) {

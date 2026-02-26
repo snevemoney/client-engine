@@ -11,7 +11,10 @@ export const metadata: Metadata = {
   description: "Software development & automation",
 };
 
-const META_PIXEL_ID = process.env.META_PIXEL_ID ?? process.env.NEXT_PUBLIC_META_PIXEL_ID;
+const IS_PRODUCTION = process.env.NODE_ENV === "production";
+const META_PIXEL_ID = IS_PRODUCTION
+  ? (process.env.META_PIXEL_ID ?? process.env.NEXT_PUBLIC_META_PIXEL_ID)
+  : undefined;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

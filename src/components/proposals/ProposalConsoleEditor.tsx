@@ -156,8 +156,8 @@ export default function ProposalConsoleEditor({ artifact, onSaved }: Props) {
           <div className="font-medium text-neutral-200">{artifact.title || "Proposal"}</div>
           <div className="text-xs text-neutral-500 mt-0.5">
             {metaUpdatedAt
-              ? `Last edited: ${new Date(metaUpdatedAt).toLocaleString()}`
-              : `Created: ${new Date(artifact.updatedAt).toLocaleString()}`}
+              ? `Last edited: ${new Date(metaUpdatedAt).toLocaleString("en-US")}`
+              : `Created: ${new Date(artifact.updatedAt).toLocaleString("en-US")}`}
           </div>
         </div>
           <div className="flex items-center gap-2">

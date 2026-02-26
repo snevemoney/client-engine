@@ -140,7 +140,7 @@ function formatDate(iso: string | null): string {
   try {
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return "—";
-    return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   } catch {
     return "—";
   }
@@ -690,7 +690,7 @@ export default function CommandCenterPage() {
             <li>Proposal→Accepted: {(ri.proposalSentToAcceptedRate ?? 0) * 100}%</li>
             <li>Accepted→Delivery: {(ri.acceptedToDeliveryStartedRate ?? 0) * 100}%</li>
             <li>Delivery→Proof: {(ri.deliveryCompletedToProofRate ?? 0) * 100}%</li>
-            <li>Delivered value (wk): ${(ri.deliveredValueThisWeek ?? 0).toLocaleString()}</li>
+            <li>Delivered value (wk): ${(ri.deliveredValueThisWeek ?? 0).toLocaleString("en-US")}</li>
             {ri.topBottleneck && (
               <li className="text-amber-400">
                 Top bottleneck: {ri.topBottleneck.label} ({ri.topBottleneck.count})
@@ -726,7 +726,7 @@ export default function CommandCenterPage() {
                   <li className="text-amber-400">{of.behindPaceWarning}</li>
                 )}
                 {of.deliveredValueProjectedMonth != null && (
-                  <li>Delivered value projected (mo): ${of.deliveredValueProjectedMonth.toLocaleString()}</li>
+                  <li>Delivered value projected (mo): ${of.deliveredValueProjectedMonth.toLocaleString("en-US")}</li>
                 )}
               </ul>
             );
@@ -893,7 +893,7 @@ export default function CommandCenterPage() {
               <span className="text-neutral-500">Last error:</span>{" "}
               <span className="text-neutral-400">
                 {d.observability?.lastErrorAt
-                  ? new Date(d.observability.lastErrorAt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })
+                  ? new Date(d.observability.lastErrorAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })
                   : "—"}
               </span>
             </div>

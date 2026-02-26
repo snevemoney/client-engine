@@ -2,7 +2,7 @@
  * GET /api/ops/command — aggregate data for Command Center (queue, constraint, money scorecard, last run, etc.)
  */
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { requireAuth } from "@/lib/api-utils";
 import { buildBrief } from "@/lib/orchestrator/brief";
 import { getQueueSummary } from "@/lib/ops/queueSummary";
 import { getConstraintSnapshot } from "@/lib/ops/constraint";
@@ -14,8 +14,8 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   return withRouteTiming("GET /api/ops/command", async () => {
-    const session = await auth();
-    if (!session?.user) return jsonError("Unauthorized", 401);
+    const session = await requireAuth();
+    if (!session) return jsonError("Unauthorized", 401);
 
     const [brief, queue, constraint, moneyScorecard, lastRunReport] = await Promise.all([
       buildBrief(),

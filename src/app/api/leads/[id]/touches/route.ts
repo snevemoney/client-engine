@@ -10,7 +10,7 @@ import { db } from "@/lib/db";
 import { z } from "zod";
 
 const touchPayloadSchema = z.object({
-  type: z.enum(["EMAIL", "CALL", "LINKEDIN_DM", "MEETING", "FOLLOW_UP", "REFERRAL_ASK", "CHECK_IN"]),
+  type: z.enum(["EMAIL", "CALL", "LINKEDIN_DM", "MEETING", "FOLLOW_UP", "REFERRAL_ASK", "CHECK_IN", "CALL_BOOKED", "CALL_COMPLETED"]),
   direction: z.enum(["outbound", "inbound"]),
   summary: z.string().min(1).max(4000),
   scriptUsed: z.string().optional(),

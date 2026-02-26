@@ -32,7 +32,7 @@ export function ScoreCard({ score, band, delta, computedAt }: Props) {
           </span>
         )}
         <span className="text-xs text-neutral-500">
-          {new Date(computedAt).toLocaleString()}
+          {new Date(computedAt).toLocaleString("en-US")}
         </span>
       </div>
     </div>

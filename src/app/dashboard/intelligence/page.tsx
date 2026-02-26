@@ -188,11 +188,11 @@ export default function IntelligencePage() {
         />
         <MetricCard
           label="Delivered value (wk)"
-          value={`$${(r.deliveredValueThisWeek ?? 0).toLocaleString()}`}
+          value={`$${(r.deliveredValueThisWeek ?? 0).toLocaleString("en-US")}`}
         />
         <MetricCard
           label="Upsell open value"
-          value={`$${(r.upsellOpenValue ?? 0).toLocaleString()}`}
+          value={`$${(r.upsellOpenValue ?? 0).toLocaleString("en-US")}`}
           href="/dashboard/retention?status=upsell_open"
         />
       </div>
@@ -232,19 +232,19 @@ export default function IntelligencePage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
           <div>
             <p className="text-neutral-500">Accepted value (wk)</p>
-            <p className="font-semibold text-emerald-400">${(r.acceptedValueThisWeek ?? 0).toLocaleString()}</p>
+            <p className="font-semibold text-emerald-400">${(r.acceptedValueThisWeek ?? 0).toLocaleString("en-US")}</p>
           </div>
           <div>
             <p className="text-neutral-500">Delivered value (wk)</p>
-            <p className="font-semibold text-emerald-400">${(r.deliveredValueThisWeek ?? 0).toLocaleString()}</p>
+            <p className="font-semibold text-emerald-400">${(r.deliveredValueThisWeek ?? 0).toLocaleString("en-US")}</p>
           </div>
           <div>
             <p className="text-neutral-500">Avg accepted value</p>
-            <p className="font-semibold">${(r.avgAcceptedValue ?? 0).toLocaleString()}</p>
+            <p className="font-semibold">${(r.avgAcceptedValue ?? 0).toLocaleString("en-US")}</p>
           </div>
           <div>
             <p className="text-neutral-500">Upsell open</p>
-            <p className="font-semibold">${(r.upsellOpenValue ?? 0).toLocaleString()}</p>
+            <p className="font-semibold">${(r.upsellOpenValue ?? 0).toLocaleString("en-US")}</p>
           </div>
         </div>
       </div>
@@ -280,7 +280,7 @@ export default function IntelligencePage() {
                   <td className="p-2">{r.deliveredCount}</td>
                   <td className="p-2">{(r.intakeToWinRate * 100).toFixed(1)}%</td>
                   <td className="p-2">{(r.proposalToAcceptedRate * 100).toFixed(1)}%</td>
-                  <td className="p-2">${r.revenue.toLocaleString()}</td>
+                  <td className="p-2">${r.revenue.toLocaleString("en-US")}</td>
                 </tr>
               ))}
             </tbody>

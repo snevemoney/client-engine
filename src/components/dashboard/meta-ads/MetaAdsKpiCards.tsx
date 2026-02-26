@@ -4,7 +4,7 @@ import { TrendingUp, TrendingDown } from "lucide-react";
 import type { MetaAdsSummary } from "@/lib/meta-ads/types";
 
 function fmtNum(n: number): string {
-  return n.toLocaleString(undefined, { maximumFractionDigits: 1 });
+  return n.toLocaleString("en-US", { maximumFractionDigits: 1 });
 }
 function fmtMoney(n: number): string {
   return `$${n.toFixed(2)}`;

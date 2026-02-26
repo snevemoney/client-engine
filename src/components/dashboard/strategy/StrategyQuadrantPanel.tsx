@@ -696,7 +696,7 @@ export function StrategyQuadrantPanel() {
               {history.map((h) => (
                 <tr key={h.weekStart} className="border-t border-neutral-800">
                   <td className="py-2 pr-4 text-neutral-300">
-                    {new Date(h.weekStart).toLocaleDateString(undefined, {
+                    {new Date(h.weekStart).toLocaleDateString("en-US", {
                       month: "short",
                       day: "numeric",
                       year: "numeric",

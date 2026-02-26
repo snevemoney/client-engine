@@ -304,7 +304,7 @@ export default function ScoresQAPage() {
               <tbody>
                 {history.timeline.map((s) => (
                   <tr key={s.id} className="border-t border-neutral-800">
-                    <td className="py-1">{new Date(s.computedAt).toLocaleString()}</td>
+                    <td className="py-1">{new Date(s.computedAt).toLocaleString("en-US")}</td>
                     <td>{s.score.toFixed(1)}</td>
                     <td><ScoreBadge band={s.band} /></td>
                     <td>{s.delta != null ? `${s.delta >= 0 ? "+" : ""}${s.delta.toFixed(1)}` : "—"}</td>

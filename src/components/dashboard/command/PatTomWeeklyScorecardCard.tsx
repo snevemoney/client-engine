@@ -20,7 +20,7 @@ export function PatTomWeeklyScorecardCard({ data }: { data: PatTomWeeklyScorecar
         <div>
           <p className="text-neutral-500 uppercase tracking-wider">Cash collected</p>
           <p className="text-neutral-200 font-medium">
-            {data.cashCollected != null ? `$${data.cashCollected.toLocaleString()}` : "—"}
+            {data.cashCollected != null ? `$${data.cashCollected.toLocaleString("en-US")}` : "—"}
           </p>
         </div>
         <div>

@@ -38,7 +38,7 @@ function errorMessage(err: MetaAdsDashboardError): { message: string; docHint: s
     case "NO_TOKEN":
       return {
         message: "META_ACCESS_TOKEN not configured.",
-        docHint: "Add META_ACCESS_TOKEN and META_AD_ACCOUNT_ID to .env, then restart. See setup doc for token generation.",
+        docHint: "Connect your Meta Ads account in Settings → Connections to see ad data here.",
       };
     case "INVALID_TOKEN":
       return {
@@ -262,7 +262,7 @@ export function MetaAdsPageClient() {
       {/* No account / No data */}
       {!loading && !error && !data?.ok && (
         <div className="rounded-lg border border-neutral-800 p-8 text-center text-neutral-500">
-          No data. Configure META_ACCESS_TOKEN and META_AD_ACCOUNT_ID in .env.
+          No data yet. Connect your Meta Ads account in Settings → Connections.
         </div>
       )}
 

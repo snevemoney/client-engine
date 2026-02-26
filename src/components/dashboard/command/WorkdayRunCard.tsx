@@ -41,7 +41,7 @@ export function WorkdayRunCard({ lastRunAt }: { lastRunAt: string | null }) {
       </p>
       {lastRunAt && (
         <p className="text-xs text-neutral-400 mb-2">
-          Last run: {new Date(lastRunAt).toLocaleString()}
+          Last run: {new Date(lastRunAt).toLocaleString("en-US")}
         </p>
       )}
       <button

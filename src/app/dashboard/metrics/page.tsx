@@ -167,7 +167,7 @@ export default async function MetricsPage() {
         <section className="border border-neutral-800 rounded-lg p-4">
           <h2 className="text-sm font-medium text-neutral-300 mb-2">What changed since last run</h2>
           <p className="text-xs text-neutral-500 mb-2">
-            {new Date(lastRunReport.createdAt).toLocaleString()}
+            {new Date(lastRunReport.createdAt).toLocaleString("en-US")}
           </p>
           <pre className="text-xs text-neutral-400 whitespace-pre-wrap font-sans">
             {lastRunReport.content?.slice(0, 600)}
@@ -233,7 +233,7 @@ export default async function MetricsPage() {
                       </span>
                     </td>
                     <td className="py-2 px-3 text-neutral-500">
-                      {new Date(run.startedAt).toLocaleString()}
+                      {new Date(run.startedAt).toLocaleString("en-US")}
                     </td>
                     <td className="py-2 px-3 text-xs text-neutral-500 max-w-[200px] truncate" title={run.error ?? undefined}>
                       {run.success === false && run.error ? run.error : "—"}

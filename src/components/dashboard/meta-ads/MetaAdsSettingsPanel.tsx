@@ -460,7 +460,7 @@ export function MetaAdsSettingsPanel() {
           </button>
           {settings.lastSchedulerRunAt && (
             <span className="text-xs text-neutral-500">
-              Last: {new Date(settings.lastSchedulerRunAt).toLocaleString()} — {settings.lastSchedulerRunStatus ?? "—"}
+              Last: {new Date(settings.lastSchedulerRunAt).toLocaleString("en-US")} — {settings.lastSchedulerRunStatus ?? "—"}
             </span>
           )}
         </div>

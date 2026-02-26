@@ -41,7 +41,7 @@ function formatDate(iso: string | null): string {
   try {
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return "—";
-    return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
   } catch {
     return "—";
   }

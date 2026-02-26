@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { jsonError, requireAuth } from "@/lib/api-utils";
 import { getRecentKnowledgeArtifacts } from "@/lib/knowledge/ingest";
 import { withRouteTiming } from "@/lib/api-utils";
 
@@ -7,8 +7,8 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   return withRouteTiming("GET /api/knowledge", async () => {
-    const session = await auth();
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const session = await requireAuth();
+    if (!session) return jsonError("Unauthorized", 401);
 
     const url = new URL(req.url);
     const limitParam = url.searchParams.get("limit");

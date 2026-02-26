@@ -357,7 +357,7 @@ function formatWeekRange(weekStart: string): string {
     if (Number.isNaN(start.getTime())) return "—";
     const end = new Date(start);
     end.setDate(end.getDate() + 6);
-    return `${start.toLocaleDateString(undefined, { month: "short", day: "numeric" })} – ${end.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}`;
+    return `${start.toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${end.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
   } catch {
     return "—";
   }

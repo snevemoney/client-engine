@@ -50,7 +50,7 @@ export function formatNotificationMessage(input: FormatInput): string {
     case "job.stale_running":
       return `Job ${jobType || "unknown"} has been running too long. Consider recovery.`;
     case "reminder.overdue":
-      return `Reminder "${meta?.title ?? "—"}" was due ${due ? new Date(due).toLocaleDateString() : ""}.`;
+      return `Reminder "${meta?.title ?? "—"}" was due ${due ? new Date(due).toLocaleDateString("en-US") : ""}.`;
     case "reminder.critical_overdue":
       return `Critical reminder "${meta?.title ?? "—"}" is overdue. Action required.`;
     case "review.weekly_missing":

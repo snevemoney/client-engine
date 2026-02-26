@@ -155,7 +155,7 @@ export default function NotificationsQAPage() {
               <span className="flex-1 font-medium">{item.label}</span>
               {item.lastRunAt && (
                 <span className="text-xs text-neutral-500">
-                  {new Date(item.lastRunAt).toLocaleString()}
+                  {new Date(item.lastRunAt).toLocaleString("en-US")}
                 </span>
               )}
               <div className="flex gap-2">

@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
-import { auth } from "@/lib/auth";
+import { jsonError, requireAuth } from "@/lib/api-utils";
 import { buildChecklistContent, CHECKLIST_TITLE } from "@/lib/proof-engine/checklist";
 import { getOrCreateProofChecklistSystemLead } from "@/lib/proof-engine/system-lead";
 import { db } from "@/lib/db";
 
 export async function POST(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const session = await requireAuth();
+  if (!session) return jsonError("Unauthorized", 401);
 
   const body = await req.json().catch(() => ({}));
   const keywords = Array.isArray(body.keywords) ? (body.keywords as string[]) : undefined;

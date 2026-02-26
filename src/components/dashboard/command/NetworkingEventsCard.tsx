@@ -95,7 +95,7 @@ export function NetworkingEventsCard() {
               <div>
                 <span className="font-medium text-neutral-200">{e.name}</span>
                 <span className="text-neutral-500 ml-2">
-                  {new Date(e.eventDate).toLocaleDateString()}
+                  {new Date(e.eventDate).toLocaleDateString("en-US")}
                   {e.audienceType && ` · ${e.audienceType}`}
                 </span>
               </div>

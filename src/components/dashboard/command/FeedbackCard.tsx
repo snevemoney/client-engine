@@ -66,7 +66,7 @@ export function FeedbackCard({ initialNotes }: { initialNotes: Note[] }) {
               {n.content.slice(0, 120)}
               {n.content.length > 120 ? "…" : ""}
               <span className="text-neutral-500 ml-1">
-                {new Date(n.createdAt).toLocaleDateString()}
+                {new Date(n.createdAt).toLocaleDateString("en-US")}
               </span>
             </li>
           ))}

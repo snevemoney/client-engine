@@ -47,7 +47,7 @@ export function FailuresInterventionsCard({ data }: { data: FailuresAndIntervent
                   </Link>
                   <span className="text-neutral-500 text-xs ml-1">
                     {e.lastErrorCode ?? "error"}
-                    {e.lastErrorAt ? ` · ${new Date(e.lastErrorAt).toLocaleString()}` : ""}
+                    {e.lastErrorAt ? ` · ${new Date(e.lastErrorAt).toLocaleString("en-US")}` : ""}
                   </span>
                 </li>
               ))}

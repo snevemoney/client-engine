@@ -114,7 +114,7 @@ export function ReusableAssetLogCard({ leadId }: { leadId: string }) {
                 </>
               )}
               {log.notes && <span className="text-neutral-500 w-full">· {log.notes}</span>}
-              <span className="text-xs text-neutral-500 shrink-0">{new Date(log.createdAt).toLocaleDateString()}</span>
+              <span className="text-xs text-neutral-500 shrink-0">{new Date(log.createdAt).toLocaleDateString("en-US")}</span>
             </li>
           ))}
         </ul>

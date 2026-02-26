@@ -27,7 +27,7 @@ export function ScoreEventsList({ events }: { events: Event[] }) {
             {e.fromBand} → {e.toBand} ({e.fromScore} → {e.toScore},{" "}
             Δ{e.delta >= 0 ? "+" : ""}{e.delta})
             <span className="text-neutral-500 ml-2">
-              {new Date(e.createdAt).toLocaleString()}
+              {new Date(e.createdAt).toLocaleString("en-US")}
             </span>
           </div>
         ))}

@@ -41,7 +41,7 @@ export function MetaAdsDataStatusStrip({
       </span>
       {lastSyncedAt && (
         <span className="text-neutral-500">
-          Synced: {new Date(lastSyncedAt).toLocaleString()}
+          Synced: {new Date(lastSyncedAt).toLocaleString("en-US")}
         </span>
       )}
     </div>

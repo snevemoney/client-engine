@@ -56,7 +56,7 @@ export function ProspectingSourcesCard({ data }: { data: ProspectingSourceMetric
                     {r.conversionPct != null ? `${r.conversionPct}%` : "—"}
                   </td>
                   <td className="py-1.5 pr-2 text-right tabular-nums text-neutral-300">
-                    {r.cashCollected > 0 ? `$${r.cashCollected.toLocaleString()}` : "—"}
+                    {r.cashCollected > 0 ? `$${r.cashCollected.toLocaleString("en-US")}` : "—"}
                   </td>
                 </tr>
               ))}

@@ -21,7 +21,7 @@ export function TodaysAIActivityCard({
       <h2 className="text-sm font-medium text-neutral-300 mb-2">Today&apos;s AI Activity</h2>
       {lastRunAt && (
         <p className="text-xs text-neutral-500 mb-2">
-          Last run: {new Date(lastRunAt).toLocaleString()}
+          Last run: {new Date(lastRunAt).toLocaleString("en-US")}
           <span className="text-neutral-600 ml-1">· auto-refreshes after workday run</span>
         </p>
       )}

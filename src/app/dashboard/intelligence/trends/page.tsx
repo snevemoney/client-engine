@@ -92,7 +92,7 @@ export default function IntelligenceTrendsPage() {
                   <td className="p-3">{p.weekLabel}</td>
                   <td className="p-3 text-right">
                     {METRIC_OPTIONS.find((o) => o.key === metricKey)?.key.startsWith("won") || metricKey.includes("value")
-                      ? `$${p.value.toLocaleString()}`
+                      ? `$${p.value.toLocaleString("en-US")}`
                       : p.value}
                   </td>
                   <td className="p-3 text-right text-neutral-500">{p.count ?? "—"}</td>

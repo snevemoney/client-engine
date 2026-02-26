@@ -181,10 +181,10 @@ export default function ProposalDetailPage({ params }: { params: Promise<{ id: s
             <h3 className="text-neutral-500 font-medium mb-1">Price</h3>
             <p>
               {proposal.priceMin != null && proposal.priceMax != null && proposal.priceMin !== proposal.priceMax
-                ? `${proposal.priceCurrency} ${proposal.priceMin.toLocaleString()} – ${proposal.priceMax.toLocaleString()}`
+                ? `${proposal.priceCurrency} ${proposal.priceMin.toLocaleString("en-US")} – ${proposal.priceMax.toLocaleString("en-US")}`
                 : proposal.priceMin != null
-                  ? `${proposal.priceCurrency} ${proposal.priceMin.toLocaleString()}`
-                  : `${proposal.priceCurrency} ${proposal.priceMax?.toLocaleString()}`}
+                  ? `${proposal.priceCurrency} ${proposal.priceMin.toLocaleString("en-US")}`
+                  : `${proposal.priceCurrency} ${proposal.priceMax?.toLocaleString("en-US")}`}
             </p>
           </div>
         )}

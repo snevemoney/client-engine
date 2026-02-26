@@ -47,7 +47,7 @@ function confidenceColor(c: string): string {
 }
 
 function formatValue(v: number, unit: string): string {
-  if (unit === "value") return `$${v.toLocaleString()}`;
+  if (unit === "value") return `$${v.toLocaleString("en-US")}`;
   return String(v);
 }
 

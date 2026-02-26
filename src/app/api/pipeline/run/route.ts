@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { requireAuth } from "@/lib/api-utils";
 import { db } from "@/lib/db";
 import { runPipelineIfEligible } from "@/lib/pipeline/runPipeline";
 import { rateLimit } from "@/lib/rate-limit";
@@ -14,7 +14,7 @@ const WINDOW_MS = 60_000;
  */
 export async function POST(req: NextRequest) {
   return withRouteTiming("POST /api/pipeline/run", async () => {
-    const session = await auth();
+    const session = await requireAuth();
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const key = `${session.user.id}:pipeline-run`;

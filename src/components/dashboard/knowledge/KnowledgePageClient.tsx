@@ -91,7 +91,7 @@ function SuggestionRow({
               <option key={t.value || "_"} value={t.value}>{t.label}</option>
             ))}
           </select>
-          <span className="text-xs text-neutral-500">{new Date(createdAt).toLocaleDateString()}</span>
+          <span className="text-xs text-neutral-500">{new Date(createdAt).toLocaleDateString("en-US")}</span>
         </div>
       </div>
       {meta && (
@@ -347,7 +347,7 @@ export function KnowledgePageClient({
             {summaries.map((s) => (
               <li key={s.id} className="border-l-2 border-neutral-700 pl-3 py-1">
                 <p className="text-sm text-neutral-300">{s.content.slice(0, 250)}{s.content.length > 250 ? "…" : ""}</p>
-                <span className="text-xs text-neutral-500">{new Date(s.createdAt).toLocaleDateString()}</span>
+                <span className="text-xs text-neutral-500">{new Date(s.createdAt).toLocaleDateString("en-US")}</span>
               </li>
             ))}
           </ul>
@@ -363,7 +363,7 @@ export function KnowledgePageClient({
             {runs.map((r) => (
               <li key={r.id} className="flex justify-between items-center">
                 <span className="truncate">{r.content.split("\n")[2] ?? r.id}</span>
-                <span className="text-xs shrink-0">{new Date(r.createdAt).toLocaleString()}</span>
+                <span className="text-xs shrink-0">{new Date(r.createdAt).toLocaleString("en-US")}</span>
               </li>
             ))}
           </ul>

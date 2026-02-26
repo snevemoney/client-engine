@@ -228,7 +228,7 @@ export function LearningPageClient({
                 <BookMarked className="w-3 h-3" /> {promoting ? "…" : "Promote to playbook"}
               </button>
             )}
-            <span className="text-xs text-neutral-500">{new Date(p.createdAt).toLocaleDateString()}</span>
+            <span className="text-xs text-neutral-500">{new Date(p.createdAt).toLocaleDateString("en-US")}</span>
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -442,7 +442,7 @@ export function LearningPageClient({
             {summaries.map((s) => (
               <li key={s.id} className="border-l-2 border-neutral-700 pl-3 py-1">
                 <p className="text-sm text-neutral-300">{s.content.slice(0, 300)}{s.content.length > 300 ? "…" : ""}</p>
-                <span className="text-xs text-neutral-500">{new Date(s.createdAt).toLocaleDateString()}</span>
+                <span className="text-xs text-neutral-500">{new Date(s.createdAt).toLocaleDateString("en-US")}</span>
               </li>
             ))}
           </ul>
@@ -458,7 +458,7 @@ export function LearningPageClient({
             {runs.map((r) => (
               <li key={r.id} className="flex justify-between items-center text-neutral-400">
                 <span className="truncate">{r.content.split("\n")[2] ?? r.id}</span>
-                <span className="text-xs shrink-0">{new Date(r.createdAt).toLocaleString()}</span>
+                <span className="text-xs shrink-0">{new Date(r.createdAt).toLocaleString("en-US")}</span>
               </li>
             ))}
           </ul>
