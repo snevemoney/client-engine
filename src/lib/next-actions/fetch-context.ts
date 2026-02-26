@@ -1,0 +1,119 @@
+/**
+ * Phase 4.0: Fetch context for NBA rule evaluation.
+ */
+
+import { db } from "@/lib/db";
+import { getStartOfDay } from "@/lib/followup/dates";
+
+const HOURS_24 = 24;
+
+export async function fetchNextActionContext(opts?: { now?: Date }): Promise<{
+  now: Date;
+  commandCenterBand: string | null;
+  failedDeliveryCount: number;
+  overdueRemindersCount: number;
+  sentNoFollowupDateCount: number;
+  retentionOverdueCount: number;
+  handoffNoClientConfirmCount: number;
+  wonNoDeliveryCount: number;
+  referralGapCount: number;
+  stageStallCount: number;
+}> {
+  const now = opts?.now ?? new Date();
+  const since24h = new Date(now.getTime() - HOURS_24 * 60 * 60 * 1000);
+  const startToday = getStartOfDay(now);
+  const msPerDay = 86400000;
+  const threeDaysAgo = new Date(now.getTime() - 3 * msPerDay);
+  const sevenDaysAgo = new Date(now.getTime() - 7 * msPerDay);
+  const tenDaysAgo = new Date(now.getTime() - 10 * msPerDay);
+
+  const [
+    latestScore,
+    failedDeliveries,
+    overdueReminders,
+    sentNoFollowup,
+    retentionOverdue,
+    handoffNoConfirm,
+    wonNoDelivery,
+    referralGap,
+    stageStall,
+  ] = await Promise.all([
+    db.scoreSnapshot.findFirst({
+      where: { entityType: "command_center", entityId: "command_center" },
+      orderBy: { computedAt: "desc" },
+      select: { band: true },
+    }),
+    db.notificationDelivery.count({
+      where: {
+        status: "failed",
+        createdAt: { gte: since24h },
+      },
+    }),
+    db.opsReminder.count({
+      where: {
+        status: "open",
+        priority: { in: ["high", "critical"] },
+        dueAt: { lt: startToday, not: null },
+      },
+    }),
+    db.proposal.count({
+      where: {
+        status: { in: ["sent", "viewed"] },
+        nextFollowUpAt: null,
+        acceptedAt: null,
+        rejectedAt: null,
+      },
+    }),
+    db.deliveryProject.count({
+      where: {
+        status: { in: ["completed", "archived"] },
+        retentionNextFollowUpAt: { lt: startToday, not: null },
+      },
+    }),
+    db.deliveryProject.count({
+      where: {
+        status: { in: ["completed", "archived"] },
+        handoffCompletedAt: { not: null },
+        clientConfirmedAt: null,
+      },
+    }),
+    db.lead.count({
+      where: {
+        dealOutcome: "won",
+        updatedAt: { lt: threeDaysAgo },
+        project: null,
+      },
+    }),
+    db.lead.count({
+      where: {
+        dealOutcome: "won",
+        updatedAt: { lt: sevenDaysAgo },
+        OR: [
+          { referralAskStatus: null },
+          { referralAskStatus: "none" },
+        ],
+      },
+    }),
+    db.lead.count({
+      where: {
+        dealOutcome: null,
+        status: { notIn: ["REJECTED"] },
+        salesStage: { not: null },
+        lastContactAt: { lt: tenDaysAgo, not: null },
+      },
+    }),
+  ]);
+
+  return {
+    now,
+    commandCenterBand: latestScore?.band ?? null,
+    failedDeliveryCount: failedDeliveries ?? 0,
+    overdueRemindersCount: overdueReminders ?? 0,
+    sentNoFollowupDateCount: sentNoFollowup ?? 0,
+    retentionOverdueCount: retentionOverdue ?? 0,
+    handoffNoClientConfirmCount: handoffNoConfirm ?? 0,
+    wonNoDeliveryCount: wonNoDelivery ?? 0,
+    referralGapCount: referralGap ?? 0,
+    stageStallCount: stageStall ?? 0,
+  };
+}

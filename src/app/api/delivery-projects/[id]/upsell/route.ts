@@ -3,10 +3,9 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { DeliveryActivityType, RetentionStatus } from "@prisma/client";
-import { jsonError, withRouteTiming } from "@/lib/api-utils";
+import { jsonError, requireDeliveryProject, withRouteTiming } from "@/lib/api-utils";
 
 const PostSchema = z.object({
   upsellOpportunity: z.string().min(1, "upsellOpportunity required").max(1000),
@@ -19,12 +18,10 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   return withRouteTiming("POST /api/delivery-projects/[id]/upsell", async () => {
-    const session = await auth();
-    if (!session?.user) return jsonError("Unauthorized", 401);
-
     const { id } = await params;
-    const project = await db.deliveryProject.findUnique({ where: { id } });
-    if (!project) return jsonError("Project not found", 404);
+    const result = await requireDeliveryProject(id);
+    if (!result.ok) return result.response;
+    const { project } = result;
 
     const raw = await req.json().catch(() => null);
     const parsed = PostSchema.safeParse(raw);

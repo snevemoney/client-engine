@@ -3,10 +3,9 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { DeliveryActivityType } from "@prisma/client";
-import { jsonError, withRouteTiming } from "@/lib/api-utils";
+import { jsonError, requireDeliveryProject, withRouteTiming } from "@/lib/api-utils";
 import { computeHandoffReadiness } from "@/lib/delivery/handoff-readiness";
 
 const PostSchema = z.object({
@@ -20,15 +19,10 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   return withRouteTiming("POST /api/delivery-projects/[id]/handoff/complete", async () => {
-    const session = await auth();
-    if (!session?.user) return jsonError("Unauthorized", 401);
-
     const { id } = await params;
-    const project = await db.deliveryProject.findUnique({
-      where: { id },
-      include: { checklistItems: true },
-    });
-    if (!project) return jsonError("Project not found", 404);
+    const result = await requireDeliveryProject(id, { include: { checklistItems: true } });
+    if (!result.ok) return result.response;
+    const { project } = result;
 
     const raw = await req.json().catch(() => ({}));
     const parsed = PostSchema.safeParse(raw);

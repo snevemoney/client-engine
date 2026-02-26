@@ -3,13 +3,12 @@
  * Idempotent: returns existing if one already linked.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import {
   ProofCandidateSourceType,
   ProofCandidateTriggerType,
 } from "@prisma/client";
-import { jsonError, withRouteTiming } from "@/lib/api-utils";
+import { jsonError, requireDeliveryProject, withRouteTiming } from "@/lib/api-utils";
 
 function pickTrigger(project: { githubUrl: string | null; loomUrl: string | null }): ProofCandidateTriggerType {
   if (project.githubUrl?.trim()) return "github";
@@ -22,15 +21,10 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   return withRouteTiming("POST /api/delivery-projects/[id]/create-proof-candidate", async () => {
-    const session = await auth();
-    if (!session?.user) return jsonError("Unauthorized", 401);
-
     const { id } = await params;
-    const project = await db.deliveryProject.findUnique({
-      where: { id },
-      include: { intakeLead: true },
-    });
-    if (!project) return jsonError("Project not found", 404);
+    const result = await requireDeliveryProject(id, { include: { intakeLead: true } });
+    if (!result.ok) return result.response;
+    const { project } = result;
 
     if (project.proofCandidateId) {
       const existing = await db.proofCandidate.findUnique({

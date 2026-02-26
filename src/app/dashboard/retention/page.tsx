@@ -81,8 +81,13 @@ export default function RetentionPage() {
         fetch(`/api/delivery-projects/retention-queue?${params}`, { credentials: "include", signal: controller.signal, cache: "no-store" }),
         fetch("/api/delivery-projects/retention-summary", { credentials: "include", signal: controller.signal, cache: "no-store" }),
       ]);
+      if (controller.signal.aborted || runId !== runIdRef.current) return;
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => null);
+        throw new Error(errJson?.error ?? `Retention queue failed (${res.status})`);
+      }
       const json = await res.json().catch(() => null);
-      const sumJson = await sumRes.json().catch(() => null);
+      const sumJson = sumRes.ok ? await sumRes.json().catch(() => null) : null;
       if (controller.signal.aborted || runId !== runIdRef.current) return;
       setItems(Array.isArray(json?.items) ? json.items : (Array.isArray(json) ? json : []));
       setSummary(sumJson && typeof sumJson === "object" ? sumJson : null);

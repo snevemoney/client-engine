@@ -1,5 +1,7 @@
 import { Suspense } from "react";
 import { CommandHeader } from "@/components/dashboard/command/CommandHeader";
+import { RiskNBACard } from "@/components/dashboard/command/RiskNBACard";
+import { FlywheelSimCard } from "@/components/dashboard/command/FlywheelSimCard";
 import CommandSection1 from "./CommandSection1";
 import CommandSection2 from "./CommandSection2";
 
@@ -26,6 +28,8 @@ export default function CommandCenterPage() {
     <div className="space-y-6 min-w-0">
       <CommandHeader />
 
+      <RiskNBACard />
+      <FlywheelSimCard />
       <Suspense fallback={<div className="h-24 animate-pulse rounded-lg bg-muted" />}>
         <CommandSection1 />
       </Suspense>
