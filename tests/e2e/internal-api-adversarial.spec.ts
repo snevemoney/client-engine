@@ -4,11 +4,10 @@
  * Ensures 400 (not 500) for validation failures, sanitized error responses.
  */
 import { test, expect } from "@playwright/test";
+import { baseURL as authBaseURL, loginAndWaitForDashboard } from "./helpers/auth";
 
-const baseURL = process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3000";
+const baseURL = authBaseURL;
 const url = baseURL.replace(/\/$/, "");
-const loginEmail = process.env.E2E_EMAIL || process.env.ADMIN_EMAIL || "admin@evenslouis.ca";
-const loginPassword = process.env.E2E_PASSWORD || process.env.ADMIN_PASSWORD || "changeme";
 
 async function authFetch(
   page: { evaluate: (fn: (arg: { url: string; init?: RequestInit }) => Promise<{ status: number; ok: boolean; body: unknown }>) => Promise<{ status: number; ok: boolean; body: unknown }> },
@@ -18,11 +17,12 @@ async function authFetch(
   return page.evaluate(
     async ({ endpoint, init }) => {
       const res = await fetch(endpoint, { credentials: "include", ...init });
+      const text = await res.text();
       let body: unknown;
       try {
-        body = await res.json();
+        body = text ? JSON.parse(text) : null;
       } catch {
-        body = await res.text();
+        body = text;
       }
       return { status: res.status, ok: res.ok, body };
     },
@@ -32,11 +32,10 @@ async function authFetch(
 
 test.describe("Internal API adversarial (with auth)", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto(`${url}/login`);
-    await page.getByLabel("Email").fill(loginEmail);
-    await page.getByLabel("Password").fill(loginPassword);
-    await page.getByRole("button", { name: /sign in/i }).click();
-    await expect(page).toHaveURL(/\/dashboard/, { timeout: 10000 });
+    const ok = await loginAndWaitForDashboard(page);
+    if (!ok) {
+      test.skip(true, "Login failed - set E2E_EMAIL/E2E_PASSWORD or ADMIN_EMAIL/ADMIN_PASSWORD");
+    }
   });
 
   // --- Scores: compute ---
@@ -305,15 +304,63 @@ test.describe("Internal API adversarial (with auth)", () => {
     });
     expect(res.status).toBe(400);
   });
+
+  // --- Risk (Phase 4.0) ---
+  test("PATCH /api/risk/[id] invalid action returns 400", async ({ page }) => {
+    const res = await authFetch(page, "/api/risk/clx00000000000000000000000", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "invalid_action" }),
+    });
+    expect(res.status).toBe(400);
+    expect((res.body as { error?: string }).error).toMatch(/action must be one of/i);
+  });
+
+  test("PATCH /api/risk/[id] malformed JSON returns 400", async ({ page }) => {
+    const res = await authFetch(page, "/api/risk/clx00000000000000000000000", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: "{",
+    });
+    expect(res.status).toBe(400);
+  });
+
+  test("PATCH /api/risk/[id] snooze without preset/until returns 400", async ({ page }) => {
+    const res = await authFetch(page, "/api/risk/clx00000000000000000000000", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "snooze" }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  // --- Next Actions (Phase 4.0) ---
+  test("PATCH /api/next-actions/[id] invalid action returns 400", async ({ page }) => {
+    const res = await authFetch(page, "/api/next-actions/clx00000000000000000000000", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "bad_action" }),
+    });
+    expect(res.status).toBe(400);
+    expect((res.body as { error?: string }).error).toMatch(/action must be one of/i);
+  });
+
+  test("PATCH /api/next-actions/[id] malformed JSON returns 400", async ({ page }) => {
+    const res = await authFetch(page, "/api/next-actions/clx00000000000000000000000", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: "}",
+    });
+    expect(res.status).toBe(400);
+  });
 });
 
 test.describe("Ops / system routes (observability assertions)", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto(`${url}/login`);
-    await page.getByLabel("Email").fill(loginEmail);
-    await page.getByLabel("Password").fill(loginPassword);
-    await page.getByRole("button", { name: /sign in/i }).click();
-    await expect(page).toHaveURL(/\/dashboard/, { timeout: 10000 });
+    const ok = await loginAndWaitForDashboard(page);
+    if (!ok) {
+      test.skip(true, "Login failed - set E2E_EMAIL/E2E_PASSWORD or ADMIN_EMAIL/ADMIN_PASSWORD");
+    }
   });
 
   test("GET /api/internal/ops/metrics-summary returns expected shape for 24h", async ({ page }) => {

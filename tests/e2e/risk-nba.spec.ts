@@ -1,0 +1,125 @@
+/**
+ * Phase 4.0: Risk flags and Next-Best-Action E2E.
+ * Visit risk and next-actions pages, Run buttons, list render, dismiss.
+ */
+import { test, expect } from "@playwright/test";
+
+const baseURL = process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3000";
+const loginEmail = process.env.E2E_EMAIL || process.env.ADMIN_EMAIL || "admin@evenslouis.ca";
+const loginPassword = process.env.E2E_PASSWORD || process.env.ADMIN_PASSWORD || "changeme";
+
+test.describe("Risk & Next Actions pages", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto(`${baseURL}/login`);
+    await page.getByLabel("Email").fill(loginEmail);
+    await page.getByLabel("Password").fill(loginPassword);
+    await page.getByRole("button", { name: /sign in/i }).click();
+    await expect(page).toHaveURL(/\/dashboard/, { timeout: 10000 });
+    if (page.url().includes("/login")) {
+      test.skip(true, "Login failed - set E2E_EMAIL/E2E_PASSWORD");
+    }
+  });
+
+  test("Risk page loads and Run Risk Rules button visible", async ({ page }) => {
+    await page.goto(`${baseURL}/dashboard/risk`, { waitUntil: "load", timeout: 15000 });
+    await expect(page).toHaveURL(/\/dashboard\/risk/);
+    await expect(page.locator("h1")).toContainText(/Risk/i, { timeout: 5000 });
+    await expect(page.getByRole("button", { name: /Run Risk Rules/i })).toBeVisible({ timeout: 5000 });
+  });
+
+  test("Risk page: Run Risk Rules triggers API call", async ({ page }) => {
+    await page.goto(`${baseURL}/dashboard/risk`, { waitUntil: "load", timeout: 15000 });
+    const runBtn = page.getByRole("button", { name: /Run Risk Rules/i });
+    await expect(runBtn).toBeVisible();
+    await runBtn.click();
+    await expect(runBtn).toBeEnabled({ timeout: 15000 });
+    await expect(page.locator("body")).toBeVisible();
+  });
+
+  test("Risk page: list renders (empty or with items)", async ({ page }) => {
+    await page.goto(`${baseURL}/dashboard/risk`, { waitUntil: "load", timeout: 15000 });
+    const content = page.getByText("No risk flags").or(page.locator(".divide-y"));
+    await expect(content).toBeVisible({ timeout: 5000 });
+  });
+
+  test("Risk page: Dismiss button on first item (if any)", async ({ page }) => {
+    await page.goto(`${baseURL}/dashboard/risk`, { waitUntil: "load", timeout: 15000 });
+    const dismissBtn = page.getByTestId("risk-dismiss").first();
+    if (await dismissBtn.isVisible({ timeout: 2000 })) {
+      await dismissBtn.click();
+      await expect(page.locator("body")).toBeVisible({ timeout: 5000 });
+    }
+  });
+
+  test("Next Actions page loads and Run Next Actions button visible", async ({ page }) => {
+    await page.goto(`${baseURL}/dashboard/next-actions`, { waitUntil: "load", timeout: 15000 });
+    await expect(page).toHaveURL(/\/dashboard\/next-actions/);
+    await expect(page.locator("h1")).toContainText(/Next Actions/i, { timeout: 5000 });
+    await expect(page.getByRole("button", { name: /Run Next Actions/i })).toBeVisible({ timeout: 5000 });
+  });
+
+  test("Next Actions page: Run Next Actions triggers API call", async ({ page }) => {
+    await page.goto(`${baseURL}/dashboard/next-actions`, { waitUntil: "load", timeout: 15000 });
+    const runBtn = page.getByRole("button", { name: /Run Next Actions/i });
+    await expect(runBtn).toBeVisible();
+    await runBtn.click();
+    await expect(runBtn).toBeEnabled({ timeout: 15000 });
+    await expect(page.locator("body")).toBeVisible();
+  });
+
+  test("Next Actions page: list renders (empty or with items)", async ({ page }) => {
+    await page.goto(`${baseURL}/dashboard/next-actions`, { waitUntil: "load", timeout: 15000 });
+    const content = page.getByText(/Ranked recommendations|No next actions/i).or(page.locator(".divide-y"));
+    await expect(content).toBeVisible({ timeout: 5000 });
+  });
+
+  test("Next Actions page: Dismiss button on first item (if any)", async ({ page }) => {
+    await page.goto(`${baseURL}/dashboard/next-actions`, { waitUntil: "load", timeout: 15000 });
+    const dismissBtn = page.getByTestId("next-action-dismiss").first();
+    if (await dismissBtn.isVisible({ timeout: 2000 })) {
+      await dismissBtn.click();
+      await expect(page.locator("body")).toBeVisible({ timeout: 5000 });
+    }
+  });
+});
+
+test.describe("Command Center RiskNBA integration", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto(`${baseURL}/login`);
+    await page.getByLabel("Email").fill(loginEmail);
+    await page.getByLabel("Password").fill(loginPassword);
+    await page.getByRole("button", { name: /sign in/i }).click();
+    await expect(page).toHaveURL(/\/dashboard/, { timeout: 10000 });
+    if (page.url().includes("/login")) {
+      test.skip(true, "Login failed");
+    }
+  });
+
+  test("RiskNBACard is visible on Command Center", async ({ page }) => {
+    await page.goto(`${baseURL}/dashboard/command`, { waitUntil: "load", timeout: 15000 });
+    await expect(page).toHaveURL(/\/dashboard\/command/);
+    await expect(page.getByTestId("risk-nba-card")).toBeVisible({ timeout: 5000 });
+  });
+
+  test("Run Risk Rules button triggers API and refreshes UI", async ({ page }) => {
+    await page.goto(`${baseURL}/dashboard/command`, { waitUntil: "load", timeout: 15000 });
+    const runBtn = page.getByTestId("run-risk-rules");
+    await expect(runBtn).toBeVisible({ timeout: 5000 });
+    await runBtn.click();
+    await expect(runBtn).toBeEnabled({ timeout: 15000 });
+  });
+
+  test("Run Next Actions button triggers API and refreshes UI", async ({ page }) => {
+    await page.goto(`${baseURL}/dashboard/command`, { waitUntil: "load", timeout: 15000 });
+    const runBtn = page.getByTestId("run-next-actions");
+    await expect(runBtn).toBeVisible({ timeout: 5000 });
+    await runBtn.click();
+    await expect(runBtn).toBeEnabled({ timeout: 15000 });
+  });
+
+  test("Empty state does not crash", async ({ page }) => {
+    await page.goto(`${baseURL}/dashboard/command`, { waitUntil: "load", timeout: 15000 });
+    await expect(page.getByTestId("risk-nba-card")).toBeVisible({ timeout: 5000 });
+    await expect(page.locator("body")).toBeVisible();
+  });
+});

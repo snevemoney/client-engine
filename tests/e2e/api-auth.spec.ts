@@ -1,95 +1,97 @@
 import { test, expect } from "@playwright/test";
+import { baseURL } from "./helpers/auth";
 
 /**
  * API auth audit: protected endpoints must return 401 when called without a session.
  * Uses a real lead ID for routes that require one (must exist in DB).
+ * Uses relative URLs so Playwright resolves against config baseURL.
  */
-const baseURL = process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3000";
+const url = baseURL.replace(/\/$/, "");
 const leadId = process.env.E2E_LEAD_ID || "cmlvq7e5z0000v5nwmoijvi5z";
 
 test.describe("API auth (401 without session)", () => {
   test("GET /api/health is public and returns 200", async ({ request }) => {
-    const res = await request.get(`${baseURL.replace(/\/$/, "")}/api/health`);
+    const res = await request.get(`${url}/api/health`);
     expect(res.status()).toBe(200);
     const body = await res.json();
     expect(body.ok).toBe(true);
   });
 
   test("GET /api/leads without auth returns 401", async ({ request }) => {
-    const res = await request.get(`${baseURL.replace(/\/$/, "")}/api/leads`);
+    const res = await request.get(`${url}/api/leads`);
     expect(res.status()).toBe(401);
   });
 
   test("POST /api/leads without auth returns 401", async ({ request }) => {
-    const res = await request.post(`${baseURL.replace(/\/$/, "")}/api/leads`, {
+    const res = await request.post(`${url}/api/leads`, {
       data: { title: "Test", source: "e2e" },
     });
     expect(res.status()).toBe(401);
   });
 
   test("GET /api/leads/[id] without auth returns 401", async ({ request }) => {
-    const res = await request.get(`${baseURL.replace(/\/$/, "")}/api/leads/${leadId}`);
+    const res = await request.get(`${url}/api/leads/${leadId}`);
     expect(res.status()).toBe(401);
   });
 
   test("GET /api/artifacts/[id] without auth returns 401", async ({ request }) => {
-    const res = await request.get(`${baseURL.replace(/\/$/, "")}/api/artifacts/${leadId}`);
+    const res = await request.get(`${url}/api/artifacts/${leadId}`);
     expect(res.status()).toBe(401);
   });
 
   test("GET /api/proof without auth returns 401", async ({ request }) => {
-    const res = await request.get(`${baseURL.replace(/\/$/, "")}/api/proof`);
+    const res = await request.get(`${url}/api/proof`);
     expect(res.status()).toBe(401);
   });
 
   test("GET /api/checklist without auth returns 401", async ({ request }) => {
-    const res = await request.get(`${baseURL.replace(/\/$/, "")}/api/checklist`);
+    const res = await request.get(`${url}/api/checklist`);
     expect(res.status()).toBe(401);
   });
 
   test("GET /api/knowledge without auth returns 401", async ({ request }) => {
-    const res = await request.get(`${baseURL.replace(/\/$/, "")}/api/knowledge`);
+    const res = await request.get(`${url}/api/knowledge`);
     expect(res.status()).toBe(401);
   });
 
   test("GET /api/learning without auth returns 401", async ({ request }) => {
-    const res = await request.get(`${baseURL.replace(/\/$/, "")}/api/learning`);
+    const res = await request.get(`${url}/api/learning`);
     expect(res.status()).toBe(401);
   });
 
   test("GET /api/brief without auth returns 401", async ({ request }) => {
-    const res = await request.get(`${baseURL.replace(/\/$/, "")}/api/brief`);
+    const res = await request.get(`${url}/api/brief`);
     expect(res.status()).toBe(401);
   });
 
   test("GET /api/ops/command without auth returns 401", async ({ request }) => {
-    const res = await request.get(`${baseURL.replace(/\/$/, "")}/api/ops/command`);
+    const res = await request.get(`${url}/api/ops/command`);
     expect(res.status()).toBe(401);
   });
 
   test("POST /api/pipeline/run without auth returns 401", async ({ request }) => {
-    const res = await request.post(`${baseURL.replace(/\/$/, "")}/api/pipeline/run`, {
+    const res = await request.post(`${url}/api/pipeline/run`, {
       data: { leadId, reason: "e2e" },
     });
     expect(res.status()).toBe(401);
   });
 
   test("POST /api/leads/[id]/copilot without auth returns 401", async ({ request }) => {
-    const res = await request.post(`${baseURL.replace(/\/$/, "")}/api/leads/${leadId}/copilot`, {
+    const res = await request.post(`${url}/api/leads/${leadId}/copilot`, {
       data: { question: "Test?" },
     });
     expect(res.status()).toBe(401);
   });
 
   test("POST /api/proof/generate without auth returns 401", async ({ request }) => {
-    const res = await request.post(`${baseURL.replace(/\/$/, "")}/api/proof/generate`, {
+    const res = await request.post(`${url}/api/proof/generate`, {
       data: { leadId: "any" },
     });
     expect(res.status()).toBe(401);
   });
 
   test("POST /api/checklist/generate without auth returns 401", async ({ request }) => {
-    const res = await request.post(`${baseURL.replace(/\/$/, "")}/api/checklist/generate`, {
+    const res = await request.post(`${url}/api/checklist/generate`, {
       data: {},
     });
     expect(res.status()).toBe(401);
@@ -97,20 +99,20 @@ test.describe("API auth (401 without session)", () => {
 
   test("GET /api/internal/scores/latest without auth returns 401", async ({ request }) => {
     const res = await request.get(
-      `${baseURL.replace(/\/$/, "")}/api/internal/scores/latest?entityType=command_center&entityId=command_center`
+      `${url}/api/internal/scores/latest?entityType=command_center&entityId=command_center`
     );
     expect(res.status()).toBe(401);
   });
 
   test("GET /api/internal/scores/history without auth returns 401", async ({ request }) => {
     const res = await request.get(
-      `${baseURL.replace(/\/$/, "")}/api/internal/scores/history?entityType=command_center&entityId=command_center&range=7d`
+      `${url}/api/internal/scores/history?entityType=command_center&entityId=command_center&range=7d`
     );
     expect(res.status()).toBe(401);
   });
 
   test("POST /api/internal/scores/compute without auth returns 401", async ({ request }) => {
-    const res = await request.post(`${baseURL.replace(/\/$/, "")}/api/internal/scores/compute`, {
+    const res = await request.post(`${url}/api/internal/scores/compute`, {
       data: { entityType: "command_center", entityId: "command_center" },
     });
     expect(res.status()).toBe(401);
@@ -118,7 +120,7 @@ test.describe("API auth (401 without session)", () => {
 
   test("GET /api/internal/scores/summary without auth returns 401", async ({ request }) => {
     const res = await request.get(
-      `${baseURL.replace(/\/$/, "")}/api/internal/scores/summary?entityType=command_center&entityId=command_center`
+      `${url}/api/internal/scores/summary?entityType=command_center&entityId=command_center`
     );
     expect(res.status()).toBe(401);
   });
@@ -126,14 +128,14 @@ test.describe("API auth (401 without session)", () => {
   test("GET /api/internal/scores/alerts/preferences without auth returns 401", async ({
     request,
   }) => {
-    const res = await request.get(`${baseURL.replace(/\/$/, "")}/api/internal/scores/alerts/preferences`);
+    const res = await request.get(`${url}/api/internal/scores/alerts/preferences`);
     expect(res.status()).toBe(401);
   });
 
   test("PUT /api/internal/scores/alerts/preferences without auth returns 401", async ({
     request,
   }) => {
-    const res = await request.put(`${baseURL.replace(/\/$/, "")}/api/internal/scores/alerts/preferences`, {
+    const res = await request.put(`${url}/api/internal/scores/alerts/preferences`, {
       data: { enabled: false },
     });
     expect(res.status()).toBe(401);
@@ -141,13 +143,43 @@ test.describe("API auth (401 without session)", () => {
 
   test("GET /api/internal/ops/metrics-summary without auth returns 401", async ({ request }) => {
     const res = await request.get(
-      `${baseURL.replace(/\/$/, "")}/api/internal/ops/metrics-summary?period=24h`
+      `${url}/api/internal/ops/metrics-summary?period=24h`
     );
     expect(res.status()).toBe(401);
   });
 
   test("GET /api/internal/system/check without auth returns 401", async ({ request }) => {
-    const res = await request.get(`${baseURL.replace(/\/$/, "")}/api/internal/system/check`);
+    const res = await request.get(`${url}/api/internal/system/check`);
+    expect(res.status()).toBe(401);
+  });
+
+  test("GET /api/risk without auth returns 401", async ({ request }) => {
+    const res = await request.get(`${url}/api/risk`);
+    expect(res.status()).toBe(401);
+  });
+
+  test("POST /api/risk/run-rules without auth returns 401", async ({ request }) => {
+    const res = await request.post(`${url}/api/risk/run-rules`);
+    expect(res.status()).toBe(401);
+  });
+
+  test("GET /api/risk/summary without auth returns 401", async ({ request }) => {
+    const res = await request.get(`${url}/api/risk/summary`);
+    expect(res.status()).toBe(401);
+  });
+
+  test("GET /api/next-actions without auth returns 401", async ({ request }) => {
+    const res = await request.get(`${url}/api/next-actions`);
+    expect(res.status()).toBe(401);
+  });
+
+  test("POST /api/next-actions/run without auth returns 401", async ({ request }) => {
+    const res = await request.post(`${url}/api/next-actions/run`);
+    expect(res.status()).toBe(401);
+  });
+
+  test("GET /api/next-actions/summary without auth returns 401", async ({ request }) => {
+    const res = await request.get(`${url}/api/next-actions/summary`);
     expect(res.status()).toBe(401);
   });
 });
@@ -159,7 +191,6 @@ test.describe("API auth (401 without session)", () => {
  */
 test.describe("API Bearer auth (cron simulation)", () => {
   const cronSecret = process.env.RESEARCH_CRON_SECRET;
-  const url = baseURL.replace(/\/$/, "");
 
   test("POST /api/ops/workday-run without Bearer or session returns 401", async ({ request }) => {
     const res = await request.post(`${url}/api/ops/workday-run`);
@@ -219,8 +250,6 @@ test.describe("API Bearer auth (cron simulation)", () => {
  * With Credentials only, returns credentials. When OAuth is added, will include Google/GitHub etc.
  */
 test.describe("Auth providers (OAuth simulation)", () => {
-  const url = baseURL.replace(/\/$/, "");
-
   test("GET /api/auth/providers returns 200 and provider list", async ({ request }) => {
     const res = await request.get(`${url}/api/auth/providers`);
     expect(res.status()).toBe(200);

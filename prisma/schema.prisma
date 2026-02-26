@@ -1836,3 +1836,102 @@ model EscalationRule {
   @@index([isEnabled])
   @@index([sourceType, triggerType])
 }
+
+// ----- Phase 4.0: Risk Flags + Next Best Action -----
+
+enum RiskSeverity {
+  low
+  medium
+  high
+  critical
+}
+
+enum RiskStatus {
+  open
+  snoozed
+  resolved
+  dismissed
+}
+
+enum RiskSourceType {
+  intake_lead
+  proposal
+  delivery_project
+  proof_candidate
+  reminder
+  notification_event
+  job
+  score
+  system
+}
+
+model RiskFlag {
+  id            String       @id @default(cuid())
+  key           String // unique per kind+scope, used for dedupe
+  title         String
+  description   String?      @db.Text
+  severity      RiskSeverity
+  status        RiskStatus   @default(open)
+
+  sourceType    RiskSourceType
+  sourceId      String? // nullable for system-wide risks
+  actionUrl     String?      @db.Text // where to fix it
+  suggestedFix  String?      @db.Text // short recommended remediation
+
+  evidenceJson  Json? // structured evidence (counts, ids, dates)
+  createdByRule String
+  dedupeKey     String       @unique
+  lastSeenAt    DateTime
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  resolvedAt    DateTime?
+  snoozedUntil  DateTime?
+
+  @@index([severity, status, lastSeenAt(sort: Desc)])
+  @@index([sourceType, sourceId])
+}
+
+enum NextActionPriority {
+  low
+  medium
+  high
+  critical
+}
+
+enum NextActionStatus {
+  queued
+  done
+  dismissed
+}
+
+model NextBestAction {
+  id            String            @id @default(cuid())
+  title         String
+  reason        String?           @db.Text
+  priority      NextActionPriority
+  score         Int // 0-100, ranking score
+  status        NextActionStatus  @default(queued)
+
+  sourceType    RiskSourceType
+  sourceId      String?
+  actionUrl     String?           @db.Text
+  payloadJson   Json? // what to do (read-only in 4.0)
+  createdByRule String
+  dedupeKey     String            @unique
+
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  completedAt  DateTime?
+  dismissedAt  DateTime?
+
+  @@index([priority, status, createdAt(sort: Desc)])
+  @@index([sourceType, sourceId])
+}
+
+model NextActionRun {
+  id        String   @id @default(cuid())
+  runKey    String   @unique // e.g. day bucket, per-user run, etc.
+  mode      String // manual|auto
+  createdAt DateTime @default(now())
+  metaJson  Json?
+}

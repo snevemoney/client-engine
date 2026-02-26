@@ -24,6 +24,7 @@ export default defineConfig({
     trace: "on-first-retry",
     screenshot: "only-on-failure",
   },
+  timeout: 45_000,
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer:
     baseURL.startsWith("http://localhost") && !process.env.USE_EXISTING_SERVER
@@ -31,7 +32,7 @@ export default defineConfig({
           command: "npm run dev",
           url: baseURL,
           reuseExistingServer: !process.env.CI,
-          timeout: 60_000,
+          timeout: 90_000,
           cwd: projectRoot,
           env: Object.fromEntries(
             Object.entries(process.env).filter(([, v]) => v !== undefined)

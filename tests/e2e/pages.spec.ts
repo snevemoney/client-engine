@@ -39,6 +39,10 @@ test.describe("All pages", () => {
       { url: "/dashboard/knowledge", name: "Knowledge" },
       { url: "/dashboard/internal/qa/notifications", name: "Notifications QA" },
       { url: "/dashboard/internal/qa/scores", name: "Score QA" },
+      { url: "/dashboard/risk", name: "Risk" },
+      { url: "/dashboard/next-actions", name: "Next Actions" },
+      { url: "/dashboard/internal/qa/risk", name: "Risk QA" },
+      { url: "/dashboard/internal/qa/next-actions", name: "Next Actions QA" },
     ];
 
     for (const { url } of pages) {

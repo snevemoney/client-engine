@@ -3,19 +3,12 @@
  * Requires login.
  */
 import { test, expect } from "@playwright/test";
-
-const baseURL = process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3000";
-const loginEmail = process.env.E2E_EMAIL || process.env.ADMIN_EMAIL || "admin@evenslouis.ca";
-const loginPassword = process.env.E2E_PASSWORD || process.env.ADMIN_PASSWORD || "changeme";
+import { baseURL, loginAndWaitForDashboard } from "./helpers/auth";
 
 test.describe("Internal QA pages", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto(`${baseURL}/login`);
-    await page.getByLabel("Email").fill(loginEmail);
-    await page.getByLabel("Password").fill(loginPassword);
-    await page.getByRole("button", { name: /sign in/i }).click();
-    await expect(page).toHaveURL(/\/dashboard/, { timeout: 10000 });
-    if (page.url().includes("/login")) {
+    const ok = await loginAndWaitForDashboard(page);
+    if (!ok) {
       test.skip(true, "Login failed - set E2E_EMAIL/E2E_PASSWORD or ADMIN_EMAIL/ADMIN_PASSWORD");
     }
   });
@@ -52,5 +45,29 @@ test.describe("Internal QA pages", () => {
     await expect(page.getByRole("link", { name: /Notifications QA/i })).toBeVisible();
     await page.getByRole("link", { name: /Notifications QA/i }).click();
     await expect(page).toHaveURL(/\/dashboard\/internal\/qa\/notifications/);
+  });
+
+  test("Risk QA page loads and shows checklist", async ({ page }) => {
+    await page.goto(`${baseURL}/dashboard/internal/qa/risk`, { waitUntil: "load", timeout: 15000 });
+    if (page.url().includes("/login")) {
+      test.skip(true, "Redirected to login");
+      return;
+    }
+    await expect(page).toHaveURL(/\/dashboard\/internal\/qa\/risk/);
+    await expect(page.locator("h1")).toContainText(/Risk QA/i, { timeout: 5000 });
+    await expect(page.getByRole("heading", { name: "Checklist", exact: true })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole("heading", { name: "System readiness", exact: true })).toBeVisible({ timeout: 5000 });
+  });
+
+  test("Next Actions QA page loads and shows checklist", async ({ page }) => {
+    await page.goto(`${baseURL}/dashboard/internal/qa/next-actions`, { waitUntil: "load", timeout: 15000 });
+    if (page.url().includes("/login")) {
+      test.skip(true, "Redirected to login");
+      return;
+    }
+    await expect(page).toHaveURL(/\/dashboard\/internal\/qa\/next-actions/);
+    await expect(page.locator("h1")).toContainText(/Next Actions QA/i, { timeout: 5000 });
+    await expect(page.getByRole("heading", { name: "Checklist", exact: true })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole("heading", { name: "System readiness", exact: true })).toBeVisible({ timeout: 5000 });
   });
 });

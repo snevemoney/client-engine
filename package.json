@@ -24,6 +24,7 @@
     "db:seed-job-schedules": "npx tsx scripts/seed-job-schedules.ts",
     "db:seed-notification-channels": "npx tsx scripts/seed-notification-channels.ts",
     "db:seed-escalation-rules": "npx tsx scripts/seed-escalation-rules.ts",
+    "db:seed-risk-nba": "npx tsx scripts/seed-risk-nba.ts",
     "test": "vitest run --no-file-parallelism",
     "test:jobs": "vitest run --no-file-parallelism src/lib/jobs/",
     "test:e2e": "playwright test",
