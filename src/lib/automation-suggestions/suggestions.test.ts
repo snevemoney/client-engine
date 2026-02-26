@@ -19,6 +19,7 @@ describe("automation suggestions", () => {
     weeklyMetricSnapshot: null,
     operatorScoreSnapshot: null,
     forecastSnapshot: null,
+    flywheelLeads: [],
   };
 
   it("returns empty for empty input", () => {

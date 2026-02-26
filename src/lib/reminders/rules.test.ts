@@ -19,6 +19,7 @@ describe("reminders rules", () => {
     weeklyMetricSnapshot: null,
     operatorScoreSnapshot: null,
     forecastSnapshot: null,
+    flywheelLeads: [],
   };
 
   it("returns array for empty pipeline input", () => {

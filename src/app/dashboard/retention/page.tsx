@@ -137,7 +137,7 @@ export default function RetentionPage() {
   };
 
   return (
-    <div className="space-y-6 min-w-0">
+    <div className="space-y-6 min-w-0 max-w-full">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Retention</h1>
         <p className="text-sm text-neutral-400 mt-1">
@@ -145,41 +145,41 @@ export default function RetentionPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <Link href="/dashboard/retention?bucket=overdue">
-          <div className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-4 hover:bg-neutral-800/50 cursor-pointer">
-            <p className="text-xs text-neutral-500 uppercase">Overdue</p>
+          <div className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-3 sm:p-4 hover:bg-neutral-800/50 cursor-pointer">
+            <p className="text-xs text-neutral-500 uppercase truncate">Overdue</p>
             <p className="text-xl font-semibold text-red-400">{s.overdue}</p>
           </div>
         </Link>
         <Link href="/dashboard/retention?bucket=today">
-          <div className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-4 hover:bg-neutral-800/50 cursor-pointer">
-            <p className="text-xs text-neutral-500 uppercase">Due today</p>
+          <div className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-3 sm:p-4 hover:bg-neutral-800/50 cursor-pointer">
+            <p className="text-xs text-neutral-500 uppercase truncate">Due today</p>
             <p className="text-xl font-semibold text-amber-400">{s.dueToday}</p>
           </div>
         </Link>
         <Link href="/dashboard/retention?bucket=upcoming">
-          <div className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-4 hover:bg-neutral-800/50 cursor-pointer">
-            <p className="text-xs text-neutral-500 uppercase">Upcoming</p>
+          <div className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-3 sm:p-4 hover:bg-neutral-800/50 cursor-pointer">
+            <p className="text-xs text-neutral-500 uppercase truncate">Upcoming</p>
             <p className="text-xl font-semibold">{s.upcoming}</p>
           </div>
         </Link>
-        <div className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-4">
-          <p className="text-xs text-neutral-500 uppercase">Upsell open</p>
+        <div className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-3 sm:p-4">
+          <p className="text-xs text-neutral-500 uppercase truncate">Upsell open</p>
           <p className="text-xl font-semibold text-emerald-400">{s.upsellOpen}</p>
         </div>
-        <div className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-4">
-          <p className="text-xs text-neutral-500 uppercase">Retainer open</p>
+        <div className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-3 sm:p-4">
+          <p className="text-xs text-neutral-500 uppercase truncate">Retainer open</p>
           <p className="text-xl font-semibold text-emerald-400">{s.retainerOpen}</p>
         </div>
-        <div className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-4">
-          <p className="text-xs text-neutral-500 uppercase">Testimonial received</p>
+        <div className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-3 sm:p-4">
+          <p className="text-xs text-neutral-500 uppercase truncate">Testimonial</p>
           <p className="text-xl font-semibold text-emerald-400">{s.testimonialReceived}</p>
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-[200px] max-w-sm">
+      <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2 sm:gap-3">
+        <div className="relative flex-1 min-w-0 sm:min-w-[200px] sm:max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />
           <input
             type="text"
@@ -189,31 +189,33 @@ export default function RetentionPage() {
             className="w-full pl-9 pr-3 py-2 rounded-md bg-neutral-900 border border-neutral-800 text-sm"
           />
         </div>
-        <select
-          value={bucketFilter}
-          onChange={(e) => setBucketFilter(e.target.value)}
-          className="rounded-md bg-neutral-900 border border-neutral-800 px-3 py-2 text-sm"
-        >
-          <option value="all">All buckets</option>
-          <option value="overdue">Overdue</option>
-          <option value="today">Today</option>
-          <option value="upcoming">Upcoming</option>
-          <option value="none">No follow-up</option>
-        </select>
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="rounded-md bg-neutral-900 border border-neutral-800 px-3 py-2 text-sm"
-        >
-          <option value="all">All retention status</option>
-          <option value="none">None</option>
-          <option value="monitoring">Monitoring</option>
-          <option value="followup_due">Follow-up due</option>
-          <option value="upsell_open">Upsell open</option>
-          <option value="retainer_open">Retainer open</option>
-          <option value="closed_won">Closed won</option>
-          <option value="closed_lost">Closed lost</option>
-        </select>
+        <div className="flex gap-2">
+          <select
+            value={bucketFilter}
+            onChange={(e) => setBucketFilter(e.target.value)}
+            className="flex-1 sm:flex-none rounded-md bg-neutral-900 border border-neutral-800 px-3 py-2 text-sm"
+          >
+            <option value="all">All buckets</option>
+            <option value="overdue">Overdue</option>
+            <option value="today">Today</option>
+            <option value="upcoming">Upcoming</option>
+            <option value="none">No follow-up</option>
+          </select>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="flex-1 sm:flex-none rounded-md bg-neutral-900 border border-neutral-800 px-3 py-2 text-sm"
+          >
+            <option value="all">All status</option>
+            <option value="none">None</option>
+            <option value="monitoring">Monitoring</option>
+            <option value="followup_due">Follow-up due</option>
+            <option value="upsell_open">Upsell open</option>
+            <option value="retainer_open">Retainer open</option>
+            <option value="closed_won">Closed won</option>
+            <option value="closed_lost">Closed lost</option>
+          </select>
+        </div>
       </div>
 
       <AsyncState
@@ -223,8 +225,59 @@ export default function RetentionPage() {
         emptyMessage="No projects in retention queue."
         onRetry={fetchData}
       >
-        <div className="rounded-lg border border-neutral-800 overflow-hidden">
-          <table className="w-full text-sm">
+        {/* Mobile card view */}
+        <div className="md:hidden space-y-3">
+          {items.map((p) => (
+            <Link key={p.id} href={`/dashboard/delivery/${p.id}`} className="block">
+              <div className="rounded-lg border border-neutral-800 p-4 hover:bg-neutral-800/30 transition-colors">
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div className="min-w-0">
+                    <p className="font-medium text-neutral-100 truncate">{p.title ?? "—"}</p>
+                    <p className="text-xs text-neutral-500">{p.clientName ?? p.company ?? "—"}</p>
+                  </div>
+                  <div className="flex gap-1 flex-shrink-0">
+                    <Badge variant="outline" className="capitalize text-xs">
+                      {(p.retentionStatus ?? "none").replace(/_/g, " ")}
+                    </Badge>
+                    {p.isStale && <Badge variant="destructive" className="text-xs">stale</Badge>}
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-xs text-neutral-400 mt-2">
+                  <div>
+                    <span className="text-neutral-500">Next: </span>
+                    {formatDateSafe(p.retentionNextFollowUpAt, { month: "short", day: "numeric" }) || "—"}
+                  </div>
+                  <div>
+                    <span className="text-neutral-500">Last: </span>
+                    {formatDateSafe(p.retentionLastContactedAt, { month: "short", day: "numeric" }) || "—"}
+                  </div>
+                  <div>
+                    {p.testimonialReceivedAt ? "T✓" : p.testimonialRequestedAt ? "T?" : "—"}{" / "}
+                    {p.reviewReceivedAt ? "R✓" : p.reviewRequestedAt ? "R?" : "—"}{" / "}
+                    {p.referralReceivedAt ? "Ref✓" : p.referralRequestedAt ? "Ref?" : "—"}
+                  </div>
+                  {p.upsellOpportunity && (
+                    <div className="text-emerald-400">
+                      {p.upsellOpportunity}{p.upsellValueEstimate != null && ` ($${p.upsellValueEstimate})`}
+                    </div>
+                  )}
+                </div>
+                {p.retentionBucket !== "none" && (
+                  <Badge
+                    variant="outline"
+                    className={`mt-2 text-xs capitalize ${p.retentionBucket === "overdue" ? "text-red-400 border-red-800" : p.retentionBucket === "today" ? "text-amber-400 border-amber-800" : ""}`}
+                  >
+                    {p.retentionBucket}
+                  </Badge>
+                )}
+              </div>
+            </Link>
+          ))}
+        </div>
+
+        {/* Desktop table view */}
+        <div className="hidden md:block rounded-lg border border-neutral-800 overflow-x-auto">
+          <table className="w-full text-sm min-w-[700px]">
             <thead>
               <tr className="border-b border-neutral-800 bg-neutral-900/50">
                 <th className="text-left p-3 font-medium">Project</th>
@@ -276,7 +329,7 @@ export default function RetentionPage() {
                   <td className="p-3 text-right">
                     <Link href={`/dashboard/delivery/${p.id}`}>
                       <Button variant="ghost" size="sm" disabled={!!actionLoading}>
-                        Open project
+                        Open
                       </Button>
                     </Link>
                   </td>

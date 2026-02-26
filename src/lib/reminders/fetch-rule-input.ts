@@ -45,6 +45,17 @@ export type ReminderRuleInput = {
   weeklyMetricSnapshot: { id: string } | null;
   operatorScoreSnapshot: { id: string } | null;
   forecastSnapshot: { id: string } | null;
+  flywheelLeads: Array<{
+    id: string;
+    title: string;
+    dealOutcome: string | null;
+    dealOutcomeAt: Date | null;
+    salesStage: string | null;
+    lastContactAt: Date | null;
+    referralAskStatus: string | null;
+    referralAskAt: Date | null;
+    hasDeliveryProject: boolean;
+  }>;
 };
 
 export async function fetchReminderRuleInput(now: Date = new Date()): Promise<ReminderRuleInput> {
@@ -66,6 +77,7 @@ export async function fetchReminderRuleInput(now: Date = new Date()): Promise<Re
     weeklyMetricSnapshot,
     operatorScoreSnapshot,
     forecastSnapshot,
+    flywheelLeadsRaw,
   ] = await Promise.all([
     db.proposal.findMany({
       where: {
@@ -144,6 +156,25 @@ export async function fetchReminderRuleInput(now: Date = new Date()): Promise<Re
       where: { periodType: "weekly", periodStart: weekStart },
       select: { id: true },
     }),
+    db.lead.findMany({
+      where: {
+        OR: [
+          { dealOutcome: "won" },
+          { salesStage: { not: null }, status: { notIn: ["REJECTED"] } },
+        ],
+      },
+      select: {
+        id: true,
+        title: true,
+        dealOutcome: true,
+        updatedAt: true,
+        salesStage: true,
+        lastContactAt: true,
+        referralAskStatus: true,
+        referralAskAt: true,
+        project: { select: { id: true } },
+      },
+    }),
   ]);
 
   let completedNoHandoff = 0;
@@ -153,6 +184,18 @@ export async function fetchReminderRuleInput(now: Date = new Date()): Promise<Re
     if (!hasHandoff) completedNoHandoff++;
     else if (!p.clientConfirmedAt) handoffNoClientConfirm++;
   }
+
+  const flywheelLeads = (flywheelLeadsRaw ?? []).map((l) => ({
+    id: l.id,
+    title: l.title,
+    dealOutcome: l.dealOutcome,
+    dealOutcomeAt: l.updatedAt,
+    salesStage: l.salesStage,
+    lastContactAt: l.lastContactAt,
+    referralAskStatus: l.referralAskStatus,
+    referralAskAt: l.referralAskAt,
+    hasDeliveryProject: !!l.project,
+  }));
 
   return {
     now,
@@ -170,5 +213,6 @@ export async function fetchReminderRuleInput(now: Date = new Date()): Promise<Re
     weeklyMetricSnapshot,
     operatorScoreSnapshot,
     forecastSnapshot,
+    flywheelLeads,
   };
 }

@@ -19,18 +19,51 @@ export type OpsEventConfig = {
 export function jsonError(
   message: string,
   status: number,
-  code?: string
+  code?: string,
+  extra?: { headers?: Record<string, string>; bodyExtra?: Record<string, unknown> }
 ): NextResponse {
-  const body: { error: string; code?: string } = { error: message };
+  const body: Record<string, unknown> = { error: message };
   if (code) body.code = code;
-  return NextResponse.json(body, { status });
+  Object.assign(body, extra?.bodyExtra ?? {});
+  const headers = new Headers(extra?.headers);
+  if (!headers.has("Content-Type")) headers.set("Content-Type", "application/json; charset=utf-8");
+  return new NextResponse(JSON.stringify(body), { status, headers });
 }
 
 /** Require auth; returns session or null. Use with jsonError("Unauthorized", 401) when null. */
 export async function requireAuth(): Promise<Session | null> {
-  const { auth } = await import("@/lib/auth");
-  const session = await auth();
-  return session?.user ? (session as Session) : null;
+  try {
+    const { auth } = await import("@/lib/auth");
+    const session = await auth();
+    return session?.user ? (session as Session) : null;
+  } catch (err) {
+    console.warn("[requireAuth] auth() threw, treating as unauthenticated:", err instanceof Error ? err.message : err);
+    return null;
+  }
+}
+
+/**
+ * Shared auth + project lookup for delivery project API routes.
+ * Returns { session, project } or a NextResponse error.
+ */
+export async function requireDeliveryProject(
+  projectId: string,
+  opts?: { include?: Record<string, unknown> }
+): Promise<
+  | { ok: true; session: Session; project: NonNullable<Awaited<ReturnType<typeof import("@/lib/db").db.deliveryProject.findUnique>>> }
+  | { ok: false; response: NextResponse }
+> {
+  const session = await requireAuth();
+  if (!session) return { ok: false, response: jsonError("Unauthorized", 401) };
+
+  const { db } = await import("@/lib/db");
+  const project = await db.deliveryProject.findUnique({
+    where: { id: projectId },
+    ...(opts?.include ? { include: opts.include } : {}),
+  });
+  if (!project) return { ok: false, response: jsonError("Project not found", 404) };
+
+  return { ok: true, session, project: project as NonNullable<typeof project> };
 }
 
 /** Wrap a route handler with timing + slow-route log. Uses [SLOW] format at 500ms. */

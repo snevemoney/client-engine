@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect, use, useCallback } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, ExternalLink, Plus, FileText, X, Sparkles, Target, Send, Hammer, CheckCircle, XCircle, RefreshCw } from "lucide-react";
+import { ArrowLeft, ExternalLink, Plus, FileText, X, Sparkles, Target, Send, Hammer, CheckCircle, XCircle, RefreshCw, AlertTriangle } from "lucide-react";
 import { OpportunityBriefCard } from "@/components/dashboard/leads/OpportunityBriefCard";
 import { RoiEstimateCard } from "@/components/dashboard/leads/RoiEstimateCard";
 import { FollowUpSequenceCard } from "@/components/dashboard/leads/FollowUpSequenceCard";
@@ -18,6 +18,15 @@ import { SalesProcessPanel } from "@/components/dashboard/leads/SalesProcessPane
 import { SalesDriverCard } from "@/components/dashboard/leads/SalesDriverCard";
 import { TrustToCloseChecklistPanel } from "@/components/proposals/TrustToCloseChecklistPanel";
 import { parseLeadIntelligenceFromMeta } from "@/lib/lead-intelligence";
+
+const TABS = [
+  { key: "overview", label: "Overview" },
+  { key: "sales", label: "Sales" },
+  { key: "proposals", label: "Proposals" },
+  { key: "intelligence", label: "Intelligence" },
+  { key: "artifacts", label: "Artifacts" },
+] as const;
+type TabKey = (typeof TABS)[number]["key"];
 
 interface Artifact {
   id: string;
@@ -115,67 +124,70 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   const [markingSent, setMarkingSent] = useState(false);
   const [settingDeal, setSettingDeal] = useState(false);
   const [selectedProposalId, setSelectedProposalId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<TabKey>("overview");
+  const [aiError, setAiError] = useState<string | null>(null);
+
+  const runAiAction = useCallback(async (
+    action: () => Promise<void>,
+    setLoading: (v: boolean) => void,
+    label: string,
+    retries = 1
+  ) => {
+    setAiError(null);
+    setLoading(true);
+    let lastErr: unknown;
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        await action();
+        setLoading(false);
+        return;
+      } catch (e) {
+        lastErr = e;
+        if (attempt < retries) await new Promise((r) => setTimeout(r, 1500));
+      }
+    }
+    setAiError(`${label} failed${lastErr instanceof Error ? `: ${lastErr.message}` : ". Try again."}`);
+    setLoading(false);
+  }, []);
 
   async function enrichLead() {
-    setEnriching(true);
-    try {
-      const res = await fetch(`/api/enrich/${id}`, { method: "POST" });
-      if (res.ok) {
-        const updated = await res.json();
-        // Refetch full lead with artifacts
-        const full = await fetch(`/api/leads/${id}`);
-        if (full.ok) setLead(await full.json());
-      } else {
-        const err = await res.json();
-        alert(`Enrichment failed: ${err.error}`);
-      }
-    } catch (e) { alert("Enrichment failed"); }
-    setEnriching(false);
+    const res = await fetch(`/api/enrich/${id}`, { method: "POST" });
+    if (!res.ok) {
+      const err = await res.json().catch(() => null);
+      throw new Error(err?.error ?? "Enrichment failed");
+    }
+    const full = await fetch(`/api/leads/${id}`);
+    if (full.ok) setLead(await full.json());
   }
 
   async function scoreLead() {
-    setScoring(true);
-    try {
-      const res = await fetch(`/api/score/${id}`, { method: "POST" });
-      if (res.ok) {
-        const updated = await res.json();
-        setLead((prev) => prev ? { ...prev, ...updated } : prev);
-      } else {
-        const err = await res.json();
-        alert(`Scoring failed: ${err.error}`);
-      }
-    } catch (e) { alert("Scoring failed"); }
-    setScoring(false);
+    const res = await fetch(`/api/score/${id}`, { method: "POST" });
+    if (!res.ok) {
+      const err = await res.json().catch(() => null);
+      throw new Error(err?.error ?? "Scoring failed");
+    }
+    const updated = await res.json();
+    setLead((prev) => prev ? { ...prev, ...updated } : prev);
   }
 
   async function startBuild() {
-    setBuilding(true);
-    try {
-      const res = await fetch(`/api/build/${id}`, { method: "POST" });
-      if (res.ok) {
-        const full = await fetch(`/api/leads/${id}`);
-        if (full.ok) setLead(await full.json());
-      } else {
-        const err = await res.json();
-        alert(`Build failed: ${err.error}`);
-      }
-    } catch (e) { alert("Build factory failed"); }
-    setBuilding(false);
+    const res = await fetch(`/api/build/${id}`, { method: "POST" });
+    if (!res.ok) {
+      const err = await res.json().catch(() => null);
+      throw new Error(err?.error ?? "Build failed");
+    }
+    const full = await fetch(`/api/leads/${id}`);
+    if (full.ok) setLead(await full.json());
   }
 
   async function generateProposal() {
-    setProposing(true);
-    try {
-      const res = await fetch(`/api/propose/${id}`, { method: "POST" });
-      if (res.ok) {
-        const full = await fetch(`/api/leads/${id}`);
-        if (full.ok) setLead(await full.json());
-      } else {
-        const err = await res.json();
-        alert(`Proposal failed: ${err.error}`);
-      }
-    } catch (e) { alert("Proposal generation failed"); }
-    setProposing(false);
+    const res = await fetch(`/api/propose/${id}`, { method: "POST" });
+    if (!res.ok) {
+      const err = await res.json().catch(() => null);
+      throw new Error(err?.error ?? "Proposal generation failed");
+    }
+    const full = await fetch(`/api/leads/${id}`);
+    if (full.ok) setLead(await full.json());
   }
 
   const hasProposal = lead?.artifacts?.some((a) => a.type === "proposal") ?? false;
@@ -348,6 +360,11 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   if (loading) return <div className="text-neutral-500 py-12 text-center">Loading...</div>;
   if (!lead) return <div className="text-neutral-500 py-12 text-center">Lead not found.</div>;
 
+  const proposalCount = lead.artifacts.filter((a) => a.type === "proposal").length;
+  const hasIntelligence = !!lead.artifacts.find((a) => a.type === "positioning" && a.title === "POSITIONING_BRIEF") ||
+    !!lead.artifacts.find((a) => a.type === "notes" && a.title === "AI Enrichment Report") ||
+    (lead.meta && typeof lead.meta === "object");
+
   return (
     <div className="max-w-4xl space-y-6">
       {/* Header */}
@@ -368,462 +385,508 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                 Score: {lead.score}
               </Badge>
             )}
-          </div>
-        </div>
-      </div>
-
-      {/* Results at a glance (delivery leads) */}
-      {(lead.status === "APPROVED" || lead.status === "BUILDING" || lead.status === "SHIPPED") && (
-        <ClientResultsGlance leadId={id} />
-      )}
-
-      {/* Reusable leverage log (delivery leads) */}
-      {(lead.status === "APPROVED" || lead.status === "BUILDING" || lead.status === "SHIPPED") && (
-        <ReusableAssetLogCard leadId={id} />
-      )}
-
-      {/* Status bar */}
-      <div className="border border-neutral-800 rounded-lg p-4">
-        <h3 className="text-xs font-medium text-neutral-500 uppercase tracking-wider mb-3">Pipeline Status</h3>
-        <div className="flex gap-1.5 flex-wrap">
-          {STATUSES.map((s) => (
-            <Button key={s} variant={lead.status === s ? "default" : "outline"} size="sm" onClick={() => updateStatus(s)} className="text-xs">
-              {s}
-            </Button>
-          ))}
-        </div>
-      </div>
-
-      {/* Sales Driver (reason → result → deadline, qualification, next action) */}
-      {lead.status !== "REJECTED" && lead.dealOutcome !== "won" && (
-        <SalesDriverCard
-          leadId={id}
-          lead={lead}
-          onUpdate={refetchLead}
-        />
-      )}
-
-      {/* Sales (PBD): stage, next/last contact, leak warning */}
-      <div className="border border-neutral-800 rounded-lg p-4">
-        <h3 className="text-xs font-medium text-neutral-500 uppercase tracking-wider mb-3">Sales stage</h3>
-        <div className="flex gap-2 flex-wrap items-center mb-3">
-          <select
-            value={lead.salesStage ?? ""}
-            onChange={(e) => updateField("salesStage", e.target.value || "")}
-            className="rounded-md border border-neutral-700 bg-neutral-900 text-sm text-neutral-200 px-3 py-1.5"
-          >
-            <option value="">—</option>
-            {SALES_STAGES.map((s) => (
-              <option key={s} value={s}>{s.replace(/_/g, " ")}</option>
-            ))}
-          </select>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2 text-sm">
-          <div>
-            <label className="text-xs text-neutral-500 block mb-1">Next contact date</label>
-            <input
-              type="date"
-              value={lead.nextContactAt ? lead.nextContactAt.slice(0, 10) : ""}
-              onChange={(e) => updateDateField("nextContactAt", e.target.value || null)}
-              className="rounded-md border border-neutral-700 bg-neutral-900 text-neutral-200 px-2 py-1.5 w-full"
-            />
-          </div>
-          <div>
-            <label className="text-xs text-neutral-500 block mb-1">Last contact date</label>
-            <input
-              type="date"
-              value={lead.lastContactAt ? lead.lastContactAt.slice(0, 10) : ""}
-              onChange={(e) => updateDateField("lastContactAt", e.target.value || null)}
-              className="rounded-md border border-neutral-700 bg-neutral-900 text-neutral-200 px-2 py-1.5 w-full"
-            />
-          </div>
-        </div>
-        {(() => {
-          const stage = lead.salesStage ?? (lead.proposalSentAt ? "FOLLOW_UP" : lead.status === "NEW" || lead.status === "ENRICHED" || lead.status === "SCORED" ? "PROSPECTING" : "APPROACH_CONTACT");
-          const needsNextDate = ["APPROACH_CONTACT", "PRESENTATION", "FOLLOW_UP"].includes(stage) && lead.status !== "REJECTED" && lead.dealOutcome !== "won" && !lead.nextContactAt;
-          if (!needsNextDate) return null;
-          return (
-            <p className="mt-3 text-sm text-red-400 font-medium">No next date = incomplete (leak). Set next contact date.</p>
-          );
-        })()}
-      </div>
-
-      {/* Sales process: source, touches, referrals, relationship */}
-      <SalesProcessPanel
-        leadId={id}
-        leadSourceType={lead.leadSourceType ?? null}
-        leadSourceChannel={lead.leadSourceChannel ?? null}
-        sourceDetail={lead.sourceDetail ?? null}
-        introducedBy={lead.introducedBy ?? null}
-        referralAskStatus={lead.referralAskStatus ?? null}
-        referralCount={lead.referralCount ?? 0}
-        relationshipStatus={lead.relationshipStatus ?? null}
-        relationshipLastCheck={lead.relationshipLastCheck ?? null}
-        touchCount={lead.touchCount ?? 0}
-        nextContactAt={lead.nextContactAt ?? null}
-        lastContactAt={lead.lastContactAt ?? null}
-        touches={lead.touches ?? []}
-        referralsReceived={lead.referralsReceived ?? []}
-        onUpdate={refetchLead}
-        updateField={updateField}
-        updateDateField={updateDateField}
-      />
-
-      {/* Latest pipeline artifacts summary */}
-      {(lead.artifacts.some((a) => a.type === "notes") || lead.artifacts.some((a) => a.type === "proposal") || lead.artifacts.some((a) => a.type === "positioning")) && (
-        <div className="border border-neutral-800 rounded-lg p-4">
-          <h3 className="text-xs font-medium text-neutral-500 uppercase tracking-wider mb-2">Pipeline artifacts</h3>
-          <div className="flex gap-2 flex-wrap">
-            {lead.artifacts.some((a) => a.type === "notes" && a.title === "AI Enrichment Report") && <Badge variant="outline">Enrichment</Badge>}
-            {lead.score != null && <Badge variant="outline">Score</Badge>}
-            {lead.artifacts.some((a) => a.type === "positioning" && a.title === "POSITIONING_BRIEF") && <Badge variant="outline">Positioning</Badge>}
-            {hasProposal && <Badge variant="outline">Proposal</Badge>}
-          </div>
-        </div>
-      )}
-
-      {/* Lead Intelligence (from enrich/positioning artifact meta) */}
-      {(() => {
-        const positioningArtifact = lead.artifacts.find((a) => a.type === "positioning" && a.title === "POSITIONING_BRIEF");
-        const enrichArtifact = lead.artifacts.find((a) => a.type === "notes" && a.title === "AI Enrichment Report");
-        const li =
-          parseLeadIntelligenceFromMeta(positioningArtifact?.meta) ||
-          parseLeadIntelligenceFromMeta(enrichArtifact?.meta) ||
-          (lead.meta && typeof lead.meta === "object" ? parseLeadIntelligenceFromMeta(lead.meta) : null);
-        if (!li) return null;
-        const rev = li.reversibility;
-        const firstStep = rev?.lowRiskStart ?? (rev as { firstStep?: string })?.firstStep;
-        return (
-          <div className="border border-neutral-800 rounded-lg p-4">
-            <h3 className="text-xs font-medium text-neutral-500 uppercase tracking-wider mb-3">Lead intelligence</h3>
-            <div className="space-y-3 text-sm">
-              <div>
-                <strong className="text-neutral-300">Adoption risk:</strong>{" "}
-                <span className="text-neutral-200">{li.adoptionRisk?.level ?? "unknown"}</span>
-                {(li.adoptionRisk as { confidence?: string })?.confidence && (
-                  <span className="text-neutral-500 ml-1">({(li.adoptionRisk as { confidence: string }).confidence} confidence)</span>
-                )}
-              </div>
-              <div>
-                <strong className="text-neutral-300">Tool loyalty risk:</strong>{" "}
-                <span className="text-neutral-200">{li.toolLoyaltyRisk?.level ?? "unknown"}</span>
-                {(li.toolLoyaltyRisk as { confidence?: string })?.confidence && (
-                  <span className="text-neutral-500 ml-1">({(li.toolLoyaltyRisk as { confidence: string }).confidence} confidence)</span>
-                )}
-              </div>
-              <div>
-                <strong className="text-neutral-300">Reversibility:</strong>{" "}
-                <span className="text-neutral-200">{(rev as { level?: string })?.level ?? rev?.strategy ?? "—"}</span>
-              </div>
-              {li.safeStartingPoint && (
-                <div>
-                  <strong className="text-neutral-300">Safe starting point:</strong>{" "}
-                  <span className="text-neutral-200">{li.safeStartingPoint}</span>
-                </div>
-              )}
-              {li.trustSensitivity && (
-                <div>
-                  <strong className="text-neutral-300">Trust sensitivity:</strong>{" "}
-                  <span className="text-neutral-200">{li.trustSensitivity}</span>
-                </div>
-              )}
-              <div>
-                <strong className="text-neutral-300">Stakeholders</strong>
-                <ul className="list-disc ml-5 mt-1 space-y-0.5 text-neutral-300">
-                  {(li.stakeholderMap ?? []).map((s, i) => (
-                    <li key={i}>
-                      <span className="font-medium text-neutral-200">{s.role}</span>
-                      {s.influence && <span className="text-neutral-500"> ({s.influence})</span>}
-                      {s.stance && <span className="text-neutral-500"> {s.stance}</span>}
-                      {": "}
-                      {(s as { likelyConcern?: string }).likelyConcern ?? s.likelyObjection ?? "—"}
-                      {(s as { whatMakesThemFeelSafe?: string }).whatMakesThemFeelSafe ? ` → ${(s as { whatMakesThemFeelSafe: string }).whatMakesThemFeelSafe}` : ""}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* Lead Copilot (rubric-based, structured response + receipts) */}
-      <LeadCopilotCard leadId={lead.id} />
-
-      {/* Proposal console: version list + positioning + proposal side-by-side + one-click revise */}
-      <div id="proposal-review">
-      {(() => {
-        const positioning = lead.artifacts.find((a) => a.type === "positioning" && a.title === "POSITIONING_BRIEF");
-        const proposals = lead.artifacts.filter((a) => a.type === "proposal").sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        const latestProposalId = proposals[0]?.id ?? null;
-        const selectedProposal = proposals.find((p) => p.id === selectedProposalId) ?? proposals[0];
-        const proposal = selectedProposal ?? null;
-        if (!positioning && proposals.length === 0) return null;
-        return (
-          <div className="border border-neutral-800 rounded-lg p-4">
-            <h3 className="text-xs font-medium text-neutral-500 uppercase tracking-wider mb-3">Proposal review (positioning vs proposal)</h3>
-            <div className="space-y-2 mb-4">
-              <div className="text-sm font-semibold">Proposal versions</div>
-              {proposals.length === 0 ? (
-                <div className="text-sm text-neutral-500">No proposals yet.</div>
-              ) : (
-                <div className="space-y-1">
-                  {proposals.map((p, idx) => (
-                    <div
-                      key={p.id}
-                      className={`rounded-md border p-2 transition-colors ${
-                        p.id === selectedProposalId ? "bg-neutral-800 border-neutral-600" : "border-neutral-800"
-                      }`}
-                    >
-                      <button
-                        onClick={() => setSelectedProposalId(p.id)}
-                        className="w-full text-left"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="text-sm font-medium">Proposal v{proposals.length - idx}</div>
-                          <div className="flex items-center gap-2">
-                            {p.id === latestProposalId && (
-                              <span className="rounded bg-green-600 px-2 py-0.5 text-xs text-white">Latest</span>
-                            )}
-                            <span className="text-xs text-neutral-500">{new Date(p.createdAt).toLocaleString()}</span>
-                          </div>
-                        </div>
-                        <div className="text-xs text-neutral-500 mt-0.5">{p.title ?? "PROPOSAL"}</div>
-                      </button>
-                      <Link
-                        href={`/dashboard/proposals/${p.id}`}
-                        className="text-xs text-emerald-400 hover:text-emerald-300 mt-2 inline-block"
-                      >
-                        Open Proposal Console →
-                      </Link>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-            {positioning && proposal && (
-              <>
-            <div className="flex gap-2 flex-wrap items-center mb-3">
-              <Input
-                placeholder="e.g. shorter, more aggressive, focus on ROI"
-                value={reviseInstruction}
-                onChange={(e) => setReviseInstruction(e.target.value)}
-                className="max-w-sm h-8 text-sm"
-                onKeyDown={(e) => e.key === "Enter" && reviseProposal()}
-              />
-              <Button variant="outline" size="sm" onClick={reviseProposal} disabled={revising || !reviseInstruction.trim()}>
-                <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${revising ? "animate-spin" : ""}`} /> {revising ? "Revising..." : "Revise proposal"}
-              </Button>
-            </div>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="border border-neutral-700 rounded-md p-3 bg-neutral-900/40 max-h-[420px] overflow-y-auto">
-                <div className="text-xs font-medium text-neutral-400 mb-2">POSITIONING_BRIEF</div>
-                <pre className="text-sm text-neutral-300 whitespace-pre-wrap font-sans">{positioning.content}</pre>
-              </div>
-              <div className="border border-neutral-700 rounded-md p-3 bg-neutral-900/40 max-h-[420px] overflow-y-auto">
-                <div className="text-xs font-medium text-neutral-400 mb-2">Proposal</div>
-                <pre className="text-sm text-neutral-300 whitespace-pre-wrap font-sans">{proposal.content}</pre>
-              </div>
-            </div>
-            <div className="mt-4">
-              <TrustToCloseChecklistPanel
-                artifactId={proposal.id}
-                meta={proposal.meta}
-                onUpdate={() => refetchLead()}
-                compact
-              />
-            </div>
-              </>
-            )}
-          </div>
-        );
-      })()}
-      </div>
-
-      {/* Owner approval: one-click Approve when proposal exists */}
-      {hasProposal && lead.status !== "APPROVED" && (
-        <div className="border border-emerald-900/50 bg-emerald-950/20 rounded-lg p-4">
-          <h3 className="text-xs font-medium text-emerald-400/90 uppercase tracking-wider mb-3">Approve proposal</h3>
-          <div className="flex gap-3 flex-wrap items-center">
-            <Button size="lg" onClick={approveLead} disabled={approving} className="bg-emerald-600 hover:bg-emerald-500 text-white">
-              <CheckCircle className="w-4 h-4 mr-2" /> {approving ? "Approving..." : "Approve"}
-            </Button>
-            {!showRejectInput ? (
-              <Button variant="outline" size="sm" onClick={() => setShowRejectInput(true)} disabled={rejecting}>
-                <XCircle className="w-3.5 h-3.5 mr-1.5" /> Reject
-              </Button>
-            ) : (
-              <div className="flex gap-2 flex-wrap items-center">
-                <Input
-                  placeholder="Rejection note (optional)"
-                  value={rejectNote}
-                  onChange={(e) => setRejectNote(e.target.value)}
-                  className="max-w-xs h-8 text-sm"
-                />
-                <Button variant="outline" size="sm" onClick={rejectLead} disabled={rejecting}>{rejecting ? "..." : "Submit"}</Button>
-                <Button variant="ghost" size="sm" onClick={() => { setShowRejectInput(false); setRejectNote(""); }}>Cancel</Button>
-              </div>
+            {lead.dealOutcome && (
+              <Badge variant={lead.dealOutcome === "won" ? "success" : "destructive"} className="ml-1">
+                {lead.dealOutcome}
+              </Badge>
             )}
           </div>
         </div>
+      </div>
+
+      {/* AI error banner */}
+      {aiError && (
+        <div className="flex items-center gap-2 rounded-lg border border-red-900/50 bg-red-950/20 p-3 text-sm text-red-300">
+          <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+          <span className="flex-1">{aiError}</span>
+          <button onClick={() => setAiError(null)} className="text-red-400 hover:text-red-200"><X className="w-4 h-4" /></button>
+        </div>
       )}
 
-      {/* AI Actions */}
-      <div className="flex gap-3 flex-wrap">
-        <Button variant="outline" size="sm" onClick={enrichLead} disabled={enriching}>
-          <Sparkles className="w-3.5 h-3.5" /> {enriching ? "Enriching..." : "Enrich with AI"}
+      {/* AI Actions — always visible */}
+      <div className="flex gap-2 flex-wrap items-center">
+        <Button variant="outline" size="sm" onClick={() => runAiAction(enrichLead, setEnriching, "Enrich")} disabled={enriching}>
+          <Sparkles className="w-3.5 h-3.5" /> {enriching ? "Enriching..." : "Enrich"}
         </Button>
-        <Button variant="outline" size="sm" onClick={scoreLead} disabled={scoring}>
-          <Target className="w-3.5 h-3.5" /> {scoring ? "Scoring..." : "Score Lead"}
+        <Button variant="outline" size="sm" onClick={() => runAiAction(scoreLead, setScoring, "Score")} disabled={scoring}>
+          <Target className="w-3.5 h-3.5" /> {scoring ? "Scoring..." : "Score"}
         </Button>
-        <Button variant="outline" size="sm" onClick={generateProposal} disabled={proposing}>
-          <Send className="w-3.5 h-3.5" /> {proposing ? "Generating..." : "Generate Proposal"}
+        <Button variant="outline" size="sm" onClick={() => runAiAction(generateProposal, setProposing, "Proposal")} disabled={proposing}>
+          <Send className="w-3.5 h-3.5" /> {proposing ? "Generating..." : "Propose"}
         </Button>
         {lead.status === "APPROVED" && (
-          <Button variant="outline" size="sm" onClick={startBuild} disabled={building}>
-            <Hammer className="w-3.5 h-3.5" /> {building ? "Building..." : "Start Build"}
+          <Button variant="outline" size="sm" onClick={() => runAiAction(startBuild, setBuilding, "Build")} disabled={building}>
+            <Hammer className="w-3.5 h-3.5" /> {building ? "Building..." : "Build"}
           </Button>
-        )}
-        {lead.status === "SCORED" && (
-          <span className="text-xs text-neutral-500">Approve lead to start build.</span>
         )}
       </div>
 
-      {/* Conversion / outcome tracking */}
-      <div className="border border-neutral-800 rounded-lg p-4">
-        <h3 className="text-xs font-medium text-neutral-500 uppercase tracking-wider mb-3">Conversion</h3>
-        <div className="grid gap-2 text-sm">
-          {lead.proposalSentAt && <div className="text-neutral-400">Proposal sent: {new Date(lead.proposalSentAt).toLocaleString()}</div>}
-          {lead.approvedAt && <div className="text-neutral-400">Approved: {new Date(lead.approvedAt).toLocaleString()}</div>}
-          {lead.buildStartedAt && <div className="text-neutral-400">Build started: {new Date(lead.buildStartedAt).toLocaleString()}</div>}
-          {lead.buildCompletedAt && <div className="text-neutral-400">Build completed: {new Date(lead.buildCompletedAt).toLocaleString()}</div>}
-          {lead.dealOutcome && <div className="text-neutral-400">Deal: <span className={lead.dealOutcome === "won" ? "text-emerald-400" : "text-red-400"}>{lead.dealOutcome}</span></div>}
-        </div>
-        <div className="flex gap-2 flex-wrap mt-3">
-          {!lead.proposalSentAt && hasProposal && (
-            <Button variant="outline" size="sm" onClick={markProposalSent} disabled={markingSent}>{markingSent ? "..." : "Mark proposal sent"}</Button>
+      {/* Tab navigation */}
+      <div className="border-b border-neutral-800 -mx-1">
+        <nav className="flex gap-0 overflow-x-auto px-1" aria-label="Lead tabs">
+          {TABS.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
+                activeTab === tab.key
+                  ? "border-neutral-100 text-neutral-100"
+                  : "border-transparent text-neutral-500 hover:text-neutral-300 hover:border-neutral-700"
+              }`}
+            >
+              {tab.label}
+              {tab.key === "proposals" && proposalCount > 0 && (
+                <span className="ml-1.5 text-xs text-neutral-500">({proposalCount})</span>
+              )}
+              {tab.key === "artifacts" && (
+                <span className="ml-1.5 text-xs text-neutral-500">({lead.artifacts.length})</span>
+              )}
+            </button>
+          ))}
+        </nav>
+      </div>
+
+      {/* ── OVERVIEW TAB ── */}
+      {activeTab === "overview" && (
+        <>
+          {(lead.status === "APPROVED" || lead.status === "BUILDING" || lead.status === "SHIPPED") && (
+            <ClientResultsGlance leadId={id} />
           )}
-          <Button variant="outline" size="sm" onClick={() => setDealOutcome("won")} disabled={settingDeal} className="text-emerald-400 border-emerald-800">Deal won</Button>
-          <Button variant="outline" size="sm" onClick={() => setDealOutcome("lost")} disabled={settingDeal} className="text-red-400 border-red-900">Deal lost</Button>
-        </div>
-      </div>
 
-      {/* Two-column info */}
-      <div className="grid gap-4 sm:grid-cols-2">
-        <EditableField label="Budget" value={lead.budget} onSave={(v) => updateField("budget", v)} />
-        <EditableField label="Timeline" value={lead.timeline} onSave={(v) => updateField("timeline", v)} />
-        <EditableField label="Platform" value={lead.platform} onSave={(v) => updateField("platform", v)} />
-        <EditableField label="Contact Name" value={lead.contactName} onSave={(v) => updateField("contactName", v)} />
-        <EditableField label="Contact Email" value={lead.contactEmail} onSave={(v) => updateField("contactEmail", v)} />
-        <div className="border border-neutral-800 rounded-lg p-3">
-          <div className="text-xs text-neutral-500 mb-1">Tags</div>
-          <div className="flex gap-1 flex-wrap">
-            {lead.tags.length > 0 ? lead.tags.map((t) => (
-              <Badge key={t} variant="outline" className="text-xs">{t}</Badge>
-            )) : <span className="text-sm text-neutral-600">—</span>}
-          </div>
-        </div>
-      </div>
+          {(lead.status === "APPROVED" || lead.status === "BUILDING" || lead.status === "SHIPPED") && (
+            <ReusableAssetLogCard leadId={id} />
+          )}
 
-      {/* Description */}
-      {lead.description && (
-        <div className="border border-neutral-800 rounded-lg p-4">
-          <h3 className="text-xs font-medium text-neutral-500 uppercase tracking-wider mb-2">Description</h3>
-          <p className="text-sm text-neutral-200 whitespace-pre-wrap">{lead.description}</p>
-        </div>
-      )}
-
-      {/* Score reasoning */}
-      {lead.scoreReason && (
-        <div className="border border-neutral-800 rounded-lg p-4">
-          <h3 className="text-xs font-medium text-neutral-500 uppercase tracking-wider mb-2">Score Analysis</h3>
-          <p className="text-sm text-neutral-200 whitespace-pre-wrap">{lead.scoreReason}</p>
-        </div>
-      )}
-
-      <OpportunityBriefCard leadId={id} />
-      <RoiEstimateCard
-        leadId={id}
-        onRoiGenerated={() => fetch(`/api/leads/${id}`).then((r) => r.ok && r.json()).then((d) => d && setLead(d))}
-      />
-      <FollowUpSequenceCard
-        leadId={id}
-        proposalSentAt={lead.proposalSentAt}
-        dealOutcome={lead.dealOutcome}
-        onSequenceGenerated={() => fetch(`/api/leads/${id}`).then((r) => r.ok && r.json()).then((d) => d && setLead(d))}
-      />
-
-      {/* Client Success (baseline, interventions, outcome scorecard, reusable assets, proof) — after approval/build */}
-      {(lead.status === "APPROVED" || lead.status === "BUILDING" || lead.status === "SHIPPED") && (
-        <div id="client-success">
-          <ClientSuccessCard
-            leadId={id}
-            onProofGenerated={() => fetch(`/api/leads/${id}`).then((r) => r.ok && r.json()).then((d) => d && setLead(d))}
-          />
-        </div>
-      )}
-
-      {/* Artifacts */}
-      <div className="border border-neutral-800 rounded-lg p-4">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xs font-medium text-neutral-500 uppercase tracking-wider">
-            Artifacts ({lead.artifacts.length})
-          </h3>
-          <Button size="sm" variant="outline" onClick={() => setShowArtifactForm(true)}>
-            <Plus className="w-3.5 h-3.5" /> Add
-          </Button>
-        </div>
-
-        {showArtifactForm && (
-          <div className="border border-neutral-700 rounded-lg p-4 mb-4 space-y-3 bg-neutral-900/50">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">New Artifact</span>
-              <button onClick={() => setShowArtifactForm(false)} className="text-neutral-500 hover:text-neutral-300"><X className="w-4 h-4" /></button>
-            </div>
-            <div className="flex gap-2">
-              {ARTIFACT_TYPES.map((t) => (
-                <button key={t} onClick={() => setArtifactType(t)}
-                  className={`text-xs px-2.5 py-1 rounded-md border transition-colors ${artifactType === t ? "bg-neutral-700 border-neutral-600 text-neutral-100" : "border-neutral-800 text-neutral-400 hover:border-neutral-700"}`}
-                >{t}</button>
+          <div className="border border-neutral-800 rounded-lg p-4">
+            <h3 className="text-xs font-medium text-neutral-500 uppercase tracking-wider mb-3">Pipeline Status</h3>
+            <div className="flex gap-1.5 flex-wrap">
+              {STATUSES.map((s) => (
+                <Button key={s} variant={lead.status === s ? "default" : "outline"} size="sm" onClick={() => updateStatus(s)} className="text-xs">
+                  {s}
+                </Button>
               ))}
             </div>
-            <Input placeholder="Title" value={artifactTitle} onChange={(e) => setArtifactTitle(e.target.value)} />
-            <Textarea placeholder="Content (markdown supported)" rows={6} value={artifactContent} onChange={(e) => setArtifactContent(e.target.value)} />
-            <Button size="sm" onClick={createArtifact} disabled={saving || !artifactTitle.trim()}>
-              {saving ? "Saving..." : "Save Artifact"}
-            </Button>
           </div>
-        )}
 
-        {lead.artifacts.length === 0 && !showArtifactForm ? (
-          <p className="text-sm text-neutral-500">No artifacts yet. Add notes, proposals, or scope documents.</p>
-        ) : (
-          <div className="space-y-2">
-            {lead.artifacts.map((a) => (
-              <div key={a.id} className="border border-neutral-800/50 rounded-md overflow-hidden">
-                <button
-                  onClick={() => setExpandedArtifact(expandedArtifact === a.id ? null : a.id)}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-neutral-800/30 transition-colors"
-                >
-                  <FileText className="w-4 h-4 text-neutral-500 flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <span className="text-sm font-medium truncate block">{a.title}</span>
+          <div className="border border-neutral-800 rounded-lg p-4">
+            <h3 className="text-xs font-medium text-neutral-500 uppercase tracking-wider mb-3">Conversion</h3>
+            <div className="grid gap-2 text-sm">
+              {lead.proposalSentAt && <div className="text-neutral-400">Proposal sent: {new Date(lead.proposalSentAt).toLocaleString("en-US")}</div>}
+              {lead.approvedAt && <div className="text-neutral-400">Approved: {new Date(lead.approvedAt).toLocaleString("en-US")}</div>}
+              {lead.buildStartedAt && <div className="text-neutral-400">Build started: {new Date(lead.buildStartedAt).toLocaleString("en-US")}</div>}
+              {lead.buildCompletedAt && <div className="text-neutral-400">Build completed: {new Date(lead.buildCompletedAt).toLocaleString("en-US")}</div>}
+              {lead.dealOutcome && <div className="text-neutral-400">Deal: <span className={lead.dealOutcome === "won" ? "text-emerald-400" : "text-red-400"}>{lead.dealOutcome}</span></div>}
+            </div>
+            <div className="flex gap-2 flex-wrap mt-3">
+              {!lead.proposalSentAt && hasProposal && (
+                <Button variant="outline" size="sm" onClick={markProposalSent} disabled={markingSent}>{markingSent ? "..." : "Mark proposal sent"}</Button>
+              )}
+              <Button variant="outline" size="sm" onClick={() => setDealOutcome("won")} disabled={settingDeal} className="text-emerald-400 border-emerald-800">Deal won</Button>
+              <Button variant="outline" size="sm" onClick={() => setDealOutcome("lost")} disabled={settingDeal} className="text-red-400 border-red-900">Deal lost</Button>
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <EditableField label="Budget" value={lead.budget} onSave={(v) => updateField("budget", v)} />
+            <EditableField label="Timeline" value={lead.timeline} onSave={(v) => updateField("timeline", v)} />
+            <EditableField label="Platform" value={lead.platform} onSave={(v) => updateField("platform", v)} />
+            <EditableField label="Contact Name" value={lead.contactName} onSave={(v) => updateField("contactName", v)} />
+            <EditableField label="Contact Email" value={lead.contactEmail} onSave={(v) => updateField("contactEmail", v)} />
+            <div className="border border-neutral-800 rounded-lg p-3">
+              <div className="text-xs text-neutral-500 mb-1">Tags</div>
+              <div className="flex gap-1 flex-wrap">
+                {lead.tags.length > 0 ? lead.tags.map((t) => (
+                  <Badge key={t} variant="outline" className="text-xs">{t}</Badge>
+                )) : <span className="text-sm text-neutral-600">—</span>}
+              </div>
+            </div>
+          </div>
+
+          {lead.description && (
+            <div className="border border-neutral-800 rounded-lg p-4">
+              <h3 className="text-xs font-medium text-neutral-500 uppercase tracking-wider mb-2">Description</h3>
+              <p className="text-sm text-neutral-200 whitespace-pre-wrap">{lead.description}</p>
+            </div>
+          )}
+
+          {lead.scoreReason && (
+            <div className="border border-neutral-800 rounded-lg p-4">
+              <h3 className="text-xs font-medium text-neutral-500 uppercase tracking-wider mb-2">Score Analysis</h3>
+              <p className="text-sm text-neutral-200 whitespace-pre-wrap">{lead.scoreReason}</p>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* ── SALES TAB ── */}
+      {activeTab === "sales" && (
+        <>
+          {lead.status !== "REJECTED" && lead.dealOutcome !== "won" && (
+            <SalesDriverCard leadId={id} lead={lead} onUpdate={refetchLead} />
+          )}
+
+          <div className="border border-neutral-800 rounded-lg p-4">
+            <h3 className="text-xs font-medium text-neutral-500 uppercase tracking-wider mb-3">Sales stage</h3>
+            <div className="flex gap-2 flex-wrap items-center mb-3">
+              <select
+                value={lead.salesStage ?? ""}
+                onChange={(e) => updateField("salesStage", e.target.value || "")}
+                className="rounded-md border border-neutral-700 bg-neutral-900 text-sm text-neutral-200 px-3 py-1.5"
+              >
+                <option value="">—</option>
+                {SALES_STAGES.map((s) => (
+                  <option key={s} value={s}>{s.replace(/_/g, " ")}</option>
+                ))}
+              </select>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 text-sm">
+              <div>
+                <label className="text-xs text-neutral-500 block mb-1">Next contact date</label>
+                <input
+                  type="date"
+                  value={lead.nextContactAt ? lead.nextContactAt.slice(0, 10) : ""}
+                  onChange={(e) => updateDateField("nextContactAt", e.target.value || null)}
+                  className="rounded-md border border-neutral-700 bg-neutral-900 text-neutral-200 px-2 py-1.5 w-full"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-neutral-500 block mb-1">Last contact date</label>
+                <input
+                  type="date"
+                  value={lead.lastContactAt ? lead.lastContactAt.slice(0, 10) : ""}
+                  onChange={(e) => updateDateField("lastContactAt", e.target.value || null)}
+                  className="rounded-md border border-neutral-700 bg-neutral-900 text-neutral-200 px-2 py-1.5 w-full"
+                />
+              </div>
+            </div>
+            {(() => {
+              const stage = lead.salesStage ?? (lead.proposalSentAt ? "FOLLOW_UP" : lead.status === "NEW" || lead.status === "ENRICHED" || lead.status === "SCORED" ? "PROSPECTING" : "APPROACH_CONTACT");
+              const needsNextDate = ["APPROACH_CONTACT", "PRESENTATION", "FOLLOW_UP"].includes(stage) && lead.status !== "REJECTED" && lead.dealOutcome !== "won" && !lead.nextContactAt;
+              if (!needsNextDate) return null;
+              return (
+                <p className="mt-3 text-sm text-red-400 font-medium">No next date = incomplete (leak). Set next contact date.</p>
+              );
+            })()}
+          </div>
+
+          <SalesProcessPanel
+            leadId={id}
+            leadSourceType={lead.leadSourceType ?? null}
+            leadSourceChannel={lead.leadSourceChannel ?? null}
+            sourceDetail={lead.sourceDetail ?? null}
+            introducedBy={lead.introducedBy ?? null}
+            referralAskStatus={lead.referralAskStatus ?? null}
+            referralCount={lead.referralCount ?? 0}
+            relationshipStatus={lead.relationshipStatus ?? null}
+            relationshipLastCheck={lead.relationshipLastCheck ?? null}
+            touchCount={lead.touchCount ?? 0}
+            nextContactAt={lead.nextContactAt ?? null}
+            lastContactAt={lead.lastContactAt ?? null}
+            touches={lead.touches ?? []}
+            referralsReceived={lead.referralsReceived ?? []}
+            onUpdate={refetchLead}
+            updateField={updateField}
+            updateDateField={updateDateField}
+          />
+
+          <FollowUpSequenceCard
+            leadId={id}
+            proposalSentAt={lead.proposalSentAt}
+            dealOutcome={lead.dealOutcome}
+            onSequenceGenerated={() => fetch(`/api/leads/${id}`).then((r) => r.ok && r.json()).then((d) => d && setLead(d))}
+          />
+        </>
+      )}
+
+      {/* ── PROPOSALS TAB ── */}
+      {activeTab === "proposals" && (
+        <>
+          {(lead.artifacts.some((a) => a.type === "notes") || lead.artifacts.some((a) => a.type === "proposal") || lead.artifacts.some((a) => a.type === "positioning")) && (
+            <div className="border border-neutral-800 rounded-lg p-4">
+              <h3 className="text-xs font-medium text-neutral-500 uppercase tracking-wider mb-2">Pipeline artifacts</h3>
+              <div className="flex gap-2 flex-wrap">
+                {lead.artifacts.some((a) => a.type === "notes" && a.title === "AI Enrichment Report") && <Badge variant="outline">Enrichment</Badge>}
+                {lead.score != null && <Badge variant="outline">Score</Badge>}
+                {lead.artifacts.some((a) => a.type === "positioning" && a.title === "POSITIONING_BRIEF") && <Badge variant="outline">Positioning</Badge>}
+                {hasProposal && <Badge variant="outline">Proposal</Badge>}
+              </div>
+            </div>
+          )}
+
+          <div id="proposal-review">
+          {(() => {
+            const positioning = lead.artifacts.find((a) => a.type === "positioning" && a.title === "POSITIONING_BRIEF");
+            const proposals = lead.artifacts.filter((a) => a.type === "proposal").sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+            const latestProposalId = proposals[0]?.id ?? null;
+            const selectedProposal = proposals.find((p) => p.id === selectedProposalId) ?? proposals[0];
+            const proposal = selectedProposal ?? null;
+            if (!positioning && proposals.length === 0) return (
+              <div className="border border-neutral-800 rounded-lg p-8 text-center text-sm text-neutral-500">
+                No proposals yet. Use &quot;Propose&quot; above to generate one.
+              </div>
+            );
+            return (
+              <div className="border border-neutral-800 rounded-lg p-4">
+                <h3 className="text-xs font-medium text-neutral-500 uppercase tracking-wider mb-3">Proposal review (positioning vs proposal)</h3>
+                <div className="space-y-2 mb-4">
+                  <div className="text-sm font-semibold">Proposal versions</div>
+                  {proposals.length === 0 ? (
+                    <div className="text-sm text-neutral-500">No proposals yet.</div>
+                  ) : (
+                    <div className="space-y-1">
+                      {proposals.map((p, idx) => (
+                        <div
+                          key={p.id}
+                          className={`rounded-md border p-2 transition-colors ${
+                            p.id === selectedProposalId ? "bg-neutral-800 border-neutral-600" : "border-neutral-800"
+                          }`}
+                        >
+                          <button
+                            onClick={() => setSelectedProposalId(p.id)}
+                            className="w-full text-left"
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="text-sm font-medium">Proposal v{proposals.length - idx}</div>
+                              <div className="flex items-center gap-2">
+                                {p.id === latestProposalId && (
+                                  <span className="rounded bg-green-600 px-2 py-0.5 text-xs text-white">Latest</span>
+                                )}
+                                <span className="text-xs text-neutral-500">{new Date(p.createdAt).toLocaleString("en-US")}</span>
+                              </div>
+                            </div>
+                            <div className="text-xs text-neutral-500 mt-0.5">{p.title ?? "PROPOSAL"}</div>
+                          </button>
+                          <Link
+                            href={`/dashboard/proposals/${p.id}`}
+                            className="text-xs text-emerald-400 hover:text-emerald-300 mt-2 inline-block"
+                          >
+                            Open Proposal Console →
+                          </Link>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {positioning && proposal && (
+                  <>
+                <div className="flex gap-2 flex-wrap items-center mb-3">
+                  <Input
+                    placeholder="e.g. shorter, more aggressive, focus on ROI"
+                    value={reviseInstruction}
+                    onChange={(e) => setReviseInstruction(e.target.value)}
+                    className="max-w-sm h-8 text-sm"
+                    onKeyDown={(e) => e.key === "Enter" && reviseProposal()}
+                  />
+                  <Button variant="outline" size="sm" onClick={reviseProposal} disabled={revising || !reviseInstruction.trim()}>
+                    <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${revising ? "animate-spin" : ""}`} /> {revising ? "Revising..." : "Revise proposal"}
+                  </Button>
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="border border-neutral-700 rounded-md p-3 bg-neutral-900/40 max-h-[420px] overflow-y-auto">
+                    <div className="text-xs font-medium text-neutral-400 mb-2">POSITIONING_BRIEF</div>
+                    <pre className="text-sm text-neutral-300 whitespace-pre-wrap font-sans">{positioning.content}</pre>
                   </div>
-                  <Badge variant="outline" className="text-[10px] flex-shrink-0">{a.type}</Badge>
-                  <span className="text-[10px] text-neutral-500 flex-shrink-0">
-                    {new Date(a.createdAt).toLocaleDateString()}
-                  </span>
-                </button>
-                {expandedArtifact === a.id && (
-                  <div className="px-3 pb-3 border-t border-neutral-800/50">
-                    <p className="text-sm text-neutral-300 whitespace-pre-wrap mt-2">{a.content}</p>
+                  <div className="border border-neutral-700 rounded-md p-3 bg-neutral-900/40 max-h-[420px] overflow-y-auto">
+                    <div className="text-xs font-medium text-neutral-400 mb-2">Proposal</div>
+                    <pre className="text-sm text-neutral-300 whitespace-pre-wrap font-sans">{proposal.content}</pre>
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <TrustToCloseChecklistPanel
+                    artifactId={proposal.id}
+                    meta={proposal.meta}
+                    onUpdate={() => refetchLead()}
+                    compact
+                  />
+                </div>
+                  </>
+                )}
+              </div>
+            );
+          })()}
+          </div>
+
+          {hasProposal && lead.status !== "APPROVED" && (
+            <div className="border border-emerald-900/50 bg-emerald-950/20 rounded-lg p-4">
+              <h3 className="text-xs font-medium text-emerald-400/90 uppercase tracking-wider mb-3">Approve proposal</h3>
+              <div className="flex gap-3 flex-wrap items-center">
+                <Button size="lg" onClick={approveLead} disabled={approving} className="bg-emerald-600 hover:bg-emerald-500 text-white">
+                  <CheckCircle className="w-4 h-4 mr-2" /> {approving ? "Approving..." : "Approve"}
+                </Button>
+                {!showRejectInput ? (
+                  <Button variant="outline" size="sm" onClick={() => setShowRejectInput(true)} disabled={rejecting}>
+                    <XCircle className="w-3.5 h-3.5 mr-1.5" /> Reject
+                  </Button>
+                ) : (
+                  <div className="flex gap-2 flex-wrap items-center">
+                    <Input
+                      placeholder="Rejection note (optional)"
+                      value={rejectNote}
+                      onChange={(e) => setRejectNote(e.target.value)}
+                      className="max-w-xs h-8 text-sm"
+                    />
+                    <Button variant="outline" size="sm" onClick={rejectLead} disabled={rejecting}>{rejecting ? "..." : "Submit"}</Button>
+                    <Button variant="ghost" size="sm" onClick={() => { setShowRejectInput(false); setRejectNote(""); }}>Cancel</Button>
                   </div>
                 )}
               </div>
-            ))}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* ── INTELLIGENCE TAB ── */}
+      {activeTab === "intelligence" && (
+        <>
+          {(() => {
+            const positioningArtifact = lead.artifacts.find((a) => a.type === "positioning" && a.title === "POSITIONING_BRIEF");
+            const enrichArtifact = lead.artifacts.find((a) => a.type === "notes" && a.title === "AI Enrichment Report");
+            const li =
+              parseLeadIntelligenceFromMeta(positioningArtifact?.meta) ||
+              parseLeadIntelligenceFromMeta(enrichArtifact?.meta) ||
+              (lead.meta && typeof lead.meta === "object" ? parseLeadIntelligenceFromMeta(lead.meta) : null);
+            if (!li) return (
+              <div className="border border-neutral-800 rounded-lg p-8 text-center text-sm text-neutral-500">
+                No intelligence data yet. Enrich the lead first.
+              </div>
+            );
+            const rev = li.reversibility;
+            return (
+              <div className="border border-neutral-800 rounded-lg p-4">
+                <h3 className="text-xs font-medium text-neutral-500 uppercase tracking-wider mb-3">Lead intelligence</h3>
+                <div className="space-y-3 text-sm">
+                  <div>
+                    <strong className="text-neutral-300">Adoption risk:</strong>{" "}
+                    <span className="text-neutral-200">{li.adoptionRisk?.level ?? "unknown"}</span>
+                    {(li.adoptionRisk as { confidence?: string })?.confidence && (
+                      <span className="text-neutral-500 ml-1">({(li.adoptionRisk as { confidence: string }).confidence} confidence)</span>
+                    )}
+                  </div>
+                  <div>
+                    <strong className="text-neutral-300">Tool loyalty risk:</strong>{" "}
+                    <span className="text-neutral-200">{li.toolLoyaltyRisk?.level ?? "unknown"}</span>
+                    {(li.toolLoyaltyRisk as { confidence?: string })?.confidence && (
+                      <span className="text-neutral-500 ml-1">({(li.toolLoyaltyRisk as { confidence: string }).confidence} confidence)</span>
+                    )}
+                  </div>
+                  <div>
+                    <strong className="text-neutral-300">Reversibility:</strong>{" "}
+                    <span className="text-neutral-200">{(rev as { level?: string })?.level ?? rev?.strategy ?? "—"}</span>
+                  </div>
+                  {li.safeStartingPoint && (
+                    <div>
+                      <strong className="text-neutral-300">Safe starting point:</strong>{" "}
+                      <span className="text-neutral-200">{li.safeStartingPoint}</span>
+                    </div>
+                  )}
+                  {li.trustSensitivity && (
+                    <div>
+                      <strong className="text-neutral-300">Trust sensitivity:</strong>{" "}
+                      <span className="text-neutral-200">{li.trustSensitivity}</span>
+                    </div>
+                  )}
+                  <div>
+                    <strong className="text-neutral-300">Stakeholders</strong>
+                    <ul className="list-disc ml-5 mt-1 space-y-0.5 text-neutral-300">
+                      {(li.stakeholderMap ?? []).map((s, i) => (
+                        <li key={i}>
+                          <span className="font-medium text-neutral-200">{s.role}</span>
+                          {s.influence && <span className="text-neutral-500"> ({s.influence})</span>}
+                          {s.stance && <span className="text-neutral-500"> {s.stance}</span>}
+                          {": "}
+                          {(s as { likelyConcern?: string }).likelyConcern ?? s.likelyObjection ?? "—"}
+                          {(s as { whatMakesThemFeelSafe?: string }).whatMakesThemFeelSafe ? ` → ${(s as { whatMakesThemFeelSafe: string }).whatMakesThemFeelSafe}` : ""}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
+          <LeadCopilotCard leadId={lead.id} />
+
+          <OpportunityBriefCard leadId={id} />
+          <RoiEstimateCard
+            leadId={id}
+            onRoiGenerated={() => fetch(`/api/leads/${id}`).then((r) => r.ok && r.json()).then((d) => d && setLead(d))}
+          />
+
+          {(lead.status === "APPROVED" || lead.status === "BUILDING" || lead.status === "SHIPPED") && (
+            <div id="client-success">
+              <ClientSuccessCard
+                leadId={id}
+                onProofGenerated={() => fetch(`/api/leads/${id}`).then((r) => r.ok && r.json()).then((d) => d && setLead(d))}
+              />
+            </div>
+          )}
+        </>
+      )}
+
+      {/* ── ARTIFACTS TAB ── */}
+      {activeTab === "artifacts" && (
+        <div className="border border-neutral-800 rounded-lg p-4">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xs font-medium text-neutral-500 uppercase tracking-wider">
+              Artifacts ({lead.artifacts.length})
+            </h3>
+            <Button size="sm" variant="outline" onClick={() => setShowArtifactForm(true)}>
+              <Plus className="w-3.5 h-3.5" /> Add
+            </Button>
           </div>
-        )}
-      </div>
+
+          {showArtifactForm && (
+            <div className="border border-neutral-700 rounded-lg p-4 mb-4 space-y-3 bg-neutral-900/50">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">New Artifact</span>
+                <button onClick={() => setShowArtifactForm(false)} className="text-neutral-500 hover:text-neutral-300"><X className="w-4 h-4" /></button>
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                {ARTIFACT_TYPES.map((t) => (
+                  <button key={t} onClick={() => setArtifactType(t)}
+                    className={`text-xs px-2.5 py-1 rounded-md border transition-colors ${artifactType === t ? "bg-neutral-700 border-neutral-600 text-neutral-100" : "border-neutral-800 text-neutral-400 hover:border-neutral-700"}`}
+                  >{t}</button>
+                ))}
+              </div>
+              <Input placeholder="Title" value={artifactTitle} onChange={(e) => setArtifactTitle(e.target.value)} />
+              <Textarea placeholder="Content (markdown supported)" rows={6} value={artifactContent} onChange={(e) => setArtifactContent(e.target.value)} />
+              <Button size="sm" onClick={createArtifact} disabled={saving || !artifactTitle.trim()}>
+                {saving ? "Saving..." : "Save Artifact"}
+              </Button>
+            </div>
+          )}
+
+          {lead.artifacts.length === 0 && !showArtifactForm ? (
+            <p className="text-sm text-neutral-500">No artifacts yet. Add notes, proposals, or scope documents.</p>
+          ) : (
+            <div className="space-y-2">
+              {lead.artifacts.map((a) => (
+                <div key={a.id} className="border border-neutral-800/50 rounded-md overflow-hidden">
+                  <button
+                    onClick={() => setExpandedArtifact(expandedArtifact === a.id ? null : a.id)}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-neutral-800/30 transition-colors"
+                  >
+                    <FileText className="w-4 h-4 text-neutral-500 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <span className="text-sm font-medium truncate block">{a.title}</span>
+                    </div>
+                    <Badge variant="outline" className="text-[10px] flex-shrink-0">{a.type}</Badge>
+                    <span className="text-[10px] text-neutral-500 flex-shrink-0">
+                      {new Date(a.createdAt).toLocaleDateString("en-US")}
+                    </span>
+                  </button>
+                  {expandedArtifact === a.id && (
+                    <div className="px-3 pb-3 border-t border-neutral-800/50">
+                      <p className="text-sm text-neutral-300 whitespace-pre-wrap mt-2">{a.content}</p>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

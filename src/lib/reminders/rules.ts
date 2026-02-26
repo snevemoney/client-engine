@@ -292,5 +292,73 @@ export function generateReminderCandidates(input: ReminderRuleInput): ReminderCa
     });
   }
 
+  // ── Flywheel transition nudges ──
+
+  const DEAL_WON_NO_DELIVERY_DAYS = 3;
+  const REFERRAL_GAP_DAYS = 7;
+  const STAGE_STALL_DAYS = 10;
+
+  for (const l of input.flywheelLeads) {
+    // 15. Deal won but no delivery project created
+    if (l.dealOutcome === "won" && !l.hasDeliveryProject && l.dealOutcomeAt) {
+      const daysSinceWon = Math.floor((now.getTime() - l.dealOutcomeAt.getTime()) / msPerDay);
+      if (daysSinceWon >= DEAL_WON_NO_DELIVERY_DAYS) {
+        candidates.push({
+          kind: "flywheel_gap",
+          title: `Create delivery project: ${l.title?.slice(0, 50) ?? "Won deal"}`,
+          description: `Deal won ${daysSinceWon}d ago but no delivery project exists`,
+          priority: "high",
+          dueAt: new Date(l.dealOutcomeAt.getTime() + DEAL_WON_NO_DELIVERY_DAYS * msPerDay),
+          sourceType: "lead",
+          sourceId: l.id,
+          actionUrl: `/dashboard/delivery/new?leadId=${l.id}`,
+          suggestedAction: "Create a delivery project for this won deal",
+          createdByRule: "flywheel_won_no_delivery",
+          dedupeKey: dedupeKey("lead", l.id, "flywheel_won_no_delivery"),
+        });
+      }
+    }
+
+    // 16. Deal won but referral not asked after threshold
+    if (l.dealOutcome === "won" && l.referralAskStatus !== "asked" && l.referralAskStatus !== "received" && l.dealOutcomeAt) {
+      const daysSinceWon = Math.floor((now.getTime() - l.dealOutcomeAt.getTime()) / msPerDay);
+      if (daysSinceWon >= REFERRAL_GAP_DAYS) {
+        candidates.push({
+          kind: "flywheel_gap",
+          title: `Ask for referral: ${l.title?.slice(0, 50) ?? "Won deal"}`,
+          description: `Won ${daysSinceWon}d ago — referral not requested yet`,
+          priority: "medium",
+          dueAt: new Date(l.dealOutcomeAt.getTime() + REFERRAL_GAP_DAYS * msPerDay),
+          sourceType: "lead",
+          sourceId: l.id,
+          actionUrl: `/dashboard/leads/${l.id}`,
+          suggestedAction: "Ask for a referral while goodwill is fresh",
+          createdByRule: "flywheel_referral_gap",
+          dedupeKey: dedupeKey("lead", l.id, "flywheel_referral_gap"),
+        });
+      }
+    }
+
+    // 17. Sales stage stalled (active lead, no contact for too long)
+    if (!l.dealOutcome && l.salesStage && l.lastContactAt) {
+      const daysSinceContact = Math.floor((now.getTime() - l.lastContactAt.getTime()) / msPerDay);
+      if (daysSinceContact >= STAGE_STALL_DAYS) {
+        candidates.push({
+          kind: "flywheel_gap",
+          title: `Stage stall: ${l.title?.slice(0, 50) ?? "Lead"}`,
+          description: `No contact for ${daysSinceContact}d in ${(l.salesStage ?? "unknown").replace(/_/g, " ")} stage`,
+          priority: daysSinceContact >= STAGE_STALL_DAYS * 2 ? "high" : "medium",
+          dueAt: new Date(l.lastContactAt.getTime() + STAGE_STALL_DAYS * msPerDay),
+          sourceType: "lead",
+          sourceId: l.id,
+          actionUrl: `/dashboard/leads/${l.id}`,
+          suggestedAction: "Re-engage or update sales stage",
+          createdByRule: "flywheel_stage_stall",
+          dedupeKey: dedupeKey("lead", l.id, "flywheel_stage_stall"),
+        });
+      }
+    }
+  }
+
   return candidates;
 }

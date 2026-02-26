@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { jsonError, requireAuth } from "@/lib/api-utils";
 import { db } from "@/lib/db";
 import { withRouteTiming } from "@/lib/api-utils";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   return withRouteTiming("GET /api/leads/[id]", async () => {
-    const session = await auth();
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const session = await requireAuth();
+    if (!session) return jsonError("Unauthorized", 401);
 
     const { id } = await params;
     const lead = await db.lead.findUnique({
@@ -61,6 +61,8 @@ const ALLOWED_PATCH_FIELDS = new Set([
   "relationshipLastCheck",
 ]);
 
+const VALID_TOUCH_TYPES = new Set(["EMAIL", "CALL", "LINKEDIN_DM", "MEETING", "FOLLOW_UP", "REFERRAL_ASK", "CHECK_IN"]);
+
 function pickAllowedLeadPatch(body: Record<string, unknown>): Record<string, unknown> {
   const updates: Record<string, unknown> = {};
   for (const key of Object.keys(body)) {
@@ -69,15 +71,35 @@ function pickAllowedLeadPatch(body: Record<string, unknown>): Record<string, unk
       (err as Error & { code?: string }).code = "GATE";
       throw err;
     }
-    updates[key] = body[key];
+    const val = body[key];
+
+    if (key === "followUpStage") {
+      if (val !== null && val !== undefined && (typeof val !== "number" || !Number.isInteger(val) || val < 0)) {
+        throw new Error("followUpStage must be a non-negative integer");
+      }
+    }
+
+    if (key === "lastTouchType") {
+      if (val !== null && val !== undefined && (typeof val !== "string" || !VALID_TOUCH_TYPES.has(val))) {
+        throw new Error(`lastTouchType must be one of: ${[...VALID_TOUCH_TYPES].join(", ")}`);
+      }
+    }
+
+    if (key === "detailScore") {
+      if (val !== null && val !== undefined && (typeof val !== "number" || !Number.isInteger(val) || val < 0 || val > 100)) {
+        throw new Error("detailScore must be an integer 0-100");
+      }
+    }
+
+    updates[key] = val;
   }
   return updates;
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   return withRouteTiming("PATCH /api/leads/[id]", async () => {
-    const session = await auth();
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const session = await requireAuth();
+    if (!session) return jsonError("Unauthorized", 401);
 
     const { id } = await params;
     const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
@@ -114,8 +136,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   return withRouteTiming("DELETE /api/leads/[id]", async () => {
-    const session = await auth();
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const session = await requireAuth();
+    if (!session) return jsonError("Unauthorized", 401);
 
     const { id } = await params;
     await db.lead.delete({ where: { id } });
