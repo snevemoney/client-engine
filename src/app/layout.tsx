@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import Script from "next/script";
+import { PostHogProvider } from "@/components/providers/PostHogProvider";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -51,7 +52,7 @@ fbq('track', 'PageView');
             </noscript>
           </>
         )}
-        {children}
+        <PostHogProvider>{children}</PostHogProvider>
       </body>
     </html>
   );

@@ -12,6 +12,7 @@ import { LeadFormModal } from "@/components/intake/LeadFormModal";
 import type { LeadFormData } from "@/components/intake/LeadFormModal";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useUrlQueryState } from "@/hooks/useUrlQueryState";
+import { useTrackEvent } from "@/hooks/useTrackEvent";
 import { AsyncState } from "@/components/ui/AsyncState";
 import { PaginationControls } from "@/components/ui/PaginationControls";
 import { formatDateSafe } from "@/lib/ui/date-safe";
@@ -54,6 +55,8 @@ export default function IntakePage() {
   const [bulkPromoteLoading, setBulkPromoteLoading] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const runIdRef = useRef(0);
+
+  const trackEvent = useTrackEvent();
 
   const quickFilter = url.getString("filter", "all");
   const statusFilter = url.getString("status", "all");
@@ -152,6 +155,7 @@ export default function IntakePage() {
         alert(typeof data?.error === "string" ? data.error : "Failed to score leads");
         return;
       }
+      trackEvent("bulk_score_triggered", { count: pagination.total });
       void fetchLeads();
     } finally {
       setBulkScoreLoading(false);
@@ -171,6 +175,7 @@ export default function IntakePage() {
         alert(typeof data?.error === "string" ? data.error : "Failed to promote leads");
         return;
       }
+      trackEvent("bulk_promote_triggered", { count: pagination.total });
       void fetchLeads();
     } finally {
       setBulkPromoteLoading(false);
