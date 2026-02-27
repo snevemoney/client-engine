@@ -82,14 +82,39 @@ export function LeadsTable() {
   async function runBulkPipeline() {
     if (pipelineRunning) return;
     setPipelineRunning(true);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5 * 60 * 1000); // 5 min for long pipeline runs
     try {
-      const res = await fetch("/api/leads/bulk-pipeline-run", { method: "POST", credentials: "include" });
+      const res = await fetch("/api/leads/bulk-pipeline-run", {
+        method: "POST",
+        credentials: "include",
+        signal: controller.signal,
+      });
       const data = await res.json().catch(() => null);
+      clearTimeout(timeoutId);
       if (!res.ok) {
         alert(typeof data?.error === "string" ? data.error : "Failed to run pipeline");
         return;
       }
-      if ((data?.ran ?? 0) > 0) void fetchLeads();
+      const ran = data?.ran ?? 0;
+      const processed = data?.processed ?? 0;
+      if (ran > 0) {
+        void fetchLeads();
+        alert(`Pipeline ran for ${ran} lead${ran === 1 ? "" : "s"}.`);
+      } else if (processed > 0) {
+        void fetchLeads();
+        alert("Processed leads but none could run (may already have artifacts or be ineligible).");
+      } else {
+        alert("No leads need pipeline run.");
+      }
+    } catch (e) {
+      clearTimeout(timeoutId);
+      if (e instanceof Error && e.name === "AbortError") {
+        alert("Request timed out. Pipeline may still be running on the server. Refresh the page to see updates.");
+        void fetchLeads();
+      } else {
+        alert(e instanceof Error ? e.message : "Failed to run pipeline");
+      }
     } finally {
       setPipelineRunning(false);
     }
@@ -102,6 +127,15 @@ export function LeadsTable() {
   }
 
   const activeFilters = (statusFilter !== "ALL" ? 1 : 0) + (sourceFilter !== "ALL" ? 1 : 0);
+
+  const sortedLeads = useMemo(() => {
+    return [...leads].sort((a, b) => {
+      const aScore = a.score ?? -1;
+      const bScore = b.score ?? -1;
+      if (bScore !== aScore) return bScore - aScore;
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+  }, [leads]);
 
   return (
     <div className="space-y-4">
@@ -197,7 +231,7 @@ export function LeadsTable() {
               <th className="text-left px-4 py-3 font-medium text-neutral-400">Title</th>
               <th className="text-left px-4 py-3 font-medium text-neutral-400 hidden sm:table-cell">Source</th>
               <th className="text-left px-4 py-3 font-medium text-neutral-400">Status</th>
-              <th className="text-left px-4 py-3 font-medium text-neutral-400 hidden md:table-cell">Score</th>
+              <th className="text-left px-4 py-3 font-medium text-neutral-400">Score</th>
               <th className="text-left px-4 py-3 font-medium text-neutral-400 hidden lg:table-cell">Budget</th>
               <th className="text-right px-4 py-3 font-medium text-neutral-400 w-16"></th>
             </tr>
@@ -209,7 +243,7 @@ export function LeadsTable() {
                   <td className="px-4 py-3"><div className="h-4 w-48 rounded bg-muted" /></td>
                   <td className="px-4 py-3 hidden sm:table-cell"><div className="h-4 w-16 rounded bg-muted" /></td>
                   <td className="px-4 py-3"><div className="h-5 w-20 rounded bg-muted" /></td>
-                  <td className="px-4 py-3 hidden md:table-cell"><div className="h-4 w-8 rounded bg-muted" /></td>
+                  <td className="px-4 py-3"><div className="h-4 w-8 rounded bg-muted" /></td>
                   <td className="px-4 py-3 hidden lg:table-cell"><div className="h-4 w-16 rounded bg-muted" /></td>
                   <td className="px-4 py-3"><div className="h-4 w-4 rounded bg-muted ml-auto" /></td>
                 </tr>
@@ -224,7 +258,7 @@ export function LeadsTable() {
             ) : leads.length === 0 ? (
               <tr><td colSpan={6} className="px-4 py-8 text-center text-neutral-500">No leads found.</td></tr>
             ) : (
-              leads.map((lead) => (
+              sortedLeads.map((lead) => (
                 <tr key={lead.id} className="border-b border-neutral-800/50 hover:bg-neutral-900/30 transition-colors">
                   <td className="px-4 py-3">
                     <Link href={`/dashboard/leads/${lead.id}`} className="text-neutral-100 hover:underline font-medium block truncate max-w-[300px]">
@@ -241,7 +275,7 @@ export function LeadsTable() {
                   </td>
                   <td className="px-4 py-3 text-neutral-400 hidden sm:table-cell">{lead.source}</td>
                   <td className="px-4 py-3"><Badge variant={statusColors[lead.status] || "default"}>{lead.status}</Badge></td>
-                  <td className="px-4 py-3 text-neutral-400 hidden md:table-cell">
+                  <td className="px-4 py-3 text-neutral-400">
                     {lead.score != null ? (
                       <span className={lead.score >= 70 ? "text-emerald-400" : lead.score >= 40 ? "text-amber-400" : "text-neutral-500"}>
                         {lead.score}
