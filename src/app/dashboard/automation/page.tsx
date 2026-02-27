@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { toast } from "sonner";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -80,7 +81,7 @@ export default function AutomationPage() {
       if (res.ok) fetchData();
       else {
         const d = await res.json();
-        alert(d?.error ?? "Generate failed");
+        toast.error(d?.error ?? "Generate failed");
       }
     } finally {
       setGenerateLoading(false);
@@ -92,7 +93,7 @@ export default function AutomationPage() {
       const res = await fetch(`/api/automation-suggestions/${id}/apply`, { method: "POST" });
       const data = await res.json();
       if (res.ok && data.success) fetchData();
-      else if (data.error) alert(data.error);
+      else if (data.error) toast.error(data.error);
     } catch {
       // ignore
     }

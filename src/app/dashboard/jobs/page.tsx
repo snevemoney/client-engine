@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { toast } from "sonner";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -126,7 +127,7 @@ export default function JobsPage() {
       const res = await fetch("/api/jobs/run", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ limit: 10 }) });
       const data = await res.json();
       if (res.ok) void fetchData();
-      else alert(data?.error ?? "Run failed");
+      else toast.error(data?.error ?? "Run failed");
     } finally {
       setRunLoading(false);
     }
@@ -140,7 +141,7 @@ export default function JobsPage() {
       if (res.ok) void fetchData();
       else {
         const d = await res.json();
-        alert(d?.error ?? "Retry failed");
+        toast.error(d?.error ?? "Retry failed");
       }
     } finally {
       setActioningId(null);
@@ -155,7 +156,7 @@ export default function JobsPage() {
       if (res.ok) void fetchData();
       else {
         const d = await res.json();
-        alert(d?.error ?? "Cancel failed");
+        toast.error(d?.error ?? "Cancel failed");
       }
     } finally {
       setActioningId(null);
@@ -209,7 +210,7 @@ export default function JobsPage() {
             try {
               const res = await fetch("/api/jobs/tick", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) });
               if (res.ok) void fetchData();
-              else { const d = await res.json(); alert(d?.error ?? "Tick failed"); }
+              else { const d = await res.json(); toast.error(d?.error ?? "Tick failed"); }
             } finally {
               setTickLoading(false);
             }

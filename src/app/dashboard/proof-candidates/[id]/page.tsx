@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, use, useCallback } from "react";
+import { toast } from "sonner";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -103,7 +104,7 @@ export default function ProofCandidateDetailPage({ params }: { params: Promise<{
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
-        alert(typeof data?.error === "string" ? data.error : "Save failed");
+        toast.error(typeof data?.error === "string" ? data.error : "Save failed");
         return;
       }
       void fetchCandidate();
@@ -118,7 +119,7 @@ export default function ProofCandidateDetailPage({ params }: { params: Promise<{
       const res = await fn();
       const data = await res.json().catch(() => null);
       if (!res.ok) {
-        alert(typeof data?.error === "string" ? data.error : `Action failed (${res.status})`);
+        toast.error(typeof data?.error === "string" ? data.error : `Action failed (${res.status})`);
         return;
       }
       void fetchCandidate();

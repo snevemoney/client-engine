@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { toast } from "sonner";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -86,7 +87,7 @@ export default function JobSchedulesPage() {
         body: JSON.stringify({ isEnabled: !isEnabled }),
       });
       if (res.ok) void fetchData();
-      else { const d = await res.json(); alert(d?.error ?? "Update failed"); }
+      else { const d = await res.json(); toast.error(d?.error ?? "Update failed"); }
     } finally {
       setActioningId(null);
     }
@@ -103,10 +104,10 @@ export default function JobSchedulesPage() {
       });
       const data = await res.json();
       if (res.ok) {
-        if (data.created) alert(`Job enqueued: ${data.jobId}`);
-        else alert("Job already queued (dedupe)");
+        if (data.created) toast.success(`Job enqueued: ${data.jobId}`);
+        else toast("Job already queued (dedupe)");
         void fetchData();
-      } else alert(data?.error ?? "Run failed");
+      } else toast.error(data?.error ?? "Run failed");
     } finally {
       setActioningId(null);
     }

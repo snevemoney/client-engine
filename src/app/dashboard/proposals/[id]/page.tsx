@@ -1,6 +1,7 @@
 "use client";
 
 import { use, useState, useEffect } from "react";
+import { toast } from "sonner";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -73,7 +74,7 @@ export default function ProposalDetailPage({ params }: { params: Promise<{ id: s
       const res = await fn();
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        alert(data?.error ?? "Action failed");
+        toast.error(data?.error ?? "Action failed");
         return;
       }
       window.location.reload();

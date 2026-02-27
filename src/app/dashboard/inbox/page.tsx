@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { toast } from "sonner";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -91,7 +92,7 @@ export default function InboxPage() {
       else {
         setItems((list) => list.map((n) => (n.id === id ? { ...n, isRead: false } : n)));
         const d = await res.json();
-        alert(d?.error ?? "Failed");
+        toast.error(d?.error ?? "Failed");
       }
     } catch {
       setItems((list) => list.map((n) => (n.id === id ? { ...n, isRead: false } : n)));
@@ -108,7 +109,7 @@ export default function InboxPage() {
       if (res.ok) void fetchData();
       else {
         const d = await res.json();
-        alert(d?.error ?? "Failed");
+        toast.error(d?.error ?? "Failed");
       }
     } finally {
       setActioningId(null);

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ClipboardList, Copy, Check, Loader2 } from "lucide-react";
@@ -54,7 +55,7 @@ export default function ChecklistPage() {
         fetchChecklists();
       } else {
         const err = await res.json();
-        alert(err.error || "Generate failed");
+        toast.error(err.error || "Generate failed");
       }
     } finally {
       setGenerating(false);

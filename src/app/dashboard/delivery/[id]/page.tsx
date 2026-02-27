@@ -1,6 +1,7 @@
 "use client";
 
 import { use, useState, useEffect } from "react";
+import { toast } from "sonner";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -94,7 +95,7 @@ export default function DeliveryDetailPage({ params }: { params: Promise<{ id: s
     if (res.ok) window.location.reload();
     else {
       const d = await res.json();
-      alert(d?.error ?? "Cannot complete");
+      toast.error(d?.error ?? "Cannot complete");
     }
   };
 

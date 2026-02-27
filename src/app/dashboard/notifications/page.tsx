@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { toast } from "sonner";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -93,7 +94,7 @@ export default function NotificationsPage() {
       const data = await res.json();
       if (res.ok) {
         if (data.created > 0 || data.queued > 0) void fetchData();
-      } else alert(data?.error ?? "Failed");
+      } else toast.error(data?.error ?? "Failed");
     } finally {
       setRunEscLoading(false);
     }
@@ -105,7 +106,7 @@ export default function NotificationsPage() {
       const res = await fetch("/api/notifications/dispatch", { method: "POST" });
       const data = await res.json();
       if (res.ok) void fetchData();
-      else alert(data?.error ?? "Failed");
+      else toast.error(data?.error ?? "Failed");
     } finally {
       setDispatchLoading(false);
     }
@@ -119,7 +120,7 @@ export default function NotificationsPage() {
       if (res.ok) void fetchData();
       else {
         const d = await res.json();
-        alert(d?.error ?? "Retry failed");
+        toast.error(d?.error ?? "Retry failed");
       }
     } finally {
       setActioningId(null);

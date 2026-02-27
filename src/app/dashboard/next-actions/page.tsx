@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { toast } from "sonner";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -112,7 +113,7 @@ export default function NextActionsPage() {
       if (res.ok) void fetchData();
       else {
         const d = await res.json();
-        alert(d?.error ?? "Run failed");
+        toast.error(d?.error ?? "Run failed");
       }
     } finally {
       setRunLoading(false);
@@ -131,7 +132,7 @@ export default function NextActionsPage() {
       if (res.ok) void fetchData();
       else {
         const d = await res.json();
-        alert(d?.error ?? "Mark done failed");
+        toast.error(d?.error ?? "Mark done failed");
       }
     } finally {
       setActioningId(null);
@@ -150,7 +151,7 @@ export default function NextActionsPage() {
       if (res.ok) void fetchData();
       else {
         const d = await res.json();
-        alert(d?.error ?? "Dismiss failed");
+        toast.error(d?.error ?? "Dismiss failed");
       }
     } finally {
       setActioningId(null);

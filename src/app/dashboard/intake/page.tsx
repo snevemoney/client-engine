@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { Plus, Search, Target, Rocket } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,6 +44,7 @@ const QUICK_FILTERS = [
 ] as const;
 
 export default function IntakePage() {
+  const router = useRouter();
   const url = useUrlQueryState();
   const [search, setSearch] = useState(() => url.getString("search"));
   const debouncedSearch = useDebouncedValue(search, 300);
@@ -152,10 +155,13 @@ export default function IntakePage() {
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
-        alert(typeof data?.error === "string" ? data.error : "Failed to score leads");
+        toast.error(typeof data?.error === "string" ? data.error : "Failed to score leads");
         return;
       }
       trackEvent("bulk_score_triggered", { count: pagination.total });
+      toast.success(`Scored ${data?.scored ?? pagination.total} leads`, {
+        action: { label: "View Ready to Promote →", onClick: () => setQuickFilter("ready") },
+      });
       void fetchLeads();
     } finally {
       setBulkScoreLoading(false);
@@ -172,10 +178,13 @@ export default function IntakePage() {
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
-        alert(typeof data?.error === "string" ? data.error : "Failed to promote leads");
+        toast.error(typeof data?.error === "string" ? data.error : "Failed to promote leads");
         return;
       }
       trackEvent("bulk_promote_triggered", { count: pagination.total });
+      toast.success(`Promoted ${data?.promoted ?? pagination.total} leads`, {
+        action: { label: "Go to Pipeline Leads →", onClick: () => router.push("/dashboard/leads") },
+      });
       void fetchLeads();
     } finally {
       setBulkPromoteLoading(false);
@@ -210,10 +219,15 @@ export default function IntakePage() {
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
-        alert(typeof data?.error === "string" ? data.error : "Failed to create lead");
+        toast.error(typeof data?.error === "string" ? data.error : "Failed to create lead");
         return;
       }
       setModalOpen(false);
+      toast.success("Lead created", {
+        action: data?.id
+          ? { label: "View lead →", onClick: () => router.push(`/dashboard/intake/${data.id}`) }
+          : undefined,
+      });
       void fetchLeads();
     } finally {
       setCreateLoading(false);

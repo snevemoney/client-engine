@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { toast } from "sonner";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -116,7 +117,7 @@ export default function RiskPage() {
       if (res.ok) void fetchData();
       else {
         const d = await res.json();
-        alert(d?.error ?? "Run rules failed");
+        toast.error(d?.error ?? "Run rules failed");
       }
     } finally {
       setRunLoading(false);
@@ -135,7 +136,7 @@ export default function RiskPage() {
       if (res.ok) void fetchData();
       else {
         const d = await res.json();
-        alert(d?.error ?? "Snooze failed");
+        toast.error(d?.error ?? "Snooze failed");
       }
     } finally {
       setActioningId(null);
@@ -154,7 +155,7 @@ export default function RiskPage() {
       if (res.ok) void fetchData();
       else {
         const d = await res.json();
-        alert(d?.error ?? "Resolve failed");
+        toast.error(d?.error ?? "Resolve failed");
       }
     } finally {
       setActioningId(null);
@@ -173,7 +174,7 @@ export default function RiskPage() {
       if (res.ok) void fetchData();
       else {
         const d = await res.json();
-        alert(d?.error ?? "Dismiss failed");
+        toast.error(d?.error ?? "Dismiss failed");
       }
     } finally {
       setActioningId(null);

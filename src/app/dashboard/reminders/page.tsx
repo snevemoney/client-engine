@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { toast } from "sonner";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -105,7 +106,7 @@ export default function RemindersPage() {
       if (res.ok) fetchData();
       else {
         const d = await res.json();
-        alert(d?.error ?? "Run rules failed");
+        toast.error(d?.error ?? "Run rules failed");
       }
     } finally {
       setRunRulesLoading(false);
@@ -130,13 +131,13 @@ export default function RemindersPage() {
           list.map((r) => (r.id === id ? prev : r))
         );
         const d = await res.json();
-        alert(d?.error ?? "Failed to complete");
+        toast.error(d?.error ?? "Failed to complete");
       }
     } catch {
       setReminders((list) =>
         list.map((r) => (r.id === id ? prev : r))
       );
-      alert("Failed to complete");
+      toast.error("Failed to complete");
     } finally {
       setActioningId(null);
     }
@@ -167,13 +168,13 @@ export default function RemindersPage() {
           list.map((r) => (r.id === id ? prev : r))
         );
         const d = await res.json();
-        alert(d?.error ?? "Failed to snooze");
+        toast.error(d?.error ?? "Failed to snooze");
       }
     } catch {
       setReminders((list) =>
         list.map((r) => (r.id === id ? prev : r))
       );
-      alert("Failed to snooze");
+      toast.error("Failed to snooze");
     } finally {
       setActioningId(null);
     }
@@ -201,13 +202,13 @@ export default function RemindersPage() {
           list.map((r) => (r.id === id ? prev : r))
         );
         const d = await res.json();
-        alert(d?.error ?? "Failed to dismiss");
+        toast.error(d?.error ?? "Failed to dismiss");
       }
     } catch {
       setReminders((list) =>
         list.map((r) => (r.id === id ? prev : r))
       );
-      alert("Failed to dismiss");
+      toast.error("Failed to dismiss");
     } finally {
       setActioningId(null);
     }
