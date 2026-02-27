@@ -23,6 +23,7 @@ test-results/
 
 # misc
 .DS_Store
+snapshot-output.md
 *.pem
 
 # debug

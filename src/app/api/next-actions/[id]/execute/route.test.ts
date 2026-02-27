@@ -8,14 +8,22 @@ import { NextActionPriority, NextActionStatus, RiskSourceType } from "@prisma/cl
 
 vi.mock("@/lib/api-utils", () => ({
   requireAuth: vi.fn(),
-  jsonError: (msg: string, status: number) =>
-    new Response(JSON.stringify({ error: msg }), { status, headers: { "Content-Type": "application/json" } }),
+  jsonError: (
+    msg: string,
+    status: number,
+    _code?: string,
+    extra?: { headers?: Record<string, string> }
+  ) => {
+    const headers = new Headers(extra?.headers);
+    headers.set("Content-Type", "application/json");
+    return new Response(JSON.stringify({ error: msg }), { status, headers });
+  },
   withRouteTiming: (_: string, fn: () => Promise<Response>) => fn(),
 }));
 
 vi.mock("@/lib/http/rate-limit", () => ({
   getRequestClientKey: () => "test-client",
-  rateLimitByKey: () => ({ ok: true, remaining: 10, resetAt: Date.now() + 60_000 }),
+  rateLimitByKey: vi.fn(() => ({ ok: true, remaining: 10, resetAt: Date.now() + 60_000 })),
 }));
 
 describe("POST /api/next-actions/[id]/execute", () => {
@@ -128,5 +136,25 @@ describe("POST /api/next-actions/[id]/execute", () => {
     });
     const res = await POST(req, { params: Promise.resolve({ id: "nonexistent_cuid_12345" }) });
     expect(res.status).toBe(404);
+  });
+
+  it("429 rate limit includes Retry-After header", async () => {
+    const { rateLimitByKey } = await import("@/lib/http/rate-limit");
+    const resetAt = Date.now() + 45_000; // 45s from now
+    vi.mocked(rateLimitByKey).mockReturnValueOnce({ ok: false, remaining: 0, resetAt });
+
+    const { POST } = await import("./route");
+    const req = new NextRequest("http://x/api/next-actions/1/execute", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ actionKey: "mark_done" }),
+    });
+    const res = await POST(req, { params: Promise.resolve({ id: actionId }) });
+    expect(res.status).toBe(429);
+    const retryAfter = res.headers.get("Retry-After");
+    expect(retryAfter).toBeDefined();
+    const seconds = parseInt(retryAfter!, 10);
+    expect(seconds).toBeGreaterThanOrEqual(1);
+    expect(seconds).toBeLessThanOrEqual(46);
   });
 });
