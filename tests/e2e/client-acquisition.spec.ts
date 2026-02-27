@@ -15,8 +15,11 @@ import { test, expect } from "@playwright/test";
 const email = process.env.ADMIN_EMAIL || process.env.E2E_EMAIL || "admin@evenslouis.ca";
 const password = process.env.ADMIN_PASSWORD || process.env.E2E_PASSWORD || "changeme";
 
+const skipIfProd = () => (process.env.PLAYWRIGHT_BASE_URL || "").includes("evenslouis.ca");
+
 test.describe("Client-acquisition E2E", () => {
   test.beforeEach(async ({ page }) => {
+    if (skipIfProd()) test.skip(true, "Do not create data in prod. Run against localhost.");
     test.setTimeout(45000);
     await page.goto("/login");
     await page.getByLabel("Email").fill(email);
