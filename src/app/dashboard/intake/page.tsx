@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, Target, Rocket } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { LeadStatusBadge } from "@/components/intake/LeadStatusBadge";
@@ -50,6 +50,8 @@ export default function IntakePage() {
   const [error, setError] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [createLoading, setCreateLoading] = useState(false);
+  const [bulkScoreLoading, setBulkScoreLoading] = useState(false);
+  const [bulkPromoteLoading, setBulkPromoteLoading] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const runIdRef = useRef(0);
 
@@ -137,6 +139,44 @@ export default function IntakePage() {
   };
   const setSourceFilter = (v: string) => url.setFilter("source", v);
 
+  const handleBulkScore = async () => {
+    if (bulkScoreLoading) return;
+    setBulkScoreLoading(true);
+    try {
+      const res = await fetch("/api/intake-leads/bulk-score", {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        alert(typeof data?.error === "string" ? data.error : "Failed to score leads");
+        return;
+      }
+      void fetchLeads();
+    } finally {
+      setBulkScoreLoading(false);
+    }
+  };
+
+  const handleBulkPromote = async () => {
+    if (bulkPromoteLoading) return;
+    setBulkPromoteLoading(true);
+    try {
+      const res = await fetch("/api/intake-leads/bulk-promote", {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        alert(typeof data?.error === "string" ? data.error : "Failed to promote leads");
+        return;
+      }
+      void fetchLeads();
+    } finally {
+      setBulkPromoteLoading(false);
+    }
+  };
+
   const handleCreate = async (form: LeadFormData) => {
     if (createLoading) return;
     setCreateLoading(true);
@@ -188,7 +228,7 @@ export default function IntakePage() {
         </Button>
       </div>
 
-      <div className="flex flex-wrap gap-2 mb-2">
+      <div className="flex flex-wrap items-center gap-2 mb-2">
         {QUICK_FILTERS.map((f) => (
           <button
             key={f.key}
@@ -203,6 +243,30 @@ export default function IntakePage() {
             {f.label}
           </button>
         ))}
+        {quickFilter === "needs-score" && pagination.total > 0 && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleBulkScore}
+            disabled={bulkScoreLoading}
+            className="border-emerald-700 text-emerald-400 hover:bg-emerald-900/30"
+          >
+            <Target className="h-4 w-4" />
+            {bulkScoreLoading ? "Scoring…" : `Score all (${pagination.total})`}
+          </Button>
+        )}
+        {quickFilter === "ready" && pagination.total > 0 && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleBulkPromote}
+            disabled={bulkPromoteLoading}
+            className="border-emerald-700 text-emerald-400 hover:bg-emerald-900/30"
+          >
+            <Rocket className="h-4 w-4" />
+            {bulkPromoteLoading ? "Promoting…" : `Promote all (${pagination.total})`}
+          </Button>
+        )}
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3">

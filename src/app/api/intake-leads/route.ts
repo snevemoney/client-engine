@@ -87,7 +87,9 @@ export async function GET(req: NextRequest) {
       filterWhere.status = { notIn: [IntakeLeadStatus.won, IntakeLeadStatus.lost, IntakeLeadStatus.archived] };
       filterWhere.score = null;
     } else if (filter === "ready") {
-      filterWhere.status = { in: ["qualified", "proposal_drafted"] };
+      filterWhere.status = {
+        in: [IntakeLeadStatus.new, IntakeLeadStatus.qualified, IntakeLeadStatus.proposal_drafted],
+      };
       filterWhere.promotedLeadId = null;
       filterWhere.title = { not: "" };
       filterWhere.summary = { not: "" };

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Trash2, Filter, X } from "lucide-react";
+import { Plus, Search, Trash2, Filter, X, Zap } from "lucide-react";
 
 interface Lead {
   id: string;
@@ -35,6 +35,7 @@ export function LeadsTable() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [pipelineRunning, setPipelineRunning] = useState(false);
 
   const fetchLeads = useCallback(async () => {
     setLoading(true);
@@ -78,6 +79,22 @@ export function LeadsTable() {
     void fetchLeads();
   }, [fetchLeads]);
 
+  async function runBulkPipeline() {
+    if (pipelineRunning) return;
+    setPipelineRunning(true);
+    try {
+      const res = await fetch("/api/leads/bulk-pipeline-run", { method: "POST", credentials: "include" });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        alert(typeof data?.error === "string" ? data.error : "Failed to run pipeline");
+        return;
+      }
+      if ((data?.ran ?? 0) > 0) void fetchLeads();
+    } finally {
+      setPipelineRunning(false);
+    }
+  }
+
   async function deleteLead(id: string) {
     if (!confirm("Delete this lead?")) return;
     await fetch(`/api/leads/${id}`, { method: "DELETE" });
@@ -108,6 +125,21 @@ export function LeadsTable() {
             </span>
           )}
         </Button>
+        {(() => {
+          const needsPipeline = leads.filter((l) => l.status === "NEW" || l.status === "ENRICHED").length;
+          return needsPipeline > 0 ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={runBulkPipeline}
+              disabled={pipelineRunning}
+              className="border-amber-700 text-amber-400 hover:bg-amber-900/30"
+            >
+              <Zap className="w-3.5 h-3.5" />
+              {pipelineRunning ? "Running…" : `Run pipeline (${needsPipeline})`}
+            </Button>
+          ) : null;
+        })()}
         <Link href="/dashboard/leads/new">
           <Button size="sm"><Plus className="w-4 h-4" /> Add Lead</Button>
         </Link>

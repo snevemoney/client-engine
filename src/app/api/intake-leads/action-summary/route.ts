@@ -33,7 +33,9 @@ export async function GET() {
       }),
       db.intakeLead.count({
         where: {
-          status: { in: ["qualified", "proposal_drafted"] },
+          status: {
+            in: [IntakeLeadStatus.new, IntakeLeadStatus.qualified, IntakeLeadStatus.proposal_drafted],
+          },
           promotedLeadId: null,
           title: { not: "" },
           summary: { not: "" },
