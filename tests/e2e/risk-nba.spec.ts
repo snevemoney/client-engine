@@ -54,7 +54,7 @@ test.describe("Risk & Next Actions pages", () => {
   test("Next Actions page loads and Run Next Actions button visible", async ({ page }) => {
     await page.goto(`${baseURL}/dashboard/next-actions`, { waitUntil: "load", timeout: 15000 });
     await expect(page).toHaveURL(/\/dashboard\/next-actions/);
-    await expect(page.locator("h1")).toContainText(/Next Actions/i, { timeout: 5000 });
+    await expect(page.locator("h1")).toContainText(/Next Best Actions/i, { timeout: 5000 });
     await expect(page.getByRole("button", { name: /Run Next Actions/i })).toBeVisible({ timeout: 5000 });
   });
 
