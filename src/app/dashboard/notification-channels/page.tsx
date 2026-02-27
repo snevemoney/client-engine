@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { toast } from "sonner";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -61,7 +62,7 @@ export default function NotificationChannelsPage() {
       if (res.ok) void fetchData();
       else {
         const d = await res.json();
-        alert(d?.error ?? "Update failed");
+        toast.error(d?.error ?? "Update failed");
       }
     } finally {
       setActioningId(null);
@@ -75,10 +76,10 @@ export default function NotificationChannelsPage() {
       const res = await fetch(`/api/notification-channels/${id}/test`, { method: "POST" });
       const data = await res.json();
       if (res.ok) {
-        if (data.ok) alert("Test sent successfully");
+        if (data.ok) toast.success("Test sent successfully");
         void fetchData();
       } else {
-        alert(data?.error ?? "Test failed");
+        toast.error(data?.error ?? "Test failed");
         void fetchData();
       }
     } finally {

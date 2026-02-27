@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback, use } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { ArrowLeft, Target, FileText, MessageSquare, ExternalLink, Rocket, Send, Calendar, Trophy, XCircle, Phone, Mail, CheckCircle2, Clock, Github, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -73,6 +75,7 @@ function formatDate(iso: string | null): string {
 
 export default function IntakeLeadDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const router = useRouter();
   const [lead, setLead] = useState<IntakeLead | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -122,17 +125,19 @@ export default function IntakeLeadDetailPage({ params }: { params: Promise<{ id:
 
   const runAction = async (
     action: string,
-    fn: () => Promise<Response>
+    fn: () => Promise<Response>,
+    onSuccess?: (data: unknown) => void,
   ) => {
     setActionLoading(action);
     try {
       const res = await fn();
       const data = await res.json().catch(() => null);
       if (!res.ok) {
-        alert(typeof data?.error === "string" ? data.error : `Action failed (${res.status})`);
+        toast.error(typeof data?.error === "string" ? data.error : `Action failed (${res.status})`);
         return;
       }
       void fetchLead();
+      onSuccess?.(data);
     } finally {
       setActionLoading(null);
     }
@@ -140,12 +145,22 @@ export default function IntakeLeadDetailPage({ params }: { params: Promise<{ id:
 
   const handleScore = () =>
     runAction("score", () =>
-      fetch(`/api/intake-leads/${id}/score`, { method: "POST", credentials: "include" })
+      fetch(`/api/intake-leads/${id}/score`, { method: "POST", credentials: "include" }),
+      (data) => {
+        const score = (data as { score?: number })?.score;
+        const msg = score != null ? `Lead scored (${score}/100)` : "Lead scored";
+        if (score != null && score >= 35 && !lead?.promotedLeadId) {
+          toast.success(msg, { action: { label: "Promote to Pipeline", onClick: () => handlePromote(false) } });
+        } else {
+          toast.success(msg);
+        }
+      },
     );
 
   const handleDraft = () =>
     runAction("draft", () =>
-      fetch(`/api/intake-leads/${id}/draft`, { method: "POST", credentials: "include" })
+      fetch(`/api/intake-leads/${id}/draft`, { method: "POST", credentials: "include" }),
+      () => toast.success("Draft generated"),
     );
 
   const handleAddNote = async () => {
@@ -199,17 +214,29 @@ export default function IntakeLeadDetailPage({ params }: { params: Promise<{ id:
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({ force: force ?? false }),
-      })
+      }),
+      (data) => {
+        const promotedId = (data as { leadId?: string })?.leadId;
+        toast.success("Promoted to pipeline!", {
+          action: promotedId
+            ? { label: "View in Pipeline →", onClick: () => router.push(`/dashboard/leads/${promotedId}`) }
+            : undefined,
+        });
+      },
     );
 
   const handleSyncPipeline = () =>
     runAction("sync", () =>
-      fetch(`/api/intake-leads/${id}/sync-pipeline`, { method: "POST", credentials: "include" })
+      fetch(`/api/intake-leads/${id}/sync-pipeline`, { method: "POST", credentials: "include" }),
+      () => toast.success("Synced to pipeline"),
     );
 
   const handleMarkSent = () =>
     runAction("markSent", () =>
-      fetch(`/api/intake-leads/${id}/mark-sent`, { method: "POST", credentials: "include" })
+      fetch(`/api/intake-leads/${id}/mark-sent`, { method: "POST", credentials: "include" }),
+      () => toast.success("Marked as sent", {
+        action: { label: "Go to Follow-ups →", onClick: () => router.push("/dashboard/followups") },
+      }),
     );
 
   const handleSetFollowup = async () => {
@@ -222,7 +249,8 @@ export default function IntakeLeadDetailPage({ params }: { params: Promise<{ id:
           nextAction: followupAction.trim() || null,
           followUpDueAt: followupDue.trim() || null,
         }),
-      })
+      }),
+      () => toast.success("Follow-up scheduled"),
     );
     setShowFollowupModal(false);
     setFollowupAction("");
@@ -236,7 +264,10 @@ export default function IntakeLeadDetailPage({ params }: { params: Promise<{ id:
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({}),
-      })
+      }),
+      () => toast.success("Deal won!", {
+        action: { label: "Log Delivery →", onClick: () => handleOpenDeliveryModal() },
+      }),
     );
 
   const handleMarkLost = () =>
@@ -246,7 +277,8 @@ export default function IntakeLeadDetailPage({ params }: { params: Promise<{ id:
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({}),
-      })
+      }),
+      () => toast("Marked as lost"),
     );
 
   const leadAsFollowUpItem = lead
@@ -280,7 +312,8 @@ export default function IntakeLeadDetailPage({ params }: { params: Promise<{ id:
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify(payload),
-      })
+      }),
+      () => toast.success("Follow-up completed"),
     );
     setShowCompleteModal(false);
   };
@@ -296,7 +329,8 @@ export default function IntakeLeadDetailPage({ params }: { params: Promise<{ id:
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify(payload),
-      })
+      }),
+      () => toast.success("Follow-up snoozed"),
     );
     setShowSnoozeModal(false);
   };
@@ -319,7 +353,8 @@ export default function IntakeLeadDetailPage({ params }: { params: Promise<{ id:
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify(payload),
-      })
+      }),
+      () => toast.success(kind === "call" ? "Call logged" : "Email logged"),
     );
     setLogModalKind(null);
   };
@@ -342,7 +377,10 @@ export default function IntakeLeadDetailPage({ params }: { params: Promise<{ id:
           loomUrl: deliveryLoom.trim() || null,
           deliverySummary: deliverySummaryEdit.trim() || null,
         }),
-      })
+      }),
+      () => toast.success("Delivery saved", {
+        action: { label: "Create Proof Candidate →", onClick: () => setShowCreateCandidateModal(true) },
+      }),
     );
     setShowDeliveryModal(false);
   };
@@ -354,7 +392,10 @@ export default function IntakeLeadDetailPage({ params }: { params: Promise<{ id:
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({}),
-      })
+      }),
+      () => toast.success("Proof candidate created", {
+        action: { label: "View Proof Candidates →", onClick: () => router.push("/dashboard/proof-candidates") },
+      }),
     );
     setShowCreateCandidateModal(false);
   };
@@ -370,11 +411,16 @@ export default function IntakeLeadDetailPage({ params }: { params: Promise<{ id:
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        alert(data?.error ?? "Failed to create proposal");
+        toast.error(data?.error ?? "Failed to create proposal");
         return;
       }
       void fetchLead();
-      if (data?.id) window.location.href = `/dashboard/proposals/${data.id}`;
+      if (data?.id) {
+        toast.success("Proposal created", {
+          action: { label: "View Proposal →", onClick: () => router.push(`/dashboard/proposals/${data.id}`) },
+        });
+        router.push(`/dashboard/proposals/${data.id}`);
+      }
     } finally {
       setActionLoading(null);
     }

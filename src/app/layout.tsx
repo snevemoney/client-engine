@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import Script from "next/script";
 import { PostHogProvider } from "@/components/providers/PostHogProvider";
+import { Toaster } from "sonner";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -53,6 +54,7 @@ fbq('track', 'PageView');
           </>
         )}
         <PostHogProvider>{children}</PostHogProvider>
+        <Toaster richColors position="bottom-right" theme="dark" />
       </body>
     </html>
   );

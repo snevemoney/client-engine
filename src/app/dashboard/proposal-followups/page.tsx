@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { toast } from "sonner";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Search } from "lucide-react";
@@ -160,7 +161,7 @@ export default function ProposalFollowupsPage() {
     try {
       const res = await fn();
       const json = await res.json().catch(() => null);
-      if (!res.ok) alert(json?.error ?? "Action failed");
+      if (!res.ok) toast.error(json?.error ?? "Action failed");
       else void fetchData();
     } finally {
       setActionLoading(null);

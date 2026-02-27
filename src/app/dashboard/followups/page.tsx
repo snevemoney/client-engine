@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { toast } from "sonner";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
@@ -94,7 +95,7 @@ export default function FollowupsPage() {
       const res = await fn();
       const json = await res.json().catch(() => null);
       if (!res.ok) {
-        alert(typeof json?.error === "string" ? json.error : `Action failed (${res.status})`);
+        toast.error(typeof json?.error === "string" ? json.error : `Action failed (${res.status})`);
         return;
       }
       void fetchData();

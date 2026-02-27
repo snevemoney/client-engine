@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { toast } from "sonner";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -117,7 +118,7 @@ export default function ProofCandidatesPage() {
       const res = await fn();
       const data = await res.json().catch(() => null);
       if (!res.ok) {
-        alert(typeof data?.error === "string" ? data.error : `Action failed (${res.status})`);
+        toast.error(typeof data?.error === "string" ? data.error : `Action failed (${res.status})`);
         return;
       }
       void fetchList();

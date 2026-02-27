@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { toast } from "sonner";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -205,7 +206,7 @@ export default function ProofPage() {
         fetchProofPosts();
       } else {
         const err = await res.json();
-        alert(err.error || "Generate failed");
+        toast.error(err.error || "Generate failed");
       }
     } finally {
       setGenerating(false);

@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { ArrowLeft, ExternalLink, Plus, FileText, X, Sparkles, Target, Send, Hammer, CheckCircle, XCircle, RefreshCw, AlertTriangle } from "lucide-react";
 import { OpportunityBriefCard } from "@/components/dashboard/leads/OpportunityBriefCard";
 import { RoiEstimateCard } from "@/components/dashboard/leads/RoiEstimateCard";
@@ -103,6 +105,7 @@ const statusColors: Record<string, "default" | "success" | "warning" | "destruct
 
 export default function LeadDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const router = useRouter();
   const [lead, setLead] = useState<Lead | null>(null);
   const [loading, setLoading] = useState(true);
   const [showArtifactForm, setShowArtifactForm] = useState(false);
@@ -131,7 +134,8 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
     action: () => Promise<void>,
     setLoading: (v: boolean) => void,
     label: string,
-    retries = 1
+    retries = 1,
+    onSuccess?: () => void,
   ) => {
     setAiError(null);
     setLoading(true);
@@ -140,13 +144,16 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
       try {
         await action();
         setLoading(false);
+        onSuccess?.();
         return;
       } catch (e) {
         lastErr = e;
         if (attempt < retries) await new Promise((r) => setTimeout(r, 1500));
       }
     }
-    setAiError(`${label} failed${lastErr instanceof Error ? `: ${lastErr.message}` : ". Try again."}`);
+    const msg = `${label} failed${lastErr instanceof Error ? `: ${lastErr.message}` : ". Try again."}`;
+    setAiError(msg);
+    toast.error(msg);
     setLoading(false);
   }, []);
 
@@ -201,11 +208,14 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
       if (res.ok) {
         const full = await fetch(`/api/leads/${id}`);
         if (full.ok) setLead(await full.json());
+        toast.success("Lead approved", {
+          action: { label: "Start Build →", onClick: () => runAiAction(startBuild, setBuilding, "Build") },
+        });
       } else {
         const err = await res.json();
-        alert(err.error ?? "Approve failed");
+        toast.error(err.error ?? "Approve failed");
       }
-    } catch (e) { alert("Approve failed"); }
+    } catch { toast.error("Approve failed"); }
     setApproving(false);
   }
 
@@ -222,12 +232,13 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
         const full = await fetch(`/api/leads/${id}`);
         if (full.ok) setLead(await full.json());
         setReviseInstruction("");
+        toast.success("Proposal revised");
       } else {
         const err = await res.json();
-        alert(err.error ?? "Revise failed");
+        toast.error(err.error ?? "Revise failed");
       }
-    } catch (e) {
-      alert("Revise failed");
+    } catch {
+      toast.error("Revise failed");
     }
     setRevising(false);
   }
@@ -245,11 +256,12 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
         if (full.ok) setLead(await full.json());
         setShowRejectInput(false);
         setRejectNote("");
+        toast("Lead rejected");
       } else {
         const err = await res.json();
-        alert(err.error ?? "Reject failed");
+        toast.error(err.error ?? "Reject failed");
       }
-    } catch (e) { alert("Reject failed"); }
+    } catch { toast.error("Reject failed"); }
     setRejecting(false);
   }
 
@@ -260,8 +272,13 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
       if (res.ok) {
         const full = await fetch(`/api/leads/${id}`);
         if (full.ok) setLead(await full.json());
+        toast.success("Proposal marked sent", {
+          action: { label: "Follow-ups →", onClick: () => router.push("/dashboard/followups") },
+        });
+      } else {
+        toast.error("Failed to mark proposal sent");
       }
-    } catch (e) { alert("Failed"); }
+    } catch { toast.error("Failed to mark proposal sent"); }
     setMarkingSent(false);
   }
 
@@ -276,8 +293,17 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
       if (res.ok) {
         const full = await fetch(`/api/leads/${id}`);
         if (full.ok) setLead(await full.json());
+        if (outcome === "won") {
+          toast.success("Deal won!", {
+            action: { label: "View Delivery →", onClick: () => router.push("/dashboard/delivery") },
+          });
+        } else {
+          toast("Deal marked lost");
+        }
+      } else {
+        toast.error("Failed to set deal outcome");
       }
-    } catch (e) { alert("Failed"); }
+    } catch { toast.error("Failed to set deal outcome"); }
     setSettingDeal(false);
   }
 
@@ -303,9 +329,10 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
     if (res.ok) {
       const updated = await res.json();
       setLead((prev) => (prev ? { ...prev, ...updated } : prev));
+      toast.success(`Status → ${status}`);
     } else {
       const err = await res.json().catch(() => null);
-      alert(err?.error ?? `Failed to set status to ${status}`);
+      toast.error(err?.error ?? `Failed to set status to ${status}`);
     }
   }
 
@@ -405,17 +432,31 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
 
       {/* AI Actions — always visible */}
       <div className="flex gap-2 flex-wrap items-center">
-        <Button variant="outline" size="sm" onClick={() => runAiAction(enrichLead, setEnriching, "Enrich")} disabled={enriching}>
+        <Button variant="outline" size="sm" onClick={() => runAiAction(enrichLead, setEnriching, "Enrich", 1, () => {
+          toast.success("Lead enriched", {
+            action: { label: "Score →", onClick: () => runAiAction(scoreLead, setScoring, "Score") },
+          });
+        })} disabled={enriching}>
           <Sparkles className="w-3.5 h-3.5" /> {enriching ? "Enriching..." : "Enrich"}
         </Button>
-        <Button variant="outline" size="sm" onClick={() => runAiAction(scoreLead, setScoring, "Score")} disabled={scoring}>
+        <Button variant="outline" size="sm" onClick={() => runAiAction(scoreLead, setScoring, "Score", 1, () => {
+          toast.success(`Scored (${lead?.score ?? "—"}/100)`, {
+            action: { label: "Generate Proposal →", onClick: () => runAiAction(generateProposal, setProposing, "Proposal") },
+          });
+        })} disabled={scoring}>
           <Target className="w-3.5 h-3.5" /> {scoring ? "Scoring..." : "Score"}
         </Button>
-        <Button variant="outline" size="sm" onClick={() => runAiAction(generateProposal, setProposing, "Proposal")} disabled={proposing}>
+        <Button variant="outline" size="sm" onClick={() => runAiAction(generateProposal, setProposing, "Proposal", 1, () => {
+          toast.success("Proposal generated", {
+            action: { label: "Review in Proposals tab →", onClick: () => setActiveTab("proposals") },
+          });
+        })} disabled={proposing}>
           <Send className="w-3.5 h-3.5" /> {proposing ? "Generating..." : "Propose"}
         </Button>
         {lead.status === "APPROVED" && (
-          <Button variant="outline" size="sm" onClick={() => runAiAction(startBuild, setBuilding, "Build")} disabled={building}>
+          <Button variant="outline" size="sm" onClick={() => runAiAction(startBuild, setBuilding, "Build", 1, () => {
+            toast.success("Build started");
+          })} disabled={building}>
             <Hammer className="w-3.5 h-3.5" /> {building ? "Building..." : "Build"}
           </Button>
         )}
