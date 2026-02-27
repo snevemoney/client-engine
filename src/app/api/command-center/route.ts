@@ -127,30 +127,43 @@ export async function GET() {
           return (intakeUpcoming ?? 0) + (pipelineUpcoming ?? 0);
         })(),
       ]),
-      Promise.all([
-        db.intakeLead.count({
-          where: {
-            status: { notIn: [IntakeLeadStatus.won, IntakeLeadStatus.lost, IntakeLeadStatus.archived] },
-            score: null,
-          },
-        }),
-        db.intakeLead.count({
+      (async () => {
+        const [intakeUnscored, pipelineUnscored] = await Promise.all([
+          db.intakeLead.count({
+            where: {
+              status: { notIn: [IntakeLeadStatus.won, IntakeLeadStatus.lost, IntakeLeadStatus.archived] },
+              score: null,
+            },
+          }),
+          db.lead.count({
+            where: {
+              status: { notIn: ["REJECTED", "SHIPPED"] },
+              dealOutcome: { not: "won" },
+              score: null,
+            },
+          }),
+        ]);
+        const unscored = (intakeUnscored ?? 0) + (pipelineUnscored ?? 0);
+
+        const readyToPromote = await db.intakeLead.count({
           where: {
             status: { in: ["qualified", "proposal_drafted"] },
             promotedLeadId: null,
             title: { not: "" },
             summary: { not: "" },
           },
-        }),
-        db.intakeLead.count({
+        });
+
+        const promotedMissingNext = await db.intakeLead.count({
           where: {
             promotedLeadId: { not: null },
             nextActionDueAt: null,
             followUpDueAt: null,
             status: { notIn: [IntakeLeadStatus.won, IntakeLeadStatus.lost] },
           },
-        }),
-        db.intakeLead.count({
+        });
+
+        const sentOverdue = await db.intakeLead.count({
           where: {
             status: "sent",
             OR: [
@@ -158,41 +171,66 @@ export async function GET() {
               { nextActionDueAt: { lt: startToday } },
             ],
           },
-        }),
-        db.intakeLead.count({
-          where: {
-            status: "won",
-            proofCandidates: { none: {} },
-            proofRecords: { none: {} },
-          },
-        }),
-      ]),
-      Promise.all([
-        db.intakeLead.count({
-          where: {
-            status: "won",
-            proofCandidates: { none: {} },
-            proofRecords: { none: {} },
-          },
-        }),
-        db.proofCandidate.count({ where: { status: ProofCandidateStatus.ready } }),
-        db.proofRecord.count({
-          where: {
-            OR: [
-              { proofSnippet: null },
-              { proofSnippet: "" },
-              { afterState: null },
-              { afterState: "" },
-            ],
-          },
-        }),
-        db.proofCandidate.count({
-          where: {
-            status: ProofCandidateStatus.promoted,
-            promotedAt: { gte: weekStart, lte: endOfWeek },
-          },
-        }),
-      ]),
+        });
+
+        const [intakeWonMissing, pipelineWonMissing] = await Promise.all([
+          db.intakeLead.count({
+            where: {
+              status: "won",
+              proofCandidates: { none: {} },
+              proofRecords: { none: {} },
+            },
+          }),
+          db.lead.count({
+            where: {
+              dealOutcome: "won",
+              proofCandidates: { none: {} },
+            },
+          }),
+        ]);
+        const wonMissingProof = (intakeWonMissing ?? 0) + (pipelineWonMissing ?? 0);
+
+        return [unscored, readyToPromote ?? 0, promotedMissingNext ?? 0, sentOverdue ?? 0, wonMissingProof];
+      })(),
+      (async () => {
+        const [intakeWonNoProof, pipelineWonNoProof] = await Promise.all([
+          db.intakeLead.count({
+            where: {
+              status: "won",
+              proofCandidates: { none: {} },
+              proofRecords: { none: {} },
+            },
+          }),
+          db.lead.count({
+            where: {
+              dealOutcome: "won",
+              proofCandidates: { none: {} },
+            },
+          }),
+        ]);
+        const wonNoProof = (intakeWonNoProof ?? 0) + (pipelineWonNoProof ?? 0);
+
+        const [readyPending, recordsMissing, promotedGaps] = await Promise.all([
+          db.proofCandidate.count({ where: { status: ProofCandidateStatus.ready } }),
+          db.proofRecord.count({
+            where: {
+              OR: [
+                { proofSnippet: null },
+                { proofSnippet: "" },
+                { afterState: null },
+                { afterState: "" },
+              ],
+            },
+          }),
+          db.proofCandidate.count({
+            where: {
+              status: ProofCandidateStatus.promoted,
+              promotedAt: { gte: weekStart, lte: endOfWeek },
+            },
+          }),
+        ]);
+        return [wonNoProof, readyPending ?? 0, recordsMissing ?? 0, promotedGaps ?? 0];
+      })(),
       (async () => {
         const [created, ready, promoted, pendingDrafts, pendingReady] = await Promise.all([
           db.proofCandidate.count({
@@ -717,6 +755,6 @@ export async function GET() {
         }
       })(),
       };
-    }, 30_000);
+    }, 15_000);
   });
 }

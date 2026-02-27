@@ -7,19 +7,20 @@ import { AlertTriangle } from "lucide-react";
 
 type QueueItem = {
   id: string;
+  itemType: "intake" | "pipeline";
   title: string;
   driverType: string | null;
-  qualificationTotal: number;
+  score: number | null;
   nextAction: string | null;
   nextActionDueAt: string | null;
-  proposalSentAt: string | null;
+  followUpDueAt: string | null;
 };
 
-type DriverSummary = {
-  noNextAction: number;
-  overdue: number;
+type Summary = {
+  noNextAction?: number;
+  overdue?: number;
   overdue3d?: number;
-  proposalsNoFollowUp: number;
+  proposalsNoFollowUp?: number;
   noSalesActions7d?: boolean;
 };
 
@@ -34,18 +35,32 @@ function getStatusBadge(dueAt: string | null): { label: string; variant: "destru
   return { label: "Upcoming", variant: "default" };
 }
 
+function getEffectiveDue(item: QueueItem): string | null {
+  return item.nextActionDueAt ?? item.followUpDueAt ?? null;
+}
+
 export function FollowUpQueueCard() {
   const [items, setItems] = useState<QueueItem[]>([]);
-  const [summary, setSummary] = useState<DriverSummary | null>(null);
+  const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/leads/followup-queue").then((r) => r.json()),
-      fetch("/api/leads/driver-summary?range=7d").then((r) => r.json()),
+      fetch("/api/followups?bucket=all", { cache: "no-store" }).then((r) => r.json()),
+      fetch("/api/followups/summary", { cache: "no-store" }).then((r) => r.json()),
     ]).then(([queueRes, summaryRes]) => {
-      setItems(queueRes?.items ?? []);
-      setSummary(summaryRes);
+      const items_ = queueRes?.items ?? [];
+      setItems(items_.map((i: { id: string; itemType: string; title: string; driverType?: string | null; score?: number | null; nextAction?: string | null; nextActionDueAt?: string | null; followUpDueAt?: string | null }) => ({
+        id: i.id,
+        itemType: i.itemType ?? "pipeline",
+        title: i.title ?? "",
+        driverType: i.driverType ?? null,
+        score: i.score ?? null,
+        nextAction: i.nextAction ?? null,
+        nextActionDueAt: i.nextActionDueAt ?? null,
+        followUpDueAt: i.followUpDueAt ?? null,
+      })));
+      setSummary(summaryRes && typeof summaryRes === "object" ? summaryRes : null);
       setLoading(false);
     });
   }, []);
@@ -75,7 +90,7 @@ export function FollowUpQueueCard() {
     warnings.push(`${summary.proposalsNoFollowUp} proposal(s) sent but no follow-up due date`);
   }
 
-  const highScoreNoAction = items.filter((i) => i.qualificationTotal >= 9 && !i.nextAction && !i.nextActionDueAt);
+  const highScoreNoAction = items.filter((i) => (i.score ?? 0) >= 9 && !i.nextAction && !i.nextActionDueAt && !i.followUpDueAt);
   if (highScoreNoAction.length > 0) {
     warnings.push(`${highScoreNoAction.length} high-priority lead(s) missing next action`);
   }
@@ -95,11 +110,13 @@ export function FollowUpQueueCard() {
 
       <div className="space-y-2 max-h-64 overflow-y-auto">
         {items.slice(0, 15).map((item) => {
-          const status = getStatusBadge(item.nextActionDueAt);
+          const effectiveDue = getEffectiveDue(item);
+          const status = getStatusBadge(effectiveDue);
+          const detailHref = item.itemType === "intake" ? `/dashboard/intake/${item.id}` : `/dashboard/leads/${item.id}`;
           return (
             <Link
-              key={item.id}
-              href={`/dashboard/leads/${item.id}`}
+              key={`${item.itemType}-${item.id}`}
+              href={detailHref}
               className="block rounded-md border border-neutral-700/60 bg-neutral-800/40 p-2 text-sm hover:bg-neutral-800/60 transition-colors"
             >
               <div className="flex items-start justify-between gap-2">
@@ -109,13 +126,18 @@ export function FollowUpQueueCard() {
                 </Badge>
               </div>
               <div className="mt-1 flex flex-wrap gap-2 text-xs text-neutral-500">
-                {item.driverType && (
-                  <span className="capitalize">{item.driverType}</span>
-                )}
-                <span>Score: {item.qualificationTotal}/12</span>
+                {item.driverType && <span className="capitalize">{item.driverType}</span>}
+                <span>Score: {item.score != null ? `${item.score}/12` : "—"}</span>
                 {item.nextAction && <span className="truncate max-w-[140px]">{item.nextAction}</span>}
-                {item.nextActionDueAt && (
-                  <span>{new Date(item.nextActionDueAt).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+                {effectiveDue && (
+                  <span>
+                    {new Date(effectiveDue).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
                 )}
               </div>
             </Link>
@@ -126,7 +148,7 @@ export function FollowUpQueueCard() {
         <p className="text-xs text-neutral-500">No leads in follow-up queue.</p>
       )}
       {items.length > 15 && (
-        <Link href="/dashboard/leads" className="mt-2 block text-xs text-amber-300 hover:underline">
+        <Link href="/dashboard/followups" className="mt-2 block text-xs text-amber-300 hover:underline">
           View all ({items.length}) →
         </Link>
       )}

@@ -1,6 +1,6 @@
 /**
  * POST /api/next-actions/run — Run NBA rules and upsert actions.
- * Phase 4.0. Rate limit 10/min.
+ * Phase 4.0/4.1. Rate limit 10/min. Accepts optional scope (entityType, entityId).
  */
 import { NextRequest, NextResponse } from "next/server";
 import { jsonError, requireAuth, withRouteTiming } from "@/lib/api-utils";
@@ -8,6 +8,7 @@ import { getRequestClientKey, rateLimitByKey } from "@/lib/http/rate-limit";
 import { fetchNextActionContext } from "@/lib/next-actions/fetch-context";
 import { produceNextActions } from "@/lib/next-actions/rules";
 import { upsertNextActions, recordNextActionRun } from "@/lib/next-actions/service";
+import { parseScope } from "@/lib/next-actions/scope";
 import { logOpsEventSafe } from "@/lib/ops-events/log";
 import { sanitizeMeta, sanitizeErrorMessage } from "@/lib/ops-events/sanitize";
 
@@ -28,12 +29,17 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    const { entityType, entityId } = parseScope(
+      request.nextUrl.searchParams.get("entityType"),
+      request.nextUrl.searchParams.get("entityId")
+    );
+
     const now = new Date();
-    const runKey = `nba:${session.user?.id ?? "anon"}:${now.toISOString().slice(0, 10)}`;
+    const runKey = `nba:${session.user?.id ?? "anon"}:${entityType}:${entityId}:${now.toISOString().slice(0, 10)}`;
 
     try {
       const ctx = await fetchNextActionContext({ now });
-      const candidates = produceNextActions(ctx);
+      const candidates = produceNextActions(ctx, entityType);
       const result = await upsertNextActions(candidates);
       await recordNextActionRun(runKey, "manual", {
         created: result.created,

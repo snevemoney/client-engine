@@ -2,6 +2,7 @@
  * PATCH /api/ops/strategy-week/review — Upsert review for current week (or weekStart query)
  */
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -100,6 +101,7 @@ export async function PATCH(req: NextRequest) {
         data: { lastReviewedAt: now },
       });
     }
+    revalidatePath("/dashboard/command");
     return NextResponse.json(review);
   });
 }

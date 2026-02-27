@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +15,7 @@ interface Lead {
   status: string;
   budget: string | null;
   score: number | null;
+  scoreVerdict: string | null;
   createdAt: string;
   tags: string[];
   _count?: { artifacts: number };
@@ -21,6 +23,7 @@ interface Lead {
 
 const STATUS_OPTIONS = ["ALL", "NEW", "ENRICHED", "SCORED", "APPROVED", "REJECTED", "BUILDING", "SHIPPED"];
 const SOURCE_OPTIONS = ["ALL", "manual", "upwork", "capture", "email", "facebook", "rss"];
+const VERDICT_OPTIONS = ["ALL", "ACCEPT", "MAYBE", "REJECT"];
 
 const statusColors: Record<string, "default" | "success" | "warning" | "destructive"> = {
   NEW: "default", ENRICHED: "default", SCORED: "warning",
@@ -32,6 +35,7 @@ export function LeadsTable() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [sourceFilter, setSourceFilter] = useState("ALL");
+  const [verdictFilter, setVerdictFilter] = useState("ALL");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
@@ -47,6 +51,7 @@ export function LeadsTable() {
       if (search) params.set("q", search);
       if (statusFilter !== "ALL") params.set("status", statusFilter);
       if (sourceFilter !== "ALL") params.set("source", sourceFilter);
+      if (verdictFilter !== "ALL") params.set("verdict", verdictFilter);
       const res = await fetch(`/api/leads?${params}`, {
         credentials: "include",
         signal: controller.signal,
@@ -71,7 +76,7 @@ export function LeadsTable() {
       if (timeout) clearTimeout(timeout);
       setLoading(false);
     }
-  }, [search, statusFilter, sourceFilter]);
+  }, [search, statusFilter, sourceFilter, verdictFilter]);
 
   useEffect(() => {
     // Intentional: fetch on mount/filter change; setState happens in async callback.
@@ -79,11 +84,17 @@ export function LeadsTable() {
     void fetchLeads();
   }, [fetchLeads]);
 
+  const processingToastRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   async function runBulkPipeline() {
     if (pipelineRunning) return;
     setPipelineRunning(true);
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5 * 60 * 1000); // 5 min for long pipeline runs
+    // Show "still processing" toast after 20s so user knows it's working (alerts get blocked after async)
+    processingToastRef.current = setTimeout(() => {
+      toast.info("Pipeline still running. This may take 1–2 min per lead. Don't close the page.");
+    }, 20_000);
     try {
       const res = await fetch("/api/leads/bulk-pipeline-run", {
         method: "POST",
@@ -92,28 +103,36 @@ export function LeadsTable() {
       });
       const data = await res.json().catch(() => null);
       clearTimeout(timeoutId);
+      if (processingToastRef.current) {
+        clearTimeout(processingToastRef.current);
+        processingToastRef.current = null;
+      }
       if (!res.ok) {
-        alert(typeof data?.error === "string" ? data.error : "Failed to run pipeline");
+        toast.error(typeof data?.error === "string" ? data.error : "Failed to run pipeline");
         return;
       }
       const ran = data?.ran ?? 0;
       const processed = data?.processed ?? 0;
       if (ran > 0) {
         void fetchLeads();
-        alert(`Pipeline ran for ${ran} lead${ran === 1 ? "" : "s"}.`);
+        toast.success(`Pipeline ran for ${ran} lead${ran === 1 ? "" : "s"}.`);
       } else if (processed > 0) {
         void fetchLeads();
-        alert("Processed leads but none could run (may already have artifacts or be ineligible).");
+        toast("Processed leads but none could run (may already have artifacts or be ineligible).");
       } else {
-        alert("No leads need pipeline run.");
+        toast("No leads need pipeline run.");
       }
     } catch (e) {
       clearTimeout(timeoutId);
+      if (processingToastRef.current) {
+        clearTimeout(processingToastRef.current);
+        processingToastRef.current = null;
+      }
       if (e instanceof Error && e.name === "AbortError") {
-        alert("Request timed out. Pipeline may still be running on the server. Refresh the page to see updates.");
+        toast.error("Request timed out. Pipeline may still be running on the server. Refresh the page to see updates.");
         void fetchLeads();
       } else {
-        alert(e instanceof Error ? e.message : "Failed to run pipeline");
+        toast.error(e instanceof Error ? e.message : "Failed to run pipeline");
       }
     } finally {
       setPipelineRunning(false);
@@ -126,7 +145,7 @@ export function LeadsTable() {
     setLeads((prev) => prev.filter((l) => l.id !== id));
   }
 
-  const activeFilters = (statusFilter !== "ALL" ? 1 : 0) + (sourceFilter !== "ALL" ? 1 : 0);
+  const activeFilters = (statusFilter !== "ALL" ? 1 : 0) + (sourceFilter !== "ALL" ? 1 : 0) + (verdictFilter !== "ALL" ? 1 : 0);
 
   const sortedLeads = useMemo(() => {
     return [...leads].sort((a, b) => {
@@ -202,8 +221,18 @@ export function LeadsTable() {
               ))}
             </div>
           </div>
+          <div className="space-y-1">
+            <span className="text-[10px] text-neutral-500 uppercase tracking-wider">Verdict</span>
+            <div className="flex gap-1 flex-wrap">
+              {VERDICT_OPTIONS.map((v) => (
+                <button key={v} onClick={() => setVerdictFilter(v)}
+                  className={`text-xs px-2 py-0.5 rounded border transition-colors ${verdictFilter === v ? "bg-neutral-700 border-neutral-600 text-white" : "border-neutral-800 text-neutral-400 hover:border-neutral-700"}`}
+                >{v}</button>
+              ))}
+            </div>
+          </div>
           {activeFilters > 0 && (
-            <Button variant="ghost" size="sm" className="text-xs text-neutral-400" onClick={() => { setStatusFilter("ALL"); setSourceFilter("ALL"); }}>
+            <Button variant="ghost" size="sm" className="text-xs text-neutral-400" onClick={() => { setStatusFilter("ALL"); setSourceFilter("ALL"); setVerdictFilter("ALL"); }}>
               <X className="w-3 h-3" /> Clear
             </Button>
           )}
@@ -276,11 +305,18 @@ export function LeadsTable() {
                   <td className="px-4 py-3 text-neutral-400 hidden sm:table-cell">{lead.source}</td>
                   <td className="px-4 py-3"><Badge variant={statusColors[lead.status] || "default"}>{lead.status}</Badge></td>
                   <td className="px-4 py-3 text-neutral-400">
-                    {lead.score != null ? (
-                      <span className={lead.score >= 70 ? "text-emerald-400" : lead.score >= 40 ? "text-amber-400" : "text-neutral-500"}>
-                        {lead.score}
-                      </span>
-                    ) : "—"}
+                    <div className="flex items-center gap-1.5">
+                      {lead.score != null ? (
+                        <span className={lead.score >= 70 ? "text-emerald-400" : lead.score >= 40 ? "text-amber-400" : "text-neutral-500"}>
+                          {lead.score}
+                        </span>
+                      ) : "—"}
+                      {lead.scoreVerdict && (
+                        <Badge variant={lead.scoreVerdict === "ACCEPT" ? "success" : lead.scoreVerdict === "MAYBE" ? "warning" : "outline"} className="text-[10px] py-0">
+                          {lead.scoreVerdict}
+                        </Badge>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-neutral-400 hidden lg:table-cell">{lead.budget || "—"}</td>
                   <td className="px-4 py-3 text-right">

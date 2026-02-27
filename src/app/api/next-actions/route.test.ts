@@ -81,6 +81,81 @@ describe("GET /api/next-actions", () => {
     expect(data.pagination.pageSize).toBe(2);
   });
 
+  it("filter by entityType/entityId scope returns only scoped items", async () => {
+    await db.nextBestAction.deleteMany({ where: { createdByRule: "test_scope" } });
+    await db.nextBestAction.createMany({
+      data: [
+        {
+          title: "Test NBA command_center",
+          priority: NextActionPriority.high,
+          score: 75,
+          status: NextActionStatus.queued,
+          sourceType: RiskSourceType.proposal,
+          dedupeKey: "test_nba_scope_cc:cmd",
+          createdByRule: "test_scope",
+          entityType: "command_center",
+          entityId: "command_center",
+        },
+        {
+          title: "Test NBA review_stream",
+          priority: NextActionPriority.medium,
+          score: 55,
+          status: NextActionStatus.queued,
+          sourceType: RiskSourceType.proposal,
+          dedupeKey: "test_nba_scope_rs:cmd",
+          createdByRule: "test_scope",
+          entityType: "review_stream",
+          entityId: "review_stream",
+        },
+      ],
+    });
+
+    const { GET } = await import("./route");
+    const req = new NextRequest("http://x/api/next-actions?entityType=command_center&entityId=command_center&status=queued");
+    const res = await GET(req);
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.items.every((a: { entityType: string }) => a.entityType === "command_center")).toBe(true);
+  });
+
+  it("Phase 4.2: hides snoozed items (snoozedUntil > now) when status=queued", async () => {
+    await db.nextBestAction.deleteMany({ where: { createdByRule: "test_snooze" } });
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    await db.nextBestAction.create({
+      data: {
+        title: "Test NBA snoozed",
+        priority: NextActionPriority.high,
+        score: 75,
+        status: NextActionStatus.queued,
+        sourceType: RiskSourceType.proposal,
+        dedupeKey: "test_nba_snoozed:sys",
+        createdByRule: "test_snooze",
+        snoozedUntil: tomorrow,
+      },
+    });
+    await db.nextBestAction.create({
+      data: {
+        title: "Test NBA not snoozed",
+        priority: NextActionPriority.medium,
+        score: 55,
+        status: NextActionStatus.queued,
+        sourceType: RiskSourceType.proposal,
+        dedupeKey: "test_nba_not_snoozed:sys",
+        createdByRule: "test_snooze",
+      },
+    });
+
+    const { GET } = await import("./route");
+    const req = new NextRequest("http://x/api/next-actions?status=queued");
+    const res = await GET(req);
+    const data = await res.json();
+    const snoozed = data.items.find((a: { title: string }) => a.title === "Test NBA snoozed");
+    const notSnoozed = data.items.find((a: { title: string }) => a.title === "Test NBA not snoozed");
+    expect(snoozed).toBeUndefined();
+    expect(notSnoozed).toBeDefined();
+  });
+
   it("filter by status works", async () => {
     await db.nextBestAction.deleteMany({ where: { title: { in: ["Test NBA queued", "Test NBA done"] } } });
     await db.nextBestAction.create({

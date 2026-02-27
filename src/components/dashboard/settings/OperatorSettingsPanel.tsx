@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import type { OperatorSettings } from "@/lib/ops/settings";
+import type { OperatorSettings, ScoringProfile } from "@/lib/ops/settings";
 
 function Toggle({
   label,
@@ -99,6 +99,14 @@ export function OperatorSettingsPanel({
   const [offer, setOffer] = useState(initialSettings.offerStatement ?? "");
   const [buyer, setBuyer] = useState(initialSettings.buyerProfile ?? "");
 
+  const sp = initialSettings.scoringProfile ?? {};
+  const [scoreIdeal, setScoreIdeal] = useState(sp.idealProjects ?? "");
+  const [scoreBudget, setScoreBudget] = useState(sp.budgetRange ?? "");
+  const [scoreTimeline, setScoreTimeline] = useState(sp.typicalTimeline ?? "");
+  const [scoreTech, setScoreTech] = useState(sp.techStack ?? "");
+  const [scorePrefers, setScorePrefers] = useState(sp.prefers ?? "");
+  const [scoreAvoids, setScoreAvoids] = useState(sp.avoids ?? "");
+
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -122,6 +130,14 @@ export function OperatorSettingsPanel({
           nicheStatement: niche.trim() || undefined,
           offerStatement: offer.trim() || undefined,
           buyerProfile: buyer.trim() || undefined,
+          scoringProfile: {
+            idealProjects: scoreIdeal.trim() || undefined,
+            budgetRange: scoreBudget.trim() || undefined,
+            typicalTimeline: scoreTimeline.trim() || undefined,
+            techStack: scoreTech.trim() || undefined,
+            prefers: scorePrefers.trim() || undefined,
+            avoids: scoreAvoids.trim() || undefined,
+          } as ScoringProfile,
         }),
       });
       if (!res.ok) {
@@ -238,6 +254,70 @@ export function OperatorSettingsPanel({
               className="bg-neutral-900 border-neutral-700"
             />
           </div>
+        </div>
+      </section>
+
+      {/* Scoring profile — configurable, niche-agnostic */}
+      <section className="border border-neutral-800 rounded-lg p-6 space-y-4">
+        <h2 className="text-base font-medium text-neutral-200">Scoring profile</h2>
+        <p className="text-xs text-neutral-500">
+          Used by the pipeline to score leads. Update when you change niche — no code changes needed.
+        </p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <label className="text-sm text-neutral-400 block mb-1">Ideal projects</label>
+            <Input
+              placeholder="e.g. web apps, dashboards, booking systems"
+              value={scoreIdeal}
+              onChange={(e) => setScoreIdeal(e.target.value)}
+              className="bg-neutral-900 border-neutral-700"
+            />
+          </div>
+          <div>
+            <label className="text-sm text-neutral-400 block mb-1">Budget range</label>
+            <Input
+              placeholder="e.g. $1,000-$10,000"
+              value={scoreBudget}
+              onChange={(e) => setScoreBudget(e.target.value)}
+              className="bg-neutral-900 border-neutral-700"
+            />
+          </div>
+          <div>
+            <label className="text-sm text-neutral-400 block mb-1">Typical timeline</label>
+            <Input
+              placeholder="e.g. 1-4 weeks"
+              value={scoreTimeline}
+              onChange={(e) => setScoreTimeline(e.target.value)}
+              className="bg-neutral-900 border-neutral-700"
+            />
+          </div>
+          <div>
+            <label className="text-sm text-neutral-400 block mb-1">Tech stack</label>
+            <Input
+              placeholder="e.g. Next.js, React, PostgreSQL"
+              value={scoreTech}
+              onChange={(e) => setScoreTech(e.target.value)}
+              className="bg-neutral-900 border-neutral-700"
+            />
+          </div>
+        </div>
+        <div>
+          <label className="text-sm text-neutral-400 block mb-1">Prefers</label>
+          <Input
+            placeholder="e.g. clear scope, responsive clients, repeat potential"
+            value={scorePrefers}
+            onChange={(e) => setScorePrefers(e.target.value)}
+            className="bg-neutral-900 border-neutral-700"
+          />
+        </div>
+        <div>
+          <label className="text-sm text-neutral-400 block mb-1">Avoids</label>
+          <Input
+            placeholder="e.g. maintenance-only, vague requests"
+            value={scoreAvoids}
+            onChange={(e) => setScoreAvoids(e.target.value)}
+            className="bg-neutral-900 border-neutral-700"
+          />
         </div>
       </section>
 

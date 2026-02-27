@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { jsonError, requireAuth } from "@/lib/api-utils";
 import { db } from "@/lib/db";
-import { buildProofPost } from "@/lib/proof-engine/generate";
+import { buildProofPost, buildProofPostFromIntakeLead } from "@/lib/proof-engine/generate";
 
 export async function POST(req: NextRequest) {
   const session = await requireAuth();
@@ -10,7 +10,24 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => ({}));
   const leadId = body.leadId as string | undefined;
-  if (!leadId) return NextResponse.json({ error: "leadId required" }, { status: 400 });
+  const intakeLeadId = body.intakeLeadId as string | undefined;
+
+  if (intakeLeadId) {
+    const intake = await db.intakeLead.findUnique({ where: { id: intakeLeadId } });
+    if (!intake) return NextResponse.json({ error: "Intake lead not found" }, { status: 404 });
+
+    const result = await buildProofPostFromIntakeLead(intakeLeadId);
+    if (!result) return NextResponse.json({ error: "No proof candidates for this intake lead" }, { status: 400 });
+
+    const content = result.lines.join("\n");
+    return NextResponse.json({
+      content,
+      artifactId: null,
+      leadTitle: result.leadTitle,
+    });
+  }
+
+  if (!leadId) return NextResponse.json({ error: "leadId or intakeLeadId required" }, { status: 400 });
 
   const lead = await db.lead.findUnique({ where: { id: leadId } });
   if (!lead) return NextResponse.json({ error: "Lead not found" }, { status: 404 });

@@ -56,6 +56,8 @@ interface Lead {
   contactEmail: string | null;
   score: number | null;
   scoreReason: string | null;
+  scoreVerdict: string | null;
+  scoreFactors: Record<string, number> | null;
   tags: string[];
   proposalSentAt: string | null;
   approvedAt: string | null;
@@ -417,6 +419,11 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                 Score: {lead.score}
               </Badge>
             )}
+            {lead.scoreVerdict && (
+              <Badge variant={lead.scoreVerdict === "ACCEPT" ? "success" : lead.scoreVerdict === "MAYBE" ? "warning" : "outline"}>
+                {lead.scoreVerdict}
+              </Badge>
+            )}
             {lead.dealOutcome && (
               <Badge variant={lead.dealOutcome === "won" ? "success" : "destructive"} className="ml-1">
                 {lead.dealOutcome}
@@ -611,12 +618,30 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
             </div>
           )}
 
-          {lead.scoreReason && (
+          {(() => {
+            const factors = lead.scoreFactors && typeof lead.scoreFactors === "object" && !Array.isArray(lead.scoreFactors)
+              ? Object.entries(lead.scoreFactors).filter(([, v]) => typeof v === "number") as [string, number][]
+              : [];
+            const hasFactors = factors.length > 0;
+            if (!lead.scoreReason && !hasFactors) return null;
+            return (
             <div className="border border-neutral-800 rounded-lg p-4">
               <h3 className="text-xs font-medium text-neutral-500 uppercase tracking-wider mb-2">Score Analysis</h3>
-              <p className="text-sm text-neutral-200 whitespace-pre-wrap">{lead.scoreReason}</p>
+              {hasFactors && (
+                <div className="flex gap-2 flex-wrap mb-3">
+                  {factors.map(([k, v]) => (
+                    <span key={k} className="text-xs px-2 py-0.5 rounded bg-neutral-800 text-neutral-300">
+                      {k.replace(/([A-Z])/g, " $1").trim()}: {v}/2
+                    </span>
+                  ))}
+                </div>
+              )}
+              {lead.scoreReason && (
+                <p className="text-sm text-neutral-200 whitespace-pre-wrap">{lead.scoreReason}</p>
+              )}
             </div>
-          )}
+            );
+          })()}
         </>
       )}
 
@@ -624,7 +649,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
       {activeTab === "sales" && (
         <>
           {lead.status !== "REJECTED" && lead.dealOutcome !== "won" && (
-            <SalesDriverCard leadId={id} lead={lead} onUpdate={refetchLead} />
+            <SalesDriverCard leadId={id} lead={lead} onUpdate={refetchLead} updateField={updateField} />
           )}
 
           <div className="border border-neutral-800 rounded-lg p-4">

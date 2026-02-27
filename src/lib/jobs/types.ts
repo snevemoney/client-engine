@@ -11,6 +11,7 @@ export const JOB_TYPES = [
   "notifications.dispatch_pending",
   "notifications.evaluate_escalations",
   "score.compute",
+  "retry_failed_deliveries",
 ] as const;
 
 export type JobType = (typeof JOB_TYPES)[number];
@@ -24,6 +25,7 @@ export type JobPayloadMap = {
   "notifications.dispatch_pending": { limit?: number };
   "notifications.evaluate_escalations": { limit?: number };
   "score.compute": { entityType: string; entityId: string };
+  retry_failed_deliveries: { nextActionId: string };
 };
 
 export type JobPayload = JobPayloadMap[JobType];

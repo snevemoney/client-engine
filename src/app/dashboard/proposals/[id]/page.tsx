@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ProposalResponseFollowup } from "@/components/proposals/ProposalResponseFollowup";
+import ProposalConsoleEditor from "@/components/proposals/ProposalConsoleEditor";
 
 type Phase2Proposal = {
   id: string;
@@ -36,9 +37,22 @@ type Phase2Proposal = {
   bookingUrlUsed?: string | null;
 };
 
+type ProposalArtifact = {
+  id: string;
+  leadId: string;
+  title: string;
+  content: string;
+  meta: unknown;
+  createdAt?: string;
+  updatedAt?: string;
+  lead?: { id: string; title: string; status: string } | null;
+};
+
+type PageData = { type: "proposal"; data: Phase2Proposal } | { type: "artifact"; data: ProposalArtifact } | null;
+
 export default function ProposalDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const [proposal, setProposal] = useState<Phase2Proposal | null>(null);
+  const [pageData, setPageData] = useState<PageData>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -46,20 +60,33 @@ export default function ProposalDetailPage({ params }: { params: Promise<{ id: s
   useEffect(() => {
     let cancelled = false;
     fetch(`/api/proposals/${id}`)
-      .then((r) => (r.ok ? r.json() : null))
+      .then(async (r) => {
+        if (r.ok) {
+          const d = await r.json();
+          if (d && d.id) return { type: "proposal" as const, data: d };
+        }
+        const artRes = await fetch(`/api/artifacts/${id}`, { cache: "no-store" });
+        if (artRes.ok) {
+          const art = await artRes.json();
+          if (art && art.id && art.type === "proposal") {
+            return { type: "artifact" as const, data: art };
+          }
+        }
+        return null;
+      })
       .then((d) => {
         if (cancelled) return;
-        if (d && d.id) {
-          setProposal(d);
+        if (d) {
+          setPageData(d);
           setError(null);
         } else {
-          setProposal(null);
+          setPageData(null);
           setError("Proposal not found.");
         }
       })
       .catch(() => {
         if (!cancelled) {
-          setProposal(null);
+          setPageData(null);
           setError("Failed to load.");
         }
       })
@@ -92,7 +119,7 @@ export default function ProposalDetailPage({ params }: { params: Promise<{ id: s
     );
   }
 
-  if (error || !proposal) {
+  if (error || !pageData) {
     return (
       <div>
         <p className="text-neutral-500">{error ?? "Not found."}</p>
@@ -103,6 +130,40 @@ export default function ProposalDetailPage({ params }: { params: Promise<{ id: s
     );
   }
 
+  if (pageData.type === "artifact") {
+    const artifact = pageData.data;
+    return (
+      <div className="space-y-6 max-w-3xl">
+        <div>
+          <Link href="/dashboard/proposals" className="text-sm text-neutral-400 hover:text-neutral-200">
+            ← Proposals
+          </Link>
+          {artifact.lead && (
+            <div className="mt-2">
+              <Link
+                href={`/dashboard/leads/${artifact.lead.id}`}
+                className="text-sm text-emerald-400 hover:underline"
+              >
+                Lead: {artifact.lead.title} →
+              </Link>
+            </div>
+          )}
+        </div>
+        <ProposalConsoleEditor
+          artifact={{
+            id: artifact.id,
+            leadId: artifact.leadId,
+            title: artifact.title ?? "Proposal",
+            content: artifact.content ?? "",
+            meta: artifact.meta ?? {},
+            updatedAt: artifact.updatedAt ?? artifact.createdAt ?? new Date().toISOString(),
+          }}
+        />
+      </div>
+    );
+  }
+
+  const proposal = pageData.data;
   const deliverables = Array.isArray(proposal.deliverables)
     ? proposal.deliverables
     : (proposal.deliverables as { items?: string[] })?.items ?? [];

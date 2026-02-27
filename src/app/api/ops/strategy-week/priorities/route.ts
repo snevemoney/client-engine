@@ -2,6 +2,7 @@
  * POST /api/ops/strategy-week/priorities — Add a priority for current week
  */
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -52,6 +53,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    revalidatePath("/dashboard/command");
     return NextResponse.json(priority);
   });
 }

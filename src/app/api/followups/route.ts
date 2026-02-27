@@ -14,6 +14,7 @@ export type FollowUpItem = {
   source: string;
   status: string;
   score: number | null;
+  driverType: string | null;
   nextAction: string | null;
   nextActionDueAt: string | null;
   followUpDueAt: string | null;
@@ -50,6 +51,7 @@ function toIntakeItem(row: {
     source: row.source ?? "other",
     status: row.status ?? "new",
     score: row.score ?? null,
+    driverType: null,
     nextAction: row.nextAction ?? null,
     nextActionDueAt: row.nextActionDueAt?.toISOString() ?? null,
     followUpDueAt: row.followUpDueAt?.toISOString() ?? null,
@@ -68,6 +70,7 @@ function toPipelineItem(lead: {
   source: string;
   status: string;
   score: number | null;
+  driverType: string | null;
   nextAction: string | null;
   nextActionDueAt: Date | null;
   contactName: string | null;
@@ -83,6 +86,7 @@ function toPipelineItem(lead: {
     source: lead.source ?? "other",
     status: lead.status ?? "NEW",
     score: lead.score ?? null,
+    driverType: lead.driverType ?? null,
     nextAction: lead.nextAction ?? null,
     nextActionDueAt: lead.nextActionDueAt?.toISOString() ?? null,
     followUpDueAt: null,
@@ -164,6 +168,7 @@ export async function GET(req: NextRequest) {
           source: true,
           status: true,
           score: true,
+          driverType: true,
           nextAction: true,
           nextActionDueAt: true,
           contactName: true,

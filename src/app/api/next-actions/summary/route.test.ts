@@ -36,6 +36,17 @@ describe("GET /api/next-actions/summary", () => {
     expect(data).toHaveProperty("lastRunAt");
   });
 
+  it("returns scoped results when entityType/entityId provided", async () => {
+    const { GET } = await import("./route");
+    const req = new NextRequest("http://x/api/next-actions/summary?entityType=review_stream&entityId=review_stream");
+    const res = await GET(req);
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data).toHaveProperty("entityType", "review_stream");
+    expect(data).toHaveProperty("entityId", "review_stream");
+    expect(data).toHaveProperty("top5");
+  });
+
   it("asserts Cache-Control header includes short caching", async () => {
     const { GET } = await import("./route");
     const req = new NextRequest("http://x/api/next-actions/summary");

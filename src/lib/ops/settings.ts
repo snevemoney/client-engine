@@ -9,6 +9,16 @@ import { getCachedSystemLead } from "./cached";
 const ARTIFACT_TYPE = "operator_settings";
 const ARTIFACT_TITLE = "OPERATOR_SETTINGS";
 
+/** Configurable scoring profile — change niche by updating these, not code */
+export type ScoringProfile = {
+  idealProjects?: string;   // e.g. "web apps, dashboards, booking systems, course platforms"
+  budgetRange?: string;     // e.g. "$1,000-$10,000"
+  typicalTimeline?: string; // e.g. "1-4 weeks"
+  techStack?: string;       // e.g. "Next.js, React, Node.js, PostgreSQL"
+  prefers?: string;         // e.g. "clear scope, responsive clients, repeat potential"
+  avoids?: string;          // e.g. "maintenance-only, unrealistic budgets, vague requests"
+};
+
 export type OperatorSettings = {
   workdayEnabled?: boolean;
   workdayIntervalMinutes?: number;
@@ -20,6 +30,8 @@ export type OperatorSettings = {
   offerStatement?: string;
   buyerProfile?: string;
   promiseProblemStatement?: string;
+  /** Scoring profile — used by pipeline score step. Change niche = update settings */
+  scoringProfile?: ScoringProfile;
   /** Cash actually collected (bank) — set in Settings; revenue won is pipeline. */
   cashCollected?: number;
   /** Graduation: target number of repeatable wins (e.g. 10) before moving to productized. */

@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Sparkles } from "lucide-react";
 
 type Priority = { id: string; title: string; status: string };
 
@@ -55,6 +56,7 @@ export function StrategyQuadrantPanel() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savingReview, setSavingReview] = useState(false);
+  const [aiFilling, setAiFilling] = useState(false);
 
   const [phase, setPhase] = useState("");
   const [activeCampaignName, setActiveCampaignName] = useState("");
@@ -173,6 +175,58 @@ export function StrategyQuadrantPanel() {
       alert("Save failed");
     }
     setSaving(false);
+  };
+
+  const handleAiFill = async () => {
+    setAiFilling(true);
+    try {
+      const res = await fetch("/api/ops/strategy-week/ai-fill", { method: "POST" });
+      const d = await res.json().catch(() => null);
+      if (!res.ok) {
+        toast.error(d?.error ?? "AI fill failed");
+        return;
+      }
+      if (d.phase) setPhase(d.phase);
+      if (d.activeCampaignName) setActiveCampaignName(d.activeCampaignName);
+      if (d.activeCampaignAudience) setActiveCampaignAudience(d.activeCampaignAudience ?? "");
+      if (d.activeCampaignChannel) setActiveCampaignChannel(d.activeCampaignChannel ?? "");
+      if (d.activeCampaignOffer) setActiveCampaignOffer(d.activeCampaignOffer ?? "");
+      if (d.activeCampaignCta) setActiveCampaignCta(d.activeCampaignCta ?? "");
+      if (d.activeCampaignProof) setActiveCampaignProof(d.activeCampaignProof ?? "");
+      if (d.operatorImprovementFocus) setOperatorImprovementFocus(d.operatorImprovementFocus);
+      if (d.salesTarget) setSalesTarget(d.salesTarget);
+      if (d.theme) setTheme(d.theme);
+      if (d.monthlyFocus) setMonthlyFocus(d.monthlyFocus ?? "");
+      if (d.weeklyTargetValue != null) setWeeklyTargetValue(String(d.weeklyTargetValue));
+      if (d.weeklyTargetUnit) setWeeklyTargetUnit(d.weeklyTargetUnit);
+      if (d.declaredCommitment) setDeclaredCommitment(d.declaredCommitment);
+      if (d.keyMetric) setKeyMetric(d.keyMetric);
+      if (d.keyMetricTarget) setKeyMetricTarget(d.keyMetricTarget ?? "");
+      if (d.biggestBottleneck) setAnticipatedBottleneck(d.biggestBottleneck);
+      if (d.missionStatement) setMissionStatement(d.missionStatement);
+      if (d.whyThisWeekMatters) setWhyThisWeekMatters(d.whyThisWeekMatters ?? "");
+      if (d.dreamStatement) setDreamStatement(d.dreamStatement ?? "");
+      if (d.fuelStatement) setFuelStatement(d.fuelStatement ?? "");
+      if (Array.isArray(d.prioritySuggestions) && d.prioritySuggestions.length > 0) {
+        for (const title of d.prioritySuggestions) {
+          const pr = await fetch("/api/ops/strategy-week/priorities", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ title }),
+          });
+          if (pr.ok && data) {
+            const priority = await pr.json();
+            setData((prev) =>
+              prev ? { ...prev, priorities: [...(prev.priorities ?? []), priority] } : null
+            );
+          }
+        }
+      }
+      toast.success("Strategy filled. Review and save if correct.");
+    } catch {
+      toast.error("AI fill failed");
+    }
+    setAiFilling(false);
   };
 
   const handleAddPriority = async () => {
@@ -297,7 +351,19 @@ export function StrategyQuadrantPanel() {
       )}
 
       <section className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-4">
-        <h2 className="text-sm font-medium text-neutral-300 mb-3">Current week</h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-medium text-neutral-300">Current week</h2>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleAiFill}
+            disabled={aiFilling}
+            className="gap-1.5"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            {aiFilling ? "Filling…" : "AI fill"}
+          </Button>
+        </div>
         <div className="space-y-3 text-sm">
           <div>
             <label className="block text-neutral-500 text-xs uppercase tracking-wider mb-1">Phase</label>

@@ -1,5 +1,5 @@
 /**
- * Quiet Proof Engine: generate 6–10 line proof posts from real pipeline artifacts.
+ * Quiet Proof Engine: generate 6–10 line proof posts from real pipeline artifacts or intake proof candidates.
  * No hype, no invented numbers. Format: what I saw → cost → what I changed → result → quiet CTA.
  * When Client Success data exists (baseline + outcome scorecard), result lines use measurable outcomes.
  */
@@ -17,6 +17,51 @@ export type ProofPostResult = {
 
 export type { ProofInput } from "./proof-lines";
 export { buildProofLines } from "./proof-lines";
+
+/**
+ * Build proof post from an intake lead's proof candidates. No Artifact created (Artifact requires leadId).
+ */
+export async function buildProofPostFromIntakeLead(intakeLeadId: string): Promise<ProofPostResult | null> {
+  const intake = await db.intakeLead.findUnique({
+    where: { id: intakeLeadId },
+    include: {
+      proofCandidates: {
+        where: { status: { in: ["ready", "promoted"] } },
+        orderBy: { updatedAt: "desc" },
+        take: 3,
+      },
+    },
+  });
+
+  if (!intake || intake.proofCandidates.length === 0) return null;
+
+  const best = intake.proofCandidates[0];
+  const saw = best.deliverySummary?.slice(0, 300) || best.proofSnippet?.slice(0, 300) || intake.title || "Won deal";
+  const lines: string[] = [];
+  lines.push(`Saw: ${saw.replace(/\s+/g, " ").slice(0, 120)}${saw.length > 120 ? "…" : ""}`);
+  lines.push(`Cost: not measured for intake flow.`);
+  if (best.beforeState || best.afterState) {
+    const changed = [best.beforeState, best.afterState].filter(Boolean).join(" → ");
+    lines.push(`Changed: ${changed.slice(0, 100)}${changed.length > 100 ? "…" : ""}`);
+  } else if (best.proofSnippet) {
+    lines.push(`Proof: ${best.proofSnippet.slice(0, 100)}${best.proofSnippet.length > 100 ? "…" : ""}`);
+  } else {
+    lines.push(`Changed: (from proof candidate).`);
+  }
+  if (best.metricValue && best.metricLabel) {
+    lines.push(`Result: ${best.metricLabel} = ${best.metricValue}.`);
+  } else {
+    lines.push(`Result: deal won (intake).`);
+  }
+  lines.push(`If you want a small checklist for your own ops: comment CHECKLIST.`);
+
+  return {
+    lines,
+    artifactIds: [],
+    totalCostApprox: null,
+    leadTitle: intake.title ?? "",
+  };
+}
 
 /**
  * Build a proof post from a lead's artifacts and pipeline runs.

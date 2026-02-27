@@ -69,13 +69,24 @@ export async function fetchBottlenecks(): Promise<BottleneckItem[]> {
       },
     }),
     db.proofCandidate.count({ where: { status: "ready" } }),
-    db.intakeLead.count({
-      where: {
-        status: "won",
-        proofCandidates: { none: {} },
-        proofRecords: { none: {} },
-      },
-    }),
+    (async () => {
+      const [intakeWon, pipelineWon] = await Promise.all([
+        db.intakeLead.count({
+          where: {
+            status: "won",
+            proofCandidates: { none: {} },
+            proofRecords: { none: {} },
+          },
+        }),
+        db.lead.count({
+          where: {
+            dealOutcome: "won",
+            proofCandidates: { none: {} },
+          },
+        }),
+      ]);
+      return (intakeWon ?? 0) + (pipelineWon ?? 0);
+    })(),
   ]);
 
   let sentNoFollowup = 0;

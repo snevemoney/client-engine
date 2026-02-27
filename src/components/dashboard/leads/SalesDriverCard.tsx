@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Sparkles } from "lucide-react";
 import { getQualificationTotal, getPriorityBadge } from "@/lib/sales-driver/qualification";
 import { getMessageAngle } from "@/lib/sales-driver/messageAngle";
 
@@ -34,9 +36,11 @@ interface SalesDriverCardProps {
   leadId: string;
   lead: DriverLead;
   onUpdate: () => void;
+  /** For AI fill: update sales stage and sales process fields in parent */
+  updateField?: (field: string, value: string | null) => void;
 }
 
-export function SalesDriverCard({ leadId, lead, onUpdate }: SalesDriverCardProps) {
+export function SalesDriverCard({ leadId, lead, onUpdate, updateField }: SalesDriverCardProps) {
   const [saving, setSaving] = useState(false);
   const [savingQual, setSavingQual] = useState(false);
   const [driverType, setDriverType] = useState(lead.driverType ?? "");
@@ -56,6 +60,7 @@ export function SalesDriverCard({ leadId, lead, onUpdate }: SalesDriverCardProps
     scoreDecisionMaker: lead.scoreDecisionMaker ?? null,
     scoreFit: lead.scoreFit ?? null,
   });
+  const [aiFilling, setAiFilling] = useState(false);
 
   const total = getQualificationTotal(scores);
   const badge = getPriorityBadge(total);
@@ -80,12 +85,53 @@ export function SalesDriverCard({ leadId, lead, onUpdate }: SalesDriverCardProps
       if (res.ok) onUpdate();
       else {
         const err = await res.json();
-        alert(err.error ?? "Save failed");
+        toast.error(err.error ?? "Save failed");
       }
     } catch {
-      alert("Save failed");
+      toast.error("Save failed");
     }
     setSaving(false);
+  };
+
+  const handleAiFill = async () => {
+    setAiFilling(true);
+    try {
+      const res = await fetch(`/api/leads/${leadId}/driver/ai-fill`, { method: "POST" });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        toast.error(data?.error ?? "AI fill failed");
+        return;
+      }
+      if (data.driverType) setDriverType(data.driverType);
+      if (data.driverReason) setDriverReason(data.driverReason);
+      if (data.desiredResult) setDesiredResult(data.desiredResult);
+      if (data.proofAngle) setProofAngle(data.proofAngle);
+      if (data.nextAction) setNextAction(data.nextAction);
+      if (data.scorePain != null || data.scoreUrgency != null || data.scoreBudget != null || data.scoreResponsiveness != null || data.scoreDecisionMaker != null || data.scoreFit != null) {
+        setScores((s) => ({
+          ...s,
+          scorePain: data.scorePain ?? s.scorePain,
+          scoreUrgency: data.scoreUrgency ?? s.scoreUrgency,
+          scoreBudget: data.scoreBudget ?? s.scoreBudget,
+          scoreResponsiveness: data.scoreResponsiveness ?? s.scoreResponsiveness,
+          scoreDecisionMaker: data.scoreDecisionMaker ?? s.scoreDecisionMaker,
+          scoreFit: data.scoreFit ?? s.scoreFit,
+        }));
+      }
+      if (updateField) {
+        if (data.salesStage) updateField("salesStage", data.salesStage);
+        if (data.leadSourceChannel) updateField("leadSourceChannel", data.leadSourceChannel);
+        if (data.sourceDetail != null) updateField("sourceDetail", data.sourceDetail);
+        if (data.introducedBy != null) updateField("introducedBy", data.introducedBy);
+        if (data.referralAskStatus != null) updateField("referralAskStatus", data.referralAskStatus === "none" ? null : data.referralAskStatus);
+        if (data.relationshipStatus) updateField("relationshipStatus", data.relationshipStatus);
+      }
+      toast.success("Form filled. Review and save if correct.");
+    } catch {
+      toast.error("AI fill failed");
+    } finally {
+      setAiFilling(false);
+    }
   };
 
   const handleSaveQualification = async () => {
@@ -99,10 +145,10 @@ export function SalesDriverCard({ leadId, lead, onUpdate }: SalesDriverCardProps
       if (res.ok) onUpdate();
       else {
         const err = await res.json();
-        alert(err.error ?? "Save failed");
+        toast.error(err.error ?? "Save failed");
       }
     } catch {
-      alert("Save failed");
+      toast.error("Save failed");
     }
     setSavingQual(false);
   };
@@ -111,7 +157,19 @@ export function SalesDriverCard({ leadId, lead, onUpdate }: SalesDriverCardProps
 
   return (
     <div className="border border-neutral-800 rounded-lg p-4 space-y-4">
-      <h3 className="text-xs font-medium text-neutral-500 uppercase tracking-wider">Sales Driver</h3>
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-xs font-medium text-neutral-500 uppercase tracking-wider">Sales Driver</h3>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleAiFill}
+          disabled={aiFilling}
+          className="border-amber-700/60 text-amber-400 hover:bg-amber-900/30"
+        >
+          <Sparkles className="w-3.5 h-3.5" />
+          {aiFilling ? "Filling…" : "AI fill"}
+        </Button>
+      </div>
 
       {/* Message angle helper */}
       <div className="rounded-md bg-neutral-800/60 border border-neutral-700/60 p-3 text-sm text-neutral-300">

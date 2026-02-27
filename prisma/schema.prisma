@@ -31,6 +31,8 @@ model Lead {
   contactEmail String?
   score        Int?
   scoreReason  String?    @db.Text
+  scoreVerdict String?    // ACCEPT | MAYBE | REJECT — from LLM
+  scoreFactors Json?      // structured breakdown: { budgetFit, scopeClarity, ... }
   enrichedAt        DateTime?
   scoredAt          DateTime?
   proposalSentAt    DateTime?
@@ -1937,17 +1939,50 @@ model NextBestAction {
   sourceType    RiskSourceType
   sourceId      String?
   actionUrl     String?           @db.Text
-  payloadJson   Json? // what to do (read-only in 4.0)
+  payloadJson    Json? // what to do (read-only in 4.0)
+  explanationJson Json? // Phase 4.1: structured "Why" (ruleKey, summary, evidence, recommendedSteps, links)
   createdByRule String
   dedupeKey     String            @unique
+
+  // Phase 4.1: Per-scope views (command_center | review_stream)
+  entityType    String            @default("command_center")
+  entityId      String            @default("command_center")
+
+  // Phase 4.2: Snooze (parity with Risk)
+  snoozedUntil  DateTime?
+
+  // Phase 4.2: Last execution audit
+  lastExecutedAt         DateTime?
+  lastExecutionStatus    String?   // success | failed
+  lastExecutionErrorCode String?
+  lastExecutionErrorMessage String?
 
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
   completedAt  DateTime?
   dismissedAt  DateTime?
 
+  executions    NextActionExecution[]
+
   @@index([priority, status, createdAt(sort: Desc)])
   @@index([sourceType, sourceId])
+  @@index([entityType, entityId, status])
+}
+
+model NextActionExecution {
+  id              String   @id @default(cuid())
+  nextActionId    String
+  nextAction      NextBestAction @relation(fields: [nextActionId], references: [id], onDelete: Cascade)
+  actionKey       String
+  status          String   // success | failed
+  startedAt       DateTime @default(now())
+  finishedAt      DateTime?
+  errorCode       String?
+  errorMessage    String?  @db.Text
+  metaJson        Json?
+
+  @@index([nextActionId])
+  @@index([actionKey, startedAt(sort: Desc)])
 }
 
 model NextActionRun {

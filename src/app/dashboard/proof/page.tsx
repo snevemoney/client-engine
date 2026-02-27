@@ -9,11 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { FileText, Copy, Check, Loader2, ClipboardList } from "lucide-react";
 
-interface Lead {
-  id: string;
-  title: string;
-  status: string;
-}
+type LeadOption = { id: string; title: string; itemType: "pipeline" | "intake" };
 
 interface ProofArtifact {
   id: string;
@@ -113,7 +109,7 @@ function ProofRecordEditForm({
 
 export default function ProofPage() {
   const searchParams = useSearchParams();
-  const [leads, setLeads] = useState<Lead[]>([]);
+  const [leadOptions, setLeadOptions] = useState<LeadOption[]>([]);
   const [proofPosts, setProofPosts] = useState<ProofArtifact[]>([]);
   const [selectedLeadId, setSelectedLeadId] = useState<string>("");
   const [generating, setGenerating] = useState(false);
@@ -142,14 +138,18 @@ export default function ProofPage() {
     }
   }, []);
 
-  const fetchLeads = useCallback(async () => {
-    const res = await fetch("/api/leads");
+  const fetchLeadOptions = useCallback(async () => {
+    const res = await fetch("/api/proof/lead-options", { cache: "no-store" });
     if (res.ok) {
       const data = await res.json();
-      setLeads(data);
-      if (data.length && !selectedLeadId) setSelectedLeadId(data[0].id);
+      const combined: LeadOption[] = [
+        ...(data.pipeline ?? []).map((l: { id: string; title: string }) => ({ ...l, itemType: "pipeline" as const })),
+        ...(data.intake ?? []).map((l: { id: string; title: string }) => ({ ...l, itemType: "intake" as const })),
+      ];
+      setLeadOptions(combined);
+      setSelectedLeadId((prev) => (prev ? prev : combined.length ? `${combined[0].itemType}:${combined[0].id}` : ""));
     }
-  }, [selectedLeadId]);
+  }, []);
 
   const fetchProofPosts = useCallback(async () => {
     const res = await fetch("/api/proof");
@@ -160,29 +160,36 @@ export default function ProofPage() {
   }, []);
 
   useEffect(() => {
-    fetchLeads();
+    fetchLeadOptions();
     fetchProofPosts();
     fetchProofRecords();
     fetchCandidateSummary();
-  }, [fetchLeads, fetchProofPosts, fetchProofRecords, fetchCandidateSummary]);
+  }, [fetchLeadOptions, fetchProofPosts, fetchProofRecords, fetchCandidateSummary]);
 
   // URL trigger for browser automation: ?generate=1 runs generate once when a lead is selected
   useEffect(() => {
     if (didAutoGenerate.current || !searchParams.get("generate") || !selectedLeadId) return;
+    const parsed = selectedLeadId.startsWith("intake:")
+      ? { type: "intake" as const, id: selectedLeadId.slice(7) }
+      : selectedLeadId.startsWith("pipeline:")
+        ? { type: "pipeline" as const, id: selectedLeadId.slice(9) }
+        : { type: "pipeline" as const, id: selectedLeadId };
     didAutoGenerate.current = true;
     (async () => {
+      const { type, id } = parsed;
       setGenerating(true);
       setLastGenerated(null);
       try {
+        const body = type === "intake" ? { intakeLeadId: id } : { leadId: id };
         const res = await fetch("/api/proof/generate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ leadId: selectedLeadId }),
+          body: JSON.stringify(body),
         });
         if (res.ok) {
           const data = await res.json();
           setLastGenerated({ content: data.content, artifactId: data.artifactId });
-          fetchProofPosts();
+          if (type === "pipeline") fetchProofPosts();
         }
       } finally {
         setGenerating(false);
@@ -190,20 +197,30 @@ export default function ProofPage() {
     })();
   }, [selectedLeadId, searchParams, fetchProofPosts]);
 
+  function parseSelected(): { type: "pipeline" | "intake"; id: string } | null {
+    if (!selectedLeadId) return null;
+    if (selectedLeadId.startsWith("intake:")) return { type: "intake", id: selectedLeadId.slice(7) };
+    if (selectedLeadId.startsWith("pipeline:")) return { type: "pipeline", id: selectedLeadId.slice(9) };
+    return { type: "pipeline", id: selectedLeadId }; // legacy: plain id = pipeline
+  }
+
   async function generate() {
-    if (!selectedLeadId) return;
+    const parsed = parseSelected();
+    if (!parsed) return;
+    const { type, id } = parsed;
     setGenerating(true);
     setLastGenerated(null);
     try {
+      const body = type === "intake" ? { intakeLeadId: id } : { leadId: id };
       const res = await fetch("/api/proof/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ leadId: selectedLeadId }),
+        body: JSON.stringify(body),
       });
       if (res.ok) {
         const data = await res.json();
         setLastGenerated({ content: data.content, artifactId: data.artifactId });
-        fetchProofPosts();
+        if (type === "pipeline") fetchProofPosts();
       } else {
         const err = await res.json();
         toast.error(err.error || "Generate failed");
@@ -249,18 +266,22 @@ export default function ProofPage() {
         <h2 className="text-sm font-medium text-neutral-300 mb-4">Generate proof post</h2>
         <div className="flex flex-wrap items-end gap-4">
           <div className="min-w-[200px]">
-            <label className="block text-xs text-neutral-500 mb-1">Lead</label>
+            <label className="block text-xs text-neutral-500 mb-1">Lead (pipeline or intake)</label>
             <select
               value={selectedLeadId}
               onChange={(e) => setSelectedLeadId(e.target.value)}
               className="w-full rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100"
             >
               <option value="">Select a lead</option>
-              {leads.map((l) => (
-                <option key={l.id} value={l.id}>
-                  {l.title.slice(0, 60)}{l.title.length > 60 ? "…" : ""}
-                </option>
-              ))}
+              {leadOptions.map((l) => {
+                const val = `${l.itemType}:${l.id}`;
+                const label = l.itemType === "intake" ? `[Intake] ${l.title}` : l.title;
+                return (
+                  <option key={val} value={val}>
+                    {label.slice(0, 60)}{label.length > 60 ? "…" : ""}
+                  </option>
+                );
+              })}
             </select>
           </div>
           <Button

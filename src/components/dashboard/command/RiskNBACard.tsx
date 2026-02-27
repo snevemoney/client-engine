@@ -33,7 +33,7 @@ export function RiskNBACard() {
         fetch("/api/risk?status=open&pageSize=3&page=1", { credentials: "include", cache: "no-store" }).then((r) =>
           r.ok ? r.json() : { items: [] }
         ),
-        fetch("/api/next-actions/summary", { credentials: "include", cache: "no-store" }).then((r) => (r.ok ? r.json() : null)),
+        fetch("/api/next-actions/summary?entityType=command_center&entityId=command_center", { credentials: "include", cache: "no-store" }).then((r) => (r.ok ? r.json() : null)),
       ]);
       setRiskSummary(riskData);
       setRiskItems(riskList?.items ?? []);
@@ -64,9 +64,9 @@ export function RiskNBACard() {
   const handleRunNBA = async () => {
     setRunNBALoading(true);
     try {
-      const res = await fetch("/api/next-actions/run", { method: "POST" });
+      const res = await fetch("/api/next-actions/run?entityType=command_center&entityId=command_center", { method: "POST" });
       if (res.ok) {
-        const r = await fetch("/api/next-actions/summary", { credentials: "include", cache: "no-store" });
+        const r = await fetch("/api/next-actions/summary?entityType=command_center&entityId=command_center", { credentials: "include", cache: "no-store" });
         if (r.ok) setNBASummary(await r.json());
       }
     } finally {

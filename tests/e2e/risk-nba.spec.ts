@@ -123,3 +123,35 @@ test.describe("Command Center RiskNBA integration", () => {
     await expect(page.locator("body")).toBeVisible();
   });
 });
+
+test.describe("Phase 4.1: NBA v2 scope and Why", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto(`${baseURL}/login`);
+    await page.getByLabel("Email").fill(loginEmail);
+    await page.getByLabel("Password").fill(loginPassword);
+    await page.getByRole("button", { name: /sign in/i }).click();
+    await expect(page).toHaveURL(/\/dashboard/, { timeout: 10000 });
+    if (page.url().includes("/login")) {
+      test.skip(true, "Login failed");
+    }
+  });
+
+  test("Next Actions page: scope selector visible and switchable", async ({ page }) => {
+    await page.goto(`${baseURL}/dashboard/next-actions`, { waitUntil: "load", timeout: 15000 });
+    const scopeSelect = page.getByTestId("nba-scope-select");
+    await expect(scopeSelect).toBeVisible({ timeout: 5000 });
+    await scopeSelect.selectOption("review_stream");
+    await expect(page).toHaveURL(/scope=review_stream/);
+    await scopeSelect.selectOption("command_center");
+    await expect(page).toHaveURL(/scope=command_center/);
+  });
+
+  test("Next Actions page: Why toggle expands panel when actions exist", async ({ page }) => {
+    await page.goto(`${baseURL}/dashboard/next-actions`, { waitUntil: "load", timeout: 15000 });
+    const whyToggle = page.getByTestId("next-action-why-toggle").first();
+    if (await whyToggle.isVisible({ timeout: 2000 })) {
+      await whyToggle.click();
+      await expect(page.getByTestId("next-action-why-panel").first()).toBeVisible({ timeout: 3000 });
+    }
+  });
+});

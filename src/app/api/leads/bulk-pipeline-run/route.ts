@@ -5,6 +5,7 @@ import { LeadStatus } from "@prisma/client";
 import { runPipelineIfEligible } from "@/lib/pipeline/runPipeline";
 import { jsonError, withRouteTiming } from "@/lib/api-utils";
 
+export const maxDuration = 300; // 5 min for pipeline (Enrich→Score→Position→Propose per lead)
 const MAX_PER_RUN = 10;
 
 /**

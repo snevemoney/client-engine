@@ -15,9 +15,17 @@ export type NextActionCandidate = {
   payloadJson?: Record<string, unknown> | null;
   createdByRule: string;
   dedupeKey: string;
-  /** Optional: affects ranking. Base score from priority + small boost. */
+  /** Phase 4.1: scope */
+  entityType?: string;
+  entityId?: string;
+  /** Phase 4.1: structured explanation */
+  explanationJson?: Record<string, unknown> | null;
+  /** Optional: affects ranking */
   countBoost?: number;
   recencyBoost?: number;
+  urgencyBoost?: number;
+  impactBoost?: number;
+  frictionPenalty?: number;
 };
 
 export type NextActionContext = {

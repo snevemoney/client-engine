@@ -1,11 +1,13 @@
 /**
  * GET /api/next-actions — List next actions with filters. Paginated.
+ * Phase 4.1: Supports entityType, entityId scope filter.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { jsonError, requireAuth, withRouteTiming } from "@/lib/api-utils";
 import { db } from "@/lib/db";
 import { NextActionPriority, NextActionStatus, RiskSourceType } from "@prisma/client";
 import { parsePaginationParams, buildPaginationMeta, paginatedResponse } from "@/lib/pagination";
+import { parseScope } from "@/lib/next-actions/scope";
 
 export const dynamic = "force-dynamic";
 
@@ -23,11 +25,23 @@ export async function GET(request: NextRequest) {
     const priority = searchParams.get("priority");
     const sourceType = searchParams.get("sourceType");
     const search = searchParams.get("search")?.trim();
+    const { entityType, entityId } = parseScope(searchParams.get("entityType"), searchParams.get("entityId"));
     const pagination = parsePaginationParams(searchParams);
 
-    const where: Record<string, unknown> = {};
+    const now = new Date();
+    const where: Record<string, unknown> = {
+      entityType,
+      entityId,
+    };
     if (status && VALID_STATUS.includes(status)) {
       where.status = status as NextActionStatus;
+    }
+    // Phase 4.2: Hide snoozed items (snoozedUntil > now) when showing queued/active
+    if (!status || status === "queued") {
+      where.OR = [
+        { snoozedUntil: null },
+        { snoozedUntil: { lte: now } },
+      ];
     }
     if (priority && VALID_PRIORITY.includes(priority)) {
       where.priority = priority as NextActionPriority;
@@ -68,7 +82,14 @@ export async function GET(request: NextRequest) {
           sourceId: a.sourceId,
           actionUrl: a.actionUrl,
           payloadJson: a.payloadJson,
+          explanationJson: a.explanationJson,
           createdByRule: a.createdByRule,
+          entityType: a.entityType,
+          entityId: a.entityId,
+          snoozedUntil: a.snoozedUntil?.toISOString() ?? null,
+          lastExecutedAt: a.lastExecutedAt?.toISOString() ?? null,
+          lastExecutionStatus: a.lastExecutionStatus ?? null,
+          lastExecutionErrorCode: a.lastExecutionErrorCode ?? null,
           createdAt: a.createdAt.toISOString(),
           completedAt: a.completedAt?.toISOString() ?? null,
           dismissedAt: a.dismissedAt?.toISOString() ?? null,

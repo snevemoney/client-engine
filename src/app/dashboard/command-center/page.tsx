@@ -151,7 +151,7 @@ export default function CommandCenterPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/command-center")
+    fetch("/api/command-center", { credentials: "include", cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => setData(d && typeof d === "object" ? d : null))
       .catch(() => setData(null))

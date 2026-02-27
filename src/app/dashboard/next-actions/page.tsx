@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { RefreshCw, Play, Check, X, ExternalLink } from "lucide-react";
+import { RefreshCw, Play, Check, X, ExternalLink, ChevronDown, ChevronRight, HelpCircle } from "lucide-react";
 import { useUrlQueryState } from "@/hooks/useUrlQueryState";
 import { AsyncState } from "@/components/ui/AsyncState";
 import { PaginationControls } from "@/components/ui/PaginationControls";
@@ -23,6 +23,7 @@ type NextAction = {
   sourceType: string;
   sourceId: string | null;
   actionUrl: string | null;
+  explanationJson?: { ruleKey?: string; summary?: string; evidence?: Array<{ label: string; value: string | number; source: string }>; recommendedSteps?: string[]; links?: Array<{ label: string; href: string }> } | null;
   createdAt: string;
 };
 
@@ -48,11 +49,15 @@ export default function NextActionsPage() {
   const [error, setError] = useState<string | null>(null);
   const [runLoading, setRunLoading] = useState(false);
   const [actioningId, setActioningId] = useState<string | null>(null);
+  const [expandedWhyId, setExpandedWhyId] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const runIdRef = useRef(0);
 
   const statusFilter = url.getString("status", "");
   const priorityFilter = url.getString("priority", "");
+  const scopeFilter = url.getString("scope", "command_center");
+  const entityType = scopeFilter === "review_stream" ? "review_stream" : "command_center";
+  const entityId = entityType;
   const searchRaw = url.getString("search", "");
   const searchDebounced = useDebouncedValue(searchRaw, 300);
   const page = url.getPage();
@@ -66,6 +71,8 @@ export default function NextActionsPage() {
     setLoading(true);
     setError(null);
     const params = new URLSearchParams();
+    params.set("entityType", entityType);
+    params.set("entityId", entityId);
     if (statusFilter) params.set("status", statusFilter);
     if (priorityFilter) params.set("priority", priorityFilter);
     if (searchDebounced) params.set("search", searchDebounced);
@@ -76,7 +83,7 @@ export default function NextActionsPage() {
         fetch(`/api/next-actions?${params}`, { credentials: "include", signal: controller.signal, cache: "no-store" }).then(
           (r) => (r.ok ? r.json() : null)
         ),
-        fetch("/api/next-actions/summary", { credentials: "include", signal: controller.signal, cache: "no-store" }).then(
+        fetch(`/api/next-actions/summary?entityType=${entityType}&entityId=${entityId}`, { credentials: "include", signal: controller.signal, cache: "no-store" }).then(
           (r) => (r.ok ? r.json() : null)
         ),
       ]);
@@ -97,7 +104,7 @@ export default function NextActionsPage() {
         abortRef.current = null;
       }
     }
-  }, [statusFilter, priorityFilter, searchDebounced, page, pageSize]);
+  }, [entityType, entityId, statusFilter, priorityFilter, searchDebounced, page, pageSize]);
 
   useEffect(() => {
     void fetchData();
@@ -109,7 +116,7 @@ export default function NextActionsPage() {
   const handleRun = async () => {
     setRunLoading(true);
     try {
-      const res = await fetch("/api/next-actions/run", { method: "POST" });
+      const res = await fetch(`/api/next-actions/run?entityType=${entityType}&entityId=${entityId}`, { method: "POST" });
       if (res.ok) void fetchData();
       else {
         const d = await res.json();
@@ -202,7 +209,19 @@ export default function NextActionsPage() {
         </div>
       )}
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2 items-center">
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-neutral-500">Scope:</span>
+          <select
+            value={scopeFilter}
+            onChange={(e) => url.setFilter("scope", e.target.value)}
+            className="rounded-md border border-neutral-700 bg-neutral-900 px-3 py-1.5 text-sm"
+            data-testid="nba-scope-select"
+          >
+            <option value="command_center">Command Center</option>
+            <option value="review_stream">Review Stream</option>
+          </select>
+        </div>
         <select
           value={statusFilter}
           onChange={(e) => url.setFilter("status", e.target.value)}
@@ -247,39 +266,90 @@ export default function NextActionsPage() {
         <div className="rounded-lg border border-neutral-800 bg-neutral-900/50 overflow-hidden">
           {items.length > 0 ? (
             <div className="divide-y divide-neutral-800">
-              {items.map((a) => (
-                <div key={a.id} className="flex flex-wrap items-center gap-3 p-4 hover:bg-neutral-800/30">
-                  <Badge className={priorityColor(a.priority)}>{a.priority}</Badge>
-                  <span className="text-xs text-neutral-500 w-8">{a.score}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">{a.title}</p>
-                    {a.reason && <p className="text-xs text-neutral-500 truncate">{a.reason}</p>}
-                    <div className="flex gap-3 mt-1 text-xs text-neutral-400">
-                      <span>{a.sourceType}</span>
-                      <span>{a.status}</span>
+              {items.map((a) => {
+                const expl = a.explanationJson;
+                const isExpanded = expandedWhyId === a.id;
+                return (
+                  <div key={a.id} className="p-4 hover:bg-neutral-800/30">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <Badge className={priorityColor(a.priority)}>{a.priority}</Badge>
+                      <span className="text-xs text-neutral-500 w-8">{a.score}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{a.title}</p>
+                        {a.reason && <p className="text-xs text-neutral-500 truncate">{a.reason}</p>}
+                        <div className="flex gap-3 mt-1 text-xs text-neutral-400">
+                          <span>{a.sourceType}</span>
+                          <span>{a.status}</span>
+                        </div>
+                      </div>
+                      <div className="flex gap-2 shrink-0 items-center">
+                        {expl && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setExpandedWhyId(isExpanded ? null : a.id)}
+                            className="text-neutral-400"
+                            data-testid="next-action-why-toggle"
+                          >
+                            {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                            <HelpCircle className="w-3.5 h-3.5 ml-0.5" />
+                          </Button>
+                        )}
+                        {a.actionUrl && (
+                          <Link href={a.actionUrl}>
+                            <Button variant="ghost" size="sm">
+                              <ExternalLink className="w-4 h-4" />
+                            </Button>
+                          </Link>
+                        )}
+                        {a.status === "queued" && (
+                          <>
+                            <Button variant="ghost" size="sm" onClick={() => handleDone(a.id)} disabled={actioningId === a.id} className="text-emerald-400">
+                              <Check className="w-4 h-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleDismiss(a.id)} disabled={actioningId === a.id} className="text-neutral-400" data-testid="next-action-dismiss">
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex gap-2 shrink-0">
-                    {a.actionUrl && (
-                      <Link href={a.actionUrl}>
-                        <Button variant="ghost" size="sm">
-                          <ExternalLink className="w-4 h-4" />
-                        </Button>
-                      </Link>
+                    {isExpanded && expl && (
+                      <div className="mt-3 pl-4 border-l-2 border-neutral-700 space-y-2 text-sm" data-testid="next-action-why-panel">
+                        {expl.summary && <p className="text-neutral-300">{expl.summary}</p>}
+                        {Array.isArray(expl.evidence) && expl.evidence.length > 0 && (
+                          <ul className="text-neutral-400 space-y-0.5">
+                            {expl.evidence.map((e: { label: string; value: string | number; source: string }, i: number) => (
+                              <li key={i}>
+                                <span className="text-neutral-500">{e.label}:</span> {String(e.value)} <span className="text-neutral-600">({e.source})</span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                        {Array.isArray(expl.recommendedSteps) && expl.recommendedSteps.length > 0 && (
+                          <div>
+                            <p className="text-neutral-500 text-xs uppercase mb-1">Steps</p>
+                            <ol className="list-decimal list-inside text-neutral-400 space-y-0.5">
+                              {expl.recommendedSteps.map((s: string, i: number) => (
+                                <li key={i}>{s}</li>
+                              ))}
+                            </ol>
+                          </div>
+                        )}
+                        {Array.isArray(expl.links) && expl.links.length > 0 && (
+                          <div className="flex flex-wrap gap-2 pt-1">
+                            {expl.links.map((l: { label: string; href: string }, i: number) => (
+                              <Link key={i} href={l.href} className="text-xs text-amber-400 hover:underline">
+                                {l.label} →
+                              </Link>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     )}
-                    {a.status === "queued" && (
-                      <>
-                        <Button variant="ghost" size="sm" onClick={() => handleDone(a.id)} disabled={actioningId === a.id} className="text-emerald-400">
-                          <Check className="w-4 h-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => handleDismiss(a.id)} disabled={actioningId === a.id} className="text-neutral-400" data-testid="next-action-dismiss">
-                          <X className="w-4 h-4" />
-                        </Button>
-                      </>
-                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="py-12 text-center text-neutral-500">No next actions</div>

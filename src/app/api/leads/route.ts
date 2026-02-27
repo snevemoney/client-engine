@@ -27,12 +27,14 @@ export async function GET(req: NextRequest) {
     const url = new URL(req.url);
     const status = url.searchParams.get("status") as LeadStatus | null;
     const source = url.searchParams.get("source");
+    const verdict = url.searchParams.get("verdict");
     const search = url.searchParams.get("q");
     const limit = Math.min(500, Math.max(1, parseInt(url.searchParams.get("limit") ?? "500", 10) || 500));
 
     const where: Record<string, unknown> = {};
     if (status) where.status = status;
     if (source) where.source = source;
+    if (verdict && ["ACCEPT", "MAYBE", "REJECT"].includes(verdict)) where.scoreVerdict = verdict;
     if (search) {
       where.OR = [
         { title: { contains: search, mode: "insensitive" } },

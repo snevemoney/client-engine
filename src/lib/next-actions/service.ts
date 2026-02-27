@@ -34,7 +34,10 @@ export async function upsertNextActions(candidates: NextActionCandidate[]): Prom
       sourceId: c.sourceId ?? null,
       actionUrl: c.actionUrl ?? null,
       payloadJson: c.payloadJson ?? undefined,
+      explanationJson: c.explanationJson ?? undefined,
       createdByRule: c.createdByRule,
+      entityType: c.entityType ?? "command_center",
+      entityId: c.entityId ?? "command_center",
     };
 
     if (!existing) {
@@ -77,6 +80,14 @@ export async function dismissNextAction(id: string): Promise<void> {
   await db.nextBestAction.update({
     where: { id },
     data: { status: NextActionStatus.dismissed, dismissedAt: now, updatedAt: now },
+  });
+}
+
+/** Phase 4.2: Snooze NBA until given date (parity with Risk). */
+export async function snoozeNextAction(id: string, until: Date): Promise<void> {
+  await db.nextBestAction.update({
+    where: { id },
+    data: { snoozedUntil: until, updatedAt: new Date() },
   });
 }
 

@@ -1,25 +1,32 @@
 /**
  * GET /api/next-actions/summary — Top 5 queued + counts by priority.
- * Cached 15s.
+ * Phase 4.1: Supports entityType, entityId scope. Cached 15s.
  */
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { jsonError, requireAuth, withRouteTiming } from "@/lib/api-utils";
 import { db } from "@/lib/db";
 import { withSummaryCache } from "@/lib/http/cached-handler";
 import { NextActionPriority, NextActionStatus } from "@prisma/client";
+import { parseScope } from "@/lib/next-actions/scope";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   return withRouteTiming("GET /api/next-actions/summary", async () => {
     const session = await requireAuth();
     if (!session) return jsonError("Unauthorized", 401);
 
+    const { entityType, entityId } = parseScope(
+      request.nextUrl.searchParams.get("entityType"),
+      request.nextUrl.searchParams.get("entityId")
+    );
+
     try {
-      return await withSummaryCache("next-actions/summary", async () => {
+      return await withSummaryCache(`next-actions/summary:${entityType}:${entityId}`, async () => {
+        const scopeWhere = { entityType, entityId, status: NextActionStatus.queued };
         const [top5, byPriority, lastRun] = await Promise.all([
           db.nextBestAction.findMany({
-            where: { status: NextActionStatus.queued },
+            where: scopeWhere,
             orderBy: [{ score: "desc" }, { createdAt: "desc" }],
             take: 5,
             select: {
@@ -30,14 +37,16 @@ export async function GET() {
               score: true,
               actionUrl: true,
               sourceType: true,
+              explanationJson: true,
             },
           }),
           db.nextBestAction.groupBy({
             by: ["priority"],
-            where: { status: NextActionStatus.queued },
+            where: scopeWhere,
             _count: { id: true },
           }),
           db.nextActionRun.findFirst({
+            where: { runKey: { contains: `:${entityType}:${entityId}:` } },
             orderBy: { createdAt: "desc" },
             select: { createdAt: true },
           }),
@@ -57,6 +66,7 @@ export async function GET() {
             score: a.score,
             actionUrl: a.actionUrl,
             sourceType: a.sourceType,
+            explanationJson: a.explanationJson,
           })),
           queuedByPriority: {
             low: counts[NextActionPriority.low] ?? 0,
@@ -65,6 +75,8 @@ export async function GET() {
             critical: counts[NextActionPriority.critical] ?? 0,
           },
           lastRunAt: lastRun?.createdAt?.toISOString() ?? null,
+          entityType,
+          entityId,
         };
       }, 15_000);
     } catch (err) {

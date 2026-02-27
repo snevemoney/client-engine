@@ -3,6 +3,7 @@
  * POST /api/ops/strategy-week — Create or upsert current week
  */
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -103,6 +104,7 @@ export async function POST(req: NextRequest) {
       update,
       include: { review: true, priorities: true, targets: true },
     });
+    revalidatePath("/dashboard/command");
     return NextResponse.json(record);
   });
 }
