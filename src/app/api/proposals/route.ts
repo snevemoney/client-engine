@@ -210,6 +210,16 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    if (!proposal.intakeLeadId && !proposal.pipelineLeadId) {
+      await db.proposalActivity.create({
+        data: {
+          proposalId: proposal.id,
+          type: "note",
+          message: "Warning: Proposal created without a linked lead source.",
+        },
+      });
+    }
+
     if (proposal.intakeLeadId) {
       await db.intakeLead.update({
         where: { id: proposal.intakeLeadId },

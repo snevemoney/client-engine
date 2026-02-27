@@ -1,13 +1,25 @@
 /**
  * Seed sample states for command center / Phase 1.5 demo.
  * Run: npm run db:seed-command-center
+ * Requires NODE_ENV=development or SEED_DEMO_DATA=1 — blocks accidental prod use.
  * Requires intake leads (run db:seed-intake-leads first).
  */
 import { PrismaClient } from "@prisma/client";
 
 const db = new PrismaClient();
 
+function isDevOrExplicit() {
+  const env = process.env.NODE_ENV;
+  const explicit = process.env.SEED_DEMO_DATA === "1" || process.env.SEED_DEMO_DATA === "true";
+  return env === "development" || explicit;
+}
+
 async function main() {
+  if (!isDevOrExplicit()) {
+    console.error("db:seed-command-center is for dev/demo only. Set NODE_ENV=development or SEED_DEMO_DATA=1 to run.");
+    process.exit(1);
+  }
+
   const intakeLeads = await db.intakeLead.findMany({ take: 10, orderBy: { createdAt: "desc" } });
   if (intakeLeads.length === 0) {
     console.log("No intake leads. Run db:seed-intake-leads first.");

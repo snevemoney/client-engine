@@ -9,6 +9,7 @@ import { FollowupDueBadge, type DueBucket } from "./FollowupDueBadge";
 
 export type FollowUpItem = {
   id: string;
+  itemType?: "intake" | "pipeline";
   title: string;
   company: string | null;
   source: string;
@@ -79,14 +80,16 @@ export function FollowupBucketTable({
           {items.map((item) => {
             const dueIso = item.nextActionDueAt ?? item.followUpDueAt;
             const loading = actionLoading === item.id;
+            const isPipeline = item.itemType === "pipeline";
+            const detailHref = isPipeline ? `/dashboard/leads/${item.id}` : `/dashboard/intake/${item.id}`;
             return (
               <tr
-                key={item.id}
+                key={`${item.itemType ?? "intake"}-${item.id}`}
                 className="border-b border-neutral-800 hover:bg-neutral-800/30 transition-colors"
               >
                 <td className="p-3">
                   <Link
-                    href={`/dashboard/intake/${item.id}`}
+                    href={detailHref}
                     className="font-medium text-neutral-100 hover:text-white hover:underline"
                   >
                     {item.title || "—"}
@@ -109,7 +112,9 @@ export function FollowupBucketTable({
                   {formatDate(dueIso)}
                 </td>
                 <td className="p-3">
-                  {item.promotedLeadId ? (
+                  {isPipeline ? (
+                    <span className="text-neutral-400 text-xs">Lead</span>
+                  ) : item.promotedLeadId ? (
                     <Link
                       href={`/dashboard/leads/${item.promotedLeadId}`}
                       className="text-xs text-blue-400 hover:underline flex items-center gap-1"
@@ -142,26 +147,39 @@ export function FollowupBucketTable({
                       <Clock className="h-3 w-3" />
                       Snooze
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => onLogCall(item)}
-                      disabled={loading}
-                      className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs bg-neutral-700/50 text-neutral-200 hover:bg-neutral-600/50 border border-neutral-600 disabled:opacity-50"
-                      title="Log call"
-                    >
-                      <Phone className="h-3 w-3" />
-                      Call
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onLogEmail(item)}
-                      disabled={loading}
-                      className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs bg-neutral-700/50 text-neutral-200 hover:bg-neutral-600/50 border border-neutral-600 disabled:opacity-50"
-                      title="Log email"
-                    >
-                      <Mail className="h-3 w-3" />
-                      Email
-                    </button>
+                    {isPipeline ? (
+                      <Link
+                        href={detailHref}
+                        className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs bg-neutral-700/50 text-neutral-200 hover:bg-neutral-600/50 border border-neutral-600"
+                        title="View lead"
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                        View
+                      </Link>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => onLogCall(item)}
+                          disabled={loading}
+                          className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs bg-neutral-700/50 text-neutral-200 hover:bg-neutral-600/50 border border-neutral-600 disabled:opacity-50"
+                          title="Log call"
+                        >
+                          <Phone className="h-3 w-3" />
+                          Call
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onLogEmail(item)}
+                          disabled={loading}
+                          className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs bg-neutral-700/50 text-neutral-200 hover:bg-neutral-600/50 border border-neutral-600 disabled:opacity-50"
+                          title="Log email"
+                        >
+                          <Mail className="h-3 w-3" />
+                          Email
+                        </button>
+                      </>
+                    )}
                   </div>
                 </td>
               </tr>

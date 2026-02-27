@@ -1,6 +1,17 @@
+/**
+ * Seed portfolio projects for /work page.
+ * Run: npm run db:seed-projects
+ * Requires NODE_ENV=development or SEED_DEMO_DATA=1 — blocks accidental prod use.
+ */
 import { PrismaClient } from "@prisma/client";
 
 const db = new PrismaClient();
+
+function isDevOrExplicit() {
+  const env = process.env.NODE_ENV;
+  const explicit = process.env.SEED_DEMO_DATA === "1" || process.env.SEED_DEMO_DATA === "true";
+  return env === "development" || explicit;
+}
 
 const projects = [
   {
@@ -70,6 +81,11 @@ const projects = [
 ];
 
 async function main() {
+  if (!isDevOrExplicit()) {
+    console.error("db:seed-projects is for dev/demo only. Set NODE_ENV=development or SEED_DEMO_DATA=1 to run.");
+    process.exit(1);
+  }
+
   for (const p of projects) {
     const existing = await db.project.findUnique({ where: { slug: p.slug } });
     if (existing) {

@@ -71,7 +71,7 @@ export function SignalsDashboard() {
       const res = await fetch("/api/signals/sources", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: addName.trim(), url: addUrl.trim(), mode: "mock" }),
+        body: JSON.stringify({ name: addName.trim(), url: addUrl.trim(), mode: "live" }),
       });
       if (res.ok) {
         await loadSources();

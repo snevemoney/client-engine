@@ -111,14 +111,29 @@ export default function FollowupsPage() {
     nextActionDueAt?: string;
   }) => {
     if (!completeItem) return;
-    await runAction(completeItem.id, () =>
-      fetch(`/api/intake-leads/${completeItem.id}/followup-complete`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(payload),
-      })
-    );
+    const isPipeline = completeItem.itemType === "pipeline";
+    if (isPipeline) {
+      await runAction(completeItem.id, () =>
+        fetch(`/api/leads/${completeItem.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            nextAction: payload.nextAction ?? completeItem.nextAction ?? null,
+            nextActionDueAt: null,
+          }),
+        })
+      );
+    } else {
+      await runAction(completeItem.id, () =>
+        fetch(`/api/intake-leads/${completeItem.id}/followup-complete`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(payload),
+        })
+      );
+    }
     setCompleteItem(null);
   };
 
@@ -129,14 +144,41 @@ export default function FollowupsPage() {
     reason?: string;
   }) => {
     if (!snoozeItem) return;
-    await runAction(snoozeItem.id, () =>
-      fetch(`/api/intake-leads/${snoozeItem.id}/followup-snooze`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(payload),
-      })
-    );
+    const isPipeline = snoozeItem.itemType === "pipeline";
+    if (isPipeline) {
+      const fromDate = snoozeItem.nextActionDueAt
+        ? new Date(snoozeItem.nextActionDueAt)
+        : new Date();
+      const { computeSnoozeDate } = await import("@/lib/followup/dates");
+      const newDue = computeSnoozeDate(
+        payload.snoozeType,
+        fromDate,
+        payload.snoozeType === "custom" ? payload.nextActionDueAt : undefined
+      );
+      if (!newDue) {
+        toast.error("Invalid snooze date");
+        return;
+      }
+      await runAction(snoozeItem.id, () =>
+        fetch(`/api/leads/${snoozeItem.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            nextActionDueAt: newDue.toISOString(),
+          }),
+        })
+      );
+    } else {
+      await runAction(snoozeItem.id, () =>
+        fetch(`/api/intake-leads/${snoozeItem.id}/followup-snooze`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(payload),
+        })
+      );
+    }
     setSnoozeItem(null);
   };
 

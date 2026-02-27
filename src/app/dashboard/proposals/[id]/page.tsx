@@ -22,6 +22,7 @@ type Phase2Proposal = {
   priceCurrency: string;
   intakeLead: { id: string; title: string; status: string } | null;
   pipelineLead: { id: string; title: string; status: string } | null;
+  deliveryProjects?: { id: string; title: string; status: string; dueDate: string | null; completedAt: string | null }[];
   readiness: { isReady: boolean; reasons: string[]; warnings: string[] };
   sentAt?: string | null;
   viewedAt?: string | null;
@@ -117,10 +118,40 @@ export default function ProposalDetailPage({ params }: { params: Promise<{ id: s
           <Badge variant="outline" className="capitalize">{proposal.status.replace(/_/g, " ")}</Badge>
         </div>
         <p className="text-neutral-400 mt-1">{proposal.clientName ?? proposal.company ?? "—"}</p>
-        {proposal.intakeLead && (
-          <Link href={`/dashboard/intake/${proposal.intakeLead.id}`} className="text-xs text-emerald-400 hover:underline">
-            From intake: {proposal.intakeLead.title}
-          </Link>
+        {(proposal.intakeLead || proposal.pipelineLead || (proposal.deliveryProjects && proposal.deliveryProjects.length > 0)) && (
+          <div className="flex items-center gap-1.5 flex-wrap mt-2 text-xs">
+            {proposal.intakeLead && (
+              <>
+                <Link href={`/dashboard/intake/${proposal.intakeLead.id}`} className="text-blue-400 hover:underline">
+                  Intake: {proposal.intakeLead.title}
+                </Link>
+                <span className="text-neutral-600">→</span>
+              </>
+            )}
+            {proposal.pipelineLead && (
+              <>
+                <Link href={`/dashboard/leads/${proposal.pipelineLead.id}`} className="text-neutral-300 hover:underline">
+                  Lead: {proposal.pipelineLead.title}
+                </Link>
+                <span className="text-neutral-600">→</span>
+              </>
+            )}
+            <span className="text-amber-400 font-medium">Proposal</span>
+            {proposal.deliveryProjects && proposal.deliveryProjects.length > 0 && (
+              <>
+                <span className="text-neutral-600">→</span>
+                {proposal.deliveryProjects.map((dp, i) => (
+                  <span key={dp.id} className="inline-flex items-center gap-1">
+                    {i > 0 && <span className="text-neutral-600">,</span>}
+                    <Link href={`/dashboard/delivery/${dp.id}`} className="text-emerald-400 hover:underline">
+                      {dp.title}
+                    </Link>
+                    {dp.completedAt && <span className="text-emerald-600">(done)</span>}
+                  </span>
+                ))}
+              </>
+            )}
+          </div>
         )}
       </div>
 

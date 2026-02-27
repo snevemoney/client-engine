@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { OverviewCards } from "@/components/dashboard/founder-os/OverviewCards";
+import { OverviewLiveStats } from "@/components/dashboard/founder-os/OverviewLiveStats";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +17,7 @@ export default async function OverviewPage() {
           A practical system for entrepreneurs who want to improve sales, sharpen strategy, and scale with structure.
         </p>
       </div>
+      <OverviewLiveStats />
       <OverviewCards />
       <section className="rounded-lg border border-neutral-800 p-4 text-sm text-neutral-500">
         <p>

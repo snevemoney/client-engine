@@ -2,11 +2,18 @@
  * Seed sample IntakeLeads for follow-up queue testing.
  * Creates overdue, today, upcoming, won, lost, promoted leads.
  * Run: node prisma/seed-followups.mjs
+ * Requires NODE_ENV=development or SEED_DEMO_DATA=1 — blocks accidental prod use.
  * Prerequisite: run db:seed-intake-leads first or have existing intake leads.
  */
 import { PrismaClient } from "@prisma/client";
 
 const db = new PrismaClient();
+
+function isDevOrExplicit() {
+  const env = process.env.NODE_ENV;
+  const explicit = process.env.SEED_DEMO_DATA === "1" || process.env.SEED_DEMO_DATA === "true";
+  return env === "development" || explicit;
+}
 
 function addDays(d, days) {
   const out = new Date(d);
@@ -21,6 +28,11 @@ function startOfToday() {
 }
 
 async function main() {
+  if (!isDevOrExplicit()) {
+    console.error("db:seed-followups is for dev/demo only. Set NODE_ENV=development or SEED_DEMO_DATA=1 to run.");
+    process.exit(1);
+  }
+
   const now = new Date();
   const today = startOfToday();
   const yesterday = addDays(today, -1);

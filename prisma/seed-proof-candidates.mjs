@@ -1,13 +1,25 @@
 /**
  * Seed sample ProofCandidates for dev/demo.
  * Run: npm run db:seed-proof-candidates
+ * Requires NODE_ENV=development or SEED_DEMO_DATA=1 — blocks accidental prod use.
  * Requires IntakeLeads (run db:seed-intake-leads first).
  */
 import { PrismaClient } from "@prisma/client";
 
 const db = new PrismaClient();
 
+function isDevOrExplicit() {
+  const env = process.env.NODE_ENV;
+  const explicit = process.env.SEED_DEMO_DATA === "1" || process.env.SEED_DEMO_DATA === "true";
+  return env === "development" || explicit;
+}
+
 async function main() {
+  if (!isDevOrExplicit()) {
+    console.error("db:seed-proof-candidates is for dev/demo only. Set NODE_ENV=development or SEED_DEMO_DATA=1 to run.");
+    process.exit(1);
+  }
+
   const intakeLeads = await db.intakeLead.findMany({ take: 4, orderBy: { createdAt: "desc" } });
   if (intakeLeads.length === 0) {
     console.log("No intake leads found. Run db:seed-intake-leads first.");

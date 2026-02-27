@@ -16,6 +16,19 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         project: true,
         touches: { orderBy: { createdAt: "desc" } },
         referralsReceived: { orderBy: { createdAt: "desc" } },
+        promotedFromIntake: {
+          select: { id: true, title: true, source: true, status: true, score: true, createdAt: true },
+        },
+        proposals: {
+          select: { id: true, title: true, status: true, sentAt: true, createdAt: true },
+          orderBy: { createdAt: "desc" },
+          take: 10,
+        },
+        deliveryProjects: {
+          select: { id: true, title: true, status: true, dueDate: true, completedAt: true },
+          orderBy: { createdAt: "desc" },
+          take: 10,
+        },
       },
     });
 
@@ -59,6 +72,8 @@ const ALLOWED_PATCH_FIELDS = new Set([
   "detailScore",
   "relationshipStatus",
   "relationshipLastCheck",
+  "nextAction",
+  "nextActionDueAt",
 ]);
 
 const VALID_TOUCH_TYPES = new Set(["EMAIL", "CALL", "LINKEDIN_DM", "MEETING", "FOLLOW_UP", "REFERRAL_ASK", "CHECK_IN"]);
@@ -91,6 +106,20 @@ function pickAllowedLeadPatch(body: Record<string, unknown>): Record<string, unk
       }
     }
 
+    if (key === "nextAction") {
+      if (val !== null && val !== undefined && (typeof val !== "string" || val.length > 2000)) {
+        throw new Error("nextAction must be a string up to 2000 chars");
+      }
+    }
+
+    if (key === "nextActionDueAt") {
+      if (val !== null && val !== undefined) {
+        if (typeof val !== "string") throw new Error("nextActionDueAt must be ISO date string or null");
+        const d = new Date(val);
+        if (Number.isNaN(d.getTime())) throw new Error("nextActionDueAt must be a valid date");
+      }
+    }
+
     updates[key] = val;
   }
   return updates;
@@ -108,11 +137,22 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
 
     try {
-      const data = pickAllowedLeadPatch(body) as Record<string, unknown> & { referralAskAt?: Date | string | null; referralAskStatus?: string | null };
+      const data = pickAllowedLeadPatch(body) as Record<string, unknown> & {
+        referralAskAt?: Date | string | null;
+        referralAskStatus?: string | null;
+        nextActionDueAt?: string | Date | null;
+      };
 
       // When marking referral ask as "asked", set referralAskAt to now if not already provided (so Sales Leak / Referral Engine counts correctly).
       if (data.referralAskStatus === "asked" && (data.referralAskAt === undefined || data.referralAskAt === null)) {
         data.referralAskAt = new Date();
+      }
+
+      // Coerce nextActionDueAt string to Date for Prisma
+      if (typeof data.nextActionDueAt === "string" && data.nextActionDueAt.trim()) {
+        (data as Record<string, unknown>).nextActionDueAt = new Date(data.nextActionDueAt);
+      } else if (data.nextActionDueAt === null || data.nextActionDueAt === "") {
+        data.nextActionDueAt = null;
       }
 
       if (Object.keys(data).length === 0) {
@@ -122,7 +162,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
       const lead = await db.lead.update({
         where: { id },
-        data,
+        data: data as Record<string, unknown>,
       });
 
       return NextResponse.json(lead);

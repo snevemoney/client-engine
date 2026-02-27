@@ -133,6 +133,11 @@ export async function GET(
         pipelineLead: { select: { id: true, title: true, status: true } },
         versions: { orderBy: { version: "desc" }, take: 20 },
         activities: { orderBy: { createdAt: "desc" }, take: 50 },
+        deliveryProjects: {
+          select: { id: true, title: true, status: true, dueDate: true, completedAt: true },
+          orderBy: { createdAt: "desc" },
+          take: 10,
+        },
       },
     });
 
@@ -156,6 +161,13 @@ export async function GET(
         metaJson: a.metaJson ?? null,
         createdAt: a.createdAt.toISOString(),
       })),
+      deliveryProjects: (proposal as typeof proposal & { deliveryProjects?: { id: string; title: string; status: string; dueDate: Date | null; completedAt: Date | null }[] }).deliveryProjects?.map((dp) => ({
+        id: dp.id,
+        title: dp.title,
+        status: dp.status,
+        dueDate: dp.dueDate?.toISOString() ?? null,
+        completedAt: dp.completedAt?.toISOString() ?? null,
+      })) ?? [],
       readiness: {
         isReady: readiness.isReady,
         reasons: readiness.reasons,

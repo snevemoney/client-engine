@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Inbox, FileText, TrendingUp, Target } from "lucide-react";
+import { SalesSummaryMetrics } from "@/components/dashboard/sales/SalesSummaryMetrics";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +25,7 @@ export default async function SalesPage() {
           Build a repeatable sales engine. Identify your selling style, optimize your flow, and track performance.
         </p>
       </div>
+      <SalesSummaryMetrics />
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-2">
         {cards.map((c) => (
           <Link

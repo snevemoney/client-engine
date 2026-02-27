@@ -15,7 +15,8 @@ export async function fetchConversionInput(range: MetricsRange) {
     : {};
 
   const [
-    intakeCount,
+    intakeLeadCount,
+    pipelineLeadCount,
     promotedCount,
     proposalCreatedCount,
     proposalSentCount,
@@ -25,6 +26,12 @@ export async function fetchConversionInput(range: MetricsRange) {
     proofCreatedCount,
   ] = await Promise.all([
     db.intakeLead.count({ where: createdAtFilter }),
+    db.lead.count({
+      where: {
+        ...createdAtFilter,
+        promotedFromIntake: { is: null },
+      },
+    }),
     db.intakeLead.count({
       where: {
         ...createdAtFilter,
@@ -63,9 +70,12 @@ export async function fetchConversionInput(range: MetricsRange) {
     }),
   ]);
 
+  const intakeCount = (intakeLeadCount ?? 0) + (pipelineLeadCount ?? 0);
+  const promotedCountTotal = (promotedCount ?? 0) + (pipelineLeadCount ?? 0);
+
   return {
-    intakeCount: intakeCount ?? 0,
-    promotedCount: promotedCount ?? 0,
+    intakeCount,
+    promotedCount: promotedCountTotal,
     proposalCreatedCount: proposalCreatedCount ?? 0,
     proposalSentCount: proposalSentCount ?? 0,
     acceptedCount: acceptedCount ?? 0,

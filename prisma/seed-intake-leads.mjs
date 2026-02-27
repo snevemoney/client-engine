@@ -1,10 +1,17 @@
 /**
  * Seed sample IntakeLeads for dev/demo.
  * Run: node prisma/seed-intake-leads.mjs
+ * Requires NODE_ENV=development or SEED_DEMO_DATA=1 — blocks accidental prod use.
  */
 import { PrismaClient } from "@prisma/client";
 
 const db = new PrismaClient();
+
+function isDevOrExplicit() {
+  const env = process.env.NODE_ENV;
+  const explicit = process.env.SEED_DEMO_DATA === "1" || process.env.SEED_DEMO_DATA === "true";
+  return env === "development" || explicit;
+}
 
 const SAMPLE_LEADS = [
   {
@@ -75,6 +82,11 @@ const SAMPLE_LEADS = [
 ];
 
 async function main() {
+  if (!isDevOrExplicit()) {
+    console.error("db:seed-intake-leads is for dev/demo only. Set NODE_ENV=development or SEED_DEMO_DATA=1 to run.");
+    process.exit(1);
+  }
+
   let created = 0;
   for (const l of SAMPLE_LEADS) {
     await db.intakeLead.create({

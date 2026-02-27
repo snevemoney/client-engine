@@ -91,7 +91,7 @@ export const PROVIDER_REGISTRY: ProviderDef[] = [
   ] },
 
   // ── Research / Signals ──
-  { provider: "rss", displayName: "RSS / News", category: "research", purposes: ["monitoring"], prodOnly: false, defaultMode: "mock", helpText: "Add your news feed links here. You can add filters in the settings.", supportsLive: true, supportsMock: true, supportsManual: true, sortOrder: 30, supportsQueryParams: true, configFields: [
+  { provider: "rss", displayName: "RSS / News", category: "research", purposes: ["monitoring"], prodOnly: false, defaultMode: "off", helpText: "Add your news feed links here. You can add filters in the settings.", supportsLive: true, supportsMock: true, supportsManual: true, sortOrder: 30, supportsQueryParams: true, configFields: [
     { key: "baseUrl", label: "Feed URL", type: "text", placeholder: "https://example.com/feed.xml", helpText: "Primary feed. Or use feedUrls in Extra settings for multiple." },
   ] },
   { provider: "upwork", displayName: "Upwork", category: "research", purposes: ["prospecting", "monitoring"], prospecting: { finds: "Job posts from clients actively hiring", bestFor: ["freelancers", "agencies", "consultants", "developers", "designers", "writers", "marketers", "coaches", "anyone hiring"], locationAware: true }, prodOnly: false, defaultMode: "manual", supportsLive: true, supportsMock: true, supportsManual: true, sortOrder: 20, platformUrl: "https://www.upwork.com/nx/find-work/best-matches", configFields: [

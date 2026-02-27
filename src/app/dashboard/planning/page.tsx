@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { PlanningThemesSection } from "@/components/dashboard/founder-os/PlanningThemesSection";
+import { UpcomingDeadlines } from "@/components/dashboard/planning/UpcomingDeadlines";
 import { Compass, ClipboardCheck, Target } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -18,6 +19,7 @@ export default async function PlanningPage() {
           Build a business plan you actually use. Set themes, targets, priorities, and execution rhythms.
         </p>
       </div>
+      <UpcomingDeadlines />
       <section className="rounded-lg border border-neutral-800 p-6">
         <PlanningThemesSection />
       </section>

@@ -53,43 +53,79 @@ export async function GET() {
         include: { priorities: { orderBy: { priorityOrder: "asc" }, take: 5 } },
       }),
       Promise.all([
-        db.intakeLead.count({
-          where: {
-            ...intakeWhere,
-            OR: [
-              { nextActionDueAt: { lt: startToday } },
-              { followUpDueAt: { lt: startToday } },
-            ],
-          },
-        }),
-        db.intakeLead.count({
-          where: {
-            ...intakeWhere,
-            OR: [
-              {
-                AND: [
-                  { nextActionDueAt: { gte: startToday } },
-                  { nextActionDueAt: { lte: endToday } },
+        (async () => {
+          const [intakeOverdue, pipelineOverdue] = await Promise.all([
+            db.intakeLead.count({
+              where: {
+                ...intakeWhere,
+                OR: [
+                  { nextActionDueAt: { lt: startToday } },
+                  { followUpDueAt: { lt: startToday } },
                 ],
               },
-              {
-                AND: [
-                  { followUpDueAt: { gte: startToday } },
-                  { followUpDueAt: { lte: endToday } },
+            }),
+            db.lead.count({
+              where: {
+                nextActionDueAt: { lt: startToday },
+                status: { notIn: ["REJECTED", "SHIPPED"] },
+                dealOutcome: { not: "won" },
+              },
+            }),
+          ]);
+          return (intakeOverdue ?? 0) + (pipelineOverdue ?? 0);
+        })(),
+        (async () => {
+          const [intakeToday, pipelineToday] = await Promise.all([
+            db.intakeLead.count({
+              where: {
+                ...intakeWhere,
+                OR: [
+                  {
+                    AND: [
+                      { nextActionDueAt: { gte: startToday } },
+                      { nextActionDueAt: { lte: endToday } },
+                    ],
+                  },
+                  {
+                    AND: [
+                      { followUpDueAt: { gte: startToday } },
+                      { followUpDueAt: { lte: endToday } },
+                    ],
+                  },
                 ],
               },
-            ],
-          },
-        }),
-        db.intakeLead.count({
-          where: {
-            ...intakeWhere,
-            OR: [
-              { nextActionDueAt: { gt: endToday } },
-              { followUpDueAt: { gt: endToday } },
-            ],
-          },
-        }),
+            }),
+            db.lead.count({
+              where: {
+                nextActionDueAt: { gte: startToday, lte: endToday },
+                status: { notIn: ["REJECTED", "SHIPPED"] },
+                dealOutcome: { not: "won" },
+              },
+            }),
+          ]);
+          return (intakeToday ?? 0) + (pipelineToday ?? 0);
+        })(),
+        (async () => {
+          const [intakeUpcoming, pipelineUpcoming] = await Promise.all([
+            db.intakeLead.count({
+              where: {
+                ...intakeWhere,
+                OR: [
+                  { nextActionDueAt: { gt: endToday } },
+                  { followUpDueAt: { gt: endToday } },
+                ],
+              },
+            }),
+            db.lead.count({
+              where: {
+                nextActionDueAt: { gt: endToday },
+                status: { notIn: ["REJECTED", "SHIPPED"] },
+                dealOutcome: { not: "won" },
+              },
+            }),
+          ]);
+          return (intakeUpcoming ?? 0) + (pipelineUpcoming ?? 0);
+        })(),
       ]),
       Promise.all([
         db.intakeLead.count({

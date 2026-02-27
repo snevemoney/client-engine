@@ -1,13 +1,25 @@
 /**
  * Seed sample ProofRecords for dev/demo.
  * Run: node prisma/seed-proof.mjs
+ * Requires NODE_ENV=development or SEED_DEMO_DATA=1 — blocks accidental prod use.
  * Requires at least one IntakeLead to exist (run seed-intake-leads first).
  */
 import { PrismaClient } from "@prisma/client";
 
 const db = new PrismaClient();
 
+function isDevOrExplicit() {
+  const env = process.env.NODE_ENV;
+  const explicit = process.env.SEED_DEMO_DATA === "1" || process.env.SEED_DEMO_DATA === "true";
+  return env === "development" || explicit;
+}
+
 async function main() {
+  if (!isDevOrExplicit()) {
+    console.error("db:seed-proof is for dev/demo only. Set NODE_ENV=development or SEED_DEMO_DATA=1 to run.");
+    process.exit(1);
+  }
+
   const intake = await db.intakeLead.findFirst({ where: { status: "won" } });
   if (!intake) {
     console.log("No won intake lead found. Run db:seed-intake-leads first, or mark one as won.");

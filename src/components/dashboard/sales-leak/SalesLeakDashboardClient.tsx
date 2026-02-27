@@ -54,7 +54,7 @@ export function SalesLeakDashboardClient({ data }: { data: SalesLeakDashboardDat
       {stageLeaks.length > 0 && (
         <section className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-4">
           <h2 className="text-sm font-medium text-neutral-300 mb-3">Leak detection by stage</h2>
-          <p className="text-xs text-neutral-500 mb-3">Current conversion vs target (placeholder targets; editable later)</p>
+          <p className="text-xs text-neutral-500 mb-3">Current conversion vs target. Targets are configurable in operator settings.</p>
           <ul className="space-y-2">
             {stageLeaks.map((row) => (
               <li
@@ -143,7 +143,7 @@ export function SalesLeakDashboardClient({ data }: { data: SalesLeakDashboardDat
             </p>
           </div>
         </div>
-        <p className="text-xs text-neutral-500 mt-2">Reply rate, meetings booked, repeat work: not yet tracked (placeholder).</p>
+        <p className="text-xs text-neutral-500 mt-2">Reply rate, meetings booked, and repeat work — tracking coming soon.</p>
       </section>
 
       <div className="flex gap-2">

@@ -3,17 +3,12 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { IntakeLeadStatus } from "@prisma/client";
 import { withRouteTiming } from "@/lib/api-utils";
-import { parsePaginationParams, buildPaginationMeta, paginatedResponse } from "@/lib/pagination";
-import {
-  getStartOfDay,
-  getEndOfDay,
-  classifyFollowUpBucket,
-  isValidDate,
-  type Bucket,
-} from "@/lib/followup/dates";
+import { parsePaginationParams, buildPaginationMeta } from "@/lib/pagination";
+import { classifyFollowUpBucket, isValidDate, type Bucket } from "@/lib/followup/dates";
 
-type FollowUpItem = {
+export type FollowUpItem = {
   id: string;
+  itemType: "intake" | "pipeline";
   title: string;
   company: string | null;
   source: string;
@@ -30,7 +25,7 @@ type FollowUpItem = {
   followUpCompletedAt: string | null;
 };
 
-function toItem(row: {
+function toIntakeItem(row: {
   id: string;
   title: string;
   company: string | null;
@@ -49,6 +44,7 @@ function toItem(row: {
 }): FollowUpItem {
   return {
     id: row.id,
+    itemType: "intake",
     title: row.title ?? "",
     company: row.company ?? null,
     source: row.source ?? "other",
@@ -66,15 +62,37 @@ function toItem(row: {
   };
 }
 
-function getEffectiveDue(row: {
+function toPipelineItem(lead: {
+  id: string;
+  title: string;
+  source: string;
+  status: string;
+  score: number | null;
+  nextAction: string | null;
   nextActionDueAt: Date | null;
-  followUpDueAt: Date | null;
-}): Date | null {
-  const a = row.nextActionDueAt;
-  const b = row.followUpDueAt;
-  if (a && isValidDate(a)) return a;
-  if (b && isValidDate(b)) return b;
-  return null;
+  contactName: string | null;
+  contactEmail: string | null;
+  lastContactAt: Date | null;
+  followUpCount: number;
+}): FollowUpItem {
+  return {
+    id: lead.id,
+    itemType: "pipeline",
+    title: lead.title ?? "",
+    company: null,
+    source: lead.source ?? "other",
+    status: lead.status ?? "NEW",
+    score: lead.score ?? null,
+    nextAction: lead.nextAction ?? null,
+    nextActionDueAt: lead.nextActionDueAt?.toISOString() ?? null,
+    followUpDueAt: null,
+    promotedLeadId: null,
+    contactName: lead.contactName ?? null,
+    contactEmail: lead.contactEmail ?? null,
+    lastContactedAt: lead.lastContactAt?.toISOString() ?? null,
+    followUpCount: lead.followUpCount ?? 0,
+    followUpCompletedAt: null,
+  };
 }
 
 /** GET /api/followups */
@@ -92,11 +110,6 @@ export async function GET(req: NextRequest) {
     const pagination = parsePaginationParams(url.searchParams);
 
     const now = new Date();
-    const startToday = getStartOfDay(now);
-    const endToday = getEndOfDay(now);
-    const endUpcoming = new Date(now);
-    endUpcoming.setDate(endUpcoming.getDate() + days);
-    endUpcoming.setHours(23, 59, 59, 999);
 
     const where: Record<string, unknown> = {
       OR: [
@@ -122,21 +135,69 @@ export async function GET(req: NextRequest) {
     }
     if (source) where.source = source;
 
-    const rows = await db.intakeLead.findMany({
-      where,
-      orderBy: [{ nextActionDueAt: "asc" }, { followUpDueAt: "asc" }],
-      take: 500,
+    const pipelineWhere: Record<string, unknown> = {
+      nextActionDueAt: { not: null },
+      status: { notIn: ["REJECTED", "SHIPPED"] },
+      dealOutcome: { not: "won" },
+    };
+    if (search) {
+      pipelineWhere.OR = [
+        { title: { contains: search, mode: "insensitive" } },
+        { description: { contains: search, mode: "insensitive" } },
+      ];
+    }
+    if (source) pipelineWhere.source = source;
+
+    const [intakeRows, pipelineLeads] = await Promise.all([
+      db.intakeLead.findMany({
+        where,
+        orderBy: [{ nextActionDueAt: "asc" }, { followUpDueAt: "asc" }],
+        take: 500,
+      }),
+      db.lead.findMany({
+        where: pipelineWhere,
+        orderBy: { nextActionDueAt: "asc" },
+        take: 500,
+        select: {
+          id: true,
+          title: true,
+          source: true,
+          status: true,
+          score: true,
+          nextAction: true,
+          nextActionDueAt: true,
+          contactName: true,
+          contactEmail: true,
+          lastContactAt: true,
+          followUpCount: true,
+        },
+      }),
+    ]);
+
+    const intakeItems = intakeRows.map(toIntakeItem);
+    const pipelineItems = pipelineLeads.map(toPipelineItem);
+
+    function getItemEffectiveDue(item: FollowUpItem): Date | null {
+      const a = item.nextActionDueAt ? new Date(item.nextActionDueAt) : null;
+      const b = item.followUpDueAt ? new Date(item.followUpDueAt) : null;
+      if (a && isValidDate(a)) return a;
+      if (b && isValidDate(b)) return b;
+      return null;
+    }
+
+    const allItems: FollowUpItem[] = [...intakeItems, ...pipelineItems].sort((a, b) => {
+      const da = getItemEffectiveDue(a)?.getTime() ?? Infinity;
+      const db_ = getItemEffectiveDue(b)?.getTime() ?? Infinity;
+      return da - db_;
     });
 
-    const items = rows.map(toItem);
     const overdue: FollowUpItem[] = [];
     const today: FollowUpItem[] = [];
     const upcoming: FollowUpItem[] = [];
 
-    for (const row of rows) {
-      const effectiveDue = getEffectiveDue(row);
+    for (const item of allItems) {
+      const effectiveDue = getItemEffectiveDue(item);
       if (!effectiveDue) continue;
-      const item = toItem(row);
       const b = classifyFollowUpBucket(effectiveDue, now, days);
       if (b === "overdue") overdue.push(item);
       else if (b === "today") today.push(item);
@@ -147,7 +208,7 @@ export async function GET(req: NextRequest) {
       overdue: overdue.length,
       today: today.length,
       upcoming: upcoming.length,
-      all: items.length,
+      all: allItems.length,
     };
 
     if (bucket && bucket !== "all") {
@@ -158,7 +219,7 @@ export async function GET(req: NextRequest) {
             ? today
             : bucket === "upcoming"
               ? upcoming
-              : items;
+              : allItems;
       const pageItems = filtered.slice(pagination.skip, pagination.skip + pagination.pageSize);
       const meta = buildPaginationMeta(filtered.length, pagination);
       return NextResponse.json({
@@ -168,8 +229,8 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    const pageItems = items.slice(pagination.skip, pagination.skip + pagination.pageSize);
-    const meta = buildPaginationMeta(items.length, pagination);
+    const pageItems = allItems.slice(pagination.skip, pagination.skip + pagination.pageSize);
+    const meta = buildPaginationMeta(allItems.length, pagination);
     return NextResponse.json({
       items: pageItems,
       pagination: meta,

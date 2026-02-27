@@ -1,12 +1,24 @@
 /**
  * Seed sample Proposals for dev/demo.
  * Run: npm run db:seed-proposals
+ * Requires NODE_ENV=development or SEED_DEMO_DATA=1 — blocks accidental prod use.
  */
 import { PrismaClient } from "@prisma/client";
 
 const db = new PrismaClient();
 
+function isDevOrExplicit() {
+  const env = process.env.NODE_ENV;
+  const explicit = process.env.SEED_DEMO_DATA === "1" || process.env.SEED_DEMO_DATA === "true";
+  return env === "development" || explicit;
+}
+
 async function main() {
+  if (!isDevOrExplicit()) {
+    console.error("db:seed-proposals is for dev/demo only. Set NODE_ENV=development or SEED_DEMO_DATA=1 to run.");
+    process.exit(1);
+  }
+
   const intake = await db.intakeLead.findFirst({ where: { status: { notIn: ["won", "lost"] } } });
   const lead = await db.lead.findFirst({ where: { status: { not: "REJECTED" } } });
 

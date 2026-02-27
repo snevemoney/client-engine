@@ -862,7 +862,7 @@ model SignalSource {
   type         String    @default("rss") // rss | atom
   url          String
   enabled      Boolean   @default(true)
-  mode         IntegrationMode @default(mock)
+  mode         IntegrationMode @default(off)
   prodOnly     Boolean   @default(false)
   lastSyncedAt DateTime?
   createdAt    DateTime  @default(now())

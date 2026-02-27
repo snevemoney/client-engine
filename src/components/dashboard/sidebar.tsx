@@ -124,6 +124,7 @@ const navGroups: NavGroup[] = [
       { href: "/dashboard/learning", label: "Learning", icon: BookOpen },
       { href: "/dashboard/proof", label: "Proof", icon: Quote },
       { href: "/dashboard/proof-candidates", label: "Proof Candidates", icon: FileCheck },
+      { href: "/dashboard/content-assets", label: "Content Assets", icon: Layers },
     ],
   },
   {

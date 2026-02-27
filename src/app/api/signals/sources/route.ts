@@ -15,7 +15,7 @@ const createSchema = z.object({
   url: z.string().url(),
   type: z.enum(["rss", "atom"]).optional().default("rss"),
   enabled: z.boolean().optional().default(true),
-  mode: z.enum(["off", "mock", "manual", "live"]).optional().default("mock"),
+  mode: z.enum(["off", "mock", "manual", "live"]).optional().default("off"),
   prodOnly: z.boolean().optional().default(false),
 });
 

@@ -20,6 +20,7 @@ import { SalesProcessPanel } from "@/components/dashboard/leads/SalesProcessPane
 import { SalesDriverCard } from "@/components/dashboard/leads/SalesDriverCard";
 import { TrustToCloseChecklistPanel } from "@/components/proposals/TrustToCloseChecklistPanel";
 import { parseLeadIntelligenceFromMeta } from "@/lib/lead-intelligence";
+import { ClientJourneyTimeline } from "@/components/dashboard/leads/ClientJourneyTimeline";
 
 const TABS = [
   { key: "overview", label: "Overview" },
@@ -27,6 +28,7 @@ const TABS = [
   { key: "proposals", label: "Proposals" },
   { key: "intelligence", label: "Intelligence" },
   { key: "artifacts", label: "Artifacts" },
+  { key: "journey", label: "Journey" },
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
 
@@ -91,6 +93,9 @@ interface Lead {
   scoreFit?: number | null;
   touches?: { id: string; type: string; direction: string; summary: string; scriptUsed: string | null; outcome: string | null; nextTouchAt: string | null; createdAt: string }[];
   referralsReceived?: { id: string; referredName: string; referredCompany: string | null; status: string; createdAt: string }[];
+  promotedFromIntake?: { id: string; title: string; source: string; status: string; score: number | null; createdAt: string } | null;
+  proposals?: { id: string; title: string; status: string; sentAt: string | null; createdAt: string }[];
+  deliveryProjects?: { id: string; title: string; status: string; dueDate: string | null; completedAt: string | null }[];
   meta?: unknown;
 }
 
@@ -490,6 +495,62 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
       {/* ── OVERVIEW TAB ── */}
       {activeTab === "overview" && (
         <>
+          {/* Origin & Cross-Links */}
+          {(lead.promotedFromIntake || (lead.proposals && lead.proposals.length > 0) || (lead.deliveryProjects && lead.deliveryProjects.length > 0)) && (
+            <div className="border border-neutral-800 rounded-lg p-4 space-y-3">
+              <h3 className="text-xs font-medium text-neutral-500 uppercase tracking-wider">Origin &amp; Journey</h3>
+              {lead.promotedFromIntake && (
+                <div className="flex items-center gap-2 text-sm">
+                  <Badge variant="outline" className="text-xs border-blue-800 text-blue-400">From Intake</Badge>
+                  <Link href={`/dashboard/intake/${lead.promotedFromIntake.id}`} className="text-blue-400 hover:underline">
+                    {lead.promotedFromIntake.title}
+                  </Link>
+                  <span className="text-neutral-500">({lead.promotedFromIntake.source})</span>
+                  {lead.promotedFromIntake.score != null && (
+                    <Badge variant={lead.promotedFromIntake.score >= 70 ? "success" : lead.promotedFromIntake.score >= 40 ? "warning" : "destructive"} className="text-xs">
+                      Score: {lead.promotedFromIntake.score}
+                    </Badge>
+                  )}
+                </div>
+              )}
+              {lead.proposals && lead.proposals.length > 0 && (
+                <div>
+                  <div className="text-xs text-neutral-500 mb-1.5">Linked Proposals</div>
+                  <div className="flex flex-col gap-1.5">
+                    {lead.proposals.map((p) => (
+                      <div key={p.id} className="flex items-center gap-2 text-sm">
+                        <FileText className="w-3.5 h-3.5 text-neutral-500" />
+                        <Link href={`/dashboard/proposals/${p.id}`} className="text-neutral-200 hover:underline truncate">
+                          {p.title}
+                        </Link>
+                        <Badge variant="outline" className="text-xs">{p.status}</Badge>
+                        {p.sentAt && <span className="text-xs text-neutral-500">Sent {new Date(p.sentAt).toLocaleDateString()}</span>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {lead.deliveryProjects && lead.deliveryProjects.length > 0 && (
+                <div>
+                  <div className="text-xs text-neutral-500 mb-1.5">Delivery Projects</div>
+                  <div className="flex flex-col gap-1.5">
+                    {lead.deliveryProjects.map((dp) => (
+                      <div key={dp.id} className="flex items-center gap-2 text-sm">
+                        <Hammer className="w-3.5 h-3.5 text-neutral-500" />
+                        <Link href={`/dashboard/delivery/${dp.id}`} className="text-neutral-200 hover:underline truncate">
+                          {dp.title}
+                        </Link>
+                        <Badge variant="outline" className="text-xs">{dp.status}</Badge>
+                        {dp.dueDate && <span className="text-xs text-neutral-500">Due {new Date(dp.dueDate).toLocaleDateString()}</span>}
+                        {dp.completedAt && <span className="text-xs text-emerald-400">Completed</span>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {(lead.status === "APPROVED" || lead.status === "BUILDING" || lead.status === "SHIPPED") && (
             <ClientResultsGlance leadId={id} />
           )}
@@ -927,6 +988,10 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
             </div>
           )}
         </div>
+      )}
+
+      {activeTab === "journey" && (
+        <ClientJourneyTimeline leadId={id} />
       )}
     </div>
   );

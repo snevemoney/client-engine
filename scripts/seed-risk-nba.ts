@@ -1,11 +1,23 @@
 /**
  * Phase 4.0: Seed sample risk flags and next actions for UI smoke.
  * Run: npm run db:seed-risk-nba
+ * Requires NODE_ENV=development or SEED_DEMO_DATA=1 — blocks accidental prod use.
  */
 import { db } from "../src/lib/db";
 import { RiskSeverity, RiskStatus, RiskSourceType, NextActionPriority, NextActionStatus } from "@prisma/client";
 
+function isDevOrExplicit(): boolean {
+  const env = process.env.NODE_ENV;
+  const explicit = process.env.SEED_DEMO_DATA === "1" || process.env.SEED_DEMO_DATA === "true";
+  return env === "development" || explicit;
+}
+
 async function main() {
+  if (!isDevOrExplicit()) {
+    console.error("db:seed-risk-nba is for dev/demo only. Set NODE_ENV=development or SEED_DEMO_DATA=1 to run.");
+    process.exit(1);
+  }
+
   const now = new Date();
 
   // Sample risk flags

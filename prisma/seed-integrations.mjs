@@ -8,7 +8,7 @@ import { PrismaClient } from "@prisma/client";
 const PROVIDERS = [
   { key: "meta", name: "Meta Ads", category: "analytics", prodOnly: true, sortOrder: 10, defaultMode: "off", helpText: "LIVE runs only in production. Use MOCK or MANUAL in local." },
   { key: "upwork", name: "Upwork", category: "research", prodOnly: false, sortOrder: 20, defaultMode: "manual" },
-  { key: "rss", name: "RSS / News", category: "research", prodOnly: false, sortOrder: 30, defaultMode: "mock", helpText: "Add feed URLs. Query params for filtering stored in config." },
+  { key: "rss", name: "RSS / News", category: "research", prodOnly: false, sortOrder: 30, defaultMode: "off", helpText: "Add feed URLs. Query params for filtering stored in config." },
   { key: "linkedin", name: "LinkedIn", category: "outreach", prodOnly: true, sortOrder: 40, defaultMode: "manual", helpText: "LIVE runs only in production. Use MOCK or MANUAL in local." },
   { key: "crm", name: "CRM (Internal / HubSpot / Pipedrive)", category: "delivery", prodOnly: false, sortOrder: 50, defaultMode: "manual" },
   { key: "hubspot", name: "HubSpot", category: "delivery", prodOnly: false, sortOrder: 52, defaultMode: "manual" },
