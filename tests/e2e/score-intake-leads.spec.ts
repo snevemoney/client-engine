@@ -1,12 +1,18 @@
 /**
  * One-off E2E: Score all unscored intake leads.
+ * Do not run against prod by default — scores leads (mutation). Use E2E_ALLOW_PROD_SCORE=1 to bypass.
  *
  * Run:
  *   Local:  npm run dev (separate terminal) && PLAYWRIGHT_BASE_URL=http://localhost:3000 npx playwright test tests/e2e/score-intake-leads.spec.ts
- *   Prod:   PLAYWRIGHT_BASE_URL=https://evenslouis.ca USE_EXISTING_SERVER=1 E2E_EMAIL=... E2E_PASSWORD=... npx playwright test tests/e2e/score-intake-leads.spec.ts
+ *   Prod:   E2E_ALLOW_PROD_SCORE=1 PLAYWRIGHT_BASE_URL=https://evenslouis.ca USE_EXISTING_SERVER=1 E2E_EMAIL=... E2E_PASSWORD=... npx playwright test tests/e2e/score-intake-leads.spec.ts
  */
 import { test, expect } from "@playwright/test";
 import { loginAndWaitForDashboard, baseURL } from "./helpers/auth";
+import { requireSafeE2EBaseUrl } from "./helpers/safety";
+
+test.beforeEach(() => {
+  requireSafeE2EBaseUrl();
+});
 
 test("score all unscored intake leads", async ({ page }) => {
   const loggedIn = await loginAndWaitForDashboard(page);

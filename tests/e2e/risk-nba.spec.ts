@@ -1,14 +1,20 @@
 /**
  * Phase 4.0: Risk flags and Next-Best-Action E2E.
  * Visit risk and next-actions pages, Run buttons, list render, dismiss.
+ * Do not run against prod — Run Risk Rules, Run Next Actions, and Dismiss mutate data.
  */
 import { test, expect } from "@playwright/test";
+import { requireSafeE2EBaseUrl } from "./helpers/safety";
 
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3000";
 const loginEmail = process.env.E2E_EMAIL || process.env.ADMIN_EMAIL || "admin@evenslouis.ca";
 const loginPassword = process.env.E2E_PASSWORD || process.env.ADMIN_PASSWORD || "changeme";
 
 test.describe("Risk & Next Actions pages", () => {
+  test.beforeEach(() => {
+    requireSafeE2EBaseUrl();
+  });
+
   test.beforeEach(async ({ page }) => {
     await page.goto(`${baseURL}/login`);
     await page.getByLabel("Email").fill(loginEmail);
@@ -84,6 +90,8 @@ test.describe("Risk & Next Actions pages", () => {
 });
 
 test.describe("Command Center RiskNBA integration", () => {
+  test.describe.configure({ skip: skipIfProd() });
+
   test.beforeEach(async ({ page }) => {
     await page.goto(`${baseURL}/login`);
     await page.getByLabel("Email").fill(loginEmail);
@@ -125,6 +133,8 @@ test.describe("Command Center RiskNBA integration", () => {
 });
 
 test.describe("Phase 4.1: NBA v2 scope and Why", () => {
+  test.describe.configure({ skip: skipIfProd() });
+
   test.beforeEach(async ({ page }) => {
     await page.goto(`${baseURL}/login`);
     await page.getByLabel("Email").fill(loginEmail);

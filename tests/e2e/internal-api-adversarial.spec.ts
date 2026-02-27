@@ -5,6 +5,7 @@
  */
 import { test, expect } from "@playwright/test";
 import { baseURL as authBaseURL, loginAndWaitForDashboard } from "./helpers/auth";
+import { requireSafeE2EBaseUrl } from "./helpers/safety";
 
 const baseURL = authBaseURL;
 const url = baseURL.replace(/\/$/, "");
@@ -31,6 +32,10 @@ async function authFetch(
 }
 
 test.describe("Internal API adversarial (with auth)", () => {
+  test.beforeEach(() => {
+    requireSafeE2EBaseUrl();
+  });
+
   test.beforeEach(async ({ page }) => {
     const ok = await loginAndWaitForDashboard(page);
     if (!ok) {

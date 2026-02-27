@@ -4,8 +4,13 @@
  */
 import { test, expect } from "@playwright/test";
 import { baseURL, loginAndWaitForDashboard } from "./helpers/auth";
+import { requireSafeE2EBaseUrl } from "./helpers/safety";
 
 test.describe("Internal QA pages", () => {
+  test.beforeEach(() => {
+    requireSafeE2EBaseUrl();
+  });
+
   test.beforeEach(async ({ page }) => {
     const ok = await loginAndWaitForDashboard(page);
     if (!ok) {

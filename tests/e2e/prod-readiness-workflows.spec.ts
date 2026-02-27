@@ -3,6 +3,7 @@
  * Uses data-testid and role selectors for stability.
  */
 import { test, expect } from "@playwright/test";
+import { requireSafeE2EBaseUrl } from "./helpers/safety";
 
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3000";
 const url = baseURL.replace(/\/$/, "");
@@ -10,6 +11,10 @@ const loginEmail = process.env.E2E_EMAIL || process.env.ADMIN_EMAIL || "admin@ev
 const loginPassword = process.env.E2E_PASSWORD || process.env.ADMIN_PASSWORD || "changeme";
 
 test.describe("Prod readiness workflows", () => {
+  test.beforeEach(() => {
+    requireSafeE2EBaseUrl();
+  });
+
   test.beforeEach(async ({ page }) => {
     await page.goto(`${url}/login`);
     await page.getByLabel("Email").fill(loginEmail);

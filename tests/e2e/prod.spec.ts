@@ -1,8 +1,9 @@
 /**
  * Production audit: health, DB checks, every page, key flows, silent fails, render speed.
- * Run against prod: USE_EXISTING_SERVER=1 PLAYWRIGHT_BASE_URL=https://evenslouis.ca E2E_EMAIL=... E2E_PASSWORD=... npm run test:e2e tests/e2e/prod.spec.ts
+ * Run against prod: E2E_ALLOW_MUTATIONS=1 USE_EXISTING_SERVER=1 PLAYWRIGHT_BASE_URL=https://evenslouis.ca E2E_EMAIL=... E2E_PASSWORD=... npm run test:e2e tests/e2e/prod.spec.ts
  */
 import { test, expect } from "@playwright/test";
+import { requireSafeE2EBaseUrl } from "./helpers/safety";
 
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3000";
 const devPassword = process.env.AUTH_DEV_PASSWORD || "changeme";
@@ -115,6 +116,10 @@ test.describe("Production: every page + silent fails + speed (with login)", () =
 });
 
 test.describe("Production: key flow (create lead → metrics)", () => {
+  test.beforeEach(() => {
+    requireSafeE2EBaseUrl();
+  });
+
   test("login → metrics → new lead → redirect → metrics shows enrich", async ({ page }) => {
     await page.goto(`${baseURL}/login`);
     await page.getByLabel("Email").fill(email);

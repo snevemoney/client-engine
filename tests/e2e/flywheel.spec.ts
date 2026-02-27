@@ -17,6 +17,7 @@ import {
   baseURL,
   loginAndWaitForDashboard,
 } from "./helpers/auth";
+import { requireSafeE2EBaseUrl } from "./helpers/safety";
 
 const SCENARIO = {
   name: "Marie Tremblay",
@@ -31,10 +32,10 @@ function cookieHeader(cookies: { name: string; value: string }[]): string {
   return cookies.map((c) => `${c.name}=${c.value}`).join("; ");
 }
 
-const skipIfProd = () => (process.env.PLAYWRIGHT_BASE_URL || "").includes("evenslouis.ca");
-
 test.describe("Sales Flywheel: full client lifecycle", () => {
-  test.describe.configure({ skip: skipIfProd() });
+  test.beforeEach(() => {
+    requireSafeE2EBaseUrl();
+  });
   test.setTimeout(120_000);
 
   let leadId: string;

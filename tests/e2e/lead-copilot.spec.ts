@@ -1,10 +1,15 @@
 import { test, expect } from "@playwright/test";
+import { requireSafeE2EBaseUrl } from "./helpers/safety";
 
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3000";
 const email = process.env.ADMIN_EMAIL || process.env.E2E_EMAIL || "admin@evenslouis.ca";
 const password = process.env.ADMIN_PASSWORD || process.env.E2E_PASSWORD || "changeme";
 
 test.describe("Lead Copilot", () => {
+  test.beforeEach(() => {
+    requireSafeE2EBaseUrl();
+  });
+
   test("POST /api/leads/[id]/copilot without auth returns 401", async ({ request }) => {
     const res = await request.post(`${baseURL.replace(/\/$/, "")}/api/leads/cmlvq7e5z0000v5nwmoijvi5z/copilot`, {
       data: { question: "What is the least risky next move?" },

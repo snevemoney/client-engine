@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { requireSafeE2EBaseUrl } from "./helpers/safety";
 
 /**
  * Smoke: health endpoint must return ok: true.
@@ -28,10 +29,7 @@ test("GET /api/health returns ok true and all checks", async ({ request }) => {
  * Do not run against prod — creates "Smoke Test" lead.
  */
 test("POST /api/site/leads creates lead and returns ok", async ({ request }) => {
-  const base = process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3000";
-  if (base.includes("evenslouis.ca")) {
-    test.skip(true, "Do not create leads in prod. Run against localhost.");
-  }
+  requireSafeE2EBaseUrl();
   const baseURL = process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3000";
   const res = await request.post(`${baseURL.replace(/\/$/, "")}/api/site/leads`, {
     headers: { "Content-Type": "application/json" },

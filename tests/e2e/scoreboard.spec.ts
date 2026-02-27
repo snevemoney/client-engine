@@ -2,12 +2,17 @@
  * Phase 3.2: Scoreboard UI E2E — Operational Score page.
  */
 import { test, expect } from "@playwright/test";
+import { requireSafeE2EBaseUrl } from "./helpers/safety";
 
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3000";
 const loginEmail = process.env.E2E_EMAIL || process.env.ADMIN_EMAIL || "admin@evenslouis.ca";
 const loginPassword = process.env.E2E_PASSWORD || process.env.ADMIN_PASSWORD || "changeme";
 
 test.describe("Scoreboard (Operational Score)", () => {
+  test.beforeEach(() => {
+    requireSafeE2EBaseUrl();
+  });
+
   test.beforeEach(async ({ page }) => {
     await page.goto(`${baseURL}/login`);
     await page.getByLabel("Email").fill(loginEmail);

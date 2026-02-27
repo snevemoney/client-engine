@@ -1,9 +1,14 @@
 import { test, expect } from "@playwright/test";
+import { requireSafeE2EBaseUrl } from "./helpers/safety";
 
 const email = process.env.ADMIN_EMAIL || process.env.E2E_EMAIL || "admin@evenslouis.ca";
 const password = process.env.ADMIN_PASSWORD || process.env.E2E_PASSWORD || "changeme";
 
 test.describe("Full E2E flow", () => {
+  test.beforeEach(() => {
+    requireSafeE2EBaseUrl();
+  });
+
   test("login → dashboard → metrics → new lead → metrics shows run", async ({ page }) => {
     test.setTimeout(60000);
     // 1) Login

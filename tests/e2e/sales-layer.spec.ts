@@ -4,11 +4,16 @@
  */
 
 import { test, expect } from "@playwright/test";
+import { requireSafeE2EBaseUrl } from "./helpers/safety";
 
 const email = process.env.ADMIN_EMAIL || process.env.E2E_EMAIL || "admin@evenslouis.ca";
 const password = process.env.ADMIN_PASSWORD || process.env.E2E_PASSWORD || "changeme";
 
 test.describe("Sales layer E2E", () => {
+  test.beforeEach(() => {
+    requireSafeE2EBaseUrl();
+  });
+
   test.beforeEach(async ({ page }) => {
     await page.goto("/login");
     await page.getByLabel("Email").fill(email);

@@ -1,11 +1,17 @@
 /**
  * E2E: Run pipeline on Leads page, wait for completion, verify success alert and SCORED status.
+ * Do not run against prod — runs pipeline and mutates lead data.
  *
  * Run:
  *   USE_EXISTING_SERVER=1 PLAYWRIGHT_BASE_URL=http://localhost:3000 npx playwright test tests/e2e/run-pipeline-leads.spec.ts
  */
 import { test, expect } from "@playwright/test";
 import { loginAndWaitForDashboard, baseURL } from "./helpers/auth";
+import { requireSafeE2EBaseUrl } from "./helpers/safety";
+
+test.beforeEach(() => {
+  requireSafeE2EBaseUrl();
+});
 
 test("run pipeline on leads, verify success and SCORED status", async ({ page }) => {
   test.setTimeout(120_000); // 2 min for pipeline + wait

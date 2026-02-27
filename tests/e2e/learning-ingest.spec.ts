@@ -5,18 +5,23 @@
  *   USE_EXISTING_SERVER=1 AUTH_DEV_PASSWORD=changeme npm run test:e2e tests/e2e/learning-ingest.spec.ts
  *
  * Prod (login uses hardcoded credentials for evenslouis.ca; ensure server has run reset-auth and has E2E_ALLOW_DEV_PASSWORD=1, AUTH_DEV_PASSWORD=121618louis):
- *   USE_EXISTING_SERVER=1 PLAYWRIGHT_BASE_URL=https://evenslouis.ca npm run test:e2e tests/e2e/learning-ingest.spec.ts
+ *   E2E_ALLOW_MUTATIONS=1 USE_EXISTING_SERVER=1 PLAYWRIGHT_BASE_URL=https://evenslouis.ca npm run test:e2e tests/e2e/learning-ingest.spec.ts
  *   Full ingest test may need 15+ min on prod; use "ingest video then channel" for full run or "prod login and dashboard" for a quick smoke test.
  *
  * Or test manually: Dashboard → Learning, paste video URL → Ingest; then paste channel URL, set Channel → Ingest.
  */
 import { test, expect } from "@playwright/test";
+import { requireSafeE2EBaseUrl } from "./helpers/safety";
 
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3000";
 const email = (process.env.E2E_EMAIL || "test@test.com").trim().toLowerCase();
 const password = (process.env.E2E_PASSWORD || process.env.AUTH_DEV_PASSWORD || "changeme").trim();
 
 test.describe("Learning ingest", () => {
+  test.beforeEach(() => {
+    requireSafeE2EBaseUrl();
+  });
+
   test("ingest video then channel", async ({ page }) => {
     test.setTimeout(900000); // 15 min for prod (video + channel ingest can be very slow)
     const base = baseURL.replace(/\/$/, "");
