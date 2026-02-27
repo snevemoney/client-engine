@@ -3,6 +3,7 @@ import { chat, type ChatUsage } from "@/lib/llm";
 import { isDryRun } from "@/lib/pipeline/dry-run";
 import type { Provenance } from "@/lib/pipeline/provenance";
 import { LeadIntelligenceSchema, type LeadIntelligence } from "@/lib/lead-intelligence/schema";
+import { scrapeUrl, isFirecrawlEnabled } from "@/lib/firecrawl";
 
 const ENRICH_PROMPT = `You are a lead analyst for a freelance software developer. Analyze this lead and extract structured information.
 
@@ -54,10 +55,18 @@ export async function runEnrich(leadId: string, provenance?: Provenance): Promis
     return { artifactId: artifact.id };
   }
 
+  let scrapedContent = "";
+  if (isFirecrawlEnabled() && lead.sourceUrl) {
+    const scraped = await scrapeUrl(lead.sourceUrl);
+    if (scraped) {
+      scrapedContent = `\n\nWebsite content (${scraped.metadata?.title || lead.sourceUrl}):\n${scraped.markdown.slice(0, 5000)}`;
+    }
+  }
+
   const prompt = ENRICH_PROMPT
     .replace("{title}", lead.title)
     .replace("{source}", lead.source)
-    .replace("{description}", lead.description || "No description provided");
+    .replace("{description}", (lead.description || "No description provided") + scrapedContent);
 
   const { content, usage } = await chat(
     [

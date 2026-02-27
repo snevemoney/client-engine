@@ -14,6 +14,8 @@ import {
   isRetryableError,
 } from "@/lib/pipeline/error-classifier";
 import { notifyPipelineFailure } from "@/lib/notify";
+import { trackPipelineEvent } from "@/lib/analytics";
+import { upsertArtifact } from "@/lib/pinecone";
 
 const PIPELINE_STEPS = ["enrich", "score", "position", "propose"] as const;
 
@@ -106,6 +108,8 @@ export async function runPipelineIfEligible(
               tokensUsed: norm.tokensUsed,
               costEstimate: norm.costEstimate,
             });
+            trackPipelineEvent(leadId, "lead_enriched", { runId });
+            db.artifact.findUnique({ where: { id: artifactId } }).then((a) => a && upsertArtifact(a).catch(() => {}));
             stepsRun++;
           }
         } else if (stepName === "score") {
@@ -120,6 +124,7 @@ export async function runPipelineIfEligible(
               tokensUsed: norm.tokensUsed,
               costEstimate: norm.costEstimate,
             });
+            trackPipelineEvent(leadId, "lead_scored", { runId });
             stepsRun++;
           }
         } else if (stepName === "position") {
@@ -136,6 +141,8 @@ export async function runPipelineIfEligible(
               tokensUsed: norm.tokensUsed,
               costEstimate: norm.costEstimate,
             });
+            trackPipelineEvent(leadId, "lead_positioned", { runId });
+            db.artifact.findUnique({ where: { id: artifactId } }).then((a) => a && upsertArtifact(a).catch(() => {}));
             stepsRun++;
           }
         } else if (stepName === "propose") {
@@ -152,6 +159,8 @@ export async function runPipelineIfEligible(
               tokensUsed: norm.tokensUsed,
               costEstimate: norm.costEstimate,
             });
+            trackPipelineEvent(leadId, "lead_proposed", { runId });
+            db.artifact.findUnique({ where: { id: artifactId } }).then((a) => a && upsertArtifact(a).catch(() => {}));
             stepsRun++;
           }
         }
@@ -178,12 +187,14 @@ export async function runPipelineIfEligible(
 
         const errMsg = err instanceof Error ? err.message : stepName + " failed";
         await finishRun(runId, false, errMsg);
+        trackPipelineEvent(leadId, "pipeline_step_failed", { runId, stepName, errorCode: code });
         notifyPipelineFailure(leadId, lead.title, stepName, errMsg, current?.status ?? lead.status ?? undefined);
         throw err;
       }
     }
 
     await finishRun(runId, true);
+    trackPipelineEvent(leadId, "pipeline_run_completed", { runId, stepsRun, stepsSkipped });
     return { run: true, runId, stepsRun, stepsSkipped };
   } finally {
     await releaseAdvisoryLock(leadId);

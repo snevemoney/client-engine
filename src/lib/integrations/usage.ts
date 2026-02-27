@@ -39,6 +39,9 @@ const COST_PER_REQUEST: Record<string, number> = {
   "google-ads": 0.001,
   google_business_profile: 0,
   loom: 0,
+  pinecone: 0,
+  firecrawl: 0.001,
+  posthog: 0,
 };
 
 export function estimateCost(provider: string, requestCount: number): number {

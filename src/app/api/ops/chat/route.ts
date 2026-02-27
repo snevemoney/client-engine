@@ -13,6 +13,7 @@ import { getFailuresAndInterventions } from "@/lib/ops/failuresInterventions";
 import { getOpsHealth } from "@/lib/ops/opsHealth";
 import { getRegisteredActions } from "@/lib/ops/actions/registry";
 import { chat } from "@/lib/llm";
+import { searchArtifacts } from "@/lib/pinecone";
 
 const LLM_RESPONSE_SCHEMA = z.object({
   answer: z.string(),
@@ -88,6 +89,7 @@ export async function POST(req: NextRequest) {
     roiContext,
     failures,
     opsHealth,
+    semanticResults,
   ] = await Promise.all([
     buildBrief(),
     getExecutiveBriefContext(),
@@ -98,6 +100,7 @@ export async function POST(req: NextRequest) {
     getTopRoiSummariesForChat(3),
     getFailuresAndInterventions(),
     getOpsHealth(),
+    searchArtifacts(message, { topK: 3 }),
   ]);
 
   const failedPipelineRunsCount = failures.failedPipelineRuns.length;
@@ -148,6 +151,15 @@ export async function POST(req: NextRequest) {
     learningContext || "",
     knowledgeContext || "",
     roiContext || "",
+    ...(semanticResults.length
+      ? [
+          "",
+          "--- SEMANTIC SEARCH (related artifacts from knowledge base) ---",
+          ...semanticResults.map(
+            (r) => `[${r.title}] (relevance: ${r.score.toFixed(2)})\n${r.content.slice(0, 500)}`,
+          ),
+        ]
+      : []),
   ]
     .filter(Boolean)
     .join("\n");

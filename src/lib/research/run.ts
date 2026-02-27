@@ -10,7 +10,9 @@ import { canonicalizeSourceUrl } from "./canonicalize";
 import { shouldSkipLowSignal } from "./filter";
 import { rssAdapter } from "./adapters/rss";
 import { upworkAdapter } from "./adapters/upwork";
+import { firecrawlAdapter } from "./adapters/firecrawl";
 import { getConnectionAdapters } from "./adapters/connection-bridge";
+import { isFirecrawlEnabled } from "@/lib/firecrawl";
 import type { RawOpportunity, ResearchRunReport } from "./types";
 
 const RESEARCH_SNAPSHOT_TITLE = "RESEARCH_SNAPSHOT";
@@ -18,7 +20,11 @@ const RESEARCH_RUN_REPORT_TITLE = "RESEARCH_RUN_REPORT";
 const SYSTEM_LEAD_SOURCE = "system";
 const SYSTEM_LEAD_TITLE = "Research Engine Runs";
 
-const BASE_ADAPTERS = [upworkAdapter, rssAdapter];
+const BASE_ADAPTERS = [
+  upworkAdapter,
+  rssAdapter,
+  ...(isFirecrawlEnabled() ? [firecrawlAdapter] : []),
+];
 
 function nowIso(): string {
   return new Date().toISOString();
