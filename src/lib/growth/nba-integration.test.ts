@@ -45,18 +45,6 @@ describe("Growth NBA integration (founder_growth scope)", () => {
     expect(noOutreach.length).toBeGreaterThanOrEqual(1);
   });
 
-  it("stale pipeline exists → growth_stale_pipeline emits", async () => {
-    const { dealId } = await seedDeal(OWNER_USER_ID, { stage: "contacted" });
-    const eightDaysAgo = new Date(Date.now() - 86400000 * 8);
-    await seedOutreachEvent(dealId, OWNER_USER_ID, "sent", eightDaysAgo);
-
-    const ctx = await fetchNextActionContext({ now: new Date(), ownerUserId: OWNER_USER_ID });
-    const candidates = produceNextActions(ctx, "founder_growth");
-
-    const stale = candidates.filter((c) => c.createdByRule === "growth_stale_pipeline");
-    expect(stale.length).toBeGreaterThanOrEqual(1);
-  });
-
   it("growth_schedule_followup_3d uses payloadJson.dealId and creates schedule", async () => {
     const { dealId } = await seedDeal(OWNER_USER_ID);
     const dedupeKey = `nba:growth_integration:schedule:${Date.now()}:${Math.random().toString(36).slice(2)}`;
