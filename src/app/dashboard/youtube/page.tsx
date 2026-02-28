@@ -1,5 +1,10 @@
 import { getRecentJobs, getTranscripts, getLearningProposals, getFailedTranscripts } from "@/lib/youtube/queries";
-import { YouTubeIngestClient } from "@/components/dashboard/youtube/YouTubeIngestClient";
+import dynamicImport from "next/dynamic";
+
+const YouTubeIngestClient = dynamicImport(
+  () => import("@/components/dashboard/youtube/YouTubeIngestClient"),
+  { loading: () => <div className="animate-pulse h-96 bg-neutral-900/50 rounded-lg" /> }
+);
 
 export const dynamic = "force-dynamic";
 

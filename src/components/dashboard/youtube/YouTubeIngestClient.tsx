@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import {
   Youtube,
   RefreshCw,
@@ -12,6 +13,7 @@ import {
   Eye,
   Archive,
   ArrowUpRight,
+  X,
 } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -109,7 +111,7 @@ function fmtDuration(sec: number | null) {
 // Component
 // ---------------------------------------------------------------------------
 
-export function YouTubeIngestClient({
+export default function YouTubeIngestClient({
   initialJobs,
   initialTranscripts,
   initialProposals,
@@ -194,28 +196,45 @@ export function YouTubeIngestClient({
     }
   }
 
-  async function handlePromote(id: string) {
-    const notes = window.prompt("Reviewer notes (optional):");
+  const [reviewModal, setReviewModal] = useState<{ id: string; action: "promote" | "reject" | "knowledge_only" } | null>(null);
+  const [reviewNotes, setReviewNotes] = useState("");
+
+  async function submitReview() {
+    if (!reviewModal) return;
+    const { id, action } = reviewModal;
+    setReviewModal(null);
     try {
-      const res = await fetch(`/api/youtube/learning/${id}/promote`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reviewerNotes: notes || undefined }),
-      });
-      if (res.ok) await refreshData();
-    } catch { /* ignore */ }
+      if (action === "promote") {
+        const res = await fetch(`/api/youtube/learning/${id}/promote`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reviewerNotes: reviewNotes || undefined }),
+        });
+        if (res.ok) await refreshData();
+        else toast.error("Promote failed");
+      } else {
+        const res = await fetch(`/api/youtube/learning/${id}/reject`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reviewerNotes: reviewNotes || undefined, knowledgeOnly: action === "knowledge_only" }),
+        });
+        if (res.ok) await refreshData();
+        else toast.error("Reject failed");
+      }
+    } catch {
+      toast.error("Action failed");
+    }
+    setReviewNotes("");
   }
 
-  async function handleReject(id: string, knowledgeOnly = false) {
-    const notes = window.prompt("Reviewer notes (optional):");
-    try {
-      const res = await fetch(`/api/youtube/learning/${id}/reject`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reviewerNotes: notes || undefined, knowledgeOnly }),
-      });
-      if (res.ok) await refreshData();
-    } catch { /* ignore */ }
+  function handlePromote(id: string) {
+    setReviewNotes("");
+    setReviewModal({ id, action: "promote" });
+  }
+
+  function handleReject(id: string, knowledgeOnly = false) {
+    setReviewNotes("");
+    setReviewModal({ id, action: knowledgeOnly ? "knowledge_only" : "reject" });
   }
 
   const tabClass = (tab: string) =>
@@ -521,6 +540,50 @@ export function YouTubeIngestClient({
             </div>
           )}
         </section>
+      )}
+
+      {/* Review notes modal */}
+      {reviewModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" aria-modal="true">
+          <button type="button" className="absolute inset-0 bg-black/60" onClick={() => setReviewModal(null)} aria-label="Close" />
+          <div className="relative w-full max-w-md rounded-lg border border-neutral-700 bg-neutral-950 p-6 shadow-xl mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-medium text-neutral-200">
+                {reviewModal.action === "promote" ? "Promote to playbook" : reviewModal.action === "knowledge_only" ? "Knowledge only" : "Reject"}
+              </h3>
+              <button type="button" onClick={() => setReviewModal(null)} className="text-neutral-500 hover:text-neutral-300">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs text-neutral-500 mb-1">Reviewer notes (optional)</label>
+                <textarea
+                  value={reviewNotes}
+                  onChange={(e) => setReviewNotes(e.target.value)}
+                  placeholder="Notes..."
+                  rows={3}
+                  className="w-full rounded border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-200"
+                />
+              </div>
+            </div>
+            <div className="mt-4 flex gap-2">
+              <button
+                onClick={() => void submitReview()}
+                className={`rounded px-3 py-1.5 text-sm font-medium ${
+                  reviewModal.action === "promote"
+                    ? "bg-emerald-700 text-emerald-100 hover:bg-emerald-600"
+                    : "bg-red-800 text-red-100 hover:bg-red-700"
+                }`}
+              >
+                {reviewModal.action === "promote" ? "Promote" : reviewModal.action === "knowledge_only" ? "Knowledge only" : "Reject"}
+              </button>
+              <button onClick={() => setReviewModal(null)} className="rounded border border-neutral-700 px-3 py-1.5 text-sm text-neutral-300 hover:bg-neutral-800">
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

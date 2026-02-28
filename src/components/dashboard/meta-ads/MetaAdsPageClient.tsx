@@ -13,8 +13,13 @@ import { MetaAdsDataStatusStrip } from "./MetaAdsDataStatusStrip";
 import { MetaAdsEmptyState } from "./MetaAdsEmptyState";
 import { MetaAdsRecommendationsPanel } from "./MetaAdsRecommendationsPanel";
 import { MetaAdsActionHistoryPanel } from "./MetaAdsActionHistoryPanel";
-import { MetaAdsSettingsPanel } from "./MetaAdsSettingsPanel";
 import { MetaAdsExplainabilityCard } from "./MetaAdsExplainabilityCard";
+import dynamic from "next/dynamic";
+
+const MetaAdsSettingsPanel = dynamic(
+  () => import("./MetaAdsSettingsPanel"),
+  { loading: () => <div className="animate-pulse h-96 bg-neutral-900/50 rounded-lg" /> }
+);
 
 const RANGES: { value: DateRangePreset; label: string }[] = [
   { value: "today", label: "Today" },
@@ -84,7 +89,7 @@ export function MetaAdsPageClient() {
         setMetaMode(j.mode ?? null);
         setMetaMockScenario(j.scenario ?? null);
       })
-      .catch(() => {});
+      .catch(() => { /* non-critical: mode badge won't show */ });
   }, []);
 
   const fetchData = useCallback(async (opts?: { skipCache?: boolean }) => {
@@ -129,7 +134,8 @@ export function MetaAdsPageClient() {
         .then((j) => {
           const s = j.settings;
           if (s) setSettingsSummary({ mode: s.mode ?? "manual", dryRun: s.dryRun ?? true, targetCpl: s.targetCpl ?? null, minSpend: s.minSpendForDecision ?? 20, minImpressions: s.minImpressionsForDecision ?? 100 });
-        });
+        })
+        .catch(() => { /* non-critical: explainability card won't populate */ });
     }
   }, [tab]);
 

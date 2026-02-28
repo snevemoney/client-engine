@@ -1,6 +1,11 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { ScoreboardView } from "@/components/dashboard/scoreboard/ScoreboardView";
+import dynamicImport from "next/dynamic";
+
+const ScoreboardView = dynamicImport(
+  () => import("@/components/dashboard/scoreboard/ScoreboardView"),
+  { loading: () => <div className="animate-pulse h-96 bg-neutral-900/50 rounded-lg" /> }
+);
 
 export const dynamic = "force-dynamic";
 

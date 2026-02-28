@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -118,7 +118,7 @@ type DeliveryOps = {
   retainerOpen?: number;
 } | null;
 
-export function ScoreboardView() {
+export default function ScoreboardView() {
   const [data, setData] = useState<ScoreboardData | null>(null);
   const [intakeSummary, setIntakeSummary] = useState<IntakeSummary>(null);
   const [followupSummary, setFollowupSummary] = useState<FollowupSummary>(null);
@@ -172,37 +172,55 @@ export function ScoreboardView() {
     staleJobAlerts?: number;
   } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [fetchedAt, setFetchedAt] = useState<number | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
-  const refresh = () => {
+  const refresh = useCallback(() => {
+    if (abortRef.current) abortRef.current.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const s = controller.signal;
+    setLoading(true);
+    setError(null);
+
+    const safeFetch = (url: string) =>
+      fetch(url, { signal: s, credentials: "include", cache: "no-store" })
+        .then((r) => (r.ok ? r.json() : null))
+        .catch(() => null);
+
     Promise.all([
-      fetch("/api/ops/scoreboard").then((r) => r.json()),
-      fetch("/api/intake-leads/summary").then((r) => (r.ok ? r.json() : null)).catch(() => null),
-      fetch("/api/followups/summary").then((r) => (r.ok ? r.json() : null)).catch(() => null),
-      fetch("/api/proof-candidates/summary").then((r) => (r.ok ? r.json() : null)).catch(() => null),
-      fetch("/api/intake-leads/action-summary").then((r) => (r.ok ? r.json() : null)).catch(() => null),
-      fetch("/api/proof-gaps/summary").then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch("/api/ops/scoreboard", { signal: s, credentials: "include", cache: "no-store" }).then((r) => {
+        if (!r.ok) throw new Error(`Scoreboard failed (${r.status})`);
+        return r.json();
+      }),
+      safeFetch("/api/intake-leads/summary"),
+      safeFetch("/api/followups/summary"),
+      safeFetch("/api/proof-candidates/summary"),
+      safeFetch("/api/intake-leads/action-summary"),
+      safeFetch("/api/proof-gaps/summary"),
       Promise.all([
-        fetch("/api/proposals/summary").then((r) => (r.ok ? r.json() : null)).catch(() => null),
-        fetch("/api/proposals/gaps-summary").then((r) => (r.ok ? r.json() : null)).catch(() => null),
-        fetch("/api/proposals/followup-summary").then((r) => (r.ok ? r.json() : null)).catch(() => null),
-        fetch("/api/proposals/action-summary").then((r) => (r.ok ? r.json() : null)).catch(() => null),
+        safeFetch("/api/proposals/summary"),
+        safeFetch("/api/proposals/gaps-summary"),
+        safeFetch("/api/proposals/followup-summary"),
+        safeFetch("/api/proposals/action-summary"),
       ]).then(([sum, gaps, followup, action]) => ({ sum, gaps, followup, action })),
       Promise.all([
-        fetch("/api/delivery-projects/summary").then((r) => (r.ok ? r.json() : null)).catch(() => null),
-        fetch("/api/delivery-projects/gaps-summary").then((r) => (r.ok ? r.json() : null)).catch(() => null),
-        fetch("/api/delivery-projects/handoff-summary").then((r) => (r.ok ? r.json() : null)).catch(() => null),
-        fetch("/api/delivery-projects/retention-summary").then((r) => (r.ok ? r.json() : null)).catch(() => null),
+        safeFetch("/api/delivery-projects/summary"),
+        safeFetch("/api/delivery-projects/gaps-summary"),
+        safeFetch("/api/delivery-projects/handoff-summary"),
+        safeFetch("/api/delivery-projects/retention-summary"),
       ]).then(([sum, gaps, handoff, retention]) => ({ sum, gaps, handoff, retention })),
-      fetch("/api/metrics/summary").then((r) => (r.ok ? r.json() : null)).catch(() => null),
-      fetch("/api/operator-score/current").then((r) => (r.ok ? r.json() : null)).catch(() => null),
-      fetch("/api/forecast/current").then((r) => (r.ok ? r.json() : null)).catch(() => null),
-      fetch("/api/reminders/summary").then((r) => (r.ok ? r.json() : null)).catch(() => null),
-      fetch("/api/automation-suggestions/summary").then((r) => (r.ok ? r.json() : null)).catch(() => null),
-      fetch("/api/ops-events/summary").then((r) => (r.ok ? r.json() : null)).catch(() => null),
-      fetch("/api/audit-actions/summary").then((r) => (r.ok ? r.json() : null)).catch(() => null),
-      fetch("/api/notifications/summary").then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      safeFetch("/api/metrics/summary"),
+      safeFetch("/api/operator-score/current"),
+      safeFetch("/api/forecast/current"),
+      safeFetch("/api/reminders/summary"),
+      safeFetch("/api/automation-suggestions/summary"),
+      safeFetch("/api/ops-events/summary"),
+      safeFetch("/api/audit-actions/summary"),
+      safeFetch("/api/notifications/summary"),
     ]).then(([d, intake, followup, proofCand, action, proofGaps, proposalData, deliveryData, metricsData, opScore, forecast, reminders, automation, obs, audit, notif]) => {
+      if (s.aborted) return;
       if (d && typeof d === "object" && "weekStart" in d) {
         setData(d as ScoreboardData);
       } else {
@@ -249,13 +267,19 @@ export function ScoreboardView() {
       setAuditSummary(audit && typeof audit === "object" ? audit : null);
       setNotificationSummary(notif && typeof notif === "object" ? notif : null);
       setFetchedAt(Date.now());
-    }).catch(() => setData(null))
-      .finally(() => setLoading(false));
-  };
+    }).catch((e) => {
+      if (s.aborted) return;
+      setError(e instanceof Error ? e.message : "Failed to load scoreboard");
+      setData(null);
+    }).finally(() => {
+      if (!s.aborted) setLoading(false);
+    });
+  }, []);
 
   useEffect(() => {
     refresh();
-  }, []);
+    return () => { abortRef.current?.abort(); };
+  }, [refresh]);
 
   const [displayNow, setDisplayNow] = useState(0);
   useEffect(() => {
@@ -269,6 +293,16 @@ export function ScoreboardView() {
     return (
       <section className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-6">
         <p className="text-sm text-neutral-500">Loading…</p>
+      </section>
+    );
+  }
+
+  if (error) {
+    return (
+      <section className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-6">
+        <p className="text-sm text-red-400 mb-2">Failed to load scoreboard</p>
+        <p className="text-xs text-neutral-500 mb-3">{error}</p>
+        <Button variant="outline" size="sm" onClick={refresh}>Retry</Button>
       </section>
     );
   }

@@ -1,12 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { AlertTriangle, Sparkles } from "lucide-react";
+import { useAsyncAction } from "@/hooks/useAsyncAction";
+import { useConfirmDialog } from "@/hooks/useConfirmDialog";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { AsyncState } from "@/components/ui/AsyncState";
+import { fetchJsonThrow } from "@/lib/http/fetch-json";
 
 type Priority = { id: string; title: string; status: string };
 
@@ -48,15 +53,12 @@ type StrategyWeek = {
 
 const PHASES = ["survival", "formulation", "explosion", "plateau"] as const;
 
-export function StrategyQuadrantPanel() {
+export default function StrategyQuadrantPanel() {
   const [data, setData] = useState<StrategyWeek | null>(null);
   const [history, setHistory] = useState<
     { weekStart: string; phase: string | null; activeCampaignName: string | null; reviewChecks: number; reviewTotal: number; biggestBottleneck: string | null }[]
   >([]);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [savingReview, setSavingReview] = useState(false);
-  const [aiFilling, setAiFilling] = useState(false);
 
   const [phase, setPhase] = useState("");
   const [activeCampaignName, setActiveCampaignName] = useState("");
@@ -82,7 +84,6 @@ export function StrategyQuadrantPanel() {
   const [weeklyTargetUnit, setWeeklyTargetUnit] = useState("");
   const [declaredCommitment, setDeclaredCommitment] = useState("");
   const [newPriorityTitle, setNewPriorityTitle] = useState("");
-  const [addingPriority, setAddingPriority] = useState(false);
   const [keyMetric, setKeyMetric] = useState("");
   const [keyMetricTarget, setKeyMetricTarget] = useState("");
   const [anticipatedBottleneck, setAnticipatedBottleneck] = useState("");
@@ -90,55 +91,80 @@ export function StrategyQuadrantPanel() {
   const [whyThisWeekMatters, setWhyThisWeekMatters] = useState("");
   const [dreamStatement, setDreamStatement] = useState("");
   const [fuelStatement, setFuelStatement] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
-  useEffect(() => {
-    Promise.all([
-      fetch("/api/ops/strategy-week").then((r) => r.json()),
-      fetch("/api/ops/strategy-week/history?weeks=8").then((r) => r.json()),
-    ]).then(([weekRes, historyRes]) => {
-      const week = weekRes?.id ? weekRes : null;
-      setData(week);
-      if (week) {
-        setPhase(week.phase ?? "");
-        setActiveCampaignName(week.activeCampaignName ?? "");
-        setActiveCampaignAudience(week.activeCampaignAudience ?? "");
-        setActiveCampaignChannel(week.activeCampaignChannel ?? "");
-        setActiveCampaignOffer(week.activeCampaignOffer ?? "");
-        setActiveCampaignCta(week.activeCampaignCta ?? "");
-        setActiveCampaignProof(week.activeCampaignProof ?? "");
-        setOperatorImprovementFocus(week.operatorImprovementFocus ?? "");
-        setSalesTarget(week.salesTarget ?? "");
-        setNotes(week.notes ?? "");
-        setCampaignShipped(week.review?.campaignShipped ?? false);
-        setSystemImproved(week.review?.systemImproved ?? false);
-        setSalesActionsDone(week.review?.salesActionsDone ?? false);
-        setProofCaptured(week.review?.proofCaptured ?? false);
-        setBiggestBottleneck(week.review?.biggestBottleneck ?? ""); // review actual
-        setNextAutomation(week.review?.nextAutomation ?? "");
-        setTheme(week.theme ?? "");
-        setMonthlyFocus(week.monthlyFocus ?? "");
-        setWeeklyTargetValue(week.weeklyTargetValue != null ? String(week.weeklyTargetValue) : "");
-        setWeeklyTargetUnit(week.weeklyTargetUnit ?? "");
-        setDeclaredCommitment(week.declaredCommitment ?? "");
-        setKeyMetric(week.keyMetric ?? "");
-        setKeyMetricTarget(week.keyMetricTarget ?? "");
-        setAnticipatedBottleneck(week.biggestBottleneck ?? "");
-        setMissionStatement(week.missionStatement ?? "");
-        setWhyThisWeekMatters(week.whyThisWeekMatters ?? "");
-        setDreamStatement(week.dreamStatement ?? "");
-        setFuelStatement(week.fuelStatement ?? "");
-      }
-      setHistory(historyRes?.items ?? []);
-      setLoading(false);
-    });
+  const toastFn = (m: string, t?: "success" | "error") => t === "error" ? toast.error(m) : toast.success(m);
+  const { confirm, dialogProps } = useConfirmDialog();
+
+  const populateFromWeek = useCallback((week: StrategyWeek) => {
+    setPhase(week.phase ?? "");
+    setActiveCampaignName(week.activeCampaignName ?? "");
+    setActiveCampaignAudience(week.activeCampaignAudience ?? "");
+    setActiveCampaignChannel(week.activeCampaignChannel ?? "");
+    setActiveCampaignOffer(week.activeCampaignOffer ?? "");
+    setActiveCampaignCta(week.activeCampaignCta ?? "");
+    setActiveCampaignProof(week.activeCampaignProof ?? "");
+    setOperatorImprovementFocus(week.operatorImprovementFocus ?? "");
+    setSalesTarget(week.salesTarget ?? "");
+    setNotes(week.notes ?? "");
+    setCampaignShipped(week.review?.campaignShipped ?? false);
+    setSystemImproved(week.review?.systemImproved ?? false);
+    setSalesActionsDone(week.review?.salesActionsDone ?? false);
+    setProofCaptured(week.review?.proofCaptured ?? false);
+    setBiggestBottleneck(week.review?.biggestBottleneck ?? "");
+    setNextAutomation(week.review?.nextAutomation ?? "");
+    setTheme(week.theme ?? "");
+    setMonthlyFocus(week.monthlyFocus ?? "");
+    setWeeklyTargetValue(week.weeklyTargetValue != null ? String(week.weeklyTargetValue) : "");
+    setWeeklyTargetUnit(week.weeklyTargetUnit ?? "");
+    setDeclaredCommitment(week.declaredCommitment ?? "");
+    setKeyMetric(week.keyMetric ?? "");
+    setKeyMetricTarget(week.keyMetricTarget ?? "");
+    setAnticipatedBottleneck(week.biggestBottleneck ?? "");
+    setMissionStatement(week.missionStatement ?? "");
+    setWhyThisWeekMatters(week.whyThisWeekMatters ?? "");
+    setDreamStatement(week.dreamStatement ?? "");
+    setFuelStatement(week.fuelStatement ?? "");
   }, []);
 
-  const handleSave = async () => {
-    setSaving(true);
+  const fetchInitial = useCallback(async () => {
+    if (abortRef.current) abortRef.current.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setLoading(true);
+    setError(null);
     try {
-      const res = await fetch("/api/ops/strategy-week", {
+      const [weekRes, historyRes] = await Promise.all([
+        fetch("/api/ops/strategy-week", { credentials: "include", signal: controller.signal, cache: "no-store" }).then((r) => (r.ok ? r.json() : null)),
+        fetch("/api/ops/strategy-week/history?weeks=8", { credentials: "include", signal: controller.signal, cache: "no-store" }).then((r) => (r.ok ? r.json() : null)),
+      ]);
+      if (controller.signal.aborted) return;
+      const week = weekRes?.id ? weekRes : null;
+      setData(week);
+      if (week) populateFromWeek(week);
+      setHistory(historyRes?.items ?? []);
+    } catch (e) {
+      if (controller.signal.aborted) return;
+      if (e instanceof Error && (e.name === "AbortError" || e.message?.includes("aborted"))) return;
+      setError(e instanceof Error ? e.message : "Failed to load");
+    } finally {
+      if (!controller.signal.aborted) {
+        setLoading(false);
+        abortRef.current = null;
+      }
+    }
+  }, [populateFromWeek]);
+
+  useEffect(() => {
+    void fetchInitial();
+    return () => { if (abortRef.current) abortRef.current.abort(); };
+  }, [fetchInitial]);
+
+  const { execute: handleSave, pending: saving } = useAsyncAction(
+    async () =>
+      fetchJsonThrow<StrategyWeek>("/api/ops/strategy-week", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           phase: phase || undefined,
           activeCampaignName: activeCampaignName || undefined,
@@ -163,101 +189,73 @@ export function StrategyQuadrantPanel() {
           dreamStatement: dreamStatement || undefined,
           fuelStatement: fuelStatement || undefined,
         }),
-      });
-      if (res.ok) {
-        const updated = await res.json();
-        setData(updated);
-      } else {
-        const err = await res.json();
-        alert(err.error ?? "Save failed");
-      }
-    } catch (e) {
-      alert("Save failed");
-    }
-    setSaving(false);
-  };
+      }),
+    { toast: toastFn, successMessage: "Strategy saved", onSuccess: (updated) => setData(updated) },
+  );
 
-  const handleAiFill = async () => {
-    setAiFilling(true);
-    try {
-      const res = await fetch("/api/ops/strategy-week/ai-fill", { method: "POST" });
-      const d = await res.json().catch(() => null);
-      if (!res.ok) {
-        toast.error(d?.error ?? "AI fill failed");
-        return;
-      }
-      if (d.phase) setPhase(d.phase);
-      if (d.activeCampaignName) setActiveCampaignName(d.activeCampaignName);
-      if (d.activeCampaignAudience) setActiveCampaignAudience(d.activeCampaignAudience ?? "");
-      if (d.activeCampaignChannel) setActiveCampaignChannel(d.activeCampaignChannel ?? "");
-      if (d.activeCampaignOffer) setActiveCampaignOffer(d.activeCampaignOffer ?? "");
-      if (d.activeCampaignCta) setActiveCampaignCta(d.activeCampaignCta ?? "");
-      if (d.activeCampaignProof) setActiveCampaignProof(d.activeCampaignProof ?? "");
-      if (d.operatorImprovementFocus) setOperatorImprovementFocus(d.operatorImprovementFocus);
-      if (d.salesTarget) setSalesTarget(d.salesTarget);
-      if (d.theme) setTheme(d.theme);
-      if (d.monthlyFocus) setMonthlyFocus(d.monthlyFocus ?? "");
+  const { execute: handleAiFill, pending: aiFilling } = useAsyncAction(
+    async () => {
+      const d = await fetchJsonThrow<Record<string, unknown>>("/api/ops/strategy-week/ai-fill", { method: "POST" });
+      if (d.phase) setPhase(d.phase as string);
+      if (d.activeCampaignName) setActiveCampaignName(d.activeCampaignName as string);
+      if (d.activeCampaignAudience) setActiveCampaignAudience((d.activeCampaignAudience as string) ?? "");
+      if (d.activeCampaignChannel) setActiveCampaignChannel((d.activeCampaignChannel as string) ?? "");
+      if (d.activeCampaignOffer) setActiveCampaignOffer((d.activeCampaignOffer as string) ?? "");
+      if (d.activeCampaignCta) setActiveCampaignCta((d.activeCampaignCta as string) ?? "");
+      if (d.activeCampaignProof) setActiveCampaignProof((d.activeCampaignProof as string) ?? "");
+      if (d.operatorImprovementFocus) setOperatorImprovementFocus(d.operatorImprovementFocus as string);
+      if (d.salesTarget) setSalesTarget(d.salesTarget as string);
+      if (d.theme) setTheme(d.theme as string);
+      if (d.monthlyFocus) setMonthlyFocus((d.monthlyFocus as string) ?? "");
       if (d.weeklyTargetValue != null) setWeeklyTargetValue(String(d.weeklyTargetValue));
-      if (d.weeklyTargetUnit) setWeeklyTargetUnit(d.weeklyTargetUnit);
-      if (d.declaredCommitment) setDeclaredCommitment(d.declaredCommitment);
-      if (d.keyMetric) setKeyMetric(d.keyMetric);
-      if (d.keyMetricTarget) setKeyMetricTarget(d.keyMetricTarget ?? "");
-      if (d.biggestBottleneck) setAnticipatedBottleneck(d.biggestBottleneck);
-      if (d.missionStatement) setMissionStatement(d.missionStatement);
-      if (d.whyThisWeekMatters) setWhyThisWeekMatters(d.whyThisWeekMatters ?? "");
-      if (d.dreamStatement) setDreamStatement(d.dreamStatement ?? "");
-      if (d.fuelStatement) setFuelStatement(d.fuelStatement ?? "");
+      if (d.weeklyTargetUnit) setWeeklyTargetUnit(d.weeklyTargetUnit as string);
+      if (d.declaredCommitment) setDeclaredCommitment(d.declaredCommitment as string);
+      if (d.keyMetric) setKeyMetric(d.keyMetric as string);
+      if (d.keyMetricTarget) setKeyMetricTarget((d.keyMetricTarget as string) ?? "");
+      if (d.biggestBottleneck) setAnticipatedBottleneck(d.biggestBottleneck as string);
+      if (d.missionStatement) setMissionStatement(d.missionStatement as string);
+      if (d.whyThisWeekMatters) setWhyThisWeekMatters((d.whyThisWeekMatters as string) ?? "");
+      if (d.dreamStatement) setDreamStatement((d.dreamStatement as string) ?? "");
+      if (d.fuelStatement) setFuelStatement((d.fuelStatement as string) ?? "");
       if (Array.isArray(d.prioritySuggestions) && d.prioritySuggestions.length > 0) {
         for (const title of d.prioritySuggestions) {
-          const pr = await fetch("/api/ops/strategy-week/priorities", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ title }),
-          });
-          if (pr.ok && data) {
-            const priority = await pr.json();
+          try {
+            const priority = await fetchJsonThrow<Priority>("/api/ops/strategy-week/priorities", {
+              method: "POST",
+              body: JSON.stringify({ title }),
+            });
             setData((prev) =>
               prev ? { ...prev, priorities: [...(prev.priorities ?? []), priority] } : null
             );
-          }
+          } catch { /* skip individual priority failures */ }
         }
       }
-      toast.success("Strategy filled. Review and save if correct.");
-    } catch {
-      toast.error("AI fill failed");
-    }
-    setAiFilling(false);
-  };
+      return d;
+    },
+    { toast: toastFn, successMessage: "Strategy filled. Review and save if correct." },
+  );
 
-  const handleAddPriority = async () => {
-    if (!newPriorityTitle.trim() || !data) return;
-    setAddingPriority(true);
-    try {
-      const res = await fetch("/api/ops/strategy-week/priorities", {
+  const { execute: handleAddPriority, pending: addingPriority } = useAsyncAction(
+    async () => {
+      if (!newPriorityTitle.trim() || !data) throw new Error("Title is required");
+      return fetchJsonThrow<Priority>("/api/ops/strategy-week/priorities", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: newPriorityTitle.trim() }),
       });
-      if (res.ok) {
-        const priority = await res.json();
-        setData({ ...data, priorities: [...(data.priorities ?? []), priority] });
+    },
+    {
+      toast: toastFn,
+      onSuccess: (priority) => {
+        setData((d) => d ? { ...d, priorities: [...(d.priorities ?? []), priority] } : null);
         setNewPriorityTitle("");
-      } else {
-        const err = await res.json();
-        alert(err.error ?? "Add failed");
-      }
-    } catch {
-      alert("Add failed");
-    }
-    setAddingPriority(false);
-  };
+      },
+    },
+  );
 
-  const handleSaveReview = async () => {
-    setSavingReview(true);
-    try {
-      const res = await fetch("/api/ops/strategy-week/review", {
+  const { execute: handleSaveReview, pending: savingReview } = useAsyncAction(
+    async () =>
+      fetchJsonThrow("/api/ops/strategy-week/review", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           campaignShipped,
           systemImproved,
@@ -266,18 +264,15 @@ export function StrategyQuadrantPanel() {
           biggestBottleneck: biggestBottleneck || undefined,
           nextAutomation: nextAutomation || undefined,
         }),
-      });
-      if (res.ok) {
-        if (data) setData({ ...data, review: await res.json() });
-      } else {
-        const err = await res.json();
-        alert(err.error ?? "Save review failed");
-      }
-    } catch {
-      alert("Save review failed");
-    }
-    setSavingReview(false);
-  };
+      }),
+    {
+      toast: toastFn,
+      successMessage: "Review saved",
+      onSuccess: (review) => {
+        if (data) setData({ ...data, review: review as StrategyWeek["review"] });
+      },
+    },
+  );
 
   const warnings: string[] = [];
   if (!activeCampaignName?.trim()) warnings.push("No active campaign — growth is drifting.");
@@ -289,15 +284,6 @@ export function StrategyQuadrantPanel() {
   const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
   if (isWeekend && reviewCount === 0 && data) {
     warnings.push("Week ending — review not filled (0/4 checks).");
-  }
-
-  if (loading) {
-    return (
-      <section className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-4">
-        <h2 className="text-sm font-medium text-neutral-300 mb-3">Strategy Quadrant</h2>
-        <p className="text-xs text-neutral-500">Loading…</p>
-      </section>
-    );
   }
 
   const summaryTarget = weeklyTargetValue && weeklyTargetUnit ? `${weeklyTargetValue} ${weeklyTargetUnit}` : declaredCommitment?.slice(0, 80) ?? null;
@@ -312,6 +298,8 @@ export function StrategyQuadrantPanel() {
           Operating System (Linear), Biz Dev & Sales (Linear).
         </p>
       </div>
+      <ConfirmDialog {...dialogProps} />
+      <AsyncState loading={loading} error={error} empty={!loading && !error && !data && history.length === 0} emptyMessage="No strategy data" onRetry={fetchInitial}>
 
       {(summaryTarget || summaryMetric || fuelStatement) && (
         <section className="rounded-lg border border-neutral-700 bg-neutral-900/30 px-4 py-3 flex flex-wrap gap-4 text-sm">
@@ -356,7 +344,7 @@ export function StrategyQuadrantPanel() {
           <Button
             variant="outline"
             size="sm"
-            onClick={handleAiFill}
+            onClick={() => void handleAiFill()}
             disabled={aiFilling}
             className="gap-1.5"
           >
@@ -508,7 +496,7 @@ export function StrategyQuadrantPanel() {
             />
           </div>
 
-          <Button onClick={handleSave} disabled={saving}>
+          <Button onClick={() => void handleSave()} disabled={saving}>
             {saving ? "Saving…" : "Save strategy"}
           </Button>
         </div>
@@ -626,16 +614,16 @@ export function StrategyQuadrantPanel() {
                   value={p.status}
                   onChange={async (e) => {
                     const status = e.target.value as "todo" | "in_progress" | "done" | "blocked";
-                    const res = await fetch(`/api/ops/strategy-week/priorities/${p.id}`, {
-                      method: "PATCH",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ status }),
-                    });
-                    if (res.ok) {
-                      const updated = await res.json();
+                    try {
+                      const updated = await fetchJsonThrow<Priority>(`/api/ops/strategy-week/priorities/${p.id}`, {
+                        method: "PATCH",
+                        body: JSON.stringify({ status }),
+                      });
                       setData((d) =>
                         d ? { ...d, priorities: (d.priorities ?? []).map((x) => (x.id === p.id ? updated : x)) } : null
                       );
+                    } catch (err) {
+                      toast.error(err instanceof Error ? err.message : "Update failed");
                     }
                   }}
                   className="rounded border border-neutral-600 bg-neutral-900 px-2 py-1 text-xs"
@@ -651,10 +639,13 @@ export function StrategyQuadrantPanel() {
                 <button
                   type="button"
                   onClick={async () => {
-                    if (!confirm("Remove this priority?")) return;
-                    const res = await fetch(`/api/ops/strategy-week/priorities/${p.id}`, { method: "DELETE" });
-                    if (res.ok && data)
-                      setData({ ...data, priorities: (data.priorities ?? []).filter((x) => x.id !== p.id) });
+                    if (!(await confirm({ title: "Remove this priority?", variant: "destructive" }))) return;
+                    try {
+                      await fetchJsonThrow(`/api/ops/strategy-week/priorities/${p.id}`, { method: "DELETE" });
+                      setData((d) => d ? { ...d, priorities: (d.priorities ?? []).filter((x) => x.id !== p.id) } : null);
+                    } catch (e) {
+                      toast.error(e instanceof Error ? e.message : "Remove failed");
+                    }
                   }}
                   className="ml-auto text-neutral-500 hover:text-red-400 text-xs"
                 >
@@ -669,11 +660,11 @@ export function StrategyQuadrantPanel() {
               onChange={(e) => setNewPriorityTitle(e.target.value)}
               placeholder="New priority…"
               className="flex-1"
-              onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddPriority())}
+              onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), void handleAddPriority())}
             />
             <Button
               size="sm"
-              onClick={handleAddPriority}
+              onClick={() => void handleAddPriority()}
               disabled={addingPriority || !newPriorityTitle.trim()}
             >
               {addingPriority ? "Adding…" : "Add"}
@@ -739,7 +730,7 @@ export function StrategyQuadrantPanel() {
               placeholder="What to automate next?"
             />
           </div>
-          <Button onClick={handleSaveReview} disabled={savingReview} variant="outline">
+          <Button onClick={() => void handleSaveReview()} disabled={savingReview} variant="outline">
             {savingReview ? "Saving…" : "Save review"}
           </Button>
         </div>
@@ -781,6 +772,7 @@ export function StrategyQuadrantPanel() {
         </div>
         {history.length === 0 && <p className="text-xs text-neutral-500 py-2">No history yet.</p>}
       </section>
+      </AsyncState>
     </div>
   );
 }

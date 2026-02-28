@@ -3,6 +3,8 @@
 import { useEffect, useState, useCallback } from "react";
 import { Save, RotateCcw, Play } from "lucide-react";
 import { MetaAdsSchedulerRunsPanel } from "./MetaAdsSchedulerRunsPanel";
+import { useConfirmDialog } from "@/hooks/useConfirmDialog";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 const DEFAULTS = {
   mode: "manual",
@@ -34,13 +36,14 @@ const DEFAULTS = {
   lastSchedulerRunSummary: null as Record<string, unknown> | null,
 };
 
-export function MetaAdsSettingsPanel() {
+export default function MetaAdsSettingsPanel() {
   const [settings, setSettings] = useState<typeof DEFAULTS & { id?: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [runLoading, setRunLoading] = useState(false);
   const [runsRefreshKey, setRunsRefreshKey] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const { confirm: confirmRun, dialogProps: runDialogProps } = useConfirmDialog();
   const [protectedIdsInput, setProtectedIdsInput] = useState("");
   const [autoApproveRuleKeysInput, setAutoApproveRuleKeysInput] = useState("");
 
@@ -136,8 +139,8 @@ export function MetaAdsSettingsPanel() {
         }),
       });
       if (!res.ok) {
-        const json = await res.json();
-        setError(json.error ?? "Save failed");
+        const json = await res.json().catch(() => null);
+        setError(json?.error ?? "Save failed");
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed");
@@ -214,7 +217,7 @@ export function MetaAdsSettingsPanel() {
             min={0}
             step={1}
             value={settings.targetCpl ?? ""}
-            onChange={(e) => setSettings({ ...settings, targetCpl: e.target.value ? parseFloat(e.target.value) : null })}
+            onChange={(e) => setSettings({ ...settings, targetCpl: e.target.value ? Math.max(0, parseFloat(e.target.value)) : null })}
             placeholder="Leave empty to use account avg"
             className="w-full rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-200"
           />
@@ -225,7 +228,7 @@ export function MetaAdsSettingsPanel() {
             type="number"
             min={0}
             value={settings.minSpendForDecision}
-            onChange={(e) => setSettings({ ...settings, minSpendForDecision: parseFloat(e.target.value) || 0 })}
+            onChange={(e) => setSettings({ ...settings, minSpendForDecision: Math.max(0, parseFloat(e.target.value) || 0) })}
             className="w-full rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-200"
           />
         </div>
@@ -235,7 +238,7 @@ export function MetaAdsSettingsPanel() {
             type="number"
             min={0}
             value={settings.minImpressionsForDecision}
-            onChange={(e) => setSettings({ ...settings, minImpressionsForDecision: parseInt(e.target.value, 10) || 0 })}
+            onChange={(e) => setSettings({ ...settings, minImpressionsForDecision: Math.max(0, parseInt(e.target.value, 10) || 0) })}
             className="w-full rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-200"
           />
         </div>
@@ -246,7 +249,7 @@ export function MetaAdsSettingsPanel() {
             min={0}
             max={100}
             value={settings.maxBudgetIncreasePctPerAction}
-            onChange={(e) => setSettings({ ...settings, maxBudgetIncreasePctPerAction: parseFloat(e.target.value) || 0 })}
+            onChange={(e) => setSettings({ ...settings, maxBudgetIncreasePctPerAction: Math.max(0, parseFloat(e.target.value) || 0) })}
             className="w-full rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-200"
           />
         </div>
@@ -257,7 +260,7 @@ export function MetaAdsSettingsPanel() {
             min={0}
             max={100}
             value={settings.maxBudgetIncreasePctPerDay}
-            onChange={(e) => setSettings({ ...settings, maxBudgetIncreasePctPerDay: parseFloat(e.target.value) || 0 })}
+            onChange={(e) => setSettings({ ...settings, maxBudgetIncreasePctPerDay: Math.max(0, parseFloat(e.target.value) || 0) })}
             className="w-full rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-200"
           />
         </div>
@@ -288,7 +291,7 @@ export function MetaAdsSettingsPanel() {
             min={0}
             max={10080}
             value={settings.actionCooldownMinutes}
-            onChange={(e) => setSettings({ ...settings, actionCooldownMinutes: parseInt(e.target.value, 10) || 0 })}
+            onChange={(e) => setSettings({ ...settings, actionCooldownMinutes: Math.max(0, parseInt(e.target.value, 10) || 0) })}
             className="w-full rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-200"
           />
           <p className="text-[10px] text-neutral-500 mt-0.5">Default 720 (12h). Prevents re-applying to same entity too soon.</p>
@@ -300,7 +303,7 @@ export function MetaAdsSettingsPanel() {
             min={0}
             max={50}
             value={settings.maxActionsPerEntityPerDay}
-            onChange={(e) => setSettings({ ...settings, maxActionsPerEntityPerDay: parseInt(e.target.value, 10) || 0 })}
+            onChange={(e) => setSettings({ ...settings, maxActionsPerEntityPerDay: Math.max(0, parseInt(e.target.value, 10) || 0) })}
             className="w-full rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-200"
           />
           <p className="text-[10px] text-neutral-500 mt-0.5">Default 2. 0 = disabled.</p>
@@ -451,7 +454,14 @@ export function MetaAdsSettingsPanel() {
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={runSchedulerNow}
+            onClick={async () => {
+              const ok = await confirmRun({
+                title: "Run scheduler now",
+                body: "This will run the Meta Ads scheduler immediately. Continue?",
+                confirmLabel: "Run now",
+              });
+              if (ok) void runSchedulerNow();
+            }}
             disabled={runLoading}
             className="flex items-center gap-2 rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-200 hover:bg-neutral-700 disabled:opacity-50"
           >
@@ -499,6 +509,7 @@ export function MetaAdsSettingsPanel() {
         </div>
       </div>
       <MetaAdsSchedulerRunsPanel className="mt-6" refreshKey={runsRefreshKey} />
+      <ConfirmDialog {...runDialogProps} />
     </section>
   );
 }
