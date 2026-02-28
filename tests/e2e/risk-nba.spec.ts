@@ -81,7 +81,10 @@ test.describe("Risk & Next Actions pages", () => {
 
   test("Next Actions page: list renders (empty or with items)", async ({ page }) => {
     await page.goto(`${baseURL}/dashboard/next-actions`, { waitUntil: "load", timeout: 15000 });
-    const content = page.getByText(/Ranked recommendations|No next actions/i).or(page.locator(".divide-y"));
+    const content = page
+      .getByText(/Ranked recommendations|No next actions/i)
+      .or(page.locator(".divide-y"))
+      .first();
     await expect(content).toBeVisible({ timeout: 5000 });
   });
 
