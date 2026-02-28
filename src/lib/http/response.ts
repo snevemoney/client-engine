@@ -59,6 +59,17 @@ export function shortCacheHeaders(seconds = 30): HeadersInit {
 }
 
 /**
+ * SWR cache for browser-side API response caching.
+ * maxAge: seconds before browser revalidates.
+ * swr: seconds the stale response can be used while revalidating.
+ */
+export function swrCacheHeaders(maxAge = 15, swr = 60): HeadersInit {
+  return {
+    "Cache-Control": `private, max-age=${maxAge}, stale-while-revalidate=${swr}`,
+  };
+}
+
+/**
  * Merge headers from multiple sources. Later overwrites earlier.
  */
 export function maybeMergeHeaders(...sources: (HeadersInit | null | undefined)[]): HeadersInit {
