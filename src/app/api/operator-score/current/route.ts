@@ -3,6 +3,7 @@
  */
 import { jsonError, requireAuth, withRouteTiming } from "@/lib/api-utils";
 import { withSummaryCache } from "@/lib/http/cached-handler";
+import { swrCacheHeaders } from "@/lib/http/response";
 import { getWeekStart } from "@/lib/ops/weekStart";
 import { getMonthStart } from "@/lib/operator-score/trends";
 import { fetchOperatorScoreInput } from "@/lib/operator-score/fetch-input";
@@ -76,7 +77,7 @@ export async function GET() {
           weekStart: weekStart.toISOString().slice(0, 10),
           monthStart: monthStart.toISOString().slice(0, 10),
         };
-      }, 30_000);
+      }, 30_000, swrCacheHeaders(30, 60));
     } catch (err) {
       console.error("[operator-score/current]", err);
       return jsonError("Failed to load operator score", 500);

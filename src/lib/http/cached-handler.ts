@@ -12,14 +12,16 @@ const DEFAULT_TTL_MS = 15_000; // 15s for dashboards
 /**
  * Wrap a summary handler with in-memory TTL cache.
  * Cache key should be unique per route + relevant query params.
+ * Pass `responseHeaders` to override the default cache-control headers.
  */
 export async function withSummaryCache<T>(
   cacheKey: string,
   handler: () => Promise<T>,
-  ttlMs: number = DEFAULT_TTL_MS
+  ttlMs: number = DEFAULT_TTL_MS,
+  responseHeaders?: HeadersInit
 ): Promise<NextResponse> {
   const data = await getOrSet(cacheKey, ttlMs, handler);
-  const headers = shortCacheHeaders(Math.floor(ttlMs / 1000));
+  const headers = responseHeaders ?? shortCacheHeaders(Math.floor(ttlMs / 1000));
   return NextResponse.json(data, { headers });
 }
 

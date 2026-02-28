@@ -3,6 +3,7 @@
  */
 import { NextResponse } from "next/server";
 import { jsonError, requireAuth, withRouteTiming } from "@/lib/api-utils";
+import { swrCacheHeaders } from "@/lib/http/response";
 import { db } from "@/lib/db";
 import { getStartOfDay } from "@/lib/followup/dates";
 
@@ -66,6 +67,6 @@ export async function GET() {
       unreadInApp: unreadInApp ?? 0,
       deadLetterAlerts: deadLetterAlerts ?? 0,
       staleJobAlerts: staleJobAlerts ?? 0,
-    });
+    }, { headers: swrCacheHeaders(15, 60) });
   });
 }

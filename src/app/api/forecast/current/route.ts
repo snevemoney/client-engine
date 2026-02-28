@@ -3,6 +3,7 @@
  */
 import { jsonError, requireAuth, withRouteTiming } from "@/lib/api-utils";
 import { withSummaryCache } from "@/lib/http/cached-handler";
+import { swrCacheHeaders } from "@/lib/http/response";
 import { fetchWeeklyForecastInput, fetchMonthlyForecastInput } from "@/lib/forecasting/fetch-input";
 import { computeWeeklyForecast, computeMonthlyForecast } from "@/lib/forecasting/forecast";
 
@@ -33,7 +34,7 @@ export async function GET() {
           warnings: [...weekly.warnings, ...monthly.warnings],
           behindPaceCount: behindCount,
         };
-      }, 30_000);
+      }, 30_000, swrCacheHeaders(30, 60));
     } catch (err) {
       console.error("[forecast/current]", err);
       return jsonError("Failed to load forecast", 500);

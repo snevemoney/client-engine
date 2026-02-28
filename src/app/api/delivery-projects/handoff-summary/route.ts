@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { jsonError, withRouteTiming } from "@/lib/api-utils";
+import { swrCacheHeaders } from "@/lib/http/response";
 
 export const dynamic = "force-dynamic";
 
@@ -59,6 +60,6 @@ export async function GET() {
       handoffCompleted: handoffCompleted ?? 0,
       clientConfirmed: clientConfirmed ?? 0,
       handoffMissingClientConfirm: handoffMissingClientConfirm ?? 0,
-    });
+    }, { headers: swrCacheHeaders(15, 60) });
   });
 }

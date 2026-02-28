@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { getWeekStart } from "@/lib/ops/weekStart";
 import { getStartOfDay } from "@/lib/followup/dates";
 import { withSummaryCache } from "@/lib/http/cached-handler";
+import { swrCacheHeaders } from "@/lib/http/response";
 
 export const dynamic = "force-dynamic";
 
@@ -63,7 +64,7 @@ export async function GET() {
         dueThisWeek: overdue + today + dueThisWeek,
         doneThisWeek: doneThisWeek ?? 0,
       };
-      }, 15_000);
+      }, 15_000, swrCacheHeaders(15, 60));
     } catch (err) {
       console.error("[reminders/summary]", err);
       return jsonError("Failed to load summary", 500);

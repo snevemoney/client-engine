@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { LeadActivityType, IntakeLeadStatus } from "@prisma/client";
 import { jsonError, withRouteTiming } from "@/lib/api-utils";
 import { withSummaryCache } from "@/lib/http/cached-handler";
+import { swrCacheHeaders } from "@/lib/http/response";
 import { getStartOfDay, getEndOfDay, isValidDate } from "@/lib/followup/dates";
 import { getWeekStart } from "@/lib/ops/weekStart";
 
@@ -214,6 +215,6 @@ export async function GET() {
       proposalsNoFollowUp,
       noSalesActions7d,
     };
-    }, 15_000);
+    }, 15_000, swrCacheHeaders(15, 60));
   });
 }
