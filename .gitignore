@@ -45,3 +45,8 @@ next-env.d.ts
 .env
 backups/
 dist/
+
+# IDE / tool state
+.claude/
+.cursor/
+.playwright-mcp/
