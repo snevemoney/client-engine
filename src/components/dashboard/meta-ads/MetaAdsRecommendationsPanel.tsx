@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { RefreshCw, Zap, Play, Filter } from "lucide-react";
+import { useConfirmDialog } from "@/hooks/useConfirmDialog";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 type Rec = {
   id: string;
@@ -100,6 +102,8 @@ export function MetaAdsRecommendationsPanel({ onRefresh, onData }: { onRefresh?:
     }
   }
 
+  const { confirm: confirmApply, dialogProps: applyDialogProps } = useConfirmDialog();
+
   async function patchRec(id: string, action: "approve" | "dismiss" | "false_positive" | "reset") {
     setActionId(id);
     try {
@@ -109,10 +113,25 @@ export function MetaAdsRecommendationsPanel({ onRefresh, onData }: { onRefresh?:
         body: JSON.stringify({ action }),
       });
       if (res.ok) await fetchRecs();
-      else setError((await res.json()).error ?? "Failed");
+      else {
+        const json = await res.json().catch(() => null);
+        setError(json?.error ?? "Failed");
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed");
     } finally {
       setActionId(null);
     }
+  }
+
+  async function requestApply(id: string) {
+    const ok = await confirmApply({
+      title: "Apply recommendation",
+      body: "This will execute the recommendation action on Meta Ads. Continue?",
+      confirmLabel: "Apply",
+      variant: "destructive",
+    });
+    if (ok) void apply(id);
   }
 
   async function apply(id: string) {
@@ -130,6 +149,8 @@ export function MetaAdsRecommendationsPanel({ onRefresh, onData }: { onRefresh?:
       } else {
         setError(json.error ?? "Failed");
       }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed");
     } finally {
       setActionId(null);
     }
@@ -348,7 +369,7 @@ export function MetaAdsRecommendationsPanel({ onRefresh, onData }: { onRefresh?:
                     )}
                     {canApply(r) ? (
                       <button
-                        onClick={() => apply(r.id)}
+                        onClick={() => requestApply(r.id)}
                         disabled={actionId !== null}
                         className="flex items-center gap-1 rounded px-2 py-1 text-[10px] text-amber-200 bg-amber-900/40 hover:bg-amber-900/60 disabled:opacity-50"
                       >
@@ -374,6 +395,7 @@ export function MetaAdsRecommendationsPanel({ onRefresh, onData }: { onRefresh?:
           Queued: {counts.queued ?? 0} · Approved: {counts.approved ?? 0} · Applied: {counts.applied ?? 0} · False +: {counts.false_positive ?? 0}
         </p>
       )}
+      <ConfirmDialog {...applyDialogProps} />
     </section>
   );
 }

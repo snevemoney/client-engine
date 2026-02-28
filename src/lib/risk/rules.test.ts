@@ -114,4 +114,61 @@ describe("risk rules", () => {
     expect(rules).toContain("stale_running_jobs");
     expect(rules).toContain("score_in_critical_band");
   });
+
+  describe("growth_pipeline_zero_activity_7d (Phase 6.3)", () => {
+    it("does not fire without ownerUserId", () => {
+      const out = evaluateRiskRules({
+        ...baseCtx,
+        growthDealCount: 5,
+        growthLastActivityAt: null,
+      });
+      expect(out.every((r) => r.createdByRule !== "growth_pipeline_zero_activity_7d")).toBe(true);
+    });
+
+    it("does not fire when dealCount < 3", () => {
+      const out = evaluateRiskRules({
+        ...baseCtx,
+        ownerUserId: "user-1",
+        growthDealCount: 2,
+        growthLastActivityAt: null,
+      });
+      expect(out.every((r) => r.createdByRule !== "growth_pipeline_zero_activity_7d")).toBe(true);
+    });
+
+    it("fires when dealCount >= 3 and no activity for 7+ days", () => {
+      const eightDaysAgo = new Date(baseCtx.now.getTime() - 8 * 86400000);
+      const out = evaluateRiskRules({
+        ...baseCtx,
+        ownerUserId: "user-1",
+        growthDealCount: 3,
+        growthLastActivityAt: eightDaysAgo,
+      });
+      const rule = out.find((r) => r.createdByRule === "growth_pipeline_zero_activity_7d");
+      expect(rule).toBeDefined();
+      expect(rule!.severity).toBe("high");
+      expect(rule!.dedupeKey).toBe("risk:growth_pipeline_zero_activity_7d:growth:user-1");
+      expect(rule!.sourceId).toBe("user-1");
+    });
+
+    it("fires when dealCount >= 3 and lastActivityAt is null", () => {
+      const out = evaluateRiskRules({
+        ...baseCtx,
+        ownerUserId: "user-2",
+        growthDealCount: 5,
+        growthLastActivityAt: null,
+      });
+      expect(out.some((r) => r.createdByRule === "growth_pipeline_zero_activity_7d")).toBe(true);
+    });
+
+    it("does not fire when activity is recent (< 7 days)", () => {
+      const twoDaysAgo = new Date(baseCtx.now.getTime() - 2 * 86400000);
+      const out = evaluateRiskRules({
+        ...baseCtx,
+        ownerUserId: "user-1",
+        growthDealCount: 10,
+        growthLastActivityAt: twoDaysAgo,
+      });
+      expect(out.every((r) => r.createdByRule !== "growth_pipeline_zero_activity_7d")).toBe(true);
+    });
+  });
 });

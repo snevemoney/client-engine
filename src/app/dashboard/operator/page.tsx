@@ -1,12 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { toast } from "sonner";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { RefreshCw, TrendingUp, ChevronRight } from "lucide-react";
 import { gradeToColor } from "@/lib/operator-score/trends";
+import { useAsyncAction } from "@/hooks/useAsyncAction";
+import { useConfirmDialog } from "@/hooks/useConfirmDialog";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { AsyncState } from "@/components/ui/AsyncState";
+import { fetchJsonThrow } from "@/lib/http/fetch-json";
 
 type ScoreData = {
   score: number;
@@ -28,52 +33,57 @@ type OperatorScoreData = {
 export default function OperatorPage() {
   const [data, setData] = useState<OperatorScoreData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [snapshotLoading, setSnapshotLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [historyWeekly, setHistoryWeekly] = useState<{ periodStart: string; score: number; grade: string }[]>([]);
   const [historyMonthly, setHistoryMonthly] = useState<{ periodStart: string; score: number; grade: string }[]>([]);
+  const abortRef = useRef<AbortController | null>(null);
 
-  const fetchData = () => {
+  const toastFn = (m: string, t?: "success" | "error") => t === "error" ? toast.error(m) : toast.success(m);
+  const { confirm, dialogProps } = useConfirmDialog();
+
+  const fetchData = useCallback(async () => {
+    if (abortRef.current) abortRef.current.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
     setLoading(true);
-    Promise.all([
-      fetch("/api/operator-score/current").then((r) => (r.ok ? r.json() : null)),
-      fetch("/api/operator-score/history?periodType=weekly&limit=8").then((r) => (r.ok ? r.json() : null)),
-      fetch("/api/operator-score/history?periodType=monthly&limit=6").then((r) => (r.ok ? r.json() : null)),
-    ])
-      .then(([current, histW, histM]) => {
-        setData(current && typeof current === "object" ? current : null);
-        setHistoryWeekly(histW?.items ?? []);
-        setHistoryMonthly(histM?.items ?? []);
-      })
-      .catch(() => setData(null))
-      .finally(() => setLoading(false));
-  };
-
-  useEffect(() => {
-    fetchData();
+    setError(null);
+    try {
+      const [current, histW, histM] = await Promise.all([
+        fetch("/api/operator-score/current", { credentials: "include", signal: controller.signal, cache: "no-store" }).then((r) => (r.ok ? r.json() : Promise.reject(new Error("Failed to load operator score")))),
+        fetch("/api/operator-score/history?periodType=weekly&limit=8", { credentials: "include", signal: controller.signal, cache: "no-store" }).then((r) => (r.ok ? r.json() : null)),
+        fetch("/api/operator-score/history?periodType=monthly&limit=6", { credentials: "include", signal: controller.signal, cache: "no-store" }).then((r) => (r.ok ? r.json() : null)),
+      ]);
+      if (controller.signal.aborted) return;
+      setData(current && typeof current === "object" ? current : null);
+      setHistoryWeekly(histW?.items ?? []);
+      setHistoryMonthly(histM?.items ?? []);
+    } catch (e) {
+      if (controller.signal.aborted) return;
+      if (e instanceof Error && (e.name === "AbortError" || e.message?.includes("aborted"))) return;
+      setError(e instanceof Error ? e.message : "Failed to load");
+      setData(null);
+    } finally {
+      if (!controller.signal.aborted) {
+        setLoading(false);
+        abortRef.current = null;
+      }
+    }
   }, []);
 
-  const handleSnapshot = async () => {
-    setSnapshotLoading(true);
-    try {
-      const res = await fetch("/api/operator-score/snapshot", { method: "POST" });
-      if (res.ok) fetchData();
-      else {
-        const d = await res.json();
-        toast.error(d?.error ?? "Snapshot failed");
-      }
-    } finally {
-      setSnapshotLoading(false);
-    }
-  };
+  useEffect(() => {
+    void fetchData();
+    return () => { if (abortRef.current) abortRef.current.abort(); };
+  }, [fetchData]);
 
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Operator Score</h1>
-        <div className="py-12 text-center text-neutral-500">Loading…</div>
-      </div>
-    );
-  }
+  const { execute: handleSnapshot, pending: snapshotLoading } = useAsyncAction(
+    async () => fetchJsonThrow("/api/operator-score/snapshot", { method: "POST" }),
+    { toast: toastFn, successMessage: "Score snapshot captured", onSuccess: () => void fetchData() },
+  );
+
+  const onSnapshotClick = async () => {
+    if (!(await confirm({ title: "Capture score snapshot?", body: "This will record a point-in-time snapshot of the current operator score." }))) return;
+    void handleSnapshot();
+  };
 
   const w = data?.weekly ?? { score: 0, grade: "—", breakdown: {}, summary: "", topWins: [], topRisks: [], deltaVsPrev: { delta: 0, direction: "flat" } };
   const m = data?.monthly ?? { score: 0, grade: "—", breakdown: {}, summary: "", topWins: [], topRisks: [], deltaVsPrev: { delta: 0, direction: "flat" } };
@@ -95,10 +105,12 @@ export default function OperatorPage() {
             Performance and execution quality across pipeline, conversion, delivery, proof, and cadence.
           </p>
         </div>
-        <Button size="sm" onClick={handleSnapshot} disabled={snapshotLoading}>
+        <Button size="sm" onClick={onSnapshotClick} disabled={snapshotLoading}>
           {snapshotLoading ? "Capturing…" : "Capture Score Snapshot"}
         </Button>
       </div>
+      <ConfirmDialog {...dialogProps} />
+      <AsyncState loading={loading} error={error} empty={!loading && !error && !data} emptyMessage="No operator score data" onRetry={fetchData}>
 
       {/* Score header */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -236,6 +248,7 @@ export default function OperatorPage() {
           </Button>
         </Link>
       </div>
+      </AsyncState>
     </div>
   );
 }

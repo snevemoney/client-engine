@@ -11,6 +11,10 @@ import { AsyncState } from "@/components/ui/AsyncState";
 import { PaginationControls } from "@/components/ui/PaginationControls";
 import { formatDateSafe } from "@/lib/ui/date-safe";
 import { normalizePagination } from "@/lib/ui/pagination-safe";
+import { useAsyncAction } from "@/hooks/useAsyncAction";
+import { fetchJsonThrow } from "@/lib/http/fetch-json";
+import { useConfirmDialog } from "@/hooks/useConfirmDialog";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 type Reminder = {
   id: string;
@@ -41,6 +45,8 @@ function priorityColor(p: string): string {
   return "bg-neutral-600/20 text-neutral-500";
 }
 
+const toastFn = (m: string, t?: "success" | "error") => t === "error" ? toast.error(m) : toast.success(m);
+
 export default function RemindersPage() {
   const url = useUrlQueryState();
   const [reminders, setReminders] = useState<Reminder[]>([]);
@@ -48,10 +54,12 @@ export default function RemindersPage() {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [runRulesLoading, setRunRulesLoading] = useState(false);
   const [actioningId, setActioningId] = useState<string | null>(null);
+  const [showNewForm, setShowNewForm] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
   const abortRef = useRef<AbortController | null>(null);
   const runIdRef = useRef(0);
+  const { confirm, dialogProps } = useConfirmDialog();
 
   const bucket = url.getString("bucket", "");
   const statusFilter = url.getString("status", "");
@@ -99,19 +107,27 @@ export default function RemindersPage() {
     return () => { if (abortRef.current) abortRef.current.abort(); };
   }, [fetchData]);
 
-  const handleRunRules = async () => {
-    setRunRulesLoading(true);
-    try {
-      const res = await fetch("/api/reminders/run-rules", { method: "POST" });
-      if (res.ok) fetchData();
-      else {
-        const d = await res.json();
-        toast.error(d?.error ?? "Run rules failed");
-      }
-    } finally {
-      setRunRulesLoading(false);
-    }
-  };
+  const runRules = useAsyncAction(
+    async () => {
+      await fetchJsonThrow("/api/reminders/run-rules", { method: "POST" });
+      void fetchData();
+    },
+    { toast: toastFn, successMessage: "Rules executed" }
+  );
+
+  const createReminder = useAsyncAction(
+    async () => {
+      if (!newTitle.trim()) return;
+      await fetchJsonThrow("/api/reminders", {
+        method: "POST",
+        body: JSON.stringify({ title: newTitle.trim(), kind: "manual" }),
+      });
+      setNewTitle("");
+      setShowNewForm(false);
+      void fetchData();
+    },
+    { toast: toastFn, successMessage: "Reminder created" }
+  );
 
   const handleComplete = async (id: string) => {
     if (actioningId) return;
@@ -120,7 +136,7 @@ export default function RemindersPage() {
     setActioningId(id);
     setReminders((list) =>
       list.map((r) =>
-        r.id === id ? { ...r, status: "done", completedAt: new Date().toISOString() } : r
+        r.id === id ? { ...r, status: "done" } : r
       )
     );
     try {
@@ -130,7 +146,7 @@ export default function RemindersPage() {
         setReminders((list) =>
           list.map((r) => (r.id === id ? prev : r))
         );
-        const d = await res.json();
+        const d = await res.json().catch(() => ({}));
         toast.error(d?.error ?? "Failed to complete");
       }
     } catch {
@@ -167,7 +183,7 @@ export default function RemindersPage() {
         setReminders((list) =>
           list.map((r) => (r.id === id ? prev : r))
         );
-        const d = await res.json();
+        const d = await res.json().catch(() => ({}));
         toast.error(d?.error ?? "Failed to snooze");
       }
     } catch {
@@ -182,6 +198,8 @@ export default function RemindersPage() {
 
   const handleDismiss = async (id: string) => {
     if (actioningId) return;
+    const ok = await confirm({ title: "Dismiss this reminder?", body: "This reminder will be permanently dismissed.", variant: "destructive" });
+    if (!ok) return;
     const prev = reminders.find((r) => r.id === id);
     if (!prev) return;
     setActioningId(id);
@@ -201,7 +219,7 @@ export default function RemindersPage() {
         setReminders((list) =>
           list.map((r) => (r.id === id ? prev : r))
         );
-        const d = await res.json();
+        const d = await res.json().catch(() => ({}));
         toast.error(d?.error ?? "Failed to dismiss");
       }
     } catch {
@@ -224,25 +242,36 @@ export default function RemindersPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={handleRunRules} disabled={runRulesLoading}>
+          <Button variant="outline" size="sm" onClick={() => void runRules.execute()} disabled={runRules.pending}>
             <Play className="w-4 h-4 mr-1" />
-            {runRulesLoading ? "Running…" : "Run Rules"}
+            {runRules.pending ? "Running…" : "Run Rules"}
           </Button>
-          <Button size="sm" onClick={() => {
-            const title = prompt("Reminder title:");
-            if (title) {
-              fetch("/api/reminders", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ title, kind: "manual" }),
-              }).then((r) => { if (r.ok) void fetchData(); });
-            }
-          }}>
+          <Button size="sm" onClick={() => setShowNewForm(true)} disabled={showNewForm}>
             <Plus className="w-4 h-4 mr-1" />
             New Reminder
           </Button>
         </div>
       </div>
+
+      {showNewForm && (
+        <div className="flex gap-2 items-center rounded-lg border border-neutral-800 bg-neutral-900/50 p-3">
+          <input
+            type="text"
+            placeholder="Reminder title…"
+            value={newTitle}
+            onChange={(e) => setNewTitle(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter" && newTitle.trim()) void createReminder.execute(); }}
+            className="flex-1 px-2 py-1 rounded bg-neutral-800 border border-neutral-700 text-sm"
+            autoFocus
+          />
+          <Button size="sm" onClick={() => void createReminder.execute()} disabled={!newTitle.trim() || createReminder.pending}>
+            {createReminder.pending ? "Creating…" : "Create"}
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => { setShowNewForm(false); setNewTitle(""); }}>
+            Cancel
+          </Button>
+        </div>
+      )}
 
       {/* Summary cards */}
       {summary && (
@@ -392,6 +421,7 @@ export default function RemindersPage() {
           </div>
         ) : null}
       </AsyncState>
+      <ConfirmDialog {...dialogProps} />
     </div>
   );
 }

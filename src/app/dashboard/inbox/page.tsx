@@ -11,6 +11,8 @@ import { PaginationControls } from "@/components/ui/PaginationControls";
 import { formatDateSafe } from "@/lib/ui/date-safe";
 import { normalizePagination } from "@/lib/ui/pagination-safe";
 import { useUrlQueryState } from "@/hooks/useUrlQueryState";
+import { useConfirmDialog } from "@/hooks/useConfirmDialog";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 type InAppItem = {
   id: string;
@@ -41,6 +43,7 @@ function severityColor(s: string): string {
 }
 
 export default function InboxPage() {
+  const { confirm, dialogProps } = useConfirmDialog();
   const url = useUrlQueryState();
   const [items, setItems] = useState<InAppItem[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
@@ -91,11 +94,12 @@ export default function InboxPage() {
       if (res.ok) void fetchData();
       else {
         setItems((list) => list.map((n) => (n.id === id ? { ...n, isRead: false } : n)));
-        const d = await res.json();
+        const d = await res.json().catch(() => null);
         toast.error(d?.error ?? "Failed");
       }
     } catch {
       setItems((list) => list.map((n) => (n.id === id ? { ...n, isRead: false } : n)));
+      toast.error("Failed to mark as read");
     } finally {
       setActioningId(null);
     }
@@ -103,14 +107,22 @@ export default function InboxPage() {
 
   const handleMarkAllRead = async () => {
     if (actioningId) return;
+    const ok = await confirm({
+      title: "Mark all as read?",
+      body: "This will mark all notifications as read. This cannot be undone.",
+      confirmLabel: "Mark all read",
+    });
+    if (!ok) return;
     setActioningId("all");
     try {
       const res = await fetch("/api/in-app-notifications/read-all", { method: "POST" });
       if (res.ok) void fetchData();
       else {
-        const d = await res.json();
+        const d = await res.json().catch(() => null);
         toast.error(d?.error ?? "Failed");
       }
+    } catch {
+      toast.error("Failed to mark all as read");
     } finally {
       setActioningId(null);
     }
@@ -255,6 +267,8 @@ export default function InboxPage() {
           </div>
         ) : null}
       </AsyncState>
+
+      <ConfirmDialog {...dialogProps} />
     </div>
   );
 }

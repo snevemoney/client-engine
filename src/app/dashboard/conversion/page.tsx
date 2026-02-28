@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { BarChart3 } from "lucide-react";
+import { useRetryableFetch } from "@/hooks/useRetryableFetch";
+import { AsyncState } from "@/components/ui/AsyncState";
 
 interface ConversionData {
   counts: { total: number; proposalSent: number; approved: number; buildStarted: number; buildCompleted: number; won: number; lost: number };
@@ -28,33 +29,11 @@ function formatMs(ms: number | null): string {
 }
 
 export default function ConversionPage() {
-  const [data, setData] = useState<ConversionData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data, loading, error, refetch } = useRetryableFetch<ConversionData>("/api/metrics/conversion");
 
-  useEffect(() => {
-    fetch("/api/metrics/conversion")
-      .then((r) => (r.ok ? r.json() : null))
-      .then(setData)
-      .finally(() => setLoading(false));
-  }, []);
-
-  if (loading) return (
-    <div className="space-y-6 animate-pulse">
-      <div className="h-8 w-48 rounded bg-muted" />
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {Array.from({ length: 7 }, (_, i) => (
-          <div key={i} className="border border-neutral-800 rounded-lg p-4 space-y-2">
-            <div className="h-3 w-20 rounded bg-muted" />
-            <div className="h-7 w-12 rounded bg-muted" />
-          </div>
-        ))}
-      </div>
-      <div className="h-40 rounded-lg bg-muted" />
-    </div>
-  );
-  if (!data) return <div className="text-neutral-500 py-12 text-center">Failed to load conversion data.</div>;
-
-  const { counts, rates, medianMs } = data;
+  const counts = data?.counts ?? { total: 0, proposalSent: 0, approved: 0, buildStarted: 0, buildCompleted: 0, won: 0, lost: 0 };
+  const rates = data?.rates ?? { proposalSentRate: 0, approvedRate: 0, buildStartRate: 0, buildCompleteRate: 0, winRate: 0 };
+  const medianMs = data?.medianMs ?? { created_to_proposalSent: null, proposalSent_to_approved: null, approved_to_buildStarted: null, buildStarted_to_buildCompleted: null };
   const maxCount = Math.max(counts.total, 1);
 
   return (
@@ -65,6 +44,8 @@ export default function ConversionPage() {
         </h1>
         <p className="text-sm text-neutral-400 mt-1">Lead → proposal sent → approved → build → won/lost</p>
       </div>
+
+      <AsyncState loading={loading} error={error} empty={!loading && !error && !data} emptyMessage="No conversion data" onRetry={refetch}>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[
@@ -113,6 +94,8 @@ export default function ConversionPage() {
           <div className="text-sm">Build started → Completed: {formatMs(medianMs.buildStarted_to_buildCompleted)}</div>
         </div>
       </div>
+
+      </AsyncState>
     </div>
   );
 }

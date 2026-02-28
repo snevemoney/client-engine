@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Wrench, Plus, Check, Circle } from "lucide-react";
+import { toast } from "sonner";
 
 export type BuildTaskItem = {
   id: string;
@@ -76,9 +77,11 @@ export function BuildOpsPageClient({
         setAddBusinessImpact("");
         setShowAdd(false);
       } else {
-        const err = await res.json();
-        alert(err.error ?? "Failed to create");
+        const err = await res.json().catch(() => null);
+        toast.error(err?.error ?? "Failed to create");
       }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to create task");
     } finally {
       setSaving(false);
     }
@@ -98,7 +101,11 @@ export function BuildOpsPageClient({
       if (res.ok) {
         const updated = await res.json();
         setTasks((prev) => prev.map((t) => (t.id === id ? updated : t)));
+      } else {
+        toast.error("Failed to update task");
       }
+    } catch {
+      toast.error("Failed to update task");
     } finally {
       setUpdatingId(null);
     }

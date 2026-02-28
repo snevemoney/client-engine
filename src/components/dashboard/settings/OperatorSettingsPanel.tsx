@@ -141,8 +141,8 @@ export function OperatorSettingsPanel({
         }),
       });
       if (!res.ok) {
-        const data = await res.json();
-        setMessage(data.error ?? "Save failed");
+        const data = await res.json().catch(() => null);
+        setMessage(data?.error ?? "Save failed");
         return;
       }
       setMessage("Saved!");

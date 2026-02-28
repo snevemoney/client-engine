@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ChevronLeft, RotateCcw } from "lucide-react";
 import { formatDateTimeSafe } from "@/lib/ui/date-safe";
+import { useConfirmDialog } from "@/hooks/useConfirmDialog";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 type JobDetail = {
   id: string;
@@ -56,6 +58,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
+  const { confirm: confirmRetry, dialogProps: retryDialogProps } = useConfirmDialog();
 
   useEffect(() => {
     params.then((p) => setId(p.id));
@@ -66,12 +69,17 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
     fetch(`/api/jobs/${id}`, { credentials: "include", cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => setJob(d && typeof d === "object" ? d : null))
-      .catch(() => setJob(null))
+      .catch(() => {
+        setError("Failed to load job");
+        setJob(null);
+      })
       .finally(() => setLoading(false));
   }, [id]);
 
   const handleRetry = async () => {
     if (!id || retrying) return;
+    const ok = await confirmRetry({ title: "Retry job", body: "Re-queue this job for execution?", confirmLabel: "Retry" });
+    if (!ok) return;
     setRetrying(true);
     try {
       const res = await fetch(`/api/jobs/${id}/retry`, { method: "POST" });
@@ -79,9 +87,11 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
         const d = await res.json();
         setJob((prev) => (prev ? { ...prev, status: d.status ?? "queued" } : null));
       } else {
-        const d = await res.json();
+        const d = await res.json().catch(() => null);
         toast.error(d?.error ?? "Retry failed");
       }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Retry failed");
     } finally {
       setRetrying(false);
     }
@@ -196,6 +206,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
           </ul>
         </section>
       )}
+      <ConfirmDialog {...retryDialogProps} />
     </div>
   );
 }

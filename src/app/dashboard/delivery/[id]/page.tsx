@@ -1,12 +1,16 @@
 "use client";
 
-import { use, useState, useEffect } from "react";
+import { use, useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DeliveryHandoffRetention } from "@/components/delivery/DeliveryHandoffRetention";
 import { DeliveryChecklist } from "@/components/delivery/DeliveryChecklist";
+import { useConfirmDialog } from "@/hooks/useConfirmDialog";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { useAsyncAction } from "@/hooks/useAsyncAction";
+import { fetchJsonThrow } from "@/lib/http/fetch-json";
 
 type Project = {
   id: string;
@@ -73,35 +77,67 @@ export default function DeliveryDetailPage({ params }: { params: Promise<{ id: s
   const { id } = use(params);
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const { confirm, dialogProps } = useConfirmDialog();
+  const toastFn = (m: string, t?: "success" | "error") => t === "error" ? toast.error(m) : toast.success(m);
 
-  useEffect(() => {
-    fetch(`/api/delivery-projects/${id}`)
-      .then((r) => r.json())
-      .then((d) => setProject(d))
-      .catch(() => setProject(null))
-      .finally(() => setLoading(false));
+  const refetch = useCallback(async () => {
+    if (abortRef.current) abortRef.current.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await fetchJsonThrow<Project>(`/api/delivery-projects/${id}`, { signal: controller.signal });
+      if (controller.signal.aborted) return;
+      setProject(data);
+    } catch (e) {
+      if (controller.signal.aborted) return;
+      if (e instanceof Error && (e.name === "AbortError" || e.message?.includes("aborted"))) return;
+      setError(e instanceof Error ? e.message : "Failed to load");
+      setProject(null);
+    } finally {
+      if (!controller.signal.aborted) {
+        setLoading(false);
+        abortRef.current = null;
+      }
+    }
   }, [id]);
 
+  useEffect(() => {
+    void refetch();
+    return () => { if (abortRef.current) abortRef.current.abort(); };
+  }, [refetch]);
+
   if (loading) return <div className="py-12 text-neutral-500">Loading…</div>;
-  if (!project) return (
+  if (error || !project) return (
     <div>
-      <p className="text-neutral-500">Project not found.</p>
+      <p className="text-neutral-500">{error ?? "Project not found."}</p>
       <Link href="/dashboard/delivery" className="text-emerald-400 hover:underline mt-2 inline-block">← Delivery</Link>
     </div>
   );
 
   const handleComplete = async () => {
-    const res = await fetch(`/api/delivery-projects/${id}/complete`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
-    if (res.ok) window.location.reload();
-    else {
-      const d = await res.json();
-      toast.error(d?.error ?? "Cannot complete");
+    if (!(await confirm({ title: "Mark project completed?", body: "This will mark the delivery project as completed.", confirmLabel: "Complete" }))) return;
+    try {
+      await fetchJsonThrow(`/api/delivery-projects/${id}/complete`, { method: "POST", body: "{}" });
+      toast.success("Project completed");
+      void refetch();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Cannot complete");
     }
   };
 
   const handleCreateProof = async () => {
-    const res = await fetch(`/api/delivery-projects/${id}/create-proof-candidate`, { method: "POST" });
-    if (res.ok) window.location.reload();
+    if (!(await confirm({ title: "Create proof candidate?", body: "This will create a new proof candidate from this project.", confirmLabel: "Create" }))) return;
+    try {
+      await fetchJsonThrow(`/api/delivery-projects/${id}/create-proof-candidate`, { method: "POST" });
+      toast.success("Proof candidate created");
+      void refetch();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to create proof candidate");
+    }
   };
 
   return (
@@ -197,8 +233,9 @@ export default function DeliveryDetailPage({ params }: { params: Promise<{ id: s
           upsellValueEstimate: project.upsellValueEstimate ?? null,
           postDeliveryHealth: project.postDeliveryHealth ?? "green",
         }}
-        onReload={() => window.location.reload()}
+        onReload={() => void refetch()}
       />
+      <ConfirmDialog {...dialogProps} />
     </div>
   );
 }

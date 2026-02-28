@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 import {
   buildProposalContentFromSections,
   getSnippetCharCount,
@@ -8,8 +9,13 @@ import {
   UPWORK_SNIPPET_MAX,
   type ProposalSections,
 } from "@/lib/proposals/sections";
+import { useAsyncAction } from "@/hooks/useAsyncAction";
+import { fetchJsonThrow } from "@/lib/http/fetch-json";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { Button } from "@/components/ui/button";
 import { Copy, Check } from "lucide-react";
+
+const toastFn = (m: string, t?: "success" | "error") => t === "error" ? toast.error(m) : toast.success(m);
 
 type Artifact = {
   id: string;
@@ -32,7 +38,6 @@ export default function ProposalConsoleEditor({ artifact, onSaved }: Props) {
   );
 
   const [sections, setSections] = useState<ProposalSections>(initialSections);
-  const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState("");
   const [copied, setCopied] = useState<string | null>(null);
 
@@ -41,6 +46,8 @@ export default function ProposalConsoleEditor({ artifact, onSaved }: Props) {
 
   const [readyToSend, setReadyToSend] = useState<boolean>(!!proposalUi.readyToSend);
   const [sentOnUpwork, setSentOnUpwork] = useState<boolean>(!!proposalUi.sentOnUpwork);
+
+  const debouncedSections = useDebouncedValue(sections, 400);
 
   const upworkCount = getSnippetCharCount(sections.upworkSnippet);
   const overLimit = upworkCount > UPWORK_SNIPPET_MAX;
@@ -52,28 +59,26 @@ export default function ProposalConsoleEditor({ artifact, onSaved }: Props) {
     setTimeout(() => setStatus(""), 2500);
   }
 
-  function copyToClipboard(text: string, label: string) {
-    navigator.clipboard.writeText(text).then(() => {
+  async function copyToClipboard(text: string, label: string) {
+    try {
+      await navigator.clipboard.writeText(text);
       setCopied(label);
       setTimeout(() => setCopied(null), 2000);
-    });
+      toast.success("Copied");
+    } catch {
+      toast.error("Failed to copy");
+    }
   }
 
-  async function saveAll(next?: Partial<ProposalSections>) {
-    setSaving(true);
-    setStatus("");
-
-    const merged: ProposalSections = {
-      ...sections,
-      ...(next ?? {}),
-    };
-
-    const content = buildProposalContentFromSections(merged);
-
-    try {
-      const res = await fetch(`/api/artifacts/${artifact.id}`, {
+  const { execute: doSaveAll, pending: savingAll } = useAsyncAction(
+    async (next?: Partial<ProposalSections>) => {
+      const merged: ProposalSections = {
+        ...debouncedSections,
+        ...(next ?? {}),
+      };
+      const content = buildProposalContentFromSections(merged);
+      const updated = await fetchJsonThrow<Artifact>(`/api/artifacts/${artifact.id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           content,
           meta: {
@@ -89,31 +94,24 @@ export default function ProposalConsoleEditor({ artifact, onSaved }: Props) {
           },
         }),
       });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error((err as { error?: string }).error ?? "Failed to save");
-      }
-
-      const updated = await res.json();
       setSections(merged);
-      showStatus("Saved");
-      onSaved?.(updated);
-    } catch (e) {
-      showStatus(e instanceof Error ? e.message : "Save failed");
-    } finally {
-      setSaving(false);
+      return updated;
+    },
+    {
+      toast: toastFn,
+      successMessage: "Saved",
+      onSuccess: (updated) => {
+        showStatus("Saved");
+        onSaved?.(updated);
+      },
+      onError: (msg) => showStatus(msg),
     }
-  }
+  );
 
-  async function saveToggles(nextReady: boolean, nextSent: boolean) {
-    setSaving(true);
-    setStatus("");
-
-    try {
-      const res = await fetch(`/api/artifacts/${artifact.id}`, {
+  const { execute: doSaveToggles, pending: savingToggles } = useAsyncAction(
+    async (nextReady: boolean, nextSent: boolean) => {
+      const updated = await fetchJsonThrow<Artifact>(`/api/artifacts/${artifact.id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           meta: {
             ...meta,
@@ -128,23 +126,22 @@ export default function ProposalConsoleEditor({ artifact, onSaved }: Props) {
           },
         }),
       });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error((err as { error?: string }).error ?? "Failed to save toggles");
-      }
-
-      const updated = await res.json();
       setReadyToSend(nextReady);
       setSentOnUpwork(nextSent);
-      showStatus("Saved");
-      onSaved?.(updated);
-    } catch (e) {
-      showStatus(e instanceof Error ? e.message : "Save failed");
-    } finally {
-      setSaving(false);
+      return updated;
+    },
+    {
+      toast: toastFn,
+      successMessage: "Saved",
+      onSuccess: (updated) => {
+        showStatus("Saved");
+        onSaved?.(updated);
+      },
+      onError: (msg) => showStatus(msg),
     }
-  }
+  );
+
+  const saving = savingAll || savingToggles;
 
   return (
     <div className="space-y-6">
@@ -164,7 +161,7 @@ export default function ProposalConsoleEditor({ artifact, onSaved }: Props) {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => saveAll()}
+              onClick={() => doSaveAll()}
               disabled={saving}
               className="border-neutral-600 text-neutral-200 hover:bg-neutral-800"
             >
@@ -182,7 +179,7 @@ export default function ProposalConsoleEditor({ artifact, onSaved }: Props) {
               onChange={(e) => {
                 const next = e.target.checked;
                 setReadyToSend(next);
-                void saveToggles(next, sentOnUpwork);
+                void doSaveToggles(next, sentOnUpwork);
               }}
               disabled={saving}
               className="rounded border-neutral-600 bg-neutral-800"
@@ -196,7 +193,7 @@ export default function ProposalConsoleEditor({ artifact, onSaved }: Props) {
               onChange={(e) => {
                 const next = e.target.checked;
                 setSentOnUpwork(next);
-                void saveToggles(readyToSend, next);
+                void doSaveToggles(readyToSend, next);
               }}
               disabled={saving}
               className="rounded border-neutral-600 bg-neutral-800"

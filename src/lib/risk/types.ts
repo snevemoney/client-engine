@@ -33,4 +33,8 @@ export type RiskRuleContext = {
   proposalFollowupOverdueCount: number;
   /** Retention overdue count */
   retentionOverdueCount: number;
+  /** Phase 6.3: Growth pipeline (when ownerUserId provided) */
+  ownerUserId?: string;
+  growthDealCount?: number;
+  growthLastActivityAt?: Date | null;
 };

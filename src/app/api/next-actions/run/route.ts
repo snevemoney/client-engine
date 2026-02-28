@@ -8,6 +8,8 @@ import { getRequestClientKey, rateLimitByKey } from "@/lib/http/rate-limit";
 import { fetchNextActionContext } from "@/lib/next-actions/fetch-context";
 import { produceNextActions } from "@/lib/next-actions/rules";
 import { filterByPreferences } from "@/lib/next-actions/preferences";
+import { loadLearnedWeights } from "@/lib/memory/weights";
+import { loadEffectivenessMap } from "@/lib/memory/effectiveness";
 import { upsertNextActions, recordNextActionRun } from "@/lib/next-actions/service";
 import { parseScope } from "@/lib/next-actions/scope";
 import { logOpsEventSafe } from "@/lib/ops-events/log";
@@ -39,8 +41,13 @@ export async function POST(request: NextRequest) {
     const runKey = `nba:${session.user?.id ?? "anon"}:${entityType}:${entityId}:${now.toISOString().slice(0, 10)}`;
 
     try {
-      const ctx = await fetchNextActionContext({ now });
-      let candidates = produceNextActions(ctx, entityType);
+      const ownerUserId =
+        entityType === "founder_growth" ? session.user?.id ?? undefined : undefined;
+      const ctx = await fetchNextActionContext({ now, ownerUserId });
+      const [learnedWeights, effectivenessByRuleKey] = session.user?.id
+        ? await Promise.all([loadLearnedWeights(session.user.id), loadEffectivenessMap(session.user.id)])
+        : [undefined, undefined];
+      let candidates = produceNextActions(ctx, entityType, learnedWeights, effectivenessByRuleKey);
       candidates = await filterByPreferences(candidates, entityType, entityId);
       const result = await upsertNextActions(candidates);
       await recordNextActionRun(runKey, "manual", {

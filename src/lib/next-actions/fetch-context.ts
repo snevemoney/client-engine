@@ -1,5 +1,6 @@
 /**
  * Phase 4.0: Fetch context for NBA rule evaluation.
+ * Phase 6.3: Growth context when ownerUserId provided.
  */
 
 import { db } from "@/lib/db";
@@ -7,7 +8,7 @@ import { getStartOfDay } from "@/lib/followup/dates";
 
 const HOURS_24 = 24;
 
-export async function fetchNextActionContext(opts?: { now?: Date }): Promise<{
+export async function fetchNextActionContext(opts?: { now?: Date; ownerUserId?: string }): Promise<{
   now: Date;
   commandCenterBand: string | null;
   failedDeliveryCount: number;
@@ -18,8 +19,16 @@ export async function fetchNextActionContext(opts?: { now?: Date }): Promise<{
   wonNoDeliveryCount: number;
   referralGapCount: number;
   stageStallCount: number;
+  /** Phase 6.3: Growth pipeline (when ownerUserId provided) */
+  growthOverdueCount?: number;
+  growthNoOutreachCount?: number;
+  growthDealCount?: number;
+  growthLastActivityAt?: Date | null;
+  growthFirstOverdueDealId?: string | null;
+  growthFirstNoOutreachDealId?: string | null;
 }> {
   const now = opts?.now ?? new Date();
+  const ownerUserId = opts?.ownerUserId;
   const since24h = new Date(now.getTime() - HOURS_24 * 60 * 60 * 1000);
   const startToday = getStartOfDay(now);
   const msPerDay = 86400000;
@@ -104,6 +113,96 @@ export async function fetchNextActionContext(opts?: { now?: Date }): Promise<{
     }),
   ]);
 
+  let growthOverdueCount: number | undefined;
+  let growthNoOutreachCount: number | undefined;
+  let growthDealCount: number | undefined;
+  let growthLastActivityAt: Date | null | undefined;
+  let growthFirstOverdueDealId: string | null | undefined;
+  let growthFirstNoOutreachDealId: string | null | undefined;
+  if (ownerUserId) {
+    const [
+      overdueFromSchedule,
+      overdueFromDeal,
+      noOutreach,
+      dealCount,
+      lastOutreachEvt,
+      lastMsg,
+      lastEvent,
+      firstOverdue,
+      firstNoOutreach,
+    ] = await Promise.all([
+      db.followUpSchedule.count({
+          where: {
+            deal: { ownerUserId, stage: { notIn: ["won", "lost"] } },
+            status: "active",
+            nextFollowUpAt: { lt: startToday },
+          },
+        }),
+        db.deal.count({
+          where: {
+            ownerUserId,
+            stage: { notIn: ["won", "lost"] },
+            followUpSchedules: { none: { status: "active" } },
+            nextFollowUpAt: { lt: startToday, not: null },
+          },
+        }),
+        db.deal.count({
+          where: {
+            ownerUserId,
+            stage: "new",
+            outreachEvents: { none: { type: "sent" } },
+            outreachMessages: { none: { status: "sent" } },
+          },
+        }),
+        db.deal.count({ where: { ownerUserId } }),
+      db.outreachEvent.findFirst({
+        where: { ownerUserId },
+        orderBy: { occurredAt: "desc" },
+        select: { occurredAt: true },
+      }),
+      db.outreachMessage.findFirst({
+        where: { deal: { ownerUserId } },
+        orderBy: { sentAt: "desc" },
+        select: { sentAt: true },
+      }),
+      db.dealEvent.findFirst({
+        where: { deal: { ownerUserId } },
+        orderBy: { occurredAt: "desc" },
+        select: { occurredAt: true },
+      }),
+      db.followUpSchedule.findFirst({
+        where: {
+          deal: { ownerUserId, stage: { notIn: ["won", "lost"] } },
+          status: "active",
+          nextFollowUpAt: { lt: startToday },
+        },
+        orderBy: { nextFollowUpAt: "asc" },
+        select: { dealId: true },
+      }),
+      db.deal.findFirst({
+        where: {
+          ownerUserId,
+          stage: "new",
+          outreachEvents: { none: { type: "sent" } },
+          outreachMessages: { none: { status: "sent" } },
+        },
+        select: { id: true },
+      }),
+    ]);
+    growthOverdueCount = overdueFromSchedule + overdueFromDeal;
+    growthNoOutreachCount = noOutreach;
+    growthDealCount = dealCount;
+    growthFirstOverdueDealId = firstOverdue?.dealId ?? null;
+    growthFirstNoOutreachDealId = firstNoOutreach?.id ?? null;
+    const evtTs = lastOutreachEvt?.occurredAt?.getTime();
+    const msgTs = lastMsg?.sentAt?.getTime();
+    const dealEvtTs = lastEvent?.occurredAt?.getTime();
+    growthLastActivityAt =
+      evtTs != null || msgTs != null || dealEvtTs != null
+        ? new Date(Math.max(evtTs ?? 0, msgTs ?? 0, dealEvtTs ?? 0))
+        : null;
+  }
+
   return {
     now,
     commandCenterBand: latestScore?.band ?? null,
@@ -115,5 +214,13 @@ export async function fetchNextActionContext(opts?: { now?: Date }): Promise<{
     wonNoDeliveryCount: wonNoDelivery ?? 0,
     referralGapCount: referralGap ?? 0,
     stageStallCount: stageStall ?? 0,
+    ...(ownerUserId && {
+      growthOverdueCount,
+      growthNoOutreachCount,
+      growthDealCount,
+      growthLastActivityAt,
+      growthFirstOverdueDealId,
+      growthFirstNoOutreachDealId,
+    }),
   };
 }

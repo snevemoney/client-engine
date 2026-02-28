@@ -11,6 +11,8 @@ import {
   ScoreFactorsTable,
   ScoreEventsList,
 } from "@/components/scores";
+import { useConfirmDialog } from "@/hooks/useConfirmDialog";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 const STORAGE_KEY = "qa-scores-selection";
 
@@ -64,6 +66,7 @@ function saveSelection(entityType: string, entityId: string) {
 }
 
 export default function ScoresQAPage() {
+  const { confirm, dialogProps } = useConfirmDialog();
   const [entityType, setEntityType] = useState("command_center");
   const [entityId, setEntityId] = useState("command_center");
   const [latest, setLatest] = useState<{
@@ -183,7 +186,7 @@ export default function ScoresQAPage() {
         await fetchLatest();
         await fetchHistory();
       } else {
-        const err = await res.json();
+        const err = await res.json().catch(() => null);
         setComputeError(err?.error ?? "Compute failed");
       }
     } catch (e) {
@@ -264,7 +267,14 @@ export default function ScoresQAPage() {
             <Button
               size="sm"
               variant="default"
-              onClick={() => void handleCompute()}
+              onClick={async () => {
+                const ok = await confirm({
+                  title: "Recompute score?",
+                  body: `This will recompute the score for ${entityType} / ${entityId}.`,
+                  confirmLabel: "Compute",
+                });
+                if (ok) void handleCompute();
+              }}
               disabled={computing}
             >
               <Calculator className="w-4 h-4 mr-1" />
@@ -319,6 +329,8 @@ export default function ScoresQAPage() {
       {!loading && !latest && (
         <p className="text-sm text-neutral-500">No score data. Click &quot;Compute score now&quot; to create one.</p>
       )}
+
+      <ConfirmDialog {...dialogProps} />
     </div>
   );
 }

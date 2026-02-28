@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { fetchJsonThrow } from "@/lib/http/fetch-json";
 
 export default function NewDeliveryPage() {
   const router = useRouter();
@@ -20,23 +22,20 @@ export default function NewDeliveryPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/delivery-projects", {
+      const data = await fetchJsonThrow<{ id: string }>("/api/delivery-projects", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: title.trim(),
           clientName: clientName.trim() || null,
           company: company.trim() || null,
         }),
       });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setError(data?.error ?? "Failed to create");
-        return;
-      }
+      toast.success("Project created");
       router.push(`/dashboard/delivery/${data.id}`);
-    } catch {
-      setError("Failed to create");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to create";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }

@@ -7,6 +7,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Search, Trash2, Filter, X, Zap } from "lucide-react";
+import { useAsyncAction } from "@/hooks/useAsyncAction";
+import { useConfirmDialog } from "@/hooks/useConfirmDialog";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { fetchJsonThrow } from "@/lib/http/fetch-json";
+import { useDomainContext } from "@/hooks/useDomainContext";
+import { IntelligenceBanner } from "@/components/dashboard/IntelligenceBanner";
 
 interface Lead {
   id: string;
@@ -40,6 +46,10 @@ export function LeadsTable() {
   const [error, setError] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [pipelineRunning, setPipelineRunning] = useState(false);
+
+  const toastFn = (m: string, t?: "success" | "error") => t === "error" ? toast.error(m) : toast.success(m);
+  const { confirm, dialogProps } = useConfirmDialog();
+  const { risk, nba, loading: contextLoading } = useDomainContext("leads");
 
   const fetchLeads = useCallback(async () => {
     setLoading(true);
@@ -139,11 +149,20 @@ export function LeadsTable() {
     }
   }
 
-  async function deleteLead(id: string) {
-    if (!confirm("Delete this lead?")) return;
-    await fetch(`/api/leads/${id}`, { method: "DELETE" });
-    setLeads((prev) => prev.filter((l) => l.id !== id));
-  }
+  const { execute: deleteLead, pending: deletePending } = useAsyncAction(
+    async (id: string) => {
+      const confirmed = await confirm({
+        title: "Delete this lead?",
+        body: "This action cannot be undone. The lead and its data will be permanently removed.",
+        confirmLabel: "Delete",
+        variant: "destructive",
+      });
+      if (!confirmed) return;
+      await fetchJsonThrow(`/api/leads/${id}`, { method: "DELETE" });
+      setLeads((prev) => prev.filter((l) => l.id !== id));
+    },
+    { toast: toastFn, successMessage: "Lead deleted" },
+  );
 
   const activeFilters = (statusFilter !== "ALL" ? 1 : 0) + (sourceFilter !== "ALL" ? 1 : 0) + (verdictFilter !== "ALL" ? 1 : 0);
 
@@ -158,6 +177,7 @@ export function LeadsTable() {
 
   return (
     <div className="space-y-4">
+      <IntelligenceBanner risk={risk} nba={nba} score={null} loading={contextLoading} />
       {/* Toolbar */}
       <div className="flex items-center gap-3 flex-wrap">
         <div className="relative flex-1 min-w-[200px] max-w-md">
@@ -320,7 +340,7 @@ export function LeadsTable() {
                   </td>
                   <td className="px-4 py-3 text-neutral-400 hidden lg:table-cell">{lead.budget || "—"}</td>
                   <td className="px-4 py-3 text-right">
-                    <button onClick={() => deleteLead(lead.id)} className="text-neutral-600 hover:text-red-400 transition-colors p-1">
+                    <button onClick={() => deleteLead(lead.id)} disabled={deletePending} className="text-neutral-600 hover:text-red-400 transition-colors p-1 disabled:opacity-50">
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </td>
@@ -330,6 +350,8 @@ export function LeadsTable() {
           </tbody>
         </table>
       </div>
+
+      <ConfirmDialog {...dialogProps} />
     </div>
   );
 }

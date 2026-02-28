@@ -10,6 +10,8 @@ import { useUrlQueryState } from "@/hooks/useUrlQueryState";
 import { PaginationControls } from "@/components/ui/PaginationControls";
 import { formatDateTimeSafe } from "@/lib/ui/date-safe";
 import { normalizePagination } from "@/lib/ui/pagination-safe";
+import { useConfirmDialog } from "@/hooks/useConfirmDialog";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 type Job = {
   id: string;
@@ -66,6 +68,7 @@ export default function JobsPage() {
   const [runLoading, setRunLoading] = useState(false);
   const [tickLoading, setTickLoading] = useState(false);
   const [actioningId, setActioningId] = useState<string | null>(null);
+  const { confirm: confirmCancel, dialogProps: cancelDialogProps } = useConfirmDialog();
   const abortRef = useRef<AbortController | null>(null);
   const runIdRef = useRef(0);
 
@@ -128,6 +131,8 @@ export default function JobsPage() {
       const data = await res.json();
       if (res.ok) void fetchData();
       else toast.error(data?.error ?? "Run failed");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Run failed");
     } finally {
       setRunLoading(false);
     }
@@ -140,24 +145,30 @@ export default function JobsPage() {
       const res = await fetch(`/api/jobs/${id}/retry`, { method: "POST" });
       if (res.ok) void fetchData();
       else {
-        const d = await res.json();
+        const d = await res.json().catch(() => null);
         toast.error(d?.error ?? "Retry failed");
       }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Retry failed");
     } finally {
       setActioningId(null);
     }
   };
 
   const handleCancel = async (id: string) => {
+    const ok = await confirmCancel({ title: "Cancel job", body: "Cancel this job? This cannot be undone.", confirmLabel: "Cancel job", variant: "destructive" });
+    if (!ok) return;
     if (actioningId) return;
     setActioningId(id);
     try {
       const res = await fetch(`/api/jobs/${id}/cancel`, { method: "POST" });
       if (res.ok) void fetchData();
       else {
-        const d = await res.json();
+        const d = await res.json().catch(() => null);
         toast.error(d?.error ?? "Cancel failed");
       }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Cancel failed");
     } finally {
       setActioningId(null);
     }
@@ -210,7 +221,9 @@ export default function JobsPage() {
             try {
               const res = await fetch("/api/jobs/tick", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) });
               if (res.ok) void fetchData();
-              else { const d = await res.json(); toast.error(d?.error ?? "Tick failed"); }
+              else { const d = await res.json().catch(() => null); toast.error(d?.error ?? "Tick failed"); }
+            } catch (e) {
+              toast.error(e instanceof Error ? e.message : "Tick failed");
             } finally {
               setTickLoading(false);
             }
@@ -362,6 +375,7 @@ export default function JobsPage() {
         onPageChange={url.setPage}
         onPageSizeChange={url.setPageSize}
       />
+      <ConfirmDialog {...cancelDialogProps} />
     </div>
   );
 }

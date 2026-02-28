@@ -4,6 +4,8 @@
  * Phase 3.2 + 3.3: Operational Score Visibility — scoreboard, trends, factor drilldown.
  */
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useConfirmDialog } from "@/hooks/useConfirmDialog";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Calculator, RefreshCw } from "lucide-react";
@@ -80,6 +82,7 @@ export default function InternalScoreboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const inFlightRef = useRef(false);
+  const { confirm: confirmRecomputeAction, dialogProps: recomputeDialogProps } = useConfirmDialog();
 
   const fetchSummary = useCallback(async () => {
     setLoading(true);
@@ -93,7 +96,7 @@ export default function InternalScoreboardPage() {
         const json = await res.json();
         setData(json);
       } else {
-        const err = await res.json();
+        const err = await res.json().catch(() => null);
         setError(err?.error ?? "Failed to load");
         setData(null);
       }
@@ -151,7 +154,7 @@ export default function InternalScoreboardPage() {
         setSuccess("Score recomputed successfully");
         setTimeout(() => setSuccess(null), 4000);
       } else {
-        const err = await res.json();
+        const err = await res.json().catch(() => null);
         setError(err?.error ?? "Compute failed");
       }
     } catch (e) {
@@ -213,7 +216,10 @@ export default function InternalScoreboardPage() {
         </Button>
         <Button
           size="sm"
-          onClick={() => void handleRecompute()}
+          onClick={async () => {
+            const ok = await confirmRecomputeAction({ title: "Recompute score", body: "This will recompute the operational score. Continue?", confirmLabel: "Recompute" });
+            if (ok) void handleRecompute();
+          }}
           disabled={computing}
           aria-label="Recompute score now"
           data-testid="recompute-button"
@@ -309,7 +315,10 @@ export default function InternalScoreboardPage() {
         >
           <p className="text-neutral-400 mb-4">No score data yet.</p>
           <Button
-            onClick={() => void handleRecompute()}
+            onClick={async () => {
+              const ok = await confirmRecomputeAction({ title: "Recompute score", body: "This will recompute the operational score. Continue?", confirmLabel: "Recompute" });
+              if (ok) void handleRecompute();
+            }}
             disabled={computing}
             data-testid="recompute-empty-cta"
           >
@@ -318,6 +327,8 @@ export default function InternalScoreboardPage() {
           </Button>
         </div>
       )}
+
+      <ConfirmDialog {...recomputeDialogProps} />
     </div>
   );
 }

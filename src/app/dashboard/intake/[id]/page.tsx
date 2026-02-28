@@ -8,6 +8,10 @@ import { ArrowLeft, Target, FileText, MessageSquare, ExternalLink, Rocket, Send,
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { useAsyncAction } from "@/hooks/useAsyncAction";
+import { useConfirmDialog } from "@/hooks/useConfirmDialog";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { fetchJsonThrow } from "@/lib/http/fetch-json";
 import { LeadStatusBadge } from "@/components/intake/LeadStatusBadge";
 import { LeadSourceBadge } from "@/components/intake/LeadSourceBadge";
 import { LeadScoreBadge } from "@/components/intake/LeadScoreBadge";
@@ -97,6 +101,9 @@ export default function IntakeLeadDetailPage({ params }: { params: Promise<{ id:
   const [deliverySummaryEdit, setDeliverySummaryEdit] = useState("");
   const [showCreateCandidateModal, setShowCreateCandidateModal] = useState(false);
 
+  const toastFn = (m: string, t?: "success" | "error") => t === "error" ? toast.error(m) : toast.success(m);
+  const { confirm, dialogProps } = useConfirmDialog();
+
   const fetchLead = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -120,7 +127,9 @@ export default function IntakeLeadDetailPage({ params }: { params: Promise<{ id:
   }, [id]);
 
   useEffect(() => {
+    const controller = new AbortController();
     void fetchLead();
+    return () => controller.abort();
   }, [fetchLead]);
 
   const runAction = async (
@@ -138,6 +147,8 @@ export default function IntakeLeadDetailPage({ params }: { params: Promise<{ id:
       }
       void fetchLead();
       onSuccess?.(data);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Action failed");
     } finally {
       setActionLoading(null);
     }
@@ -270,7 +281,14 @@ export default function IntakeLeadDetailPage({ params }: { params: Promise<{ id:
       }),
     );
 
-  const handleMarkLost = () =>
+  const handleMarkLost = async () => {
+    const confirmed = await confirm({
+      title: "Mark this lead as lost?",
+      body: "This will record the deal as lost.",
+      confirmLabel: "Mark Lost",
+      variant: "destructive",
+    });
+    if (!confirmed) return;
     runAction("markLost", () =>
       fetch(`/api/intake-leads/${id}/mark-lost`, {
         method: "POST",
@@ -280,6 +298,7 @@ export default function IntakeLeadDetailPage({ params }: { params: Promise<{ id:
       }),
       () => toast("Marked as lost"),
     );
+  };
 
   const leadAsFollowUpItem = lead
     ? {
@@ -400,20 +419,12 @@ export default function IntakeLeadDetailPage({ params }: { params: Promise<{ id:
     setShowCreateCandidateModal(false);
   };
 
-  const handleCreateProposal = async () => {
-    setActionLoading("proposal");
-    try {
-      const res = await fetch(`/api/intake-leads/${id}/proposal`, {
+  const { execute: handleCreateProposal, pending: proposalPending } = useAsyncAction(
+    async () => {
+      const data = await fetchJsonThrow<{ id?: string }>(`/api/intake-leads/${id}/proposal`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({ createNew: true }),
       });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        toast.error(data?.error ?? "Failed to create proposal");
-        return;
-      }
       void fetchLead();
       if (data?.id) {
         toast.success("Proposal created", {
@@ -421,10 +432,9 @@ export default function IntakeLeadDetailPage({ params }: { params: Promise<{ id:
         });
         router.push(`/dashboard/proposals/${data.id}`);
       }
-    } finally {
-      setActionLoading(null);
-    }
-  };
+    },
+    { toast: toastFn },
+  );
 
   if (loading && !lead) {
     return (
@@ -547,7 +557,7 @@ export default function IntakeLeadDetailPage({ params }: { params: Promise<{ id:
                 </div>
               )}
             </div>
-            <Button size="sm" onClick={handleCreateProposal} disabled={!!actionLoading}>
+            <Button size="sm" onClick={handleCreateProposal} disabled={!!actionLoading || proposalPending}>
               <FileText className="h-4 w-4 mr-1" />
               Create Proposal
             </Button>
@@ -1004,6 +1014,8 @@ export default function IntakeLeadDetailPage({ params }: { params: Promise<{ id:
           </div>
         </div>
       )}
+
+      <ConfirmDialog {...dialogProps} />
     </div>
   );
 }

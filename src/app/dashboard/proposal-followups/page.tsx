@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { AsyncState } from "@/components/ui/AsyncState";
 import { formatDateSafe } from "@/lib/ui/date-safe";
+import { useIntelligenceContext } from "@/hooks/useIntelligenceContext";
+import { IntelligenceBanner } from "@/components/dashboard/IntelligenceBanner";
 
 type ProposalItem = {
   id: string;
@@ -102,10 +104,12 @@ export default function ProposalFollowupsPage() {
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search, 300);
   const [bucketFilter, setBucketFilter] = useState<string>(bucketParam);
+  const debouncedBucket = useDebouncedValue(bucketFilter, 200);
   const abortRef = useRef<AbortController | null>(null);
   const runIdRef = useRef(0);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [snoozeItem, setSnoozeItem] = useState<ProposalItem | null>(null);
+  const intel = useIntelligenceContext();
   const [snoozePreset, setSnoozePreset] = useState<"2d" | "5d" | "next_monday">("2d");
 
   const fetchData = useCallback(async () => {
@@ -118,7 +122,7 @@ export default function ProposalFollowupsPage() {
     try {
       const params = new URLSearchParams();
       if (debouncedSearch.trim()) params.set("search", debouncedSearch.trim());
-      if (bucketFilter !== "all") params.set("bucket", bucketFilter);
+      if (debouncedBucket !== "all") params.set("bucket", debouncedBucket);
       const [res, sumRes] = await Promise.all([
         fetch(`/api/proposals/followups?${params}`, { credentials: "include", signal: controller.signal, cache: "no-store" }),
         fetch("/api/proposals/followup-summary", { credentials: "include", signal: controller.signal, cache: "no-store" }),
@@ -145,7 +149,7 @@ export default function ProposalFollowupsPage() {
         abortRef.current = null;
       }
     }
-  }, [debouncedSearch, bucketFilter]);
+  }, [debouncedSearch, debouncedBucket]);
 
   useEffect(() => {
     setBucketFilter(bucketParam);
@@ -163,6 +167,8 @@ export default function ProposalFollowupsPage() {
       const json = await res.json().catch(() => null);
       if (!res.ok) toast.error(json?.error ?? "Action failed");
       else void fetchData();
+    } catch {
+      toast.error("Action failed");
     } finally {
       setActionLoading(null);
     }
@@ -207,6 +213,7 @@ export default function ProposalFollowupsPage() {
         <h1 className="text-2xl font-semibold tracking-tight">Proposal Follow-ups</h1>
         <p className="text-sm text-neutral-400 mt-1">Track and schedule follow-ups for sent proposals.</p>
       </div>
+      <IntelligenceBanner risk={intel.risk} nba={intel.nba} score={intel.score} loading={intel.loading} />
 
       {summary && (
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">

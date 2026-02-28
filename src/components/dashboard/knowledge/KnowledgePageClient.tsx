@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 
 type Run = { id: string; content: string; meta: unknown; createdAt: string };
 type Artifact = { id: string; title: string; content: string; meta: unknown; createdAt: string };
@@ -46,6 +47,9 @@ function SuggestionRow({
         body: JSON.stringify(updates),
       });
       if (res.ok) onUpdate();
+      else toast.error("Failed to update suggestion");
+    } catch {
+      toast.error("Failed to update suggestion");
     } finally {
       setUpdating(false);
     }
@@ -192,12 +196,16 @@ export function KnowledgePageClient({
   }
 
   async function refresh() {
-    const listRes = await fetch("/api/knowledge?limit=30");
-    if (listRes.ok) {
-      const list = await listRes.json();
-      setRuns(list.runs ?? []);
-      setSummaries(list.summaries ?? []);
-      setSuggestions(list.suggestions ?? []);
+    try {
+      const listRes = await fetch("/api/knowledge?limit=30");
+      if (listRes.ok) {
+        const list = await listRes.json();
+        setRuns(list.runs ?? []);
+        setSummaries(list.summaries ?? []);
+        setSuggestions(list.suggestions ?? []);
+      }
+    } catch {
+      /* non-critical: list will remain stale until next manual refresh */
     }
   }
 

@@ -1,46 +1,47 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { toast } from "sonner";
+import { useAsyncAction } from "@/hooks/useAsyncAction";
+import { fetchJsonThrow } from "@/lib/http/fetch-json";
+
+const toastFn = (m: string, t?: "success" | "error") => t === "error" ? toast.error(m) : toast.success(m);
 
 export default function NewLeadPage() {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setLoading(true);
+  const { execute: handleSubmit, pending: loading } = useAsyncAction(
+    async (e: React.FormEvent<HTMLFormElement>) => {
+      e.preventDefault();
 
-    const fd = new FormData(e.currentTarget);
-    const body = {
-      title: fd.get("title"),
-      source: fd.get("source") || "manual",
-      sourceUrl: fd.get("sourceUrl") || undefined,
-      description: fd.get("description") || undefined,
-      budget: fd.get("budget") || undefined,
-      timeline: fd.get("timeline") || undefined,
-      platform: fd.get("platform") || undefined,
-      contactName: fd.get("contactName") || undefined,
-      contactEmail: fd.get("contactEmail") || undefined,
-      tags: (fd.get("tags") as string)?.split(",").map((t) => t.trim()).filter(Boolean) || [],
-    };
+      const fd = new FormData(e.currentTarget);
+      const body = {
+        title: fd.get("title"),
+        source: fd.get("source") || "manual",
+        sourceUrl: fd.get("sourceUrl") || undefined,
+        description: fd.get("description") || undefined,
+        budget: fd.get("budget") || undefined,
+        timeline: fd.get("timeline") || undefined,
+        platform: fd.get("platform") || undefined,
+        contactName: fd.get("contactName") || undefined,
+        contactEmail: fd.get("contactEmail") || undefined,
+        tags: (fd.get("tags") as string)?.split(",").map((t) => t.trim()).filter(Boolean) || [],
+      };
 
-    const res = await fetch("/api/leads", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
+      await fetchJsonThrow("/api/leads", {
+        method: "POST",
+        body: JSON.stringify(body),
+      });
 
-    if (res.ok) {
       router.push("/dashboard");
-    }
-    setLoading(false);
-  }
+    },
+    { toast: toastFn, successMessage: "Lead created" },
+  );
 
   return (
     <div className="max-w-2xl space-y-6">

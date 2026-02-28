@@ -19,6 +19,10 @@ import { AsyncState } from "@/components/ui/AsyncState";
 import { PaginationControls } from "@/components/ui/PaginationControls";
 import { formatDateSafe } from "@/lib/ui/date-safe";
 import { normalizePagination } from "@/lib/ui/pagination-safe";
+import { useAsyncAction } from "@/hooks/useAsyncAction";
+import { useConfirmDialog } from "@/hooks/useConfirmDialog";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { fetchJsonThrow } from "@/lib/http/fetch-json";
 
 interface IntakeLead {
   id: string;
@@ -53,13 +57,12 @@ export default function IntakePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
-  const [createLoading, setCreateLoading] = useState(false);
-  const [bulkScoreLoading, setBulkScoreLoading] = useState(false);
-  const [bulkPromoteLoading, setBulkPromoteLoading] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const runIdRef = useRef(0);
 
   const trackEvent = useTrackEvent();
+  const toastFn = (m: string, t?: "success" | "error") => t === "error" ? toast.error(m) : toast.success(m);
+  const { confirm, dialogProps } = useConfirmDialog();
 
   const quickFilter = url.getString("filter", "all");
   const statusFilter = url.getString("status", "all");
@@ -145,64 +148,54 @@ export default function IntakePage() {
   };
   const setSourceFilter = (v: string) => url.setFilter("source", v);
 
-  const handleBulkScore = async () => {
-    if (bulkScoreLoading) return;
-    setBulkScoreLoading(true);
-    try {
-      const res = await fetch("/api/intake-leads/bulk-score", {
-        method: "POST",
-        credentials: "include",
+  const { execute: handleBulkScore, pending: bulkScoreLoading } = useAsyncAction(
+    async () => {
+      const confirmed = await confirm({
+        title: `Score all ${pagination.total} leads?`,
+        body: "This will run AI scoring on all unscored leads. This may take a moment.",
+        confirmLabel: "Score All",
       });
-      const data = await res.json().catch(() => null);
-      if (!res.ok) {
-        toast.error(typeof data?.error === "string" ? data.error : "Failed to score leads");
-        return;
-      }
+      if (!confirmed) return;
+      const data = await fetchJsonThrow<{ scored?: number }>("/api/intake-leads/bulk-score", {
+        method: "POST",
+      });
       trackEvent("bulk_score_triggered", { count: pagination.total });
       toast.success(`Scored ${data?.scored ?? pagination.total} leads`, {
         action: { label: "View Ready to Promote →", onClick: () => setQuickFilter("ready") },
       });
       void fetchLeads();
-    } finally {
-      setBulkScoreLoading(false);
-    }
-  };
+    },
+    { toast: toastFn },
+  );
 
-  const handleBulkPromote = async () => {
-    if (bulkPromoteLoading) return;
-    setBulkPromoteLoading(true);
-    try {
-      const res = await fetch("/api/intake-leads/bulk-promote", {
-        method: "POST",
-        credentials: "include",
+  const { execute: handleBulkPromote, pending: bulkPromoteLoading } = useAsyncAction(
+    async () => {
+      const confirmed = await confirm({
+        title: `Promote all ${pagination.total} ready leads?`,
+        body: "This will promote all qualifying leads to the pipeline. This action cannot be undone easily.",
+        confirmLabel: "Promote All",
       });
-      const data = await res.json().catch(() => null);
-      if (!res.ok) {
-        toast.error(typeof data?.error === "string" ? data.error : "Failed to promote leads");
-        return;
-      }
+      if (!confirmed) return;
+      const data = await fetchJsonThrow<{ promoted?: number }>("/api/intake-leads/bulk-promote", {
+        method: "POST",
+      });
       trackEvent("bulk_promote_triggered", { count: pagination.total });
       toast.success(`Promoted ${data?.promoted ?? pagination.total} leads`, {
         action: { label: "Go to Pipeline Leads →", onClick: () => router.push("/dashboard/leads") },
       });
       void fetchLeads();
-    } finally {
-      setBulkPromoteLoading(false);
-    }
-  };
+    },
+    { toast: toastFn },
+  );
 
-  const handleCreate = async (form: LeadFormData) => {
-    if (createLoading) return;
-    setCreateLoading(true);
-    try {
+  const { execute: handleCreate, pending: createLoading } = useAsyncAction(
+    async (form: LeadFormData) => {
       const tags = form.tags
         .split(",")
         .map((t) => t.trim())
         .filter(Boolean);
-      const res = await fetch("/api/intake-leads", {
+      const data = await fetchJsonThrow<{ id?: string }>("/api/intake-leads", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({
           source: form.source,
           title: form.title,
@@ -217,11 +210,6 @@ export default function IntakePage() {
           tags,
         }),
       });
-      const data = await res.json().catch(() => null);
-      if (!res.ok) {
-        toast.error(typeof data?.error === "string" ? data.error : "Failed to create lead");
-        return;
-      }
       setModalOpen(false);
       toast.success("Lead created", {
         action: data?.id
@@ -229,10 +217,9 @@ export default function IntakePage() {
           : undefined,
       });
       void fetchLeads();
-    } finally {
-      setCreateLoading(false);
-    }
-  };
+    },
+    { toast: toastFn },
+  );
 
   return (
     <div className="space-y-6">
@@ -413,6 +400,8 @@ export default function IntakePage() {
         onSubmit={handleCreate}
         loading={createLoading}
       />
+
+      <ConfirmDialog {...dialogProps} />
     </div>
   );
 }

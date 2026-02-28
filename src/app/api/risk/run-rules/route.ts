@@ -28,7 +28,8 @@ export async function POST(request: Request) {
     }
 
     try {
-      const ctx = await fetchRiskRuleContext();
+      const ownerUserId = session.user?.id ?? undefined;
+      const ctx = await fetchRiskRuleContext({ ownerUserId });
       const candidates = evaluateRiskRules(ctx);
       const result = await upsertRiskFlags(candidates);
 

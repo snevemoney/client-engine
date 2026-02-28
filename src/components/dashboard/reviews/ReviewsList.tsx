@@ -1,12 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { toast } from "sonner";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { CheckCircle2, Circle, ChevronDown, ChevronRight, X } from "lucide-react";
+import { useAsyncAction } from "@/hooks/useAsyncAction";
+import { AsyncState } from "@/components/ui/AsyncState";
+import { fetchJsonThrow } from "@/lib/http/fetch-json";
 
 type ReviewItem = {
   id: string;
@@ -27,24 +31,46 @@ type ReviewItem = {
 export function ReviewsList() {
   const [items, setItems] = useState<ReviewItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [completing, setCompleting] = useState<ReviewItem | null>(null);
-  const [saving, setSaving] = useState(false);
   const [formScore, setFormScore] = useState("");
   const [formWhatWorked, setFormWhatWorked] = useState("");
   const [formWhatFailed, setFormWhatFailed] = useState("");
   const [formWhatChanged, setFormWhatChanged] = useState("");
   const [formNextWeek, setFormNextWeek] = useState("");
-  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
-  const refetch = () =>
-    fetch("/api/ops/strategy-week/history?weeks=12")
-      .then((r) => r.json())
-      .then((data) => setItems(data?.items ?? []));
+  const toastFn = (m: string, t?: "success" | "error") => t === "error" ? toast.error(m) : toast.success(m);
+
+  const refetch = useCallback(async () => {
+    if (abortRef.current) abortRef.current.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/ops/strategy-week/history?weeks=12", { credentials: "include", signal: controller.signal, cache: "no-store" });
+      if (controller.signal.aborted) return;
+      if (!res.ok) { setError("Failed to load reviews"); return; }
+      const data = await res.json();
+      setItems(data?.items ?? []);
+    } catch (e) {
+      if (controller.signal.aborted) return;
+      if (e instanceof Error && (e.name === "AbortError" || e.message?.includes("aborted"))) return;
+      setError(e instanceof Error ? e.message : "Failed to load");
+    } finally {
+      if (!controller.signal.aborted) {
+        setLoading(false);
+        abortRef.current = null;
+      }
+    }
+  }, []);
 
   useEffect(() => {
-    refetch().finally(() => setLoading(false));
-  }, []);
+    void refetch();
+    return () => { if (abortRef.current) abortRef.current.abort(); };
+  }, [refetch]);
 
   function openComplete(item: ReviewItem) {
     setCompleting(item);
@@ -55,15 +81,13 @@ export function ReviewsList() {
     setFormNextWeek(item.nextWeekCommitments ?? "");
   }
 
-  async function submitComplete() {
-    if (!completing) return;
-    setSaving(true);
-    try {
-      const res = await fetch(
+  const { execute: submitComplete, pending: saving } = useAsyncAction(
+    async () => {
+      if (!completing) throw new Error("No review selected");
+      return fetchJsonThrow(
         `/api/ops/strategy-week/review?weekStart=${encodeURIComponent(completing.weekStart)}`,
         {
           method: "PATCH",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             score: formScore ? parseInt(formScore, 10) : undefined,
             whatWorked: formWhatWorked || undefined,
@@ -74,36 +98,20 @@ export function ReviewsList() {
           }),
         }
       );
-      if (res.ok) {
-        await refetch();
+    },
+    {
+      toast: toastFn,
+      successMessage: "Weekly review saved",
+      onSuccess: () => {
         setCompleting(null);
-        setSaveMessage("Weekly review saved");
-        setTimeout(() => setSaveMessage(null), 3000);
-      } else {
-        const err = await res.json();
-        alert(err.error ?? "Save failed");
-      }
-    } catch {
-      alert("Save failed");
-    }
-    setSaving(false);
-  }
-
-  if (loading) {
-    return (
-      <section className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-4">
-        <p className="text-xs text-neutral-500">Loading…</p>
-      </section>
-    );
-  }
+        void refetch();
+      },
+    },
+  );
 
   return (
     <section className="rounded-lg border border-neutral-800 bg-neutral-900/50 overflow-hidden">
-      {saveMessage && (
-        <div className="px-4 py-2 bg-emerald-950/50 border-b border-emerald-800/50 text-emerald-300 text-sm">
-          {saveMessage}
-        </div>
-      )}
+      <AsyncState loading={loading} error={error} empty={!loading && !error && items.length === 0} emptyMessage="No strategy weeks yet." onRetry={refetch}>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -124,9 +132,8 @@ export function ReviewsList() {
               const isComplete = !!item.completedAt;
               const weekLabel = formatWeekRange(item.weekStart);
               return (
-                <>
+                <React.Fragment key={item.id}>
                   <tr
-                    key={item.id}
                     className="border-t border-neutral-800 hover:bg-neutral-800/30"
                   >
                     <td className="px-4 py-2">
@@ -243,22 +250,13 @@ export function ReviewsList() {
                       </td>
                     </tr>
                   )}
-                </>
+                </React.Fragment>
               );
             })}
           </tbody>
         </table>
       </div>
-      {items.length === 0 && (
-        <div className="px-4 py-8 text-center text-neutral-500">
-          <p className="text-sm">No strategy weeks yet.</p>
-          <Link href="/dashboard/strategy">
-            <Button variant="outline" size="sm" className="mt-2">
-              Go to Strategy
-            </Button>
-          </Link>
-        </div>
-      )}
+      </AsyncState>
 
       {/* Complete review modal */}
       {completing && (
@@ -337,7 +335,7 @@ export function ReviewsList() {
               </div>
             </div>
             <div className="mt-4 flex gap-2">
-              <Button onClick={submitComplete} disabled={saving}>
+              <Button onClick={() => void submitComplete()} disabled={saving}>
                 {saving ? "Saving…" : "Mark complete"}
               </Button>
               <Button variant="outline" onClick={() => setCompleting(null)}>

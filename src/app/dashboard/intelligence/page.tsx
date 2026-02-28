@@ -1,11 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { BarChart3, ChevronRight, RefreshCw } from "lucide-react";
+import { useRetryableFetch } from "@/hooks/useRetryableFetch";
+import { useAsyncAction } from "@/hooks/useAsyncAction";
+import { useConfirmDialog } from "@/hooks/useConfirmDialog";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { AsyncState } from "@/components/ui/AsyncState";
+import { fetchJsonThrow } from "@/lib/http/fetch-json";
+import { useIntelligenceContext } from "@/hooks/useIntelligenceContext";
+import { IntelligenceBanner } from "@/components/dashboard/IntelligenceBanner";
 
 type MetricsSummary = {
   conversion?: {
@@ -76,35 +83,19 @@ function MetricCard({
 }
 
 export default function IntelligencePage() {
-  const [data, setData] = useState<MetricsSummary | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [snapshotLoading, setSnapshotLoading] = useState(false);
+  const { data, loading, error, refetch } = useRetryableFetch<MetricsSummary>("/api/metrics/summary");
+  const intel = useIntelligenceContext();
+  const toastFn = (m: string, t?: "success" | "error") => t === "error" ? toast.error(m) : toast.success(m);
+  const { confirm, dialogProps } = useConfirmDialog();
 
-  const fetchData = () => {
-    setLoading(true);
-    fetch("/api/metrics/summary")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => setData(d && typeof d === "object" ? d : null))
-      .catch(() => setData(null))
-      .finally(() => setLoading(false));
-  };
+  const { execute: handleSnapshot, pending: snapshotLoading } = useAsyncAction(
+    async () => fetchJsonThrow("/api/metrics/snapshot", { method: "POST" }),
+    { toast: toastFn, successMessage: "Weekly snapshot captured", onSuccess: () => void refetch() },
+  );
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const handleSnapshot = async () => {
-    setSnapshotLoading(true);
-    try {
-      const res = await fetch("/api/metrics/snapshot", { method: "POST" });
-      if (res.ok) fetchData();
-      else {
-        const d = await res.json();
-        toast.error(d?.error ?? "Snapshot failed");
-      }
-    } finally {
-      setSnapshotLoading(false);
-    }
+  const onSnapshotClick = async () => {
+    if (!(await confirm({ title: "Capture weekly snapshot?", body: "This will record a point-in-time snapshot of the current metrics." }))) return;
+    void handleSnapshot();
   };
 
   const emptyConv = {
@@ -136,15 +127,6 @@ export default function IntelligencePage() {
   const r = data?.revenue ?? emptyRev;
   const bottlenecks = data?.bottlenecks ?? [];
 
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Revenue Intelligence</h1>
-        <div className="py-12 text-center text-neutral-500">Loading…</div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6 min-w-0">
       <div className="flex items-center justify-between">
@@ -154,16 +136,19 @@ export default function IntelligencePage() {
             Conversion rates, cycle times, revenue metrics, and bottlenecks.
           </p>
         </div>
+        <IntelligenceBanner risk={intel.risk} nba={intel.nba} score={intel.score} loading={intel.loading} />
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={fetchData}>
+          <Button variant="outline" size="sm" onClick={refetch}>
             <RefreshCw className="w-4 h-4 mr-1" />
             Refresh
           </Button>
-          <Button size="sm" onClick={handleSnapshot} disabled={snapshotLoading}>
+          <Button size="sm" onClick={onSnapshotClick} disabled={snapshotLoading}>
             {snapshotLoading ? "Capturing…" : "Capture Weekly Snapshot"}
           </Button>
         </div>
       </div>
+      <ConfirmDialog {...dialogProps} />
+      <AsyncState loading={loading} error={error} empty={!loading && !error && !data} emptyMessage="No metrics data" onRetry={refetch}>
 
       {/* KPI cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
@@ -336,6 +321,7 @@ export default function IntelligencePage() {
           </Button>
         </Link>
       </div>
+      </AsyncState>
     </div>
   );
 }

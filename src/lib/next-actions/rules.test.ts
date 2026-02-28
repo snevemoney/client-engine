@@ -108,4 +108,33 @@ describe("next-actions rules", () => {
     expect(out[0].score).toBeGreaterThanOrEqual(0);
     expect(out[0].score).toBeLessThanOrEqual(100);
   });
+
+  describe("founder_growth scope (Phase 6.3)", () => {
+    it("emits growth_overdue_followups when count > 0", () => {
+      const out = produceNextActions(
+        { ...baseCtx, growthOverdueCount: 2 },
+        "founder_growth"
+      );
+      expect(out.some((a) => a.createdByRule === "growth_overdue_followups")).toBe(true);
+      const r = out.find((a) => a.createdByRule === "growth_overdue_followups");
+      expect(r?.entityType).toBe("founder_growth");
+      expect(r?.priority).toBe("medium");
+    });
+
+    it("emits growth_no_outreach_sent when count > 0", () => {
+      const out = produceNextActions(
+        { ...baseCtx, growthNoOutreachCount: 3 },
+        "founder_growth"
+      );
+      expect(out.some((a) => a.createdByRule === "growth_no_outreach_sent")).toBe(true);
+    });
+
+    it("does not emit growth rules for command_center scope", () => {
+      const out = produceNextActions(
+        { ...baseCtx, growthOverdueCount: 2, growthNoOutreachCount: 1 },
+        "command_center"
+      );
+      expect(out.every((a) => !a.createdByRule.startsWith("growth_"))).toBe(true);
+    });
+  });
 });

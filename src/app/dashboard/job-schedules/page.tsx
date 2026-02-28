@@ -87,7 +87,9 @@ export default function JobSchedulesPage() {
         body: JSON.stringify({ isEnabled: !isEnabled }),
       });
       if (res.ok) void fetchData();
-      else { const d = await res.json(); toast.error(d?.error ?? "Update failed"); }
+      else { const d = await res.json().catch(() => null); toast.error(d?.error ?? "Update failed"); }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Toggle failed");
     } finally {
       setActioningId(null);
     }
@@ -108,6 +110,8 @@ export default function JobSchedulesPage() {
         else toast("Job already queued (dedupe)");
         void fetchData();
       } else toast.error(data?.error ?? "Run failed");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Run failed");
     } finally {
       setActioningId(null);
     }

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { BookMarked, Package } from "lucide-react";
+import { toast } from "sonner";
 
 type Run = { id: string; content: string; meta: unknown; createdAt: string };
 type Proposal = { id: string; title: string; content: string; meta: unknown; createdAt: string };
@@ -65,16 +66,23 @@ export function LearningPageClient({
   const [filterTag, setFilterTag] = useState("");
 
   async function updateProposalMeta(artifactId: string, updates: ProposalMetaUpdate) {
-    const res = await fetch(`/api/learning/proposal/${artifactId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(updates),
-    });
-    if (!res.ok) throw new Error("Update failed");
-    const listRes = await fetch("/api/learning?limit=30");
-    if (listRes.ok) {
-      const list = await listRes.json();
-      setProposals(list.proposals ?? []);
+    try {
+      const res = await fetch(`/api/learning/proposal/${artifactId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updates),
+      });
+      if (!res.ok) {
+        toast.error("Failed to update proposal");
+        return;
+      }
+      const listRes = await fetch("/api/learning?limit=30");
+      if (listRes.ok) {
+        const list = await listRes.json();
+        setProposals(list.proposals ?? []);
+      }
+    } catch {
+      toast.error("Failed to update proposal");
     }
   }
 

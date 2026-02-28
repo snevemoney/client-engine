@@ -22,10 +22,14 @@ export default function ChecklistPage() {
   const [copied, setCopied] = useState(false);
 
   const fetchChecklists = useCallback(async () => {
-    const res = await fetch("/api/checklist");
-    if (res.ok) {
-      const data = await res.json();
-      setChecklists(data);
+    try {
+      const res = await fetch("/api/checklist");
+      if (res.ok) {
+        const data = await res.json();
+        setChecklists(data);
+      }
+    } catch {
+      /* non-critical: recent checklists list won't load */
     }
   }, []);
 
@@ -54,18 +58,24 @@ export default function ChecklistPage() {
         setLastGenerated({ content: data.content, artifactId: data.artifactId });
         fetchChecklists();
       } else {
-        const err = await res.json();
-        toast.error(err.error || "Generate failed");
+        const err = await res.json().catch(() => null);
+        toast.error(err?.error || "Generate failed");
       }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Generate failed");
     } finally {
       setGenerating(false);
     }
   }
 
-  function copyContent(text: string) {
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  async function copyContent(text: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error("Failed to copy to clipboard");
+    }
   }
 
   const displayContent = lastGenerated?.content ?? null;

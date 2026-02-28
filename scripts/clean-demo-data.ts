@@ -195,15 +195,31 @@ async function main() {
   if (riskResult.count > 0) console.log(`Deleted ${riskResult.count} sample risk flags`);
   deleted += riskResult.count;
 
-  // 7. Next best actions (seed dedupeKeys)
+  // 7. Next best actions (seed dedupeKeys + test data from unit/E2E tests)
   const nbaDedupeKeys = [
     "nba:score_in_critical_band:command_center",
     "nba:failed_notification_deliveries:system",
     "nba:overdue_reminders_high_priority:system",
   ];
-  const nbaResult = await db.nextBestAction.deleteMany({ where: { dedupeKey: { in: nbaDedupeKeys } } });
-  if (nbaResult.count > 0) console.log(`Deleted ${nbaResult.count} sample next best actions`);
-  deleted += nbaResult.count;
+  const nbaSeedResult = await db.nextBestAction.deleteMany({ where: { dedupeKey: { in: nbaDedupeKeys } } });
+  if (nbaSeedResult.count > 0) console.log(`Deleted ${nbaSeedResult.count} sample next best actions`);
+  deleted += nbaSeedResult.count;
+
+  // 7b. Test next actions (Test Execute Action, Test NBA *, Golden * test, etc.)
+  const testNbaResult = await db.nextBestAction.deleteMany({
+    where: {
+      OR: [
+        { title: { in: ["Test Execute Action", "Test NBA done", "Test NBA queued", "Golden done test", "Golden dismiss test"] } },
+        { title: { startsWith: "Test NBA " } },
+        { title: { startsWith: "Golden " } },
+        { title: { startsWith: "Test Patch Action" } },
+        { title: { startsWith: "Schedule test" } },
+        { title: { startsWith: "Mark replied test" } },
+      ],
+    },
+  });
+  if (testNbaResult.count > 0) console.log(`Deleted ${testNbaResult.count} test next best actions`);
+  deleted += testNbaResult.count;
 
   // 8. NextActionRun (nba:seed:*)
   const runKeys = await db.nextActionRun.findMany({

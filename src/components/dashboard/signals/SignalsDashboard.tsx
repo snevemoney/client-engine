@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -79,11 +80,11 @@ export function SignalsDashboard() {
         setAddName("");
         setAddUrl("");
       } else {
-        const err = await res.json();
-        alert(err.error ?? "Failed");
+        const err = await res.json().catch(() => null);
+        toast.error(err?.error ?? "Failed to add source");
       }
     } catch {
-      alert("Failed");
+      toast.error("Failed to add source");
     }
   }
 
@@ -96,9 +97,10 @@ export function SignalsDashboard() {
         await loadSources();
         await loadItems();
       }
-      alert(data.message ?? (data.ok ? "Synced" : "Failed"));
+      if (data.ok) toast.success(data.message ?? "Synced");
+      else toast.error(data.message ?? "Sync failed");
     } catch {
-      alert("Sync failed");
+      toast.error("Sync failed");
     }
     setSyncing(null);
   }
@@ -114,7 +116,7 @@ export function SignalsDashboard() {
         setItems((prev) => prev.map((i) => (i.id === itemId ? { ...i, status } : i)));
       }
     } catch {
-      // silent
+      toast.error("Failed to update status");
     }
   }
 

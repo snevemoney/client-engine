@@ -9,6 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { AsyncState } from "@/components/ui/AsyncState";
 import { formatDateSafe } from "@/lib/ui/date-safe";
+import { IntelligenceBanner } from "@/components/dashboard/IntelligenceBanner";
+import type { IntelligenceContext } from "@/hooks/useIntelligenceContext";
 
 type RetentionItem = {
   id: string;
@@ -63,6 +65,8 @@ export default function RetentionPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [bucketFilter, setBucketFilter] = useState("all");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [risk, setRisk] = useState<IntelligenceContext["risk"] | null>(null);
+  const [nba, setNba] = useState<IntelligenceContext["nba"] | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const runIdRef = useRef(0);
 
@@ -78,9 +82,9 @@ export default function RetentionPage() {
       if (debouncedSearch.trim()) params.set("search", debouncedSearch.trim());
       if (statusFilter !== "all") params.set("status", statusFilter);
       if (bucketFilter !== "all") params.set("bucket", bucketFilter);
-      const [res, sumRes] = await Promise.all([
+      const [res, contextRes] = await Promise.all([
         fetch(`/api/delivery-projects/retention-queue?${params}`, { credentials: "include", signal: controller.signal, cache: "no-store" }),
-        fetch("/api/delivery-projects/retention-summary", { credentials: "include", signal: controller.signal, cache: "no-store" }),
+        fetch("/api/internal/retention/context", { credentials: "include", signal: controller.signal, cache: "no-store" }),
       ]);
       if (controller.signal.aborted || runId !== runIdRef.current) return;
       if (!res.ok) {
@@ -88,16 +92,21 @@ export default function RetentionPage() {
         throw new Error(errJson?.error ?? `Retention queue failed (${res.status})`);
       }
       const json = await res.json().catch(() => null);
-      const sumJson = sumRes.ok ? await sumRes.json().catch(() => null) : null;
+      const ctx = contextRes.ok ? await contextRes.json().catch(() => null) : null;
+      const sumJson = ctx?.summary ?? null;
       if (controller.signal.aborted || runId !== runIdRef.current) return;
       setItems(Array.isArray(json?.items) ? json.items : (Array.isArray(json) ? json : []));
       setSummary(sumJson && typeof sumJson === "object" ? sumJson : null);
+      setRisk(ctx?.risk ?? null);
+      setNba(ctx?.nba ?? null);
     } catch (e) {
       if (controller.signal.aborted || runId !== runIdRef.current) return;
       if (e instanceof Error && (e.name === "AbortError" || e.message?.includes("aborted"))) return;
       setError(e instanceof Error ? e.message : "Failed to load");
       setItems([]);
       setSummary(null);
+      setRisk(null);
+      setNba(null);
     } finally {
       if (runId === runIdRef.current) {
         setLoading(false);
@@ -117,9 +126,11 @@ export default function RetentionPage() {
       const res = await fn();
       if (res.ok) void fetchData();
       else {
-        const d = await res.json();
+        const d = await res.json().catch(() => null);
         toast.error(d?.error ?? "Action failed");
       }
+    } catch {
+      toast.error("Action failed");
     } finally {
       setActionLoading(null);
     }
@@ -150,6 +161,7 @@ export default function RetentionPage() {
           Post-delivery retention follow-ups, testimonials, reviews, referrals, and upsells.
         </p>
       </div>
+      <IntelligenceBanner risk={risk} nba={nba} score={null} loading={loading} />
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <Link href="/dashboard/retention?bucket=overdue">

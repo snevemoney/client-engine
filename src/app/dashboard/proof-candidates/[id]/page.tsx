@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, use, useCallback } from "react";
+import { useState, useEffect, use, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { useConfirmDialog } from "@/hooks/useConfirmDialog";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 type Candidate = {
   id: string;
@@ -47,6 +49,8 @@ export default function ProofCandidateDetailPage({ params }: { params: Promise<{
   const [metricLabel, setMetricLabel] = useState("");
   const [metricValue, setMetricValue] = useState("");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const { confirm, dialogProps } = useConfirmDialog();
 
   const fetchCandidate = useCallback(async () => {
     setLoading(true);
@@ -80,9 +84,23 @@ export default function ProofCandidateDetailPage({ params }: { params: Promise<{
 
   useEffect(() => {
     void fetchCandidate();
+    return () => { if (abortRef.current) abortRef.current.abort(); };
   }, [fetchCandidate]);
 
   const handleSave = async () => {
+    if (!title.trim()) {
+      toast.error("Title is required");
+      return;
+    }
+    const urlPattern = /^https?:\/\//;
+    if (githubUrl.trim() && !urlPattern.test(githubUrl.trim())) {
+      toast.error("GitHub URL must start with http:// or https://");
+      return;
+    }
+    if (loomUrl.trim() && !urlPattern.test(loomUrl.trim())) {
+      toast.error("Loom URL must start with http:// or https://");
+      return;
+    }
     setSaving(true);
     try {
       const res = await fetch(`/api/proof-candidates/${id}`, {
@@ -123,9 +141,16 @@ export default function ProofCandidateDetailPage({ params }: { params: Promise<{
         return;
       }
       void fetchCandidate();
+    } catch {
+      toast.error("Action failed");
     } finally {
       setActionLoading(null);
     }
+  };
+
+  const runWithConfirm = async (action: string, title: string, body: string, variant: "default" | "destructive", fn: () => Promise<Response>) => {
+    if (!(await confirm({ title, body, confirmLabel: action === "reject" ? "Reject" : "Promote", variant }))) return;
+    await runAction(action, fn);
   };
 
   if (loading && !candidate) {
@@ -321,7 +346,7 @@ export default function ProofCandidateDetailPage({ params }: { params: Promise<{
                 className="text-emerald-400"
                 disabled={!!actionLoading}
                 onClick={() =>
-                  runAction("promote", () =>
+                  runWithConfirm("promote", "Promote candidate?", "Promote this candidate to a proof record.", "default", () =>
                     fetch(`/api/proof-candidates/${id}/promote`, { method: "POST", credentials: "include" })
                   )
                 }
@@ -334,7 +359,7 @@ export default function ProofCandidateDetailPage({ params }: { params: Promise<{
                 className="text-red-400"
                 disabled={!!actionLoading}
                 onClick={() =>
-                  runAction("reject", () =>
+                  runWithConfirm("reject", "Reject candidate?", "This cannot be undone.", "destructive", () =>
                     fetch(`/api/proof-candidates/${id}/reject`, {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
@@ -350,6 +375,7 @@ export default function ProofCandidateDetailPage({ params }: { params: Promise<{
           )}
         </div>
       </div>
+      <ConfirmDialog {...dialogProps} />
     </div>
   );
 }

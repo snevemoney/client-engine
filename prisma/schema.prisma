@@ -1887,6 +1887,7 @@ enum RiskSourceType {
   job
   score
   system
+  growth_pipeline
 }
 
 model RiskFlag {
@@ -1994,6 +1995,60 @@ model NextActionRun {
   metaJson  Json?
 }
 
+// ----- Phase 5.3: Copilot Coach Sessions -----
+
+/** Coach Mode conversation session. Traceable, replayable. */
+model CopilotSession {
+  id         String   @id @default(cuid())
+  title      String?  @db.Text
+  entityType String   @default("command_center")
+  entityId   String   @default("command_center")
+  status     String   @default("open") // open | closed
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  messages   CopilotMessage[]
+  actionLogs CopilotActionLog[]
+
+  @@index([status])
+  @@index([createdAt(sort: Desc)])
+}
+
+/** Single message in a coach session. */
+model CopilotMessage {
+  id          String   @id @default(cuid())
+  sessionId   String
+  session     CopilotSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  role        String   // user | coach | system
+  contentJson Json     @default("{}")
+  sourcesJson Json?    // citations list
+  metaJson    Json?    // latency, model, etc
+  createdAt   DateTime @default(now())
+
+  @@index([sessionId])
+  @@index([sessionId, createdAt])
+}
+
+/** Log of coach action (preview/execute) with before/after. */
+model CopilotActionLog {
+  id            String   @id @default(cuid())
+  sessionId     String
+  session       CopilotSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  actionKey     String
+  mode          String   // preview | execute
+  nextActionId  String?  @db.Text
+  nbaActionKey  String?  @db.Text
+  beforeJson    Json?    @default("{}")
+  afterJson     Json?    @default("{}")
+  resultJson    Json?    @default("{}")
+  status        String   // success | failed
+  errorMessage  String?  @db.Text
+  createdAt     DateTime @default(now())
+
+  @@index([sessionId])
+  @@index([sessionId, createdAt])
+}
+
 // ----- Phase 4.3: NBA Personalization (Operator Learning v1) -----
 
 /** Per-scope suppression: rule-wide or specific action. Don't suggest again. */
@@ -2012,4 +2067,336 @@ model NextActionPreference {
   @@index([entityType, entityId])
   @@index([ruleKey])
   @@index([dedupeKey])
+}
+
+// ----- Phase 7.1: Operator Memory (Pattern Learning v1) -----
+
+enum OperatorMemorySourceType {
+  nba_execute
+  nba_dismiss
+  nba_snooze
+  copilot_action
+  risk_resolve
+  founder_review
+  growth
+}
+
+enum OperatorMemoryOutcome {
+  success
+  failure
+  neutral
+  improved   // Phase 7.3: attribution delta positive
+  worsened   // Phase 7.3: attribution delta negative
+}
+
+// ----- Phase 7.3: Outcome Attribution -----
+
+enum OperatorAttributionSourceType {
+  nba_execute
+  copilot_action
+}
+
+/** Attribution record: before/after context for NBA or Copilot action execution. */
+model OperatorAttribution {
+  id          String                       @id @default(cuid())
+  actorUserId String
+  sourceType  OperatorAttributionSourceType
+  ruleKey     String?
+  actionKey   String?
+  entityType  String?
+  entityId    String?
+  occurredAt  DateTime                     @default(now())
+  beforeJson  Json                         @default("{}")
+  afterJson   Json                         @default("{}")
+  deltaJson   Json                         @default("{}")
+
+  @@index([actorUserId, occurredAt(sort: Desc)])
+  @@index([actorUserId, ruleKey, occurredAt(sort: Desc)])
+  @@index([actorUserId, sourceType, occurredAt(sort: Desc)])
+}
+
+/** Operator memory event: decision/outcome for pattern learning. */
+model OperatorMemoryEvent {
+  id           String                   @id @default(cuid())
+  actorUserId  String
+  sourceType   OperatorMemorySourceType
+  entityType   String?
+  entityId     String?
+  ruleKey      String?
+  actionKey    String?
+  outcome      OperatorMemoryOutcome
+  createdAt    DateTime                 @default(now())
+  metaJson     Json                     @default("{}")
+
+  @@index([actorUserId, createdAt(sort: Desc)])
+  @@index([actorUserId, ruleKey, createdAt(sort: Desc)])
+  @@index([actorUserId, actionKey, createdAt(sort: Desc)])
+}
+
+enum OperatorLearnedWeightKind {
+  rule
+  action
+}
+
+/** Learned weight per rule or action for NBA ranking personalization. */
+model OperatorLearnedWeight {
+  id          String                   @id @default(cuid())
+  actorUserId String
+  kind        OperatorLearnedWeightKind
+  key         String
+  weight      Float                    @default(0)
+  statsJson   Json                     @default("{}")
+  updatedAt   DateTime                 @updatedAt
+
+  @@unique([actorUserId, kind, key])
+  @@index([actorUserId])
+}
+
+// ----- Phase 6.3: Growth Engine (Prospecting → Outreach → Follow-up) -----
+
+enum ProspectPlatform {
+  instagram
+  twitter
+  upwork
+  website
+  referral
+  other
+}
+
+enum DealStage {
+  new
+  contacted
+  replied
+  call_scheduled
+  proposal_sent
+  won
+  lost
+}
+
+enum DealPriority {
+  low
+  medium
+  high
+  critical
+}
+
+enum OutreachChannel {
+  dm
+  email
+  sms
+  call
+  comment
+  other
+}
+
+/** Phase 6.3.1: Canonical outreach event types (source of truth for last activity). */
+enum OutreachEventType {
+  sent
+  reply
+  bounced
+  call_booked
+  followup_scheduled
+}
+
+/** Phase 6.3.1: Follow-up schedule status. */
+enum FollowUpScheduleStatus {
+  active
+  paused
+  completed
+}
+
+enum OutreachStatus {
+  draft
+  sent
+  replied
+  bounced
+  ignored
+}
+
+enum DealEventType {
+  note
+  call
+  proposal
+  payment
+  status_change
+}
+
+model Prospect {
+  id                 String           @id @default(cuid())
+  name               String
+  handle             String?          @unique
+  platform           ProspectPlatform
+  niche              String?
+  followers          Int?
+  bioUrl             String?          @db.Text
+  currentWebPresence String?          @db.Text
+  opportunityScore   Int?             // 1..10
+  notes              String?          @db.Text
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  deals Deal[]
+
+  @@index([platform])
+  @@index([opportunityScore])
+}
+
+model Deal {
+  id               String       @id @default(cuid())
+  prospectId       String
+  prospect         Prospect     @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+  stage            DealStage    @default(new)
+  valueCad         Int?
+  priority         DealPriority @default(medium)
+  lastContactedAt  DateTime?
+  nextFollowUpAt   DateTime?
+  ownerUserId      String
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  outreachMessages   OutreachMessage[]
+  events             DealEvent[]
+  outreachEvents     OutreachEvent[]
+  followUpSchedules   FollowUpSchedule[]
+
+  @@index([stage, nextFollowUpAt])
+  @@index([ownerUserId, stage])
+  @@index([prospectId])
+}
+
+/** Phase 6.3.1: Canonical outreach event log — source of truth for last activity, reply rates, attribution. */
+model OutreachEvent {
+  id          String            @id @default(cuid())
+  ownerUserId String
+  dealId      String
+  deal        Deal              @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  channel     OutreachChannel
+  type        OutreachEventType
+  occurredAt  DateTime
+  metaJson    Json?              @default("{}")
+  createdAt   DateTime          @default(now())
+
+  @@index([dealId])
+  @@index([ownerUserId, occurredAt(sort: Desc)])
+}
+
+/** Phase 6.3.1: Explicit follow-up schedule — engine decides what's overdue. One active per deal. */
+model FollowUpSchedule {
+  id             String               @id @default(cuid())
+  dealId         String
+  deal           Deal                  @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  nextFollowUpAt DateTime
+  cadenceDays    Int                   @default(3)
+  status         FollowUpScheduleStatus @default(active)
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+
+  @@index([dealId])
+  @@index([nextFollowUpAt, status])
+}
+
+model OutreachMessage {
+  id          String          @id @default(cuid())
+  dealId      String
+  deal        Deal            @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  channel     OutreachChannel
+  templateKey String
+  content     String          @db.Text
+  status      OutreachStatus  @default(draft)
+  sentAt      DateTime?
+  metaJson    Json?           @default("{}")
+  createdAt   DateTime        @default(now())
+
+  @@index([dealId])
+}
+
+model DealEvent {
+  id         String        @id @default(cuid())
+  dealId     String
+  deal       Deal          @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  type       DealEventType
+  summary    String        @db.Text
+  metaJson   Json?         @default("{}")
+  occurredAt DateTime
+  createdAt  DateTime     @default(now())
+
+  @@index([dealId])
+  @@index([dealId, occurredAt(sort: Desc)])
+}
+
+// ----- Phase 6.2: Founder Operating System -----
+
+/** Quarterly goals and planning context. */
+model FounderQuarter {
+  id        String   @id @default(cuid())
+  startsAt  DateTime
+  endsAt    DateTime
+  title     String   @db.Text
+  notes     String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  kpis  FounderKPI[]
+  weeks FounderWeek[]
+
+  @@index([startsAt])
+}
+
+/** KPI target and current value per quarter. */
+model FounderKPI {
+  id           String   @id @default(cuid())
+  quarterId    String
+  quarter      FounderQuarter @relation(fields: [quarterId], references: [id], onDelete: Cascade)
+  key          String
+  label        String   @db.Text
+  targetValue  Float
+  currentValue Float?
+  unit         String   @default("count")
+  updatedAt    DateTime @updatedAt
+
+  @@index([quarterId])
+}
+
+/** Weekly planning unit. weekStart = normalized Monday 00:00. */
+model FounderWeek {
+  id               String   @id @default(cuid())
+  weekStart        DateTime @unique
+  weekEnd          DateTime
+  quarterId        String?
+  quarter          FounderQuarter? @relation(fields: [quarterId], references: [id], onDelete: SetNull)
+  focusConstraint  String?  @db.Text
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  plan   FounderWeekPlan?
+  review FounderWeekReview?
+
+  @@index([weekStart])
+  @@index([quarterId])
+}
+
+/** Weekly plan: outcomes, milestones, commitments. */
+model FounderWeekPlan {
+  id              String   @id @default(cuid())
+  weekId          String   @unique
+  week            FounderWeek @relation(fields: [weekId], references: [id], onDelete: Cascade)
+  topOutcomesJson Json     @default("[]")
+  milestonesJson  Json     @default("[]")
+  commitmentsJson Json     @default("[]")
+
+  @@index([weekId])
+}
+
+/** Weekly review: wins, misses, deltas, decisions. */
+model FounderWeekReview {
+  id           String   @id @default(cuid())
+  weekId       String   @unique
+  week         FounderWeek @relation(fields: [weekId], references: [id], onDelete: Cascade)
+  winsJson     Json     @default("[]")
+  missesJson   Json     @default("[]")
+  deltasJson   Json     @default("[]")
+  decisionsJson Json    @default("[]")
+  retroNotes   String?  @db.Text
+
+  @@index([weekId])
 }

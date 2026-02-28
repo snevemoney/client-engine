@@ -10,6 +10,8 @@ import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useUrlQueryState } from "@/hooks/useUrlQueryState";
 import { AsyncState } from "@/components/ui/AsyncState";
 import { formatDateSafe } from "@/lib/ui/date-safe";
+import { useConfirmDialog } from "@/hooks/useConfirmDialog";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 type Candidate = {
   id: string;
@@ -64,6 +66,7 @@ export default function ProofCandidatesPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const runIdRef = useRef(0);
+  const { confirm, dialogProps } = useConfirmDialog();
 
   const fetchList = useCallback(async () => {
     if (abortRef.current) abortRef.current.abort();
@@ -122,9 +125,16 @@ export default function ProofCandidatesPage() {
         return;
       }
       void fetchList();
+    } catch {
+      toast.error("Action failed");
     } finally {
       setActionLoading(null);
     }
+  };
+
+  const runWithConfirm = async (candidateId: string, title: string, body: string, variant: "default" | "destructive", fn: () => Promise<Response>) => {
+    if (!(await confirm({ title, body, confirmLabel: title.split("?")[0], variant }))) return;
+    await runAction(candidateId, fn);
   };
 
   return (
@@ -257,7 +267,7 @@ export default function ProofCandidatesPage() {
                                 size="sm"
                                 disabled={loading}
                                 onClick={() =>
-                                  runAction(c.id, () =>
+                                  runWithConfirm(c.id, "Promote candidate?", `Promote "${c.title || "this candidate"}" to a proof record.`, "default", () =>
                                     fetch(`/api/proof-candidates/${c.id}/promote`, { method: "POST", credentials: "include" })
                                   )
                                 }
@@ -270,7 +280,7 @@ export default function ProofCandidatesPage() {
                                 className="text-red-400"
                                 disabled={loading}
                                 onClick={() =>
-                                  runAction(c.id, () =>
+                                  runWithConfirm(c.id, "Reject candidate?", `Reject "${c.title || "this candidate"}". This cannot be undone.`, "destructive", () =>
                                     fetch(`/api/proof-candidates/${c.id}/reject`, {
                                       method: "POST",
                                       headers: { "Content-Type": "application/json" },
@@ -300,6 +310,7 @@ export default function ProofCandidatesPage() {
         </div>
         ) : null}
       </AsyncState>
+      <ConfirmDialog {...dialogProps} />
     </div>
   );
 }

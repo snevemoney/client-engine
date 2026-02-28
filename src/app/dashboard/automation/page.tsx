@@ -74,32 +74,40 @@ export default function AutomationPage() {
     return () => { if (abortRef.current) abortRef.current.abort(); };
   }, [fetchData]);
 
+  const [mutatingId, setMutatingId] = useState<string | null>(null);
+
   const handleGenerate = async () => {
     setGenerateLoading(true);
     try {
       const res = await fetch("/api/automation-suggestions/generate", { method: "POST" });
       if (res.ok) fetchData();
       else {
-        const d = await res.json();
+        const d = await res.json().catch(() => null);
         toast.error(d?.error ?? "Generate failed");
       }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Generate failed");
     } finally {
       setGenerateLoading(false);
     }
   };
 
   const handleApply = async (id: string) => {
+    setMutatingId(id);
     try {
       const res = await fetch(`/api/automation-suggestions/${id}/apply`, { method: "POST" });
       const data = await res.json();
       if (res.ok && data.success) fetchData();
       else if (data.error) toast.error(data.error);
     } catch {
-      // ignore
+      toast.error("Failed to apply suggestion");
+    } finally {
+      setMutatingId(null);
     }
   };
 
   const handleReject = async (id: string) => {
+    setMutatingId(id);
     try {
       const res = await fetch(`/api/automation-suggestions/${id}`, {
         method: "PATCH",
@@ -107,8 +115,11 @@ export default function AutomationPage() {
         body: JSON.stringify({ status: "rejected" }),
       });
       if (res.ok) fetchData();
+      else toast.error("Failed to reject suggestion");
     } catch {
-      // ignore
+      toast.error("Failed to reject suggestion");
+    } finally {
+      setMutatingId(null);
     }
   };
 
@@ -178,15 +189,17 @@ export default function AutomationPage() {
                     variant="ghost"
                     size="sm"
                     onClick={() => handleApply(s.id)}
+                    disabled={mutatingId !== null}
                     className="text-emerald-400"
                   >
                     <Check className="w-4 h-4 mr-1" />
-                    Apply
+                    {mutatingId === s.id ? "…" : "Apply"}
                   </Button>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => handleReject(s.id)}
+                    disabled={mutatingId !== null}
                     className="text-neutral-400"
                   >
                     <X className="w-4 h-4 mr-1" />

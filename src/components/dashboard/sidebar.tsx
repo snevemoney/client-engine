@@ -33,6 +33,7 @@ import {
   Calendar,
   Package,
   Award,
+  GraduationCap,
   Layers,
   ChevronRight,
   Bell,
@@ -59,6 +60,8 @@ const navGroups: NavGroup[] = [
     defaultOpen: true,
     items: [
       { href: "/dashboard/overview", label: "Overview", icon: LayoutDashboard },
+      { href: "/dashboard/founder", label: "Founder Mode", icon: Target },
+      { href: "/dashboard/founder/os", label: "Founder OS", icon: Layers },
       { href: "/dashboard/command", label: "Dashboard", icon: Target },
       { href: "/dashboard/command-center", label: "Daily Summary", icon: LayoutDashboard },
       { href: "/dashboard/leads", label: "Leads", icon: Inbox },
@@ -67,6 +70,7 @@ const navGroups: NavGroup[] = [
       { href: "/dashboard/inbox", label: "Inbox", icon: Bell },
       { href: "/dashboard/next-actions", label: "Next Actions", icon: Target },
       { href: "/dashboard/chat", label: "Chat", icon: MessageSquare },
+      { href: "/dashboard/copilot/coach", label: "Coach Mode", icon: GraduationCap },
     ],
   },
   {

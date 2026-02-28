@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { Pause, Play } from "lucide-react";
+import { useConfirmDialog } from "@/hooks/useConfirmDialog";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import type { MetaStatusLevel } from "@/lib/meta-ads/client";
 
 type Props = {
@@ -15,16 +17,12 @@ type Props = {
 export function MetaAdsStatusActions({ level, id, name, effectiveStatus, onSuccess }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { confirm, dialogProps } = useConfirmDialog();
 
   const isActive = effectiveStatus === "ACTIVE";
   const isPaused = effectiveStatus === "PAUSED";
 
-  async function handleAction(action: "pause" | "resume") {
-    const msg = action === "pause"
-      ? `Pause this ${level}?`
-      : `Resume this ${level}?`;
-    if (!confirm(msg)) return;
-
+  async function executeAction(action: "pause" | "resume") {
     setLoading(true);
     setError(null);
     try {
@@ -45,6 +43,17 @@ export function MetaAdsStatusActions({ level, id, name, effectiveStatus, onSucce
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleAction(action: "pause" | "resume") {
+    const label = action === "pause" ? "Pause" : "Resume";
+    const ok = await confirm({
+      title: `${label} ${level}`,
+      body: `${label} "${name}"?`,
+      confirmLabel: label,
+      variant: action === "pause" ? "destructive" : "default",
+    });
+    if (ok) void executeAction(action);
   }
 
   if (!isActive && !isPaused) return null;
@@ -78,6 +87,7 @@ export function MetaAdsStatusActions({ level, id, name, effectiveStatus, onSucce
         )}
       </div>
       {error && <span className="text-[10px] text-red-400">{error}</span>}
+      <ConfirmDialog {...dialogProps} />
     </div>
   );
 }

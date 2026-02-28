@@ -99,6 +99,8 @@ export default function FollowupsPage() {
         return;
       }
       void fetchData();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Action failed");
     } finally {
       setActionLoading(null);
     }

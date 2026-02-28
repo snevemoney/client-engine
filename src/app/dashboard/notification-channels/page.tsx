@@ -53,6 +53,8 @@ export default function NotificationChannelsPage() {
   const handleToggle = async (id: string, isEnabled: boolean) => {
     if (actioningId) return;
     setActioningId(id);
+    // Optimistic update
+    setChannels((prev) => prev.map((ch) => (ch.id === id ? { ...ch, isEnabled: !isEnabled } : ch)));
     try {
       const res = await fetch(`/api/notification-channels/${id}`, {
         method: "PATCH",
@@ -61,9 +63,15 @@ export default function NotificationChannelsPage() {
       });
       if (res.ok) void fetchData();
       else {
-        const d = await res.json();
+        // Revert optimistic update
+        setChannels((prev) => prev.map((ch) => (ch.id === id ? { ...ch, isEnabled } : ch)));
+        const d = await res.json().catch(() => null);
         toast.error(d?.error ?? "Update failed");
       }
+    } catch (e) {
+      // Revert optimistic update
+      setChannels((prev) => prev.map((ch) => (ch.id === id ? { ...ch, isEnabled } : ch)));
+      toast.error(e instanceof Error ? e.message : "Update failed");
     } finally {
       setActioningId(null);
     }
@@ -82,6 +90,8 @@ export default function NotificationChannelsPage() {
         toast.error(data?.error ?? "Test failed");
         void fetchData();
       }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Test failed");
     } finally {
       setActioningId(null);
     }

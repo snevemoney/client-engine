@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { FileText, Copy, Check, Loader2, ClipboardList } from "lucide-react";
+import { fetchJsonThrow } from "@/lib/http/fetch-json";
 
 type LeadOption = { id: string; title: string; itemType: "pipeline" | "intake" };
 
@@ -120,50 +121,54 @@ export default function ProofPage() {
   const [candidateSummary, setCandidateSummary] = useState<ProofCandidateSummary>(null);
   const didAutoGenerate = useRef(false);
 
-  const fetchCandidateSummary = useCallback(async () => {
-    const res = await fetch("/api/proof-candidates/summary");
-    if (res.ok) {
-      const d = await res.json();
+  const fetchCandidateSummary = useCallback(async (signal?: AbortSignal) => {
+    try {
+      const d = await fetchJsonThrow<ProofCandidateSummary>("/api/proof-candidates/summary", { signal });
       setCandidateSummary(d && typeof d === "object" ? d : null);
-    } else {
+    } catch {
       setCandidateSummary(null);
     }
   }, []);
 
-  const fetchProofRecords = useCallback(async () => {
-    const res = await fetch("/api/proof-records");
-    if (res.ok) {
-      const data = await res.json();
+  const fetchProofRecords = useCallback(async (signal?: AbortSignal) => {
+    try {
+      const data = await fetchJsonThrow<ProofRecord[]>("/api/proof-records", { signal });
       setProofRecords(Array.isArray(data) ? data : []);
+    } catch {
+      // non-critical: keep existing records on error
     }
   }, []);
 
-  const fetchLeadOptions = useCallback(async () => {
-    const res = await fetch("/api/proof/lead-options", { cache: "no-store" });
-    if (res.ok) {
-      const data = await res.json();
+  const fetchLeadOptions = useCallback(async (signal?: AbortSignal) => {
+    try {
+      const data = await fetchJsonThrow<{ pipeline?: { id: string; title: string }[]; intake?: { id: string; title: string }[] }>("/api/proof/lead-options", { signal });
       const combined: LeadOption[] = [
-        ...(data.pipeline ?? []).map((l: { id: string; title: string }) => ({ ...l, itemType: "pipeline" as const })),
-        ...(data.intake ?? []).map((l: { id: string; title: string }) => ({ ...l, itemType: "intake" as const })),
+        ...(data.pipeline ?? []).map((l) => ({ ...l, itemType: "pipeline" as const })),
+        ...(data.intake ?? []).map((l) => ({ ...l, itemType: "intake" as const })),
       ];
       setLeadOptions(combined);
       setSelectedLeadId((prev) => (prev ? prev : combined.length ? `${combined[0].itemType}:${combined[0].id}` : ""));
+    } catch {
+      // non-critical: keep existing options on error
     }
   }, []);
 
-  const fetchProofPosts = useCallback(async () => {
-    const res = await fetch("/api/proof");
-    if (res.ok) {
-      const data = await res.json();
-      setProofPosts(data);
+  const fetchProofPosts = useCallback(async (signal?: AbortSignal) => {
+    try {
+      const data = await fetchJsonThrow<ProofArtifact[]>("/api/proof", { signal });
+      setProofPosts(Array.isArray(data) ? data : []);
+    } catch {
+      // non-critical: keep existing posts on error
     }
   }, []);
 
   useEffect(() => {
-    fetchLeadOptions();
-    fetchProofPosts();
-    fetchProofRecords();
-    fetchCandidateSummary();
+    const controller = new AbortController();
+    fetchLeadOptions(controller.signal);
+    fetchProofPosts(controller.signal);
+    fetchProofRecords(controller.signal);
+    fetchCandidateSummary(controller.signal);
+    return () => controller.abort();
   }, [fetchLeadOptions, fetchProofPosts, fetchProofRecords, fetchCandidateSummary]);
 
   // URL trigger for browser automation: ?generate=1 runs generate once when a lead is selected
@@ -181,16 +186,14 @@ export default function ProofPage() {
       setLastGenerated(null);
       try {
         const body = type === "intake" ? { intakeLeadId: id } : { leadId: id };
-        const res = await fetch("/api/proof/generate", {
+        const data = await fetchJsonThrow<{ content: string; artifactId: string }>("/api/proof/generate", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body),
         });
-        if (res.ok) {
-          const data = await res.json();
-          setLastGenerated({ content: data.content, artifactId: data.artifactId });
-          if (type === "pipeline") fetchProofPosts();
-        }
+        setLastGenerated({ content: data.content, artifactId: data.artifactId });
+        if (type === "pipeline") fetchProofPosts();
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Generate failed");
       } finally {
         setGenerating(false);
       }
@@ -212,28 +215,28 @@ export default function ProofPage() {
     setLastGenerated(null);
     try {
       const body = type === "intake" ? { intakeLeadId: id } : { leadId: id };
-      const res = await fetch("/api/proof/generate", {
+      const data = await fetchJsonThrow<{ content: string; artifactId: string }>("/api/proof/generate", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      if (res.ok) {
-        const data = await res.json();
-        setLastGenerated({ content: data.content, artifactId: data.artifactId });
-        if (type === "pipeline") fetchProofPosts();
-      } else {
-        const err = await res.json();
-        toast.error(err.error || "Generate failed");
-      }
+      setLastGenerated({ content: data.content, artifactId: data.artifactId });
+      if (type === "pipeline") fetchProofPosts();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Generate failed");
     } finally {
       setGenerating(false);
     }
   }
 
-  function copyContent(text: string) {
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  async function copyContent(text: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success("Copied");
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error("Failed to copy");
+    }
   }
 
   const displayContent = lastGenerated?.content ?? null;
@@ -340,14 +343,16 @@ export default function ProofPage() {
                   <ProofRecordEditForm
                     record={r}
                     onSave={async (updates) => {
-                      const res = await fetch(`/api/proof-records/${r.id}`, {
-                        method: "PATCH",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify(updates),
-                      });
-                      if (res.ok) {
+                      try {
+                        await fetchJsonThrow(`/api/proof-records/${r.id}`, {
+                          method: "PATCH",
+                          body: JSON.stringify(updates),
+                        });
+                        toast.success("Saved");
                         setEditingRecordId(null);
                         fetchProofRecords();
+                      } catch (err) {
+                        toast.error(err instanceof Error ? err.message : "Save failed");
                       }
                     }}
                     onCancel={() => setEditingRecordId(null)}

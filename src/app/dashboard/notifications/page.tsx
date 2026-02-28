@@ -11,6 +11,8 @@ import { PaginationControls } from "@/components/ui/PaginationControls";
 import { formatDateSafe } from "@/lib/ui/date-safe";
 import { normalizePagination } from "@/lib/ui/pagination-safe";
 import { useUrlQueryState } from "@/hooks/useUrlQueryState";
+import { useConfirmDialog } from "@/hooks/useConfirmDialog";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 type Event = {
   id: string;
@@ -51,6 +53,7 @@ export default function NotificationsPage() {
   const [actioningId, setActioningId] = useState<string | null>(null);
   const [runEscLoading, setRunEscLoading] = useState(false);
   const [dispatchLoading, setDispatchLoading] = useState(false);
+  const { confirm: confirmAction, dialogProps: actionDialogProps } = useConfirmDialog();
   const status = url.getString("status", "");
   const severity = url.getString("severity", "");
   const sourceType = url.getString("sourceType", "");
@@ -88,6 +91,8 @@ export default function NotificationsPage() {
   }, [fetchData]);
 
   const handleRunEscalations = async () => {
+    const ok = await confirmAction({ title: "Run escalations", body: "This will run the escalation check and create notification events. Continue?", confirmLabel: "Run" });
+    if (!ok) return;
     setRunEscLoading(true);
     try {
       const res = await fetch("/api/notifications/run-escalations", { method: "POST" });
@@ -95,18 +100,24 @@ export default function NotificationsPage() {
       if (res.ok) {
         if (data.created > 0 || data.queued > 0) void fetchData();
       } else toast.error(data?.error ?? "Failed");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Escalation run failed");
     } finally {
       setRunEscLoading(false);
     }
   };
 
   const handleDispatch = async () => {
+    const ok = await confirmAction({ title: "Dispatch pending", body: "This will dispatch all pending notifications. Continue?", confirmLabel: "Dispatch" });
+    if (!ok) return;
     setDispatchLoading(true);
     try {
       const res = await fetch("/api/notifications/dispatch", { method: "POST" });
       const data = await res.json();
       if (res.ok) void fetchData();
       else toast.error(data?.error ?? "Failed");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Dispatch failed");
     } finally {
       setDispatchLoading(false);
     }
@@ -119,9 +130,11 @@ export default function NotificationsPage() {
       const res = await fetch(`/api/notifications/${id}/retry-failed`, { method: "POST" });
       if (res.ok) void fetchData();
       else {
-        const d = await res.json();
+        const d = await res.json().catch(() => null);
         toast.error(d?.error ?? "Retry failed");
       }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Retry failed");
     } finally {
       setActioningId(null);
     }
@@ -300,6 +313,7 @@ export default function NotificationsPage() {
           </div>
         ) : null}
       </AsyncState>
+      <ConfirmDialog {...actionDialogProps} />
     </div>
   );
 }

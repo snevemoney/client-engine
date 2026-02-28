@@ -117,5 +117,31 @@ export function evaluateRiskRules(ctx: RiskRuleContext): RiskCandidate[] {
     });
   }
 
+  // 7) growth_pipeline_zero_activity_7d (Phase 6.3)
+  const growthScope = ctx.ownerUserId ? `growth:${ctx.ownerUserId}` : null;
+  if (growthScope && (ctx.growthDealCount ?? 0) >= 3) {
+    const sevenDaysAgo = new Date(ctx.now.getTime() - 7 * 86400000);
+    const lastStale =
+      ctx.growthLastActivityAt == null || ctx.growthLastActivityAt < sevenDaysAgo;
+    if (lastStale) {
+      out.push({
+        key: `growth_pipeline_zero_activity_7d:${growthScope}`,
+        title: "Growth pipeline inactive 7+ days",
+        description: "No outreach or events in 7+ days with 3+ deals in pipeline",
+        severity: RiskSeverity.high,
+        sourceType: RiskSourceType.growth_pipeline,
+        sourceId: ctx.ownerUserId,
+        actionUrl: "/dashboard/growth",
+        suggestedFix: "Review pipeline and send follow-ups",
+        evidenceJson: {
+          dealCount: ctx.growthDealCount,
+          lastActivityAt: ctx.growthLastActivityAt?.toISOString() ?? null,
+        },
+        createdByRule: "growth_pipeline_zero_activity_7d",
+        dedupeKey: dedupeKey("growth_pipeline_zero_activity_7d", growthScope),
+      });
+    }
+  }
+
   return out;
 }

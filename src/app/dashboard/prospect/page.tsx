@@ -1,9 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import { Search, ExternalLink, Plus, Loader2, AlertCircle, CheckCircle2, XCircle, CircleDashed, Mail, Phone, Globe, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useAsyncAction } from "@/hooks/useAsyncAction";
+import { useConfirmDialog } from "@/hooks/useConfirmDialog";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { fetchJsonThrow } from "@/lib/http/fetch-json";
 
 type ProspectResult = {
   id: string;
@@ -69,6 +74,8 @@ export default function ProspectPage() {
   const [report, setReport] = useState<ProspectReport | null>(null);
   const [converting, setConverting] = useState<Set<string>>(new Set());
   const [showRouting, setShowRouting] = useState(false);
+  const { confirm, dialogProps } = useConfirmDialog();
+  const toastFn = (m: string, t?: "success" | "error") => t === "error" ? toast.error(m) : toast.success(m);
 
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -76,9 +83,8 @@ export default function ProspectPage() {
     setLoading(true);
     setReport(null);
     try {
-      const res = await fetch("/api/prospect", {
+      const data = await fetchJsonThrow<ProspectReport>("/api/prospect", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           clientType: clientType.trim(),
           industry: industry.trim() || undefined,
@@ -86,20 +92,20 @@ export default function ProspectPage() {
           location: location.trim() || undefined,
         }),
       });
-      if (res.ok) {
-        setReport(await res.json());
-      }
+      setReport(data);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Search failed");
     } finally {
       setLoading(false);
     }
   }
 
   async function convertToLead(result: ProspectResult) {
+    if (!(await confirm({ title: "Convert to lead?", body: `Add "${result.title}" as a new lead.`, confirmLabel: "Convert" }))) return;
     setConverting((prev) => new Set(prev).add(result.id));
     try {
-      await fetch("/api/leads", {
+      await fetchJsonThrow("/api/leads", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: result.title,
           source: result.source,
@@ -109,6 +115,9 @@ export default function ProspectPage() {
           contactName: result.contactPath || undefined,
         }),
       });
+      toast.success("Converted to lead");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to convert");
     } finally {
       setConverting((prev) => {
         const next = new Set(prev);
@@ -365,6 +374,7 @@ export default function ProspectPage() {
           </p>
         </div>
       )}
+      <ConfirmDialog {...dialogProps} />
     </div>
   );
 }

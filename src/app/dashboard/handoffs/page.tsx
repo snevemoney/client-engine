@@ -72,8 +72,12 @@ export default function HandoffsPage() {
         fetch(`/api/delivery-projects/handoff-queue?${params}`, { credentials: "include", signal: controller.signal, cache: "no-store" }),
         fetch("/api/delivery-projects/handoff-summary", { credentials: "include", signal: controller.signal, cache: "no-store" }),
       ]);
+      if (!res.ok) {
+        const errData = await res.json().catch(() => null);
+        throw new Error(errData?.error ?? `Failed to load handoffs (${res.status})`);
+      }
       const json = await res.json().catch(() => null);
-      const sumJson = await sumRes.json().catch(() => null);
+      const sumJson = sumRes.ok ? await sumRes.json().catch(() => null) : null;
       if (controller.signal.aborted || runId !== runIdRef.current) return;
       setItems(Array.isArray(json?.items) ? json.items : (Array.isArray(json) ? json : []));
       setSummary(sumJson && typeof sumJson === "object" ? sumJson : null);
@@ -102,9 +106,11 @@ export default function HandoffsPage() {
       const res = await fn();
       if (res.ok) void fetchData();
       else {
-        const d = await res.json();
+        const d = await res.json().catch(() => null);
         toast.error(d?.error ?? "Action failed");
       }
+    } catch {
+      toast.error("Action failed");
     } finally {
       setActionLoading(null);
     }

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Copy, Check, AlertCircle, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 const DEPLOY_CMD = "ssh root@69.62.66.78 '/root/deploy-client-engine.sh'";
 
@@ -21,10 +22,14 @@ export function ProductionDeployCard() {
       .finally(() => setLoading(false));
   }, []);
 
-  function copyCommand() {
-    navigator.clipboard.writeText(DEPLOY_CMD);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  async function copyCommand() {
+    try {
+      await navigator.clipboard.writeText(DEPLOY_CMD);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error("Failed to copy to clipboard");
+    }
   }
 
   return (

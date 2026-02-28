@@ -169,6 +169,36 @@ function getBaseExplanation(ruleKey: string, ctx: NextActionContext): NextAction
         links: [{ label: "Leads", href: "/dashboard/leads" }],
       };
 
+    case "growth_overdue_followups":
+      return {
+        ruleKey,
+        summary: "Growth pipeline deals have overdue follow-ups.",
+        evidence: [
+          { label: "Overdue count", value: ctx.growthOverdueCount ?? 0, source: "db:Deal" },
+        ],
+        recommendedSteps: [
+          "Open Growth pipeline",
+          "Send follow-up for each overdue deal",
+          "Update next follow-up date",
+        ],
+        links: [{ label: "Growth", href: "/dashboard/growth" }],
+      };
+
+    case "growth_no_outreach_sent":
+      return {
+        ruleKey,
+        summary: "New prospects have no outreach sent yet.",
+        evidence: [
+          { label: "New deals", value: ctx.growthNoOutreachCount ?? 0, source: "db:Deal" },
+        ],
+        recommendedSteps: [
+          "Open Growth pipeline",
+          "Preview and send outreach for each new deal",
+          "Set follow-up reminder",
+        ],
+        links: [{ label: "Growth", href: "/dashboard/growth" }],
+      };
+
     default:
       return {
         ruleKey,

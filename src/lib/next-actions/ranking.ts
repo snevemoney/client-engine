@@ -1,5 +1,6 @@
 /**
  * Phase 4.1: NBA ranking v2 — structured scoring with tie-breakers.
+ * Phase 7.1: Learned weights for personalization.
  */
 
 import { NextActionPriority } from "@prisma/client";
@@ -14,6 +15,14 @@ const PRIORITY_BASE: Record<NextActionPriority, number> = {
 
 const PRIORITY_ORDER: NextActionPriority[] = ["critical", "high", "medium", "low"];
 
+export type LearnedWeightsParam = {
+  ruleWeights: Map<string, number>;
+  actionWeights: Map<string, number>;
+};
+
+/** Phase 7.3: Effectiveness by ruleKey (netLiftScore) for ranking boost. */
+export type EffectivenessByRuleKey = Map<string, number>;
+
 export type ScoreFactors = {
   base: number;
   countBoost: number;
@@ -22,6 +31,7 @@ export type ScoreFactors = {
   impactBoost: number;
   frictionPenalty: number;
   dedupePenalty: number;
+  learnedBoost: number;
   total: number;
 };
 
@@ -31,10 +41,16 @@ export type RankedCandidate = NextActionCandidate & {
 
 /**
  * Compute total score for a candidate. Deterministic when now is provided.
+ * Phase 7.1: Applies learned weights (ruleWeight*2, actionWeight*1) and penalty when ruleWeight <= -3.
  */
 export function computeNextActionScore(
   action: Omit<NextActionCandidate, "score">,
-  ctx: { now: Date; existingInScope?: string[] },
+  ctx: {
+    now: Date;
+    existingInScope?: string[];
+    learnedWeights?: LearnedWeightsParam;
+    effectivenessByRuleKey?: EffectivenessByRuleKey;
+  },
   _testOverride?: { now?: Date }
 ): { total: number; factors: ScoreFactors } {
   const now = _testOverride?.now ?? ctx.now;
@@ -47,6 +63,23 @@ export function computeNextActionScore(
   const frictionPenalty = Math.min(5, action.frictionPenalty ?? 0);
   const dedupePenalty = ctx.existingInScope?.includes(action.dedupeKey) ? 5 : 0;
 
+  let learnedBoost = 0;
+  if (ctx.learnedWeights) {
+    const ruleWeight = ctx.learnedWeights.ruleWeights.get(action.createdByRule) ?? 0;
+    const actionWeight = ctx.learnedWeights.actionWeights.get("mark_done") ?? 0;
+    learnedBoost += ruleWeight * 2;
+    learnedBoost += actionWeight * 1;
+    if (ruleWeight <= -3) {
+      learnedBoost -= 3;
+    }
+  }
+
+  let effectivenessBoost = 0;
+  if (ctx.effectivenessByRuleKey) {
+    const netLift = ctx.effectivenessByRuleKey.get(action.createdByRule) ?? 0;
+    effectivenessBoost = Math.max(-6, Math.min(6, Math.round(netLift)));
+  }
+
   // Impact: critical band, high failed count, etc.
   if (action.priority === "critical") impactBoost = Math.max(impactBoost, 5);
   if ((action.payloadJson as Record<string, unknown>)?.entityType === "command_center" && action.priority === "high") {
@@ -57,7 +90,17 @@ export function computeNextActionScore(
     0,
     Math.min(
       100,
-      Math.round(base + countBoost + recencyBoost + urgencyBoost + impactBoost - frictionPenalty - dedupePenalty)
+      Math.round(
+        base +
+          countBoost +
+          recencyBoost +
+          urgencyBoost +
+          impactBoost -
+          frictionPenalty -
+          dedupePenalty +
+          learnedBoost +
+          effectivenessBoost
+      )
     )
   );
 
@@ -71,6 +114,7 @@ export function computeNextActionScore(
       impactBoost,
       frictionPenalty,
       dedupePenalty,
+      learnedBoost,
       total,
     },
   };
@@ -83,14 +127,22 @@ export function computeNextActionScore(
  * 3) urgency desc
  * 4) recency desc
  * 5) dedupeKey asc (deterministic)
+ * Phase 7.1: learnedWeights optional for personalization.
  */
 export function rankNextActions(
   actions: NextActionCandidate[],
   now: Date,
-  existingInScope: string[] = []
+  existingInScope: string[] = [],
+  learnedWeights?: LearnedWeightsParam,
+  effectivenessByRuleKey?: EffectivenessByRuleKey
 ): RankedCandidate[] {
   const withScores = actions.map((a) => {
-    const { total, factors } = computeNextActionScore(a, { now, existingInScope });
+    const { total, factors } = computeNextActionScore(a, {
+      now,
+      existingInScope,
+      learnedWeights,
+      effectivenessByRuleKey,
+    });
     return { ...a, score: total, _rankFactors: factors } as RankedCandidate;
   });
 

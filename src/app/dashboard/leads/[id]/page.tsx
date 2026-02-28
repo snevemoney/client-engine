@@ -9,6 +9,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ArrowLeft, ExternalLink, Plus, FileText, X, Sparkles, Target, Send, Hammer, CheckCircle, XCircle, RefreshCw, AlertTriangle } from "lucide-react";
+import { useAsyncAction } from "@/hooks/useAsyncAction";
+import { useConfirmDialog } from "@/hooks/useConfirmDialog";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { fetchJsonThrow } from "@/lib/http/fetch-json";
 import { OpportunityBriefCard } from "@/components/dashboard/leads/OpportunityBriefCard";
 import { RoiEstimateCard } from "@/components/dashboard/leads/RoiEstimateCard";
 import { FollowUpSequenceCard } from "@/components/dashboard/leads/FollowUpSequenceCard";
@@ -119,23 +123,20 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   const [artifactType, setArtifactType] = useState("notes");
   const [artifactTitle, setArtifactTitle] = useState("");
   const [artifactContent, setArtifactContent] = useState("");
-  const [saving, setSaving] = useState(false);
   const [expandedArtifact, setExpandedArtifact] = useState<string | null>(null);
   const [enriching, setEnriching] = useState(false);
   const [scoring, setScoring] = useState(false);
   const [proposing, setProposing] = useState(false);
   const [building, setBuilding] = useState(false);
-  const [approving, setApproving] = useState(false);
-  const [rejecting, setRejecting] = useState(false);
   const [rejectNote, setRejectNote] = useState("");
   const [showRejectInput, setShowRejectInput] = useState(false);
-  const [revising, setRevising] = useState(false);
   const [reviseInstruction, setReviseInstruction] = useState("");
-  const [markingSent, setMarkingSent] = useState(false);
-  const [settingDeal, setSettingDeal] = useState(false);
   const [selectedProposalId, setSelectedProposalId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
   const [aiError, setAiError] = useState<string | null>(null);
+
+  const toastFn = (m: string, t?: "success" | "error") => t === "error" ? toast.error(m) : toast.success(m);
+  const { confirm, dialogProps } = useConfirmDialog();
 
   const runAiAction = useCallback(async (
     action: () => Promise<void>,
@@ -207,163 +208,156 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   const hasProposal = lead?.artifacts?.some((a) => a.type === "proposal") ?? false;
   const canApprove = hasProposal && lead?.status !== "APPROVED";
 
-  async function approveLead() {
-    if (!canApprove) return;
-    setApproving(true);
-    try {
-      const res = await fetch(`/api/leads/${id}/approve`, { method: "POST" });
-      if (res.ok) {
-        const full = await fetch(`/api/leads/${id}`);
-        if (full.ok) setLead(await full.json());
+  const { execute: approveLead, pending: approvePending } = useAsyncAction(
+    async () => {
+      if (!canApprove) return;
+      await fetchJsonThrow(`/api/leads/${id}/approve`, { method: "POST" });
+      const full = await fetch(`/api/leads/${id}`);
+      if (full.ok) setLead(await full.json());
+    },
+    {
+      toast: toastFn,
+      onSuccess: () => {
         toast.success("Lead approved", {
           action: { label: "Start Build →", onClick: () => runAiAction(startBuild, setBuilding, "Build") },
         });
-      } else {
-        const err = await res.json();
-        toast.error(err.error ?? "Approve failed");
-      }
-    } catch { toast.error("Approve failed"); }
-    setApproving(false);
-  }
+      },
+    },
+  );
 
-  async function reviseProposal() {
-    if (!reviseInstruction.trim()) return;
-    setRevising(true);
-    try {
-      const res = await fetch(`/api/leads/${id}/proposal/revise`, {
+  const { execute: reviseProposal, pending: revisePending } = useAsyncAction(
+    async () => {
+      if (!reviseInstruction.trim()) return;
+      await fetchJsonThrow(`/api/leads/${id}/proposal/revise`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ instruction: reviseInstruction.trim() }),
       });
-      if (res.ok) {
-        const full = await fetch(`/api/leads/${id}`);
-        if (full.ok) setLead(await full.json());
-        setReviseInstruction("");
-        toast.success("Proposal revised");
-      } else {
-        const err = await res.json();
-        toast.error(err.error ?? "Revise failed");
-      }
-    } catch {
-      toast.error("Revise failed");
-    }
-    setRevising(false);
-  }
+      const full = await fetch(`/api/leads/${id}`);
+      if (full.ok) setLead(await full.json());
+      setReviseInstruction("");
+    },
+    { toast: toastFn, successMessage: "Proposal revised" },
+  );
 
-  async function rejectLead() {
-    setRejecting(true);
-    try {
-      const res = await fetch(`/api/leads/${id}/reject`, {
+  const { execute: rejectLead, pending: rejectPending } = useAsyncAction(
+    async () => {
+      const confirmed = await confirm({
+        title: "Reject this lead?",
+        body: "This will mark the lead as rejected. You can change the status later if needed.",
+        confirmLabel: "Reject",
+        variant: "destructive",
+      });
+      if (!confirmed) return;
+      await fetchJsonThrow(`/api/leads/${id}/reject`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ note: rejectNote.trim() || undefined }),
       });
-      if (res.ok) {
-        const full = await fetch(`/api/leads/${id}`);
-        if (full.ok) setLead(await full.json());
-        setShowRejectInput(false);
-        setRejectNote("");
-        toast("Lead rejected");
-      } else {
-        const err = await res.json();
-        toast.error(err.error ?? "Reject failed");
-      }
-    } catch { toast.error("Reject failed"); }
-    setRejecting(false);
-  }
+      const full = await fetch(`/api/leads/${id}`);
+      if (full.ok) setLead(await full.json());
+      setShowRejectInput(false);
+      setRejectNote("");
+    },
+    { toast: toastFn, successMessage: "Lead rejected" },
+  );
 
-  async function markProposalSent() {
-    setMarkingSent(true);
-    try {
-      const res = await fetch(`/api/leads/${id}/proposal-sent`, { method: "POST" });
-      if (res.ok) {
-        const full = await fetch(`/api/leads/${id}`);
-        if (full.ok) setLead(await full.json());
+  const { execute: markProposalSent, pending: markSentPending } = useAsyncAction(
+    async () => {
+      await fetchJsonThrow(`/api/leads/${id}/proposal-sent`, { method: "POST" });
+      const full = await fetch(`/api/leads/${id}`);
+      if (full.ok) setLead(await full.json());
+    },
+    {
+      toast: toastFn,
+      onSuccess: () => {
         toast.success("Proposal marked sent", {
           action: { label: "Follow-ups →", onClick: () => router.push("/dashboard/followups") },
         });
-      } else {
-        toast.error("Failed to mark proposal sent");
-      }
-    } catch { toast.error("Failed to mark proposal sent"); }
-    setMarkingSent(false);
-  }
+      },
+    },
+  );
 
-  async function setDealOutcome(outcome: "won" | "lost") {
-    setSettingDeal(true);
-    try {
-      const res = await fetch(`/api/leads/${id}/deal-outcome`, {
+  const { execute: setDealOutcome, pending: dealPending } = useAsyncAction(
+    async (outcome: "won" | "lost") => {
+      if (outcome === "lost") {
+        const confirmed = await confirm({
+          title: "Mark deal as lost?",
+          body: "This will record the deal as lost.",
+          confirmLabel: "Mark Lost",
+          variant: "destructive",
+        });
+        if (!confirmed) return;
+      }
+      await fetchJsonThrow(`/api/leads/${id}/deal-outcome`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ outcome }),
       });
-      if (res.ok) {
-        const full = await fetch(`/api/leads/${id}`);
-        if (full.ok) setLead(await full.json());
-        if (outcome === "won") {
-          toast.success("Deal won!", {
-            action: { label: "View Delivery →", onClick: () => router.push("/dashboard/delivery") },
-          });
-        } else {
-          toast("Deal marked lost");
-        }
+      const full = await fetch(`/api/leads/${id}`);
+      if (full.ok) setLead(await full.json());
+      if (outcome === "won") {
+        toast.success("Deal won!", {
+          action: { label: "View Delivery →", onClick: () => router.push("/dashboard/delivery") },
+        });
       } else {
-        toast.error("Failed to set deal outcome");
+        toast("Deal marked lost");
       }
-    } catch { toast.error("Failed to set deal outcome"); }
-    setSettingDeal(false);
-  }
+    },
+    { toast: toastFn },
+  );
 
   useEffect(() => {
-    fetch(`/api/leads/${id}`)
+    const controller = new AbortController();
+    fetch(`/api/leads/${id}`, { signal: controller.signal })
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
+        if (controller.signal.aborted) return;
         setLead(data);
         if (data?.artifacts) {
           const proposals = data.artifacts.filter((a: Artifact) => a.type === "proposal").sort((a: Artifact, b: Artifact) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
           setSelectedProposalId(proposals[0]?.id ?? null);
         }
         setLoading(false);
+      })
+      .catch((e) => {
+        if (e instanceof Error && e.name === "AbortError") return;
+        setLoading(false);
       });
+    return () => controller.abort();
   }, [id]);
 
   async function updateStatus(status: string) {
-    const res = await fetch(`/api/leads/${id}/status`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
-    });
-    if (res.ok) {
-      const updated = await res.json();
+    try {
+      const updated = await fetchJsonThrow<Lead>(`/api/leads/${id}/status`, {
+        method: "PATCH",
+        body: JSON.stringify({ status }),
+      });
       setLead((prev) => (prev ? { ...prev, ...updated } : prev));
       toast.success(`Status → ${status}`);
-    } else {
-      const err = await res.json().catch(() => null);
-      toast.error(err?.error ?? `Failed to set status to ${status}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : `Failed to set status to ${status}`);
     }
   }
 
   async function updateField(field: string, value: string | null) {
-    const res = await fetch(`/api/leads/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ [field]: value }),
-    });
-    if (res.ok) {
-      const updated = await res.json();
+    try {
+      const updated = await fetchJsonThrow<Lead>(`/api/leads/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ [field]: value }),
+      });
       setLead((prev) => (prev ? { ...prev, ...updated } : prev));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to update field");
     }
   }
 
   async function updateDateField(field: "nextContactAt" | "lastContactAt" | "relationshipLastCheck", value: string | null) {
-    const res = await fetch(`/api/leads/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ [field]: value ? (value.includes("T") ? value : `${value}T12:00:00.000Z`) : null }),
-    });
-    if (res.ok) {
-      const updated = await res.json();
+    try {
+      const updated = await fetchJsonThrow<Lead>(`/api/leads/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ [field]: value ? (value.includes("T") ? value : `${value}T12:00:00.000Z`) : null }),
+      });
       setLead((prev) => (prev ? { ...prev, ...updated } : prev));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to update date field");
     }
   }
 
@@ -373,23 +367,20 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
       .then((d) => d && setLead(d));
   }
 
-  async function createArtifact() {
-    if (!artifactTitle.trim()) return;
-    setSaving(true);
-    const res = await fetch(`/api/leads/${id}/artifacts`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: artifactType, title: artifactTitle, content: artifactContent }),
-    });
-    if (res.ok) {
-      const artifact = await res.json();
+  const { execute: createArtifact, pending: savingArtifact } = useAsyncAction(
+    async () => {
+      if (!artifactTitle.trim()) return;
+      const artifact = await fetchJsonThrow<Artifact>(`/api/leads/${id}/artifacts`, {
+        method: "POST",
+        body: JSON.stringify({ type: artifactType, title: artifactTitle, content: artifactContent }),
+      });
       setLead((prev) => prev ? { ...prev, artifacts: [artifact, ...prev.artifacts] } : prev);
       setArtifactTitle("");
       setArtifactContent("");
       setShowArtifactForm(false);
-    }
-    setSaving(false);
-  }
+    },
+    { toast: toastFn, successMessage: "Artifact saved" },
+  );
 
   if (loading) return <div className="text-neutral-500 py-12 text-center">Loading...</div>;
   if (!lead) return <div className="text-neutral-500 py-12 text-center">Lead not found.</div>;
@@ -588,10 +579,10 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
             </div>
             <div className="flex gap-2 flex-wrap mt-3">
               {!lead.proposalSentAt && hasProposal && (
-                <Button variant="outline" size="sm" onClick={markProposalSent} disabled={markingSent}>{markingSent ? "..." : "Mark proposal sent"}</Button>
+                <Button variant="outline" size="sm" onClick={markProposalSent} disabled={markSentPending}>{markSentPending ? "..." : "Mark proposal sent"}</Button>
               )}
-              <Button variant="outline" size="sm" onClick={() => setDealOutcome("won")} disabled={settingDeal} className="text-emerald-400 border-emerald-800">Deal won</Button>
-              <Button variant="outline" size="sm" onClick={() => setDealOutcome("lost")} disabled={settingDeal} className="text-red-400 border-red-900">Deal lost</Button>
+              <Button variant="outline" size="sm" onClick={() => setDealOutcome("won")} disabled={dealPending} className="text-emerald-400 border-emerald-800">Deal won</Button>
+              <Button variant="outline" size="sm" onClick={() => setDealOutcome("lost")} disabled={dealPending} className="text-red-400 border-red-900">Deal lost</Button>
             </div>
           </div>
 
@@ -804,8 +795,8 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                     className="max-w-sm h-8 text-sm"
                     onKeyDown={(e) => e.key === "Enter" && reviseProposal()}
                   />
-                  <Button variant="outline" size="sm" onClick={reviseProposal} disabled={revising || !reviseInstruction.trim()}>
-                    <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${revising ? "animate-spin" : ""}`} /> {revising ? "Revising..." : "Revise proposal"}
+                  <Button variant="outline" size="sm" onClick={reviseProposal} disabled={revisePending || !reviseInstruction.trim()}>
+                    <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${revisePending ? "animate-spin" : ""}`} /> {revisePending ? "Revising..." : "Revise proposal"}
                   </Button>
                 </div>
                 <div className="grid gap-4 md:grid-cols-2">
@@ -837,11 +828,11 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
             <div className="border border-emerald-900/50 bg-emerald-950/20 rounded-lg p-4">
               <h3 className="text-xs font-medium text-emerald-400/90 uppercase tracking-wider mb-3">Approve proposal</h3>
               <div className="flex gap-3 flex-wrap items-center">
-                <Button size="lg" onClick={approveLead} disabled={approving} className="bg-emerald-600 hover:bg-emerald-500 text-white">
-                  <CheckCircle className="w-4 h-4 mr-2" /> {approving ? "Approving..." : "Approve"}
+                <Button size="lg" onClick={approveLead} disabled={approvePending} className="bg-emerald-600 hover:bg-emerald-500 text-white">
+                  <CheckCircle className="w-4 h-4 mr-2" /> {approvePending ? "Approving..." : "Approve"}
                 </Button>
                 {!showRejectInput ? (
-                  <Button variant="outline" size="sm" onClick={() => setShowRejectInput(true)} disabled={rejecting}>
+                  <Button variant="outline" size="sm" onClick={() => setShowRejectInput(true)} disabled={rejectPending}>
                     <XCircle className="w-3.5 h-3.5 mr-1.5" /> Reject
                   </Button>
                 ) : (
@@ -852,7 +843,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                       onChange={(e) => setRejectNote(e.target.value)}
                       className="max-w-xs h-8 text-sm"
                     />
-                    <Button variant="outline" size="sm" onClick={rejectLead} disabled={rejecting}>{rejecting ? "..." : "Submit"}</Button>
+                    <Button variant="outline" size="sm" onClick={rejectLead} disabled={rejectPending}>{rejectPending ? "..." : "Submit"}</Button>
                     <Button variant="ghost" size="sm" onClick={() => { setShowRejectInput(false); setRejectNote(""); }}>Cancel</Button>
                   </div>
                 )}
@@ -978,8 +969,8 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
               </div>
               <Input placeholder="Title" value={artifactTitle} onChange={(e) => setArtifactTitle(e.target.value)} />
               <Textarea placeholder="Content (markdown supported)" rows={6} value={artifactContent} onChange={(e) => setArtifactContent(e.target.value)} />
-              <Button size="sm" onClick={createArtifact} disabled={saving || !artifactTitle.trim()}>
-                {saving ? "Saving..." : "Save Artifact"}
+              <Button size="sm" onClick={createArtifact} disabled={savingArtifact || !artifactTitle.trim()}>
+                {savingArtifact ? "Saving..." : "Save Artifact"}
               </Button>
             </div>
           )}
@@ -1018,6 +1009,8 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
       {activeTab === "journey" && (
         <ClientJourneyTimeline leadId={id} />
       )}
+
+      <ConfirmDialog {...dialogProps} />
     </div>
   );
 }

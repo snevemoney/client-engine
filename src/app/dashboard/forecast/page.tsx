@@ -1,11 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { RefreshCw, ChevronRight, AlertTriangle } from "lucide-react";
+import { useRetryableFetch } from "@/hooks/useRetryableFetch";
+import { useAsyncAction } from "@/hooks/useAsyncAction";
+import { useConfirmDialog } from "@/hooks/useConfirmDialog";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { AsyncState } from "@/components/ui/AsyncState";
+import { fetchJsonThrow } from "@/lib/http/fetch-json";
+import { useIntelligenceContext } from "@/hooks/useIntelligenceContext";
+import { IntelligenceBanner } from "@/components/dashboard/IntelligenceBanner";
 
 type ForecastMetric = {
   key: string;
@@ -53,45 +60,20 @@ function formatValue(v: number, unit: string): string {
 }
 
 export default function ForecastPage() {
-  const [data, setData] = useState<ForecastData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [snapshotLoading, setSnapshotLoading] = useState(false);
+  const { data, loading, error, refetch } = useRetryableFetch<ForecastData>("/api/forecast/current");
+  const intel = useIntelligenceContext();
+  const toastFn = (m: string, t?: "success" | "error") => t === "error" ? toast.error(m) : toast.success(m);
+  const { confirm, dialogProps } = useConfirmDialog();
 
-  const fetchData = () => {
-    setLoading(true);
-    fetch("/api/forecast/current")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => setData(d && typeof d === "object" ? d : null))
-      .catch(() => setData(null))
-      .finally(() => setLoading(false));
+  const { execute: handleSnapshot, pending: snapshotLoading } = useAsyncAction(
+    async () => fetchJsonThrow("/api/forecast/snapshot", { method: "POST" }),
+    { toast: toastFn, successMessage: "Forecast snapshot captured", onSuccess: () => void refetch() },
+  );
+
+  const onSnapshotClick = async () => {
+    if (!(await confirm({ title: "Capture forecast snapshot?", body: "This will record a point-in-time snapshot of the current forecast." }))) return;
+    void handleSnapshot();
   };
-
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const handleSnapshot = async () => {
-    setSnapshotLoading(true);
-    try {
-      const res = await fetch("/api/forecast/snapshot", { method: "POST" });
-      if (res.ok) fetchData();
-      else {
-        const d = await res.json();
-        toast.error(d?.error ?? "Snapshot failed");
-      }
-    } finally {
-      setSnapshotLoading(false);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Forecast</h1>
-        <div className="py-12 text-center text-neutral-500">Loading…</div>
-      </div>
-    );
-  }
 
   const weekly = data?.weekly ?? { metrics: [], warnings: [], periodStart: "", periodEnd: "", elapsedDays: 0, totalDays: 7 };
   const monthly = data?.monthly ?? { metrics: [], warnings: [], periodStart: "", periodEnd: "", elapsedDays: 0, totalDays: 30 };
@@ -106,10 +88,14 @@ export default function ForecastPage() {
             Projected outcomes based on current pace. Week: {weekly.periodStart} → {weekly.periodEnd} (day {Math.round(weekly.elapsedDays)}/{weekly.totalDays}).
           </p>
         </div>
-        <Button size="sm" onClick={handleSnapshot} disabled={snapshotLoading}>
+        <Button size="sm" onClick={onSnapshotClick} disabled={snapshotLoading}>
           {snapshotLoading ? "Capturing…" : "Capture Forecast Snapshot"}
         </Button>
       </div>
+      <IntelligenceBanner risk={intel.risk} nba={intel.nba} score={intel.score} loading={intel.loading} />
+      <ConfirmDialog {...dialogProps} />
+
+      <AsyncState loading={loading} error={error} empty={!loading && !error && !data} emptyMessage="No forecast data" onRetry={refetch}>
 
       {/* Warnings */}
       {warnings.length > 0 && (
@@ -197,7 +183,7 @@ export default function ForecastPage() {
       </div>
 
       <div className="flex gap-2">
-        <Button variant="outline" size="sm" onClick={fetchData}>
+        <Button variant="outline" size="sm" onClick={refetch}>
           <RefreshCw className="w-4 h-4 mr-1" />
           Refresh
         </Button>
@@ -208,6 +194,8 @@ export default function ForecastPage() {
           </Button>
         </Link>
       </div>
+
+      </AsyncState>
     </div>
   );
 }

@@ -8,7 +8,7 @@ import type { NextActionCandidate } from "./types";
 import type { NextActionContext } from "./types";
 import { RULE_SCOPES } from "./scope";
 import { buildNextActionExplanation } from "./explanations";
-import { rankNextActions } from "./ranking";
+import { rankNextActions, type LearnedWeightsParam, type EffectivenessByRuleKey } from "./ranking";
 import type { NBAScope } from "./scope";
 
 function makeCandidate(
@@ -33,7 +33,9 @@ function makeCandidate(
 
 export function produceNextActions(
   ctx: NextActionContext,
-  scopeFilter: NBAScope = "command_center"
+  scopeFilter: NBAScope = "command_center",
+  learnedWeights?: LearnedWeightsParam,
+  effectivenessByRuleKey?: EffectivenessByRuleKey
 ): NextActionCandidate[] {
   const out: Omit<NextActionCandidate, "score">[] = [];
 
@@ -161,10 +163,45 @@ export function produceNextActions(
     });
   }
 
+  // Phase 6.3: Growth Engine rules (founder_growth scope)
+  if ((ctx.growthOverdueCount ?? 0) > 0) {
+    emit("growth_overdue_followups", {
+      title: "Follow up on growth pipeline",
+      reason: `${ctx.growthOverdueCount} deal(s) with overdue follow-up`,
+      priority: (ctx.growthOverdueCount ?? 0) >= 3 ? NextActionPriority.high : NextActionPriority.medium,
+      sourceType: RiskSourceType.growth_pipeline,
+      sourceId: null,
+      actionUrl: "/dashboard/growth",
+      payloadJson: {
+        bucket: "overdue",
+        dealId: ctx.growthFirstOverdueDealId ?? undefined,
+      },
+      countBoost: Math.min(10, ctx.growthOverdueCount ?? 0),
+    });
+  }
+
+  if ((ctx.growthNoOutreachCount ?? 0) > 0) {
+    emit("growth_no_outreach_sent", {
+      title: "Send outreach to new prospects",
+      reason: `${ctx.growthNoOutreachCount} new deal(s) with no outreach sent`,
+      priority: NextActionPriority.medium,
+      sourceType: RiskSourceType.growth_pipeline,
+      sourceId: null,
+      actionUrl: "/dashboard/growth",
+      payloadJson: {
+        bucket: "no_outreach",
+        dealId: ctx.growthFirstNoOutreachDealId ?? undefined,
+      },
+      countBoost: Math.min(10, ctx.growthNoOutreachCount ?? 0),
+    });
+  }
+
   const ranked = rankNextActions(
     out.map((o) => ({ ...o, score: 0 })),
     ctx.now,
-    []
+    [],
+    learnedWeights,
+    effectivenessByRuleKey
   );
   return ranked;
 }

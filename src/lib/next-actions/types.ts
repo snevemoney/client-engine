@@ -48,4 +48,12 @@ export type NextActionContext = {
   referralGapCount: number;
   /** Active leads with no contact for 10d+ */
   stageStallCount: number;
+  /** Phase 6.3: Growth pipeline (when ownerUserId provided) */
+  growthOverdueCount?: number;
+  growthNoOutreachCount?: number;
+  growthDealCount?: number;
+  growthLastActivityAt?: Date | null;
+  /** Phase 6.3.1: First deal IDs for delivery actions */
+  growthFirstOverdueDealId?: string | null;
+  growthFirstNoOutreachDealId?: string | null;
 };

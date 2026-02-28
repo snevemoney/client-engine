@@ -64,4 +64,44 @@ describe("NBA ranking", () => {
     const { total: withPenalty } = computeNextActionScore(cand, { now, existingInScope: ["nba:dup:cmd"] });
     expect(withPenalty).toBeLessThan(without);
   });
+
+  it("applies learned weights: ruleWeight boosts score", () => {
+    const cand = baseCandidate({ createdByRule: "flywheel_stage_stall", dedupeKey: "nba:flywheel_stage_stall:cmd" });
+    const { total: without } = computeNextActionScore(cand, { now });
+    const ruleWeights = new Map<string, number>([["flywheel_stage_stall", 3]]);
+    const { total: withBoost } = computeNextActionScore(cand, {
+      now,
+      learnedWeights: { ruleWeights, actionWeights: new Map() },
+    });
+    expect(withBoost).toBeGreaterThan(without);
+  });
+
+  it("applies effectiveness boost when effectivenessByRuleKey provided", () => {
+    const cand = baseCandidate({ createdByRule: "r1", dedupeKey: "nba:r1:cmd" });
+    const { total: without } = computeNextActionScore(cand, { now });
+    const effectivenessByRuleKey = new Map<string, number>([["r1", 4]]);
+    const { total: withBoost } = computeNextActionScore(cand, {
+      now,
+      effectivenessByRuleKey,
+    });
+    expect(withBoost).toBe(without + 4);
+  });
+
+  it("effectiveness boost is bounded to -6..+6", () => {
+    const cand = baseCandidate({ createdByRule: "r1", dedupeKey: "nba:r1:cmd" });
+    const effectivenessByRuleKey = new Map<string, number>([["r1", 20]]);
+    const { total } = computeNextActionScore(cand, { now, effectivenessByRuleKey });
+    const { total: base } = computeNextActionScore(cand, { now });
+    expect(total - base).toBeLessThanOrEqual(6);
+  });
+
+  it("applies learned weights: ruleWeight <= -3 adds penalty", () => {
+    const cand = baseCandidate({ createdByRule: "overdue_reminders", dedupeKey: "nba:overdue:cmd" });
+    const ruleWeights = new Map<string, number>([["overdue_reminders", -4]]);
+    const { total } = computeNextActionScore(cand, {
+      now,
+      learnedWeights: { ruleWeights, actionWeights: new Map() },
+    });
+    expect(total).toBeLessThan(55);
+  });
 });

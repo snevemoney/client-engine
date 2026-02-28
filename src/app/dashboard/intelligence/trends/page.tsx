@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { useRetryableFetch } from "@/hooks/useRetryableFetch";
+import { AsyncState } from "@/components/ui/AsyncState";
 
 const METRIC_OPTIONS = [
   { key: "won_value", label: "Accepted value" },
@@ -16,20 +18,14 @@ const METRIC_OPTIONS = [
   { key: "intake_count", label: "Intake count" },
 ];
 
+type TrendsData = { points: Array<{ weekStart: string; weekLabel: string; value: number; count?: number | null }> };
+
 export default function IntelligenceTrendsPage() {
   const [metricKey, setMetricKey] = useState("won_value");
   const [weeks, setWeeks] = useState(8);
-  const [data, setData] = useState<{ points: Array<{ weekStart: string; weekLabel: string; value: number; count?: number | null }> } | null>(null);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    setLoading(true); // eslint-disable-line react-hooks/set-state-in-effect -- fetch-on-mount pattern
-    fetch(`/api/metrics/trends?metricKey=${metricKey}&weeks=${weeks}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => setData(d && typeof d === "object" ? d : null))
-      .catch(() => setData(null))
-      .finally(() => setLoading(false));
-  }, [metricKey, weeks]);
+  const url = `/api/metrics/trends?metricKey=${metricKey}&weeks=${weeks}`;
+  const { data, loading, error, refetch } = useRetryableFetch<TrendsData>(url);
 
   const points = data?.points ?? [];
 
@@ -70,13 +66,13 @@ export default function IntelligenceTrendsPage() {
         </div>
       </div>
 
-      {loading ? (
-        <div className="py-12 text-center text-neutral-500">Loading…</div>
-      ) : points.length === 0 ? (
-        <div className="py-12 text-center text-neutral-500 rounded-lg border border-neutral-800">
-          No trend data yet. Capture a weekly snapshot on the Intelligence page to build history.
-        </div>
-      ) : (
+      <AsyncState
+        loading={loading}
+        error={error}
+        empty={!loading && !error && points.length === 0}
+        emptyMessage="No trend data yet. Capture a weekly snapshot on the Intelligence page to build history."
+        onRetry={refetch}
+      >
         <div className="rounded-lg border border-neutral-800 overflow-hidden">
           <table className="w-full text-sm">
             <thead>
@@ -101,7 +97,7 @@ export default function IntelligenceTrendsPage() {
             </tbody>
           </table>
         </div>
-      )}
+      </AsyncState>
     </div>
   );
 }

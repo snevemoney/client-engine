@@ -3,9 +3,14 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { useAsyncAction } from "@/hooks/useAsyncAction";
+import { fetchJsonThrow } from "@/lib/http/fetch-json";
+
+const toastFn = (m: string, t?: "success" | "error") => t === "error" ? toast.error(m) : toast.success(m);
 
 export default function NewProposalPage() {
   const router = useRouter();
@@ -13,18 +18,11 @@ export default function NewProposalPage() {
   const [clientName, setClientName] = useState("");
   const [company, setCompany] = useState("");
   const [summary, setSummary] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!title.trim()) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/proposals", {
+  const { execute: submitProposal, pending: loading } = useAsyncAction(
+    async () => {
+      return fetchJsonThrow<{ id: string }>("/api/proposals", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: title.trim(),
           clientName: clientName.trim() || null,
@@ -32,17 +30,20 @@ export default function NewProposalPage() {
           summary: summary.trim() || null,
         }),
       });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setError(data?.error ?? "Failed to create");
-        return;
-      }
-      router.push(`/dashboard/proposals/${data.id}`);
-    } catch {
-      setError("Failed to create");
-    } finally {
-      setLoading(false);
+    },
+    {
+      toast: toastFn,
+      successMessage: "Proposal created",
+      onSuccess: (data) => {
+        router.push(`/dashboard/proposals/${data.id}`);
+      },
     }
+  );
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title.trim()) return;
+    await submitProposal();
   };
 
   return (
@@ -92,7 +93,6 @@ export default function NewProposalPage() {
             className="bg-neutral-900"
           />
         </div>
-        {error && <p className="text-sm text-red-400">{error}</p>}
         <Button type="submit" disabled={loading}>
           {loading ? "Creating…" : "Create proposal"}
         </Button>

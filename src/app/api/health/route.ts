@@ -36,20 +36,33 @@ export async function GET() {
     detail: process.env.NEXTAUTH_URL ? undefined : "NEXTAUTH_URL not set (redirect loops in production)",
   };
 
-  // Redis (optional): when REDIS_URL set, verify worker/queue connectivity
-  if (process.env.REDIS_URL) {
+  // Redis (optional): when REDIS_URL set, verify worker/queue connectivity.
+  // Skip in development when Redis points to localhost — avoids ioredis unhandled error flood when Redis isn't running.
+  const isDevLocalRedis =
+    process.env.NODE_ENV !== "production" &&
+    process.env.REDIS_URL &&
+    (process.env.REDIS_URL.includes("localhost") || process.env.REDIS_URL.includes("127.0.0.1"));
+  if (process.env.REDIS_URL && !isDevLocalRedis) {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const Redis = require("ioredis");
+    const redis = new Redis(process.env.REDIS_URL, {
+      maxRetriesPerRequest: 1,
+      connectTimeout: 5000,
+      lazyConnect: true,
+      retryStrategy: () => null, // Fail fast; no reconnect storm when Redis is down
+      enableOfflineQueue: false,
+    });
+    redis.on("error", () => {}); // Must be before ping() to prevent unhandled error event
     try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const Redis = require("ioredis");
-      const redis = new Redis(process.env.REDIS_URL, { maxRetriesPerRequest: 1, connectTimeout: 3000 });
       await redis.ping();
-      redis.disconnect();
       checks.redis = { ok: true };
     } catch (e: unknown) {
       checks.redis = {
         ok: false,
         detail: e instanceof Error ? e.message : "Redis ping failed",
       };
+    } finally {
+      redis.disconnect();
     }
   }
 
