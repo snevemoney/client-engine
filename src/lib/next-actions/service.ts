@@ -36,6 +36,7 @@ export async function upsertNextActions(candidates: NextActionCandidate[]): Prom
       payloadJson: c.payloadJson ?? undefined,
       explanationJson: c.explanationJson ?? undefined,
       createdByRule: c.createdByRule,
+      templateKey: c.createdByRule,
       entityType: c.entityType ?? "command_center",
       entityId: c.entityId ?? "command_center",
     };

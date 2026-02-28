@@ -7,6 +7,7 @@ import { jsonError, requireAuth, withRouteTiming } from "@/lib/api-utils";
 import { getRequestClientKey, rateLimitByKey } from "@/lib/http/rate-limit";
 import { fetchNextActionContext } from "@/lib/next-actions/fetch-context";
 import { produceNextActions } from "@/lib/next-actions/rules";
+import { filterByPreferences } from "@/lib/next-actions/preferences";
 import { upsertNextActions, recordNextActionRun } from "@/lib/next-actions/service";
 import { parseScope } from "@/lib/next-actions/scope";
 import { logOpsEventSafe } from "@/lib/ops-events/log";
@@ -39,7 +40,8 @@ export async function POST(request: NextRequest) {
 
     try {
       const ctx = await fetchNextActionContext({ now });
-      const candidates = produceNextActions(ctx, entityType);
+      let candidates = produceNextActions(ctx, entityType);
+      candidates = await filterByPreferences(candidates, entityType, entityId);
       const result = await upsertNextActions(candidates);
       await recordNextActionRun(runKey, "manual", {
         created: result.created,

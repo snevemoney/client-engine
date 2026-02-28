@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { chat, type ChatUsage } from "@/lib/llm";
+import { safeParseJSON } from "@/lib/llm/safe-parse-json";
 import { isDryRun } from "@/lib/pipeline/dry-run";
 import type { Provenance } from "@/lib/pipeline/provenance";
 import { LeadIntelligenceSchema, type LeadIntelligence } from "@/lib/lead-intelligence/schema";
@@ -76,7 +77,8 @@ export async function runEnrich(leadId: string, provenance?: Provenance): Promis
     { temperature: 0.3, max_tokens: 1024 }
   );
 
-  const enriched = JSON.parse(content);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const enriched = safeParseJSON(content) as any;
 
   let leadIntelligence: LeadIntelligence | null = null;
   const liInput: Record<string, unknown> = {

@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { chat, type ChatUsage } from "@/lib/llm";
+import { safeParseJSON } from "@/lib/llm/safe-parse-json";
 import { isDryRun } from "@/lib/pipeline/dry-run";
 import { PositioningMetaSchema } from "@/lib/pipeline/positioning-schema";
 import type { Provenance } from "@/lib/pipeline/provenance";
@@ -100,7 +101,7 @@ Lead intelligence: not available. Use conservative, low-risk positioning and avo
   let parsedMeta: unknown = null;
   if (metaMatch?.[1]) {
     try {
-      parsedMeta = JSON.parse(metaMatch[1].trim()) as unknown;
+      parsedMeta = safeParseJSON(metaMatch[1].trim());
     } catch {
       const err = new Error("VALIDATION: Positioning meta JSON parse failed");
       (err as Error & { code?: string }).code = "VALIDATION";

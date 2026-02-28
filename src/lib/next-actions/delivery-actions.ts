@@ -12,6 +12,7 @@ import { evaluateRiskRules } from "@/lib/risk/rules";
 import { upsertRiskFlags } from "@/lib/risk/service";
 import { fetchNextActionContext } from "./fetch-context";
 import { produceNextActions } from "./rules";
+import { filterByPreferences } from "./preferences";
 import type { NBAScope } from "./scope";
 import { upsertNextActions, recordNextActionRun } from "./service";
 import { logOpsEventSafe } from "@/lib/ops-events/log";
@@ -26,7 +27,7 @@ export type DeliveryActionDefinition = {
   idempotencyKey: (nextAction: { id: string; dedupeKey: string; entityType?: string; entityId?: string }) => string;
   run: (params: {
     nextActionId: string;
-    nextAction: { entityType: string; entityId: string; dedupeKey: string };
+    nextAction: { entityType: string; entityId: string; dedupeKey: string; createdByRule?: string };
     actorUserId?: string;
   }) => Promise<{ success: boolean; errorCode?: string; errorMessage?: string; meta?: Record<string, unknown> }>;
 };
@@ -53,6 +54,59 @@ export const DELIVERY_ACTIONS: Record<string, DeliveryActionDefinition> = {
       const until = new Date(Date.now() + SNOOZE_1D_MS);
       await snoozeNextAction(nextActionId, until);
       return { success: true, meta: { snoozedUntil: until.toISOString() } };
+    },
+  },
+
+  dismiss: {
+    label: "Dismiss",
+    uiHints: "ghost",
+    idempotencyKey: (n) => `nba:dismiss:${n.id}`,
+    run: async ({ nextActionId }) => {
+      const { dismissNextAction } = await import("./service");
+      await dismissNextAction(nextActionId);
+      return { success: true, meta: { action: "dismiss" } };
+    },
+  },
+
+  don_t_suggest_again_30d: {
+    label: "Don't suggest again (30d)",
+    confirmText: "Hide this type of action for 30 days?",
+    uiHints: "ghost",
+    idempotencyKey: (n) => `nba:don_t_suggest:${n.dedupeKey}`,
+    run: async ({ nextActionId, nextAction }) => {
+      const { dismissNextAction } = await import("./service");
+      await dismissNextAction(nextActionId);
+      const entityType = nextAction.entityType || "command_center";
+      const entityId = nextAction.entityId || "command_center";
+      const ruleKey = nextAction.createdByRule ?? (nextAction.dedupeKey?.split(":")[1] ?? null);
+      const suppressedUntil = new Date();
+      suppressedUntil.setDate(suppressedUntil.getDate() + 30);
+      const existing = await db.nextActionPreference.findFirst({
+        where: {
+          entityType,
+          entityId,
+          OR: ruleKey ? [{ ruleKey }] : [{ dedupeKey: nextAction.dedupeKey }],
+        },
+      });
+      if (existing) {
+        await db.nextActionPreference.update({
+          where: { id: existing.id },
+          data: { status: "active", suppressedUntil },
+        });
+      } else {
+        await db.nextActionPreference.create({
+          data: {
+            entityType,
+            entityId,
+            ruleKey: ruleKey ?? undefined,
+            dedupeKey: nextAction.dedupeKey,
+            status: "active",
+            suppressedUntil,
+            reason: "Don't suggest again",
+          },
+        });
+      }
+      return { success: true, meta: { suppressed: true, duration: "30d" } };
     },
   },
 
@@ -102,7 +156,8 @@ export const DELIVERY_ACTIONS: Record<string, DeliveryActionDefinition> = {
       const entityId = nextAction.entityId || "command_center";
       const now = new Date();
       const ctx = await fetchNextActionContext({ now });
-      const candidates = produceNextActions(ctx, entityType);
+      let candidates = produceNextActions(ctx, entityType);
+      candidates = await filterByPreferences(candidates, entityType, entityId);
       const result = await upsertNextActions(candidates);
       const runKey = `nba:${actorUserId ?? "anon"}:${entityType}:${entityId}:${now.toISOString().slice(0, 10)}`;
       await recordNextActionRun(runKey, "manual", {
@@ -170,7 +225,7 @@ export async function runDeliveryAction(input: RunDeliveryActionInput): Promise<
 
   const nextAction = await db.nextBestAction.findUnique({
     where: { id: nextActionId },
-    select: { id: true, entityType: true, entityId: true, dedupeKey: true },
+    select: { id: true, entityType: true, entityId: true, dedupeKey: true, createdByRule: true },
   });
   if (!nextAction) {
     return { ok: false, errorCode: "not_found", errorMessage: "Next action not found" };
@@ -199,6 +254,7 @@ export async function runDeliveryAction(input: RunDeliveryActionInput): Promise<
         entityType: nextAction.entityType,
         entityId: nextAction.entityId,
         dedupeKey: nextAction.dedupeKey,
+        createdByRule: nextAction.createdByRule ?? undefined,
       },
       actorUserId,
     });

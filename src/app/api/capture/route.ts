@@ -7,9 +7,17 @@ function computeHash(url: string | undefined, title: string, content: string | u
   return crypto.createHash("sha256").update(raw).digest("hex").slice(0, 32);
 }
 
+function timingSafeEqual(a: string, b: string): boolean {
+  const bufA = Buffer.from(a, "utf8");
+  const bufB = Buffer.from(b, "utf8");
+  if (bufA.length !== bufB.length) return false;
+  return crypto.timingSafeEqual(bufA, bufB);
+}
+
 export async function POST(req: NextRequest) {
   const apiKey = req.headers.get("x-api-key");
-  if (apiKey !== process.env.CAPTURE_API_KEY) {
+  const expected = process.env.CAPTURE_API_KEY;
+  if (!expected || !apiKey || !timingSafeEqual(apiKey, expected)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -46,13 +54,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: "duplicate", leadId: existing.id }, { status: 200 });
     }
 
+    const rawDescription = typeof content === "string" ? content : null;
+    const description = rawDescription != null ? rawDescription.slice(0, 3000) : null;
+
     const lead = await db.lead.create({
       data: {
         title,
         source: typeof source === "string" ? source : "capture",
         sourceUrl: typeof url === "string" ? url : null,
         contentHash: hash,
-        description: typeof content === "string" ? content : null,
+        description,
         budget: typeof budget === "string" ? budget : null,
         timeline: typeof timeline === "string" ? timeline : null,
         platform: typeof platform === "string" ? platform : null,

@@ -1,8 +1,6 @@
 import https from "https";
 import http from "http";
-import { PrismaClient } from "@prisma/client";
-
-const db = new PrismaClient();
+import { db } from "@/lib/db";
 
 interface CheckResult {
   url: string;

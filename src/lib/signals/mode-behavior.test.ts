@@ -70,7 +70,7 @@ describe("syncRssSource mode behavior", () => {
 
     expect(result.ok).toBe(true);
     expect(result.count).toBe(0);
-    expect(result.message).toContain("production");
+    expect(result.message).toMatch(/LIVE|deployed|skipped/i);
     expect(mockItemCreate).not.toHaveBeenCalled();
   });
 

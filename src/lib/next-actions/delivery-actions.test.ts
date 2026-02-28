@@ -19,6 +19,8 @@ describe("delivery-actions", () => {
     expect(DELIVERY_ACTIONS.run_risk_rules).toBeDefined();
     expect(DELIVERY_ACTIONS.run_next_actions).toBeDefined();
     expect(DELIVERY_ACTIONS.retry_failed_deliveries).toBeDefined();
+    expect(DELIVERY_ACTIONS.dismiss).toBeDefined();
+    expect(DELIVERY_ACTIONS.don_t_suggest_again_30d).toBeDefined();
   });
 
   it("runDeliveryAction returns unknown_action for invalid key", async () => {

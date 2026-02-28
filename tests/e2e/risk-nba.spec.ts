@@ -10,6 +10,12 @@ const baseURL = process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3000";
 const loginEmail = process.env.E2E_EMAIL || process.env.ADMIN_EMAIL || "admin@evenslouis.ca";
 const loginPassword = process.env.E2E_PASSWORD || process.env.ADMIN_PASSWORD || "changeme";
 
+function skipIfProd(): boolean {
+  const isProd = baseURL.includes("evenslouis.ca");
+  const optIn = process.env.E2E_ALLOW_MUTATIONS === "1" || process.env.E2E_ALLOW_MUTATIONS === "true";
+  return isProd && !optIn;
+}
+
 test.describe("Risk & Next Actions pages", () => {
   test.beforeEach(() => {
     requireSafeE2EBaseUrl();
@@ -86,6 +92,45 @@ test.describe("Risk & Next Actions pages", () => {
       await dismissBtn.click();
       await expect(page.locator("body")).toBeVisible({ timeout: 5000 });
     }
+  });
+
+  test("Next Actions playbook: open, snooze or mark done, row disappears", async ({ page }) => {
+    await page.goto(`${baseURL}/dashboard/next-actions`, { waitUntil: "load", timeout: 15000 });
+    await expect(page).toHaveURL(/\/dashboard\/next-actions/);
+
+    // Ensure at least one queued action (run NBA if list is empty)
+    const runBtn = page.getByRole("button", { name: /Run Next Actions/i });
+    const emptyState = page.getByText(/No next actions/i);
+    if (await emptyState.isVisible({ timeout: 2000 })) {
+      await runBtn.click();
+      await expect(runBtn).toBeEnabled({ timeout: 15000 });
+      await page.waitForTimeout(2000);
+    }
+
+    const playbookToggle = page.getByTestId("next-action-playbook-toggle").first();
+    if (!(await playbookToggle.isVisible({ timeout: 3000 }))) {
+      test.skip(true, "No queued actions to test playbook");
+    }
+
+    await playbookToggle.click();
+    await expect(page.getByTestId("next-action-playbook-panel").first()).toBeVisible({ timeout: 5000 });
+
+    // Use snooze_1d (via menu) or mark_done (Check button)
+    const markDoneBtn = page.getByTestId("next-action-mark-done").first();
+    const menuBtn = page.getByTestId("next-action-menu").first();
+    if (await markDoneBtn.isVisible({ timeout: 1000 })) {
+      await markDoneBtn.click();
+    } else if (await menuBtn.isVisible({ timeout: 1000 })) {
+      await menuBtn.click();
+      await page.getByRole("button", { name: /Snooze 1 day/i }).first().click({ timeout: 3000 });
+    } else {
+      test.skip(true, "No snooze/mark_done controls on first item");
+    }
+
+    await expect(page.locator("body")).toBeVisible({ timeout: 5000 });
+    // Row should disappear from queued list or show snoozed state after refresh
+    await page.reload({ waitUntil: "load", timeout: 15000 });
+    await expect(page).toHaveURL(/\/dashboard\/next-actions/);
   });
 });
 

@@ -72,3 +72,11 @@ When `status=queued` or no status filter: **hide snoozed items** (`snoozedUntil 
 ## Job Type
 
 - `retry_failed_deliveries` — Payload: `{ nextActionId }`. Handler stub logs `nba.delivery.retry_job.stub`.
+
+---
+
+## Deployment Checklist
+
+1. **Migration:** Run `npx prisma migrate deploy` (or `npx prisma db push`) in all environments (staging/prod) to add `NextActionExecution` and the new `NextBestAction` fields.
+2. **Env vars:** Phase 4.2 does not add new `.env` variables. Existing vars (e.g. `E2E_EMAIL`, `E2E_PASSWORD` for E2E) remain unchanged.
+3. **E2E prod guards:** Specs `risk-nba`, `run-pipeline-leads`, and `score-intake-leads` skip when `PLAYWRIGHT_BASE_URL` includes `evenslouis.ca` to avoid mutating prod. For intentional prod scoring, use `E2E_ALLOW_PROD_SCORE=1`.

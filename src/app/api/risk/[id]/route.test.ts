@@ -23,12 +23,12 @@ describe("PATCH /api/risk/[id]", () => {
 
     const r = await db.riskFlag.create({
       data: {
-        key: `test_patch_risk_${Date.now()}`,
+        key: `test_patch_risk_${crypto.randomUUID()}`,
         title: "Patch Test",
         severity: RiskSeverity.high,
         status: RiskStatus.open,
         sourceType: RiskSourceType.proposal,
-        dedupeKey: `test_patch_risk:sys:${Date.now()}`,
+        dedupeKey: `test_patch_risk:sys:${crypto.randomUUID()}`,
         createdByRule: "test",
         lastSeenAt: new Date(),
       },

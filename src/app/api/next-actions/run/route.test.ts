@@ -21,6 +21,10 @@ vi.mock("@/lib/next-actions/service", async () => {
   };
 });
 
+vi.mock("@/lib/next-actions/preferences", () => ({
+  filterByPreferences: vi.fn((candidates: unknown[]) => Promise.resolve(candidates)),
+}));
+
 vi.mock("@/lib/api-utils", () => ({
   requireAuth: vi.fn(),
   jsonError: (msg: string, status: number, _code?: string, extra?: { headers?: Record<string, string>; bodyExtra?: Record<string, unknown> }) => {
@@ -77,6 +81,19 @@ describe("POST /api/next-actions/run", () => {
     expect(body).toHaveProperty("error");
     expect(body.error).not.toContain("sk_live");
     expect(body.error).toContain("[redacted]");
+  });
+
+  it("filters candidates by preferences before upsert", async () => {
+    const { filterByPreferences } = await import("@/lib/next-actions/preferences");
+    vi.mocked(filterByPreferences).mockResolvedValueOnce([]);
+
+    const { POST } = await import("./route");
+    const req = new NextRequest("http://x/api/next-actions/run", { method: "POST" });
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+    expect(filterByPreferences).toHaveBeenCalled();
+    const { upsertNextActions } = await import("@/lib/next-actions/service");
+    expect(vi.mocked(upsertNextActions).mock.calls[0][0]).toEqual([]);
   });
 
   it("rate limit: returns 429 with Retry-After when limit exceeded", async () => {

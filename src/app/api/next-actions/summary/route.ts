@@ -38,6 +38,7 @@ export async function GET(request: NextRequest) {
               actionUrl: true,
               sourceType: true,
               explanationJson: true,
+              templateKey: true,
             },
           }),
           db.nextBestAction.groupBy({
@@ -67,6 +68,7 @@ export async function GET(request: NextRequest) {
             actionUrl: a.actionUrl,
             sourceType: a.sourceType,
             explanationJson: a.explanationJson,
+            templateKey: a.templateKey ?? null,
           })),
           queuedByPriority: {
             low: counts[NextActionPriority.low] ?? 0,

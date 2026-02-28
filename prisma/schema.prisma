@@ -1942,6 +1942,7 @@ model NextBestAction {
   payloadJson    Json? // what to do (read-only in 4.0)
   explanationJson Json? // Phase 4.1: structured "Why" (ruleKey, summary, evidence, recommendedSteps, links)
   createdByRule String
+  templateKey   String?           // Phase 4.4: playbook template key (defaults to createdByRule)
   dedupeKey     String            @unique
 
   // Phase 4.1: Per-scope views (command_center | review_stream)
@@ -1991,4 +1992,24 @@ model NextActionRun {
   mode      String // manual|auto
   createdAt DateTime @default(now())
   metaJson  Json?
+}
+
+// ----- Phase 4.3: NBA Personalization (Operator Learning v1) -----
+
+/** Per-scope suppression: rule-wide or specific action. Don't suggest again. */
+model NextActionPreference {
+  id              String    @id @default(cuid())
+  entityType      String    // command_center | review_stream
+  entityId        String    // scope id (e.g. command_center)
+  ruleKey         String?   // suppress all NBAs from this rule
+  dedupeKey       String?   // suppress this specific action
+  status          String    @default("active") // active | suppressed
+  suppressedUntil DateTime? // temporary suppression end
+  reason          String?   @db.Text
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([entityType, entityId])
+  @@index([ruleKey])
+  @@index([dedupeKey])
 }

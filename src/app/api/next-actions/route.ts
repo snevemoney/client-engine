@@ -84,6 +84,7 @@ export async function GET(request: NextRequest) {
           payloadJson: a.payloadJson,
           explanationJson: a.explanationJson,
           createdByRule: a.createdByRule,
+          templateKey: a.templateKey ?? null,
           entityType: a.entityType,
           entityId: a.entityId,
           snoozedUntil: a.snoozedUntil?.toISOString() ?? null,

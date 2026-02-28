@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { chat, type ChatUsage } from "@/lib/llm";
+import { safeParseJSON } from "@/lib/llm/safe-parse-json";
 import { isDryRun } from "@/lib/pipeline/dry-run";
 import { getOperatorSettings } from "@/lib/ops/settings";
 
@@ -119,7 +120,8 @@ export async function runScore(leadId: string): Promise<{ usage?: ChatUsage }> {
     { temperature: 0.2, max_tokens: 512 }
   );
 
-  const scored = JSON.parse(content);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const scored = safeParseJSON(content) as any;
   let rawScore = typeof scored.score === "number" ? scored.score : parseInt(String(scored.score), 10) || 50;
   rawScore = Math.min(100, Math.max(0, rawScore));
 

@@ -5,13 +5,23 @@ import { toast } from "sonner";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { RefreshCw, Play, Check, X, ExternalLink, ChevronDown, ChevronRight, HelpCircle } from "lucide-react";
+import { RefreshCw, Play, Check, X, ExternalLink, ChevronDown, ChevronRight, HelpCircle, MoreHorizontal, BookOpen } from "lucide-react";
 import { useUrlQueryState } from "@/hooks/useUrlQueryState";
 import { AsyncState } from "@/components/ui/AsyncState";
 import { PaginationControls } from "@/components/ui/PaginationControls";
 import { formatDateSafe } from "@/lib/ui/date-safe";
 import { normalizePagination } from "@/lib/ui/pagination-safe";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+
+type NextActionTemplate = {
+  ruleKey: string;
+  title: string;
+  outcome: string;
+  why: string;
+  checklist: Array<{ id: string; text: string; optional?: boolean }>;
+  links?: Array<{ label: string; href: string }>;
+  suggestedActions?: Array<{ actionKey: string; label: string; confirm?: { title: string; body: string } }>;
+};
 
 type NextAction = {
   id: string;
@@ -23,7 +33,17 @@ type NextAction = {
   sourceType: string;
   sourceId: string | null;
   actionUrl: string | null;
+  createdByRule?: string;
   explanationJson?: { ruleKey?: string; summary?: string; evidence?: Array<{ label: string; value: string | number; source: string }>; recommendedSteps?: string[]; links?: Array<{ label: string; href: string }> } | null;
+  createdAt: string;
+};
+
+type Preference = {
+  id: string;
+  ruleKey: string | null;
+  dedupeKey: string | null;
+  suppressedUntil: string | null;
+  reason: string | null;
   createdAt: string;
 };
 
@@ -50,6 +70,11 @@ export default function NextActionsPage() {
   const [runLoading, setRunLoading] = useState(false);
   const [actioningId, setActioningId] = useState<string | null>(null);
   const [expandedWhyId, setExpandedWhyId] = useState<string | null>(null);
+  const [expandedPlaybookId, setExpandedPlaybookId] = useState<string | null>(null);
+  const [templateCache, setTemplateCache] = useState<Record<string, NextActionTemplate | null>>({});
+  const [templateLoadingId, setTemplateLoadingId] = useState<string | null>(null);
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const [preferences, setPreferences] = useState<Preference[]>([]);
   const abortRef = useRef<AbortController | null>(null);
   const runIdRef = useRef(0);
 
@@ -79,12 +104,15 @@ export default function NextActionsPage() {
     params.set("page", String(page));
     params.set("pageSize", String(pageSize));
     try {
-      const [data, sum] = await Promise.all([
+      const [data, sum, prefs] = await Promise.all([
         fetch(`/api/next-actions?${params}`, { credentials: "include", signal: controller.signal, cache: "no-store" }).then(
           (r) => (r.ok ? r.json() : null)
         ),
         fetch(`/api/next-actions/summary?entityType=${entityType}&entityId=${entityId}`, { credentials: "include", signal: controller.signal, cache: "no-store" }).then(
           (r) => (r.ok ? r.json() : null)
+        ),
+        fetch(`/api/next-actions/preferences?entityType=${entityType}&entityId=${entityId}`, { credentials: "include", signal: controller.signal, cache: "no-store" }).then(
+          (r) => (r.ok ? r.json() : { items: [] })
         ),
       ]);
       if (controller.signal.aborted || runId !== runIdRef.current) return;
@@ -92,6 +120,7 @@ export default function NextActionsPage() {
       setItems(Array.isArray(list) ? list : []);
       setPagination(normalizePagination(data?.pagination, list?.length ?? 0));
       setSummary(sum ?? null);
+      setPreferences(prefs?.items ?? []);
     } catch (e) {
       if (controller.signal.aborted || runId !== runIdRef.current) return;
       if (e instanceof Error && (e.name === "AbortError" || e.message?.includes("aborted"))) return;
@@ -127,41 +156,62 @@ export default function NextActionsPage() {
     }
   };
 
-  const handleDone = async (id: string) => {
+  const fetchedTemplateIdsRef = useRef<Set<string>>(new Set());
+  const fetchTemplate = useCallback(async (id: string) => {
+    if (fetchedTemplateIdsRef.current.has(id)) return;
+    fetchedTemplateIdsRef.current.add(id);
+    setTemplateLoadingId(id);
+    try {
+      const res = await fetch(`/api/next-actions/${id}/template`, { credentials: "include", cache: "no-store" });
+      const data = res.ok ? await res.json() : null;
+      setTemplateCache((prev) => ({ ...prev, [id]: data?.template ?? null }));
+    } catch {
+      setTemplateCache((prev) => ({ ...prev, [id]: null }));
+    } finally {
+      setTemplateLoadingId((prev) => (prev === id ? null : prev));
+    }
+  }, []);
+
+  const handlePlaybookToggle = useCallback((id: string) => {
+    const next = expandedPlaybookId === id ? null : id;
+    setExpandedPlaybookId(next);
+    if (next && !fetchedTemplateIdsRef.current.has(id)) void fetchTemplate(next);
+  }, [expandedPlaybookId, fetchTemplate]);
+
+  const handleExecute = async (id: string, actionKey: string) => {
     if (actioningId) return;
+    setMenuOpenId(null);
     setActioningId(id);
     try {
-      const res = await fetch(`/api/next-actions/${id}`, {
-        method: "PATCH",
+      const res = await fetch(`/api/next-actions/${id}/execute`, {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "done" }),
+        body: JSON.stringify({ actionKey }),
       });
       if (res.ok) void fetchData();
       else {
         const d = await res.json();
-        toast.error(d?.error ?? "Mark done failed");
+        toast.error(d?.error ?? "Action failed");
       }
     } finally {
       setActioningId(null);
     }
   };
 
-  const handleDismiss = async (id: string) => {
-    if (actioningId) return;
-    setActioningId(id);
+  const handleReEnable = async (prefId: string) => {
     try {
-      const res = await fetch(`/api/next-actions/${id}`, {
+      const res = await fetch(`/api/next-actions/preferences/${prefId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "dismiss" }),
+        body: JSON.stringify({ status: "suppressed" }),
       });
       if (res.ok) void fetchData();
       else {
         const d = await res.json();
-        toast.error(d?.error ?? "Dismiss failed");
+        toast.error(d?.error ?? "Re-enable failed");
       }
-    } finally {
-      setActioningId(null);
+    } catch {
+      toast.error("Re-enable failed");
     }
   };
 
@@ -256,6 +306,29 @@ export default function NextActionsPage() {
         </Button>
       </div>
 
+      {preferences.length > 0 && (
+        <div className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-4" data-testid="nba-preferences-section">
+          <h3 className="text-sm font-medium text-neutral-300 mb-2">Suppressed (Don&apos;t suggest again)</h3>
+          <ul className="space-y-2">
+            {preferences.map((p) => (
+              <li key={p.id} className="flex items-center justify-between text-sm">
+                <span className="text-neutral-400 truncate">
+                  {p.ruleKey ?? p.dedupeKey ?? "—"}
+                  {p.suppressedUntil && (
+                    <span className="text-neutral-500 ml-1">
+                      until {formatDateSafe(p.suppressedUntil, { month: "short", day: "numeric", year: "numeric" })}
+                    </span>
+                  )}
+                </span>
+                <Button variant="ghost" size="sm" onClick={() => handleReEnable(p.id)} data-testid="nba-pref-reenable">
+                  Re-enable
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <AsyncState
         loading={loading}
         error={error}
@@ -269,6 +342,9 @@ export default function NextActionsPage() {
               {items.map((a) => {
                 const expl = a.explanationJson;
                 const isExpanded = expandedWhyId === a.id;
+                const isPlaybookExpanded = expandedPlaybookId === a.id;
+                const template = templateCache[a.id];
+                const templateLoading = templateLoadingId === a.id;
                 return (
                   <div key={a.id} className="p-4 hover:bg-neutral-800/30">
                     <div className="flex flex-wrap items-center gap-3">
@@ -283,6 +359,16 @@ export default function NextActionsPage() {
                         </div>
                       </div>
                       <div className="flex gap-2 shrink-0 items-center">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handlePlaybookToggle(a.id)}
+                          className="text-neutral-400"
+                          title="Open playbook"
+                          data-testid="next-action-playbook-toggle"
+                        >
+                          <BookOpen className="w-4 h-4" />
+                        </Button>
                         {expl && (
                           <Button
                             variant="ghost"
@@ -303,17 +389,103 @@ export default function NextActionsPage() {
                           </Link>
                         )}
                         {a.status === "queued" && (
-                          <>
-                            <Button variant="ghost" size="sm" onClick={() => handleDone(a.id)} disabled={actioningId === a.id} className="text-emerald-400">
+                          <div className="flex items-center gap-0.5">
+                            <Button variant="ghost" size="sm" onClick={() => handleExecute(a.id, "mark_done")} disabled={!!actioningId} className="text-emerald-400" title="Mark done" data-testid="next-action-mark-done">
                               <Check className="w-4 h-4" />
                             </Button>
-                            <Button variant="ghost" size="sm" onClick={() => handleDismiss(a.id)} disabled={actioningId === a.id} className="text-neutral-400" data-testid="next-action-dismiss">
-                              <X className="w-4 h-4" />
-                            </Button>
-                          </>
+                            <div className="relative">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setMenuOpenId(menuOpenId === a.id ? null : a.id)}
+                                disabled={!!actioningId}
+                                className="text-neutral-400"
+                                data-testid="next-action-menu"
+                              >
+                                <MoreHorizontal className="w-4 h-4" />
+                              </Button>
+                              {menuOpenId === a.id && (
+                                <div className="absolute right-0 top-full mt-0.5 z-10 rounded-md border border-neutral-700 bg-neutral-900 py-1 shadow-lg min-w-[160px]">
+                                  <button
+                                    className="block w-full px-3 py-1.5 text-left text-sm text-neutral-300 hover:bg-neutral-800"
+                                    onClick={() => handleExecute(a.id, "snooze_1d")}
+                                  >
+                                    Snooze 1 day
+                                  </button>
+                                  <button
+                                    className="block w-full px-3 py-1.5 text-left text-sm text-neutral-300 hover:bg-neutral-800"
+                                    onClick={() => handleExecute(a.id, "dismiss")}
+                                    data-testid="next-action-dismiss"
+                                  >
+                                    Dismiss
+                                  </button>
+                                  <button
+                                    className="block w-full px-3 py-1.5 text-left text-sm text-neutral-400 hover:bg-neutral-800"
+                                    onClick={() => handleExecute(a.id, "don_t_suggest_again_30d")}
+                                  >
+                                    Don&apos;t suggest again (30d)
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
                         )}
                       </div>
                     </div>
+                    {isPlaybookExpanded && (
+                      <div className="mt-3 pl-4 border-l-2 border-amber-500/30 space-y-3 text-sm" data-testid="next-action-playbook-panel">
+                        {templateLoading ? (
+                          <p className="text-neutral-500">Loading playbook…</p>
+                        ) : !template ? (
+                          <p className="text-neutral-500">No playbook for this action.</p>
+                        ) : (
+                          <>
+                        <h4 className="font-medium text-amber-400/90">{template.title}</h4>
+                        <p className="text-neutral-400">{template.why}</p>
+                        <div>
+                          <p className="text-xs text-neutral-500 uppercase mb-1">What good looks like</p>
+                          <p className="text-neutral-300">{template.outcome}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-neutral-500 uppercase mb-1">Checklist</p>
+                          <ol className="list-decimal list-inside text-neutral-400 space-y-0.5">
+                            {template.checklist.map((c) => (
+                              <li key={c.id}>{c.text}{c.optional ? " (optional)" : ""}</li>
+                            ))}
+                          </ol>
+                        </div>
+                        {template.links && template.links.length > 0 && (
+                          <div className="flex flex-wrap gap-2">
+                            {template.links.map((l, i) => (
+                              <Link key={i} href={l.href} className="text-xs text-amber-400 hover:underline">
+                                {l.label} →
+                              </Link>
+                            ))}
+                          </div>
+                        )}
+                        {template.suggestedActions && template.suggestedActions.length > 0 && (
+                          <div className="flex flex-wrap gap-2 pt-1">
+                            {template.suggestedActions.map((sa, i) => (
+                              <Button
+                                key={i}
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  if (sa.confirm && !window.confirm(`${sa.confirm.title}\n\n${sa.confirm.body}`)) return;
+                                  handleExecute(a.id, sa.actionKey);
+                                  setExpandedPlaybookId(null);
+                                }}
+                                disabled={!!actioningId || a.status !== "queued"}
+                              >
+                                {sa.label}
+                              </Button>
+                            ))}
+                          </div>
+                        )}
+                          </>
+                        )}
+                      </div>
+                    )}
                     {isExpanded && expl && (
                       <div className="mt-3 pl-4 border-l-2 border-neutral-700 space-y-2 text-sm" data-testid="next-action-why-panel">
                         {expl.summary && <p className="text-neutral-300">{expl.summary}</p>}
