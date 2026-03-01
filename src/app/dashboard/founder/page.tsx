@@ -250,15 +250,24 @@ export default function FounderPage() {
                 )}
               </p>
               <p>
-                <span className="text-neutral-500">Risks:</span>{" "}
-                {(summary?.risk?.summary?.openBySeverity?.critical ?? 0) +
-                  (summary?.risk?.summary?.openBySeverity?.high ?? 0)}{" "}
-                critical/high open. Last run: {summary?.risk?.summary?.lastRunAt?.slice(0, 10) ?? "never"}
+                <Link href="/dashboard/risk" className="text-amber-400 hover:underline">
+                  <span className="text-neutral-500">Risks:</span>{" "}
+                  {(summary?.risk?.summary?.openBySeverity?.critical ?? 0) +
+                    (summary?.risk?.summary?.openBySeverity?.high ?? 0)}{" "}
+                  critical/high open
+                </Link>
+                <span className="text-neutral-500 ml-1">
+                  Last run: {summary?.risk?.summary?.lastRunAt?.slice(0, 10) ?? "never"}
+                </span>
               </p>
               <p>
-                <span className="text-neutral-500">NBA:</span>{" "}
-                {Object.values(summary?.nba?.summary?.queuedByPriority ?? {}).reduce((a, b) => a + b, 0)} queued. Last
-                run: {summary?.nba?.summary?.lastRunAt?.slice(0, 10) ?? "never"}
+                <Link href="/dashboard/next-actions" className="text-amber-400 hover:underline">
+                  <span className="text-neutral-500">NBA:</span>{" "}
+                  {Object.values(summary?.nba?.summary?.queuedByPriority ?? {}).reduce((a, b) => a + b, 0)} queued
+                </Link>
+                <span className="text-neutral-500 ml-1">
+                  Last run: {summary?.nba?.summary?.lastRunAt?.slice(0, 10) ?? "never"}
+                </span>
               </p>
             </div>
           </div>
@@ -347,12 +356,20 @@ export default function FounderPage() {
             Top risks this week: {(summary?.risk?.summary?.openBySeverity?.critical ?? 0) +
               (summary?.risk?.summary?.openBySeverity?.high ?? 0)} critical/high.
           </p>
-          <Link
-            href="/dashboard/copilot/sessions"
-            className="text-amber-400 hover:underline text-xs"
-          >
-            View coach sessions →
-          </Link>
+          <div className="flex flex-wrap gap-3">
+            <Link
+              href="/dashboard/reviews"
+              className="text-amber-400 hover:underline text-xs"
+            >
+              Complete weekly review →
+            </Link>
+            <Link
+              href="/dashboard/founder/os/week"
+              className="text-amber-400 hover:underline text-xs"
+            >
+              Plan this week →
+            </Link>
+          </div>
         </div>
       </AsyncState>
     </div>

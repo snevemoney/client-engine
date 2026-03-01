@@ -89,13 +89,7 @@ export default function FounderOSPage() {
                     href="/dashboard/founder/os/quarter"
                     className="text-xs px-2 py-1 rounded border border-neutral-600 hover:bg-neutral-800 text-amber-400"
                   >
-                    Edit quarter
-                  </Link>
-                  <Link
-                    href="/dashboard/founder/os/quarter"
-                    className="text-xs px-2 py-1 rounded border border-neutral-600 hover:bg-neutral-800 text-amber-400"
-                  >
-                    Edit KPIs
+                    Edit quarter & KPIs
                   </Link>
                 </div>
               </div>
@@ -138,12 +132,18 @@ export default function FounderOSPage() {
         </div>
       </AsyncState>
 
-      <div className="flex gap-2">
+      <div className="flex gap-3">
         <Link
           href="/dashboard/founder"
           className="text-sm text-amber-400 hover:underline"
         >
           ← Founder Mode
+        </Link>
+        <Link
+          href="/dashboard/reviews"
+          className="text-sm text-amber-400 hover:underline"
+        >
+          Complete weekly review →
         </Link>
       </div>
     </div>

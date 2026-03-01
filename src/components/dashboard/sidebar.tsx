@@ -54,6 +54,8 @@ const navGroups: NavGroup[] = [
       { href: "/dashboard/followups", label: "Follow-ups", icon: Calendar },
       { href: "/dashboard/proposals", label: "Proposals", icon: FileText },
       { href: "/dashboard/inbox", label: "Inbox", icon: Bell },
+      { href: "/dashboard/reviews", label: "Reviews", icon: FileCheck },
+      { href: "/dashboard/founder/os", label: "Founder OS", icon: Layers },
     ],
   },
   {
@@ -67,6 +69,7 @@ const navGroups: NavGroup[] = [
       { href: "/dashboard/handoffs", label: "Handoffs", icon: FileCheck },
       { href: "/dashboard/retention", label: "Retention", icon: Target },
       { href: "/dashboard/risk", label: "Risk", icon: Activity },
+      { href: "/dashboard/growth", label: "Growth", icon: TrendingUp },
     ],
   },
   {
