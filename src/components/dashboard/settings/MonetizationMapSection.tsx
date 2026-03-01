@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 const MONETIZATION_ROLES = ["trust", "lead_capture", "conversion", "delivery", "proof", "upsell"] as const;
 type MonetizationRole = (typeof MONETIZATION_ROLES)[number];
@@ -17,6 +17,8 @@ export function MonetizationMapSection({
   const [map, setMap] = useState<Record<string, MonetizationRole[]>>(initialMap);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const mountedRef = useRef(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     setMap(initialMap);
@@ -28,7 +30,7 @@ export function MonetizationMapSection({
     setMap((m) => ({ ...m, [slug]: next }));
   }
 
-  async function save() {
+  async function doSave() {
     setSaving(true);
     setMessage(null);
     try {
@@ -38,16 +40,31 @@ export function MonetizationMapSection({
         body: JSON.stringify({ projectRoles: map }),
       });
       if (!res.ok) {
-        const data = await res.json();
-        setMessage(data.error ?? "Save failed");
+        const data = await res.json().catch(() => null);
+        setMessage(data?.error ?? "Save failed");
         return;
       }
       setMessage("Saved.");
+      setTimeout(() => setMessage(null), 3000);
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "Request failed");
     } finally {
       setSaving(false);
     }
+  }
+
+  // Auto-save on map change (debounced 1.5s)
+  useEffect(() => {
+    if (!mountedRef.current) { mountedRef.current = true; return; }
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => { void doSave(); }, 1500);
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [map]);
+
+  function save() {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    void doSave();
   }
 
   const projects = initialProjects.filter((p) => p.status === "live").length > 0

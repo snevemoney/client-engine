@@ -46,7 +46,7 @@ export function IntelligenceBanner({ risk, nba, score, loading }: IntelligenceBa
         <Link href="/dashboard/internal/scoreboard" className="flex items-center gap-1.5 text-neutral-400 hover:text-neutral-200 transition-colors">
           <BandDot band={score.band} />
           <span>Health {Math.round(score.value)}</span>
-          {score.delta !== 0 && (
+          {score.delta != null && score.delta !== 0 && (
             <span className={score.delta > 0 ? "text-green-400" : "text-red-400"}>
               {score.delta > 0 ? "+" : ""}{score.delta.toFixed(1)}
             </span>

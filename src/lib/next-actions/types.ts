@@ -56,4 +56,10 @@ export type NextActionContext = {
   /** Phase 6.3.1: First deal IDs for delivery actions */
   growthFirstOverdueDealId?: string | null;
   growthFirstNoOutreachDealId?: string | null;
+  /** Builder content quality: count of projects with health score < 70 */
+  builderPoorQualityCount: number;
+  /** First project ID with poor quality (for actionUrl) */
+  builderPoorQualityProjectId?: string | null;
+  /** Proposals with overdue follow-ups */
+  proposalOverdueFollowupCount: number;
 };

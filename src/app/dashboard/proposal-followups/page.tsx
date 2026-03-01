@@ -10,8 +10,6 @@ import { Button } from "@/components/ui/button";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { AsyncState } from "@/components/ui/AsyncState";
 import { formatDateSafe } from "@/lib/ui/date-safe";
-import { useIntelligenceContext } from "@/hooks/useIntelligenceContext";
-import { IntelligenceBanner } from "@/components/dashboard/IntelligenceBanner";
 
 type ProposalItem = {
   id: string;
@@ -55,6 +53,8 @@ function ProposalRow({
   onLogCall,
   onComplete,
   actionLoading,
+  selected,
+  onToggle,
 }: {
   item: ProposalItem;
   bucket: string;
@@ -63,10 +63,20 @@ function ProposalRow({
   onLogCall: (i: ProposalItem) => void;
   onComplete: (i: ProposalItem) => void;
   actionLoading: string | null;
+  selected: boolean;
+  onToggle: (id: string) => void;
 }) {
   const loading = actionLoading === item.id;
   return (
     <tr className="border-b border-neutral-800 hover:bg-neutral-800/30">
+      <td className="p-3 w-8">
+        <input
+          type="checkbox"
+          checked={selected}
+          onChange={() => onToggle(item.id)}
+          className="rounded border-neutral-600 bg-neutral-800 accent-amber-500"
+        />
+      </td>
       <td className="p-3">
         <Link href={`/dashboard/proposals/${item.id}`} className="font-medium text-neutral-100 hover:underline">
           {item.title || "—"}
@@ -109,8 +119,9 @@ export default function ProposalFollowupsPage() {
   const runIdRef = useRef(0);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [snoozeItem, setSnoozeItem] = useState<ProposalItem | null>(null);
-  const intel = useIntelligenceContext();
   const [snoozePreset, setSnoozePreset] = useState<"2d" | "5d" | "next_monday">("2d");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkLoading, setBulkLoading] = useState(false);
 
   const fetchData = useCallback(async () => {
     if (abortRef.current) abortRef.current.abort();
@@ -203,6 +214,54 @@ export default function ProposalFollowupsPage() {
     );
   };
 
+  const toggleSelect = useCallback((id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const allVisibleIds = data
+    ? BUCKETS.flatMap((b) => getBucketItems(data, b).map((i) => i.id))
+    : [];
+
+  const toggleAll = useCallback(() => {
+    setSelected((prev) => (prev.size === allVisibleIds.length ? new Set() : new Set(allVisibleIds)));
+  }, [allVisibleIds]);
+
+  const runBulkAction = async (label: string, buildFetch: (id: string) => Promise<Response>) => {
+    if (selected.size === 0) return;
+    setBulkLoading(true);
+    const results = await Promise.allSettled(Array.from(selected).map(buildFetch));
+    const succeeded = results.filter((r) => r.status === "fulfilled" && (r.value as Response).ok).length;
+    const failed = results.length - succeeded;
+    if (succeeded > 0) toast.success(`${label}: ${succeeded} done`);
+    if (failed > 0) toast.error(`${label}: ${failed} failed`);
+    setSelected(new Set());
+    setBulkLoading(false);
+    void fetchData();
+  };
+
+  const bulkSnooze = (preset: string) =>
+    runBulkAction("Bulk snooze", (id) =>
+      fetch(`/api/proposals/${id}/followup-snooze`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ preset }),
+      })
+    );
+
+  const bulkLogEmail = () =>
+    runBulkAction("Bulk log email", (id) =>
+      fetch(`/api/proposals/${id}/followup-log-email`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+      })
+    );
+
   if (loading && !data) {
     return <div className="py-12 text-center text-neutral-500">Loading…</div>;
   }
@@ -213,7 +272,7 @@ export default function ProposalFollowupsPage() {
         <h1 className="text-2xl font-semibold tracking-tight">Proposal Follow-ups</h1>
         <p className="text-sm text-neutral-400 mt-1">Track and schedule follow-ups for sent proposals.</p>
       </div>
-      <IntelligenceBanner risk={intel.risk} nba={intel.nba} score={intel.score} loading={intel.loading} />
+
 
       {summary && (
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
@@ -268,6 +327,24 @@ export default function ProposalFollowupsPage() {
         </div>
       </div>
 
+      {selected.size > 0 && (
+        <div className="rounded-lg border border-amber-800/50 bg-amber-900/20 p-3 flex flex-wrap gap-2 items-center">
+          <span className="text-sm font-medium text-amber-300">{selected.size} selected</span>
+          <Button size="sm" variant="outline" onClick={() => bulkSnooze("2d")} disabled={bulkLoading}>
+            Snooze +2d
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => bulkSnooze("5d")} disabled={bulkLoading}>
+            Snooze +5d
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => bulkLogEmail()} disabled={bulkLoading}>
+            Log Email
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())} disabled={bulkLoading}>
+            Clear
+          </Button>
+        </div>
+      )}
+
       {snoozeItem && (
         <div className="rounded-lg border border-amber-800/50 bg-amber-900/20 p-4 flex gap-2 items-center">
           <span className="text-sm">Snooze {snoozeItem.title}</span>
@@ -306,6 +383,14 @@ export default function ProposalFollowupsPage() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-neutral-700 bg-neutral-900/50">
+                        <th className="p-3 w-8">
+                          <input
+                            type="checkbox"
+                            checked={selected.size > 0 && selected.size === allVisibleIds.length}
+                            onChange={toggleAll}
+                            className="rounded border-neutral-600 bg-neutral-800 accent-amber-500"
+                          />
+                        </th>
                         <th className="text-left p-3 font-medium text-neutral-400">Proposal</th>
                         <th className="text-left p-3 font-medium text-neutral-400">Company</th>
                         <th className="text-left p-3 font-medium text-neutral-400">Response</th>
@@ -326,6 +411,8 @@ export default function ProposalFollowupsPage() {
                           onLogCall={handleLogCall}
                           onComplete={handleComplete}
                           actionLoading={actionLoading}
+                          selected={selected.has(item.id)}
+                          onToggle={toggleSelect}
                         />
                       ))}
                     </tbody>

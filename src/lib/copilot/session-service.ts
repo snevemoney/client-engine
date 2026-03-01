@@ -122,3 +122,70 @@ export async function loadBrainHistory(
     content: m.contentJson as unknown,
   }));
 }
+
+/**
+ * Build a summary of recent past sessions for cross-session memory.
+ * Extracts key topics discussed and actions taken from the last N sessions
+ * (excluding the current one). Returns a compact text block for system prompt injection.
+ */
+export async function buildCrossSessionContext(
+  excludeSessionId?: string
+): Promise<string | null> {
+  const recentSessions = await db.copilotSession.findMany({
+    where: {
+      ...(excludeSessionId ? { id: { not: excludeSessionId } } : {}),
+    },
+    orderBy: { updatedAt: "desc" },
+    take: 5,
+    select: {
+      id: true,
+      title: true,
+      updatedAt: true,
+      messages: {
+        orderBy: { createdAt: "asc" },
+        take: 6, // First 3 exchanges per session
+        select: { role: true, contentJson: true },
+      },
+    },
+  });
+
+  if (recentSessions.length === 0) return null;
+
+  const summaries: string[] = [];
+
+  for (const s of recentSessions) {
+    const userMessages = s.messages
+      .filter((m) => m.role === "user")
+      .map((m) => {
+        const content = m.contentJson as Record<string, unknown> | null;
+        return typeof content?.text === "string" ? content.text : "";
+      })
+      .filter(Boolean);
+
+    const brainMessages = s.messages
+      .filter((m) => m.role !== "user")
+      .map((m) => {
+        const content = m.contentJson as Record<string, unknown> | null;
+        const text = typeof content?.text === "string" ? content.text : "";
+        // Truncate long responses to key points
+        return text.length > 300 ? text.slice(0, 300) + "..." : text;
+      })
+      .filter(Boolean);
+
+    if (userMessages.length === 0) continue;
+
+    const dateStr = s.updatedAt.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+    });
+    const title = s.title || userMessages[0].slice(0, 60);
+
+    summaries.push(
+      `[${dateStr}] "${title}"\n  User asked: ${userMessages.join(" | ")}\n  Key points: ${brainMessages[0] ?? "(no response)"}`
+    );
+  }
+
+  if (summaries.length === 0) return null;
+
+  return `## Recent Conversation History\nThe operator has had these recent conversations with you. Use this context to provide continuity:\n\n${summaries.join("\n\n")}`;
+}

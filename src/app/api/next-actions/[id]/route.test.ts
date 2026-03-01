@@ -1,7 +1,7 @@
 /**
  * Phase 4.0.1: Next Actions PATCH [id] route contract tests.
  */
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { NextActionPriority, NextActionStatus, RiskSourceType } from "@prisma/client";
@@ -33,6 +33,10 @@ describe("PATCH /api/next-actions/[id]", () => {
       },
     });
     actionId = a.id;
+  });
+
+  afterEach(async () => {
+    await db.nextBestAction.deleteMany({ where: { dedupeKey: { startsWith: "test_patch_nba:" } } });
   });
 
   it("done sets status done", async () => {

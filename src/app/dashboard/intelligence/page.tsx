@@ -11,8 +11,6 @@ import { useConfirmDialog } from "@/hooks/useConfirmDialog";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { AsyncState } from "@/components/ui/AsyncState";
 import { fetchJsonThrow } from "@/lib/http/fetch-json";
-import { useIntelligenceContext } from "@/hooks/useIntelligenceContext";
-import { IntelligenceBanner } from "@/components/dashboard/IntelligenceBanner";
 
 type MetricsSummary = {
   conversion?: {
@@ -84,7 +82,6 @@ function MetricCard({
 
 export default function IntelligencePage() {
   const { data, loading, error, refetch } = useRetryableFetch<MetricsSummary>("/api/metrics/summary");
-  const intel = useIntelligenceContext();
   const toastFn = (m: string, t?: "success" | "error") => t === "error" ? toast.error(m) : toast.success(m);
   const { confirm, dialogProps } = useConfirmDialog();
 
@@ -136,7 +133,6 @@ export default function IntelligencePage() {
             Conversion rates, cycle times, revenue metrics, and bottlenecks.
           </p>
         </div>
-        <IntelligenceBanner risk={intel.risk} nba={intel.nba} score={intel.score} loading={intel.loading} />
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={refetch}>
             <RefreshCw className="w-4 h-4 mr-1" />

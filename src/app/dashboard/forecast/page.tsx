@@ -11,8 +11,6 @@ import { useConfirmDialog } from "@/hooks/useConfirmDialog";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { AsyncState } from "@/components/ui/AsyncState";
 import { fetchJsonThrow } from "@/lib/http/fetch-json";
-import { useIntelligenceContext } from "@/hooks/useIntelligenceContext";
-import { IntelligenceBanner } from "@/components/dashboard/IntelligenceBanner";
 
 type ForecastMetric = {
   key: string;
@@ -61,7 +59,6 @@ function formatValue(v: number, unit: string): string {
 
 export default function ForecastPage() {
   const { data, loading, error, refetch } = useRetryableFetch<ForecastData>("/api/forecast/current");
-  const intel = useIntelligenceContext();
   const toastFn = (m: string, t?: "success" | "error") => t === "error" ? toast.error(m) : toast.success(m);
   const { confirm, dialogProps } = useConfirmDialog();
 
@@ -92,7 +89,6 @@ export default function ForecastPage() {
           {snapshotLoading ? "Capturing…" : "Capture Forecast Snapshot"}
         </Button>
       </div>
-      <IntelligenceBanner risk={intel.risk} nba={intel.nba} score={intel.score} loading={intel.loading} />
       <ConfirmDialog {...dialogProps} />
 
       <AsyncState loading={loading} error={error} empty={!loading && !error && !data} emptyMessage="No forecast data" onRetry={refetch}>

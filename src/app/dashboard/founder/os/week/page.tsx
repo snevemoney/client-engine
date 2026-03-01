@@ -185,7 +185,8 @@ export default function FounderOSWeekPage({ searchParams }: { searchParams: Prom
     fetch("/api/internal/founder/os/week/suggest", { method: "POST", credentials: "include", signal: controller.signal })
       .then((r) => r.json())
       .then((d) => {
-        if (d.topOutcomes || d.milestones) setPreview(d);
+        if (d.topOutcomes?.length || d.milestones?.length) setPreview(d);
+        else toast.info("No signals to suggest from yet. Add leads or run the system first.");
       })
       .catch((e) => {
         if (e instanceof Error && (e.name === "AbortError" || e.message?.includes("aborted"))) return;
@@ -197,7 +198,11 @@ export default function FounderOSWeekPage({ searchParams }: { searchParams: Prom
   const generateSuggestionsAction = useAsyncAction(
     async () => {
       const json = await fetchJsonThrow<Suggestions>("/api/internal/founder/os/week/suggest", { method: "POST" });
-      setPreview(json);
+      if (json.topOutcomes?.length || json.milestones?.length) {
+        setPreview(json);
+      } else {
+        toast.info("No signals to suggest from yet. Add leads or run the system first.");
+      }
     },
     { toast: toastFn, successMessage: "Suggestions generated" }
   );
@@ -680,8 +685,8 @@ export default function FounderOSWeekPage({ searchParams }: { searchParams: Prom
           )}
         </div>
 
-        <Link href="/dashboard/founder/os" className="text-sm text-amber-400 hover:underline">
-          ← Founder OS
+        <Link href="/dashboard/founder" className="text-sm text-amber-400 hover:underline">
+          ← Founder
         </Link>
       </AsyncState>
       <ConfirmDialog {...dialogProps} />

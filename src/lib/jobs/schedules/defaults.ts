@@ -29,7 +29,7 @@ export const DEFAULT_SCHEDULES: DefaultSchedule[] = [
     dayOfWeek: 1,
     hour: 9,
     minute: 0,
-    isEnabled: false,
+    isEnabled: true,
   },
   {
     key: "weekly_operator_score_snapshot",
@@ -40,7 +40,7 @@ export const DEFAULT_SCHEDULES: DefaultSchedule[] = [
     dayOfWeek: 1,
     hour: 9,
     minute: 15,
-    isEnabled: false,
+    isEnabled: true,
   },
   {
     key: "weekly_forecast_snapshot",
@@ -51,7 +51,7 @@ export const DEFAULT_SCHEDULES: DefaultSchedule[] = [
     dayOfWeek: 1,
     hour: 9,
     minute: 30,
-    isEnabled: false,
+    isEnabled: true,
   },
   {
     key: "daily_reminder_rules",
@@ -61,7 +61,7 @@ export const DEFAULT_SCHEDULES: DefaultSchedule[] = [
     cadenceType: "daily",
     hour: 8,
     minute: 0,
-    isEnabled: false,
+    isEnabled: true,
   },
   {
     key: "daily_automation_suggestions",
@@ -71,7 +71,7 @@ export const DEFAULT_SCHEDULES: DefaultSchedule[] = [
     cadenceType: "daily",
     hour: 8,
     minute: 30,
-    isEnabled: false,
+    isEnabled: true,
   },
   {
     key: "notifications_evaluate_escalations",

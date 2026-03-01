@@ -1,7 +1,7 @@
 /**
  * Phase 6.3.2: Growth golden regression scenarios.
  */
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { db } from "@/lib/db";
 import { NextRequest } from "next/server";
 import {
@@ -34,6 +34,10 @@ vi.mock("@/lib/api-utils", async () => {
 
 describe("Growth golden regression", () => {
   beforeEach(async () => {
+    await cleanupGoldenGrowth(OWNER_USER_ID);
+  });
+
+  afterEach(async () => {
     await cleanupGoldenGrowth(OWNER_USER_ID);
   });
 

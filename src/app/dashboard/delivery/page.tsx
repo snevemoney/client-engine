@@ -141,6 +141,9 @@ export default async function DeliveryPage() {
         company: true,
         dueDate: true,
         proofCandidateId: true,
+        testimonialStatus: true,
+        retentionStatus: true,
+        postDeliveryHealth: true,
         createdAt: true,
       },
     }),
@@ -157,6 +160,9 @@ export default async function DeliveryPage() {
     dueDate: p.dueDate?.toISOString() ?? null,
     health: computeProjectHealth({ status: p.status, dueDate: p.dueDate }),
     proofCandidateId: p.proofCandidateId,
+    testimonialStatus: p.testimonialStatus,
+    retentionStatus: p.retentionStatus,
+    postDeliveryHealth: p.postDeliveryHealth,
     createdAt: p.createdAt.toISOString(),
   }));
 

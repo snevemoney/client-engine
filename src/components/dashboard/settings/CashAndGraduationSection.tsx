@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { OperatorSettings } from "@/lib/ops/settings";
@@ -21,8 +21,10 @@ export function CashAndGraduationSection({
   );
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const mountedRef = useRef(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  async function save() {
+  async function doSave() {
     setSaving(true);
     setMessage(null);
     const cash = cashCollected.trim() ? parseInt(cashCollected.replace(/\D/g, ""), 10) : undefined;
@@ -39,16 +41,31 @@ export function CashAndGraduationSection({
         }),
       });
       if (!res.ok) {
-        const data = await res.json();
-        setMessage(data.error ?? "Save failed");
+        const data = await res.json().catch(() => null);
+        setMessage(data?.error ?? "Save failed");
         return;
       }
       setMessage("Saved.");
+      setTimeout(() => setMessage(null), 3000);
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "Request failed");
     } finally {
       setSaving(false);
     }
+  }
+
+  // Auto-save on field change (debounced 2s)
+  useEffect(() => {
+    if (!mountedRef.current) { mountedRef.current = true; return; }
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => { void doSave(); }, 2000);
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cashCollected, targetWins, milestone]);
+
+  function save() {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    void doSave();
   }
 
   return (

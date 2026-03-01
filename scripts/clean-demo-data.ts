@@ -190,9 +190,21 @@ async function main() {
   }
   if (pipelineLeadsToDelete.length > 0) console.log(`Deleted ${pipelineLeadsToDelete.length} demo pipeline leads`);
 
-  // 6. Risk flags (sample:*)
-  const riskResult = await db.riskFlag.deleteMany({ where: { dedupeKey: { startsWith: "sample:" } } });
-  if (riskResult.count > 0) console.log(`Deleted ${riskResult.count} sample risk flags`);
+  // 6. Risk flags (sample:* + test patterns)
+  const riskResult = await db.riskFlag.deleteMany({
+    where: {
+      OR: [
+        { dedupeKey: { startsWith: "sample:" } },
+        { dedupeKey: { startsWith: "test_patch_risk:" } },
+        { dedupeKey: { startsWith: "test_risk_" } },
+        { createdByRule: "test" },
+        { createdByRule: "test_pagination" },
+        { createdByRule: "test_status_filter" },
+        { title: "Patch Test" },
+      ],
+    },
+  });
+  if (riskResult.count > 0) console.log(`Deleted ${riskResult.count} sample/test risk flags`);
   deleted += riskResult.count;
 
   // 7. Next best actions (seed dedupeKeys + test data from unit/E2E tests)
@@ -215,6 +227,10 @@ async function main() {
         { title: { startsWith: "Test Patch Action" } },
         { title: { startsWith: "Schedule test" } },
         { title: { startsWith: "Mark replied test" } },
+        { dedupeKey: { startsWith: "test_patch_nba:" } },
+        { dedupeKey: { contains: "golden_growth" } },
+        { dedupeKey: { contains: "growth_integration" } },
+        { createdByRule: "test" },
       ],
     },
   });
@@ -234,6 +250,42 @@ async function main() {
   const signalResult = await db.signalItem.deleteMany({ where: { title: { startsWith: "Mock:" } } });
   if (signalResult.count > 0) console.log(`Deleted ${signalResult.count} mock signal items`);
   deleted += signalResult.count;
+
+  // 10. Growth test data (Prospect/Deal from unit tests)
+  const testProspects = await db.prospect.findMany({
+    where: {
+      OR: [
+        { name: { contains: "Test Prospect" } },
+        { name: { startsWith: "Golden Prospect" } },
+        { handle: { startsWith: "schedule_test_" } },
+        { handle: { startsWith: "draft_test_" } },
+        { handle: { startsWith: "send_test_" } },
+        { handle: { startsWith: "golden_" } },
+      ],
+    },
+    select: { id: true },
+  });
+  for (const p of testProspects) {
+    const deals = await db.deal.findMany({ where: { prospectId: p.id }, select: { id: true } });
+    for (const d of deals) {
+      await db.followUpSchedule.deleteMany({ where: { dealId: d.id } });
+      await db.outreachEvent.deleteMany({ where: { dealId: d.id } });
+      await db.outreachMessage.deleteMany({ where: { dealId: d.id } });
+      await db.dealEvent.deleteMany({ where: { dealId: d.id } });
+      await db.deal.delete({ where: { id: d.id } });
+      deleted++;
+    }
+    await db.prospect.delete({ where: { id: p.id } }).catch(() => {});
+    deleted++;
+  }
+  if (testProspects.length > 0) console.log(`Deleted ${testProspects.length} test prospects and their deals`);
+
+  // 11. Test ScoreSnapshot records
+  const scoreResult = await db.scoreSnapshot.deleteMany({
+    where: { entityId: "command_center", band: "critical", delta: -10 },
+  });
+  if (scoreResult.count > 0) console.log(`Deleted ${scoreResult.count} test score snapshots`);
+  deleted += scoreResult.count;
 
   console.log(`Done. Removed demo/test data.`);
 }

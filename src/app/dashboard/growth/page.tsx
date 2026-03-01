@@ -7,8 +7,6 @@ import { useAsyncAction } from "@/hooks/useAsyncAction";
 import { AsyncState } from "@/components/ui/AsyncState";
 import { fetchJsonThrow } from "@/lib/http/fetch-json";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
-import { IntelligenceBanner } from "@/components/dashboard/IntelligenceBanner";
-import type { IntelligenceContext } from "@/hooks/useIntelligenceContext";
 
 type GrowthSummary = {
   countsByStage: Record<string, number>;
@@ -42,8 +40,6 @@ export default function GrowthPage() {
 
   const debouncedStage = useDebouncedValue(filterStage, 300);
   const debouncedDue = useDebouncedValue(filterDue, 300);
-  const [risk, setRisk] = useState<IntelligenceContext["risk"] | null>(null);
-  const [nba, setNba] = useState<IntelligenceContext["nba"] | null>(null);
 
   const toastFn = (m: string, t?: "success" | "error") => t === "error" ? toast.error(m) : toast.success(m);
 
@@ -71,16 +67,12 @@ export default function GrowthPage() {
       }
       const ctx = await contextRes.json();
       setSummary(ctx?.summary ?? null);
-      setRisk(ctx?.risk ?? null);
-      setNba(ctx?.nba ?? null);
       const d = await dealsRes.json();
       setDeals(d.items ?? []);
     } catch (e) {
       if (controller.signal.aborted) return;
       if (e instanceof Error && (e.name === "AbortError" || e.message?.includes("aborted"))) return;
       setError(e instanceof Error ? e.message : "Failed to load");
-      setRisk(null);
-      setNba(null);
     } finally {
       if (!controller.signal.aborted) {
         setLoading(false);
@@ -132,7 +124,6 @@ export default function GrowthPage() {
           <h1 className="text-2xl font-semibold tracking-tight">Growth Pipeline</h1>
           <p className="text-sm text-neutral-400 mt-1">Prospects → Outreach → Follow-up → Close</p>
         </div>
-        <IntelligenceBanner risk={risk} nba={nba} score={null} loading={loading} />
         <button
           type="button"
           onClick={() => void handleRunGrowthNBA()}

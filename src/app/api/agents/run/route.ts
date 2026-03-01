@@ -31,22 +31,27 @@ export async function POST(req: NextRequest) {
   // Use provided task or default to the first scheduled run's task
   const taskPrompt = task || config.scheduledRuns[0]?.taskPrompt || `Run ${config.name} default task.`;
 
-  const result = await runAgent(config.id, taskPrompt, {
-    userId: session.user.id,
-    baseUrl: "",
-    entityType: "command_center",
-    entityId: "command_center",
-  }, {
-    triggerType: "event",
-    triggerSource: "manual_dashboard",
-  });
+  try {
+    const result = await runAgent(config.id, taskPrompt, {
+      userId: session.user.id,
+      baseUrl: "",
+      entityType: "command_center",
+      entityId: "command_center",
+    }, {
+      triggerType: "event",
+      triggerSource: "manual_dashboard",
+    });
 
-  return NextResponse.json({
-    ok: result.status !== "failed",
-    agentRunId: result.agentRunId,
-    status: result.status,
-    resultSummary: result.resultSummary,
-    toolCalls: result.toolCalls.length,
-    pendingApprovals: result.pendingApprovals.length,
-  });
+    return NextResponse.json({
+      ok: result.status !== "failed",
+      agentRunId: result.agentRunId,
+      status: result.status,
+      resultSummary: result.resultSummary,
+      toolCalls: result.toolCalls.length,
+      pendingApprovals: result.pendingApprovals.length,
+    });
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Agent run failed";
+    return NextResponse.json({ error: message, ok: false }, { status: 500 });
+  }
 }

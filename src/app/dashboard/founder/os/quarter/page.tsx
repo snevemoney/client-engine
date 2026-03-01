@@ -210,8 +210,8 @@ export default function FounderOSQuarterPage() {
         </div>
       </AsyncState>
 
-      <Link href="/dashboard/founder/os" className="text-sm text-amber-400 hover:underline">
-        ← Founder OS
+      <Link href="/dashboard/founder" className="text-sm text-amber-400 hover:underline">
+        ← Founder
       </Link>
     </div>
   );

@@ -189,6 +189,159 @@ export const BRAIN_TOOLS: BrainToolDefinition[] = [
       required: [],
     },
   },
+
+  // ─── CRUD Tools (Phase 9: Multi-Agent) ────────────────────────
+
+  {
+    name: "list_leads",
+    description:
+      "List leads with optional filters. Returns id, title, status, source, contactName, contactEmail, score, createdAt. Status values: NEW, ENRICHED, SCORED, APPROVED, REJECTED, BUILDING, SHIPPED.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        status: {
+          type: "string",
+          description: "Filter by status (e.g. NEW, SCORED, APPROVED).",
+        },
+        limit: {
+          type: "number",
+          description: "Max results. Defaults to 20.",
+          default: 20,
+        },
+      },
+      required: [],
+    },
+  },
+  {
+    name: "update_lead",
+    description:
+      "Update a lead's status, notes, or score. Provide the lead ID and the fields to change.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        leadId: { type: "string", description: "The lead ID." },
+        status: {
+          type: "string",
+          description: "New status: NEW, ENRICHED, SCORED, APPROVED, REJECTED, BUILDING, SHIPPED.",
+        },
+        description: { type: "string", description: "Updated description / notes." },
+        score: { type: "number", description: "Updated score (0-100)." },
+        scoreReason: { type: "string", description: "Updated score reason." },
+      },
+      required: ["leadId"],
+    },
+  },
+  {
+    name: "list_proposals",
+    description:
+      "List proposals with optional filters. Returns id, title, clientName, status, priceMin, priceMax, createdAt. Status values: draft, ready, sent, viewed, accepted, rejected, expired.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        status: { type: "string", description: "Filter by status." },
+        limit: { type: "number", description: "Max results. Defaults to 20.", default: 20 },
+      },
+      required: [],
+    },
+  },
+  {
+    name: "update_proposal",
+    description:
+      "Update a proposal's status, pricing, or notes. Provide the proposal ID and fields to change.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        proposalId: { type: "string", description: "The proposal ID." },
+        status: { type: "string", description: "New status: draft, ready, sent, viewed, accepted, rejected, expired." },
+        priceMin: { type: "number", description: "Updated minimum price." },
+        priceMax: { type: "number", description: "Updated maximum price." },
+        summary: { type: "string", description: "Updated summary." },
+      },
+      required: ["proposalId"],
+    },
+  },
+  {
+    name: "list_delivery_projects",
+    description:
+      "List delivery projects with optional filters. Returns id, title, clientName, status, dueDate, completedAt. Status values: not_started, kickoff, in_progress, qa, blocked, completed, archived.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        status: { type: "string", description: "Filter by status." },
+        limit: { type: "number", description: "Max results. Defaults to 20.", default: 20 },
+      },
+      required: [],
+    },
+  },
+  {
+    name: "update_delivery_project",
+    description:
+      "Update a delivery project's status, notes, or dates.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        projectId: { type: "string", description: "The delivery project ID." },
+        status: { type: "string", description: "New status: not_started, kickoff, in_progress, qa, blocked, completed, archived." },
+        deliveryNotes: { type: "string", description: "Updated delivery notes." },
+        dueDate: { type: "string", description: "Updated due date (ISO 8601)." },
+      },
+      required: ["projectId"],
+    },
+  },
+  {
+    name: "manage_deal",
+    description:
+      "Update a growth deal's stage, priority, or schedule follow-up. Stage values: new, contacted, replied, call_scheduled, proposal_sent, won, lost.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        dealId: { type: "string", description: "The deal ID." },
+        stage: { type: "string", description: "New stage." },
+        priority: { type: "string", description: "Priority: low, medium, high, critical." },
+        nextFollowUpDays: { type: "number", description: "Schedule next follow-up in N days from now." },
+        notes: { type: "string", description: "Notes to record as an outreach event." },
+      },
+      required: ["dealId"],
+    },
+  },
+  {
+    name: "send_operator_alert",
+    description:
+      "Send a notification alert to the operator. Use for important updates, warnings, or action items that need attention.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        title: { type: "string", description: "Alert title." },
+        message: { type: "string", description: "Alert message body." },
+        severity: { type: "string", description: "info, warning, or critical. Defaults to info.", default: "info" },
+        actionUrl: { type: "string", description: "Optional URL to navigate to." },
+      },
+      required: ["title", "message"],
+    },
+  },
+
+  // ─── Agent Delegation ─────────────────────────────────────────
+
+  {
+    name: "delegate_to_agent",
+    description:
+      "Delegate a complex task to a specialized domain agent. Agents: revenue (sales pipeline), delivery (projects), growth (prospecting/outreach), retention (client health), intelligence (analytics), system (infra health). Use when the task involves multiple steps within one domain.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        agentId: {
+          type: "string",
+          description:
+            "Agent to delegate to: revenue, delivery, growth, retention, intelligence, or system.",
+        },
+        task: {
+          type: "string",
+          description: "Detailed description of what the agent should do.",
+        },
+      },
+      required: ["agentId", "task"],
+    },
+  },
 ];
 
 /** Human-readable display names for tools shown in the chat UI. */
@@ -205,6 +358,15 @@ export const TOOL_DISPLAY_NAMES: Record<string, string> = {
   execute_nba: "Executing action",
   draft_outreach: "Drafting outreach",
   get_ops_health: "Checking system health",
+  list_leads: "Listing leads",
+  update_lead: "Updating lead",
+  list_proposals: "Listing proposals",
+  update_proposal: "Updating proposal",
+  list_delivery_projects: "Listing delivery projects",
+  update_delivery_project: "Updating delivery project",
+  manage_deal: "Managing deal",
+  send_operator_alert: "Sending alert",
+  delegate_to_agent: "Delegating to agent",
 };
 
 /** Tools that modify state and should be confirmed before execution. */
@@ -214,4 +376,10 @@ export const WRITE_TOOLS = new Set([
   "recompute_score",
   "execute_nba",
   "draft_outreach",
+  "update_lead",
+  "update_proposal",
+  "update_delivery_project",
+  "manage_deal",
+  "send_operator_alert",
+  "delegate_to_agent",
 ]);

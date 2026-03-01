@@ -1,7 +1,7 @@
 /**
  * Phase 6.3.2: Growth followups schedule route contract tests.
  */
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { db } from "@/lib/db";
 import { ProspectPlatform } from "@prisma/client";
 import { NextRequest } from "next/server";
@@ -40,6 +40,15 @@ describe("POST /api/internal/growth/followups/schedule", () => {
       data: { prospectId: prospect.id, ownerUserId: userId },
     });
     dealId = deal.id;
+  });
+
+  afterEach(async () => {
+    await db.followUpSchedule.deleteMany({ where: { dealId } });
+    await db.outreachEvent.deleteMany({ where: { dealId } });
+    await db.outreachMessage.deleteMany({ where: { dealId } });
+    const deal = await db.deal.findUnique({ where: { id: dealId }, select: { prospectId: true } });
+    await db.deal.deleteMany({ where: { id: dealId } });
+    if (deal?.prospectId) await db.prospect.deleteMany({ where: { id: deal.prospectId } });
   });
 
   it("returns 401 when unauthenticated", async () => {

@@ -169,6 +169,38 @@ function getBaseExplanation(ruleKey: string, ctx: NextActionContext): NextAction
         links: [{ label: "Leads", href: "/dashboard/leads" }],
       };
 
+    case "builder_content_quality_poor":
+      return {
+        ruleKey,
+        summary: "One or more client websites have AI-generated content scoring below 70/100. The content may have placeholder text, weak headlines, or missing sections.",
+        evidence: [
+          { label: "Poor quality count", value: ctx.builderPoorQualityCount, source: "db:DeliveryProject.builderHealthScore" },
+        ],
+        recommendedSteps: [
+          "Open the delivery project and review the website preview",
+          "Edit weak sections in the builder editor",
+          "Regenerate content if needed with updated client info",
+        ],
+        links: [{ label: "Delivery", href: "/dashboard/delivery" }],
+      };
+
+    case "proposal_batch_review_due":
+      return {
+        ruleKey,
+        summary: "Multiple proposals need review. Batch them in a quick 3-minute end-of-day block.",
+        evidence: [
+          { label: "Overdue follow-ups", value: ctx.proposalOverdueFollowupCount, source: "db:Proposal" },
+          { label: "Missing follow-up date", value: ctx.sentNoFollowupDateCount, source: "db:Proposal" },
+        ],
+        recommendedSteps: [
+          "Under $5k — quick phone follow-up within 24h",
+          "$5k–25k — value-add email + schedule call",
+          "Over $25k — personal outreach + meeting invite",
+          "30+ days stale — consider disqualifying or re-engaging",
+        ],
+        links: [{ label: "Proposal Follow-ups", href: "/dashboard/proposal-followups" }],
+      };
+
     case "growth_overdue_followups":
       return {
         ruleKey,

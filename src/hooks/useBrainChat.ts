@@ -1,7 +1,9 @@
 /**
  * React hook for streaming AI Brain chat via SSE.
+ * Hydrates from DB on mount (loads most recent open session).
+ * Supports session switching and cross-session context.
  */
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 
 export type ToolCallPart = {
   id: string;
@@ -24,14 +26,181 @@ export type BrainChatMessage = {
   timestamp: Date;
 };
 
-export function useBrainChat() {
+export type BrainSession = {
+  id: string;
+  title: string | null;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+const SESSION_STORAGE_KEY = "brain-active-session";
+
+/** Convert a DB message (contentJson) to our UI message format */
+function dbMessageToUI(msg: {
+  id: string;
+  role: string;
+  contentJson: unknown;
+  createdAt: string;
+}): BrainChatMessage | null {
+  const content = msg.contentJson as Record<string, unknown> | null;
+  if (!content) return null;
+
+  const role = msg.role === "user" ? "user" : "assistant";
+  const parts: BrainMessagePart[] = [];
+
+  // The contentJson stores { text: "...", toolCalls?: [...] }
+  if (typeof content.text === "string" && content.text) {
+    parts.push({ type: "text", content: content.text });
+  }
+
+  if (Array.isArray(content.toolCalls)) {
+    for (const tc of content.toolCalls) {
+      const tcObj = tc as Record<string, unknown>;
+      parts.push({
+        type: "tool_call",
+        data: {
+          id: (tcObj.id as string) ?? `tc-${Math.random().toString(36).slice(2)}`,
+          name: (tcObj.name as string) ?? "unknown",
+          status: "complete",
+          result: tcObj.hasResult ? "(loaded from history)" : undefined,
+        },
+      });
+    }
+  }
+
+  if (parts.length === 0) return null;
+
+  return {
+    id: msg.id,
+    role: role as "user" | "assistant",
+    parts,
+    timestamp: new Date(msg.createdAt),
+  };
+}
+
+export function useBrainChat(options?: { skipHydration?: boolean }) {
+  const skipHydration = options?.skipHydration ?? false;
   const [messages, setMessages] = useState<BrainChatMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [sessions, setSessions] = useState<BrainSession[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(!skipHydration);
   const abortRef = useRef<AbortController | null>(null);
+  const hydratedRef = useRef(false);
+
+  // Persist sessionId to sessionStorage
+  const updateSessionId = useCallback((id: string | null) => {
+    setSessionId(id);
+    if (id) {
+      try { sessionStorage.setItem(SESSION_STORAGE_KEY, id); } catch {}
+    } else {
+      try { sessionStorage.removeItem(SESSION_STORAGE_KEY); } catch {}
+    }
+  }, []);
+
+  // Load session list
+  const loadSessions = useCallback(async () => {
+    try {
+      const res = await fetch("/api/internal/copilot/sessions", {
+        credentials: "include",
+        cache: "no-store",
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      setSessions(data.sessions ?? []);
+    } catch {
+      // Silent fail — sessions list is non-critical
+    }
+  }, []);
+
+  // Load a specific session's messages
+  const loadSession = useCallback(async (id: string) => {
+    try {
+      const res = await fetch(`/api/internal/copilot/sessions/${id}`, {
+        credentials: "include",
+        cache: "no-store",
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+
+      const msgs: BrainChatMessage[] = [];
+      for (const m of data.messages ?? []) {
+        const uiMsg = dbMessageToUI(m);
+        if (uiMsg) msgs.push(uiMsg);
+      }
+
+      setMessages(msgs);
+      updateSessionId(id);
+    } catch {
+      // If load fails, stay on current state
+    }
+  }, [updateSessionId]);
+
+  // Hydrate on mount: load the last active session (skip when panel starts fresh)
+  useEffect(() => {
+    if (skipHydration) return;
+    if (hydratedRef.current) return;
+    hydratedRef.current = true;
+
+    async function hydrate() {
+      setIsLoadingHistory(true);
+      try {
+        // Check sessionStorage for a persisted session ID
+        let savedId: string | null = null;
+        try { savedId = sessionStorage.getItem(SESSION_STORAGE_KEY); } catch {}
+
+        // Load sessions list
+        await loadSessions();
+
+        if (savedId) {
+          // Try to load the saved session
+          await loadSession(savedId);
+        } else {
+          // Load the most recent open session
+          const res = await fetch("/api/internal/copilot/sessions", {
+            credentials: "include",
+            cache: "no-store",
+          });
+          if (res.ok) {
+            const data = await res.json();
+            const openSessions = (data.sessions ?? []).filter(
+              (s: BrainSession) => s.status === "open"
+            );
+            if (openSessions.length > 0) {
+              await loadSession(openSessions[0].id);
+            }
+          }
+        }
+      } catch {
+        // Start fresh if hydration fails
+      } finally {
+        setIsLoadingHistory(false);
+      }
+    }
+
+    void hydrate();
+  }, [loadSession, loadSessions]);
+
+  // Switch to a different session
+  const switchSession = useCallback(
+    async (id: string) => {
+      if (isStreaming) return;
+      await loadSession(id);
+    },
+    [isStreaming, loadSession]
+  );
+
+  // Start a new session (clear current, close old)
+  const newSession = useCallback(() => {
+    if (isStreaming) return;
+    setMessages([]);
+    updateSessionId(null);
+    void loadSessions(); // Refresh list
+  }, [isStreaming, updateSessionId, loadSessions]);
 
   const send = useCallback(
-    async (text: string) => {
+    async (text: string, options?: { pageContext?: string; pageData?: string }) => {
       if (!text.trim() || isStreaming) return;
 
       // Add user message
@@ -61,7 +230,7 @@ export function useBrainChat() {
         const res = await fetch("/api/brain/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: text, sessionId }),
+          body: JSON.stringify({ message: text, sessionId, pageContext: options?.pageContext, pageData: options?.pageData }),
           signal: controller.signal,
         });
 
@@ -115,7 +284,7 @@ export function useBrainChat() {
 
             switch (event.type) {
               case "session_id":
-                setSessionId(event.sessionId as string);
+                updateSessionId(event.sessionId as string);
                 break;
 
               case "text_delta":
@@ -255,9 +424,11 @@ export function useBrainChat() {
       } finally {
         setIsStreaming(false);
         abortRef.current = null;
+        // Refresh session list after a message completes
+        void loadSessions();
       }
     },
-    [isStreaming, sessionId]
+    [isStreaming, sessionId, updateSessionId, loadSessions]
   );
 
   const stop = useCallback(() => {
@@ -265,10 +436,16 @@ export function useBrainChat() {
     setIsStreaming(false);
   }, []);
 
-  const clearHistory = useCallback(() => {
-    setMessages([]);
-    setSessionId(null);
-  }, []);
-
-  return { messages, send, isStreaming, sessionId, stop, clearHistory };
+  return {
+    messages,
+    send,
+    isStreaming,
+    sessionId,
+    sessions,
+    isLoadingHistory,
+    stop,
+    newSession,
+    switchSession,
+    loadSessions,
+  };
 }

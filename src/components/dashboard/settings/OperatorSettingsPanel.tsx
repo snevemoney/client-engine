@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sparkles, Loader2, Check, ChevronDown, ChevronUp } from "lucide-react";
@@ -187,12 +187,83 @@ export function OperatorSettingsPanel({
 
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [dirty, setDirty] = useState(false);
+  const mountedRef = useRef(false);
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // AI recommendations state
   const [recs, setRecs] = useState<Recommendations | null>(null);
   const [recsLoading, setRecsLoading] = useState(false);
   const [recsError, setRecsError] = useState<string | null>(null);
   const [showReasoning, setShowReasoning] = useState(false);
+
+  // Build the save payload from current state
+  const buildPayload = useCallback(() => {
+    const parse = (s: string) => {
+      const n = parseInt(s.replace(/\D/g, ""), 10);
+      return Number.isFinite(n) && n > 0 ? n : undefined;
+    };
+    return {
+      ...initialSettings,
+      workdayEnabled: workdayOn,
+      workdayIntervalMinutes: parse(interval),
+      workdayMaxLeadsPerRun: parse(maxLeads),
+      workdayMaxRunsPerDay: parse(maxRuns),
+      nicheStatement: niche.trim() || undefined,
+      offerStatement: offer.trim() || undefined,
+      buyerProfile: buyer.trim() || undefined,
+      scoringProfile: {
+        idealProjects: scoreIdeal.trim() || undefined,
+        budgetRange: scoreBudget.trim() || undefined,
+        typicalTimeline: scoreTimeline.trim() || undefined,
+        techStack: scoreTech.trim() || undefined,
+        prefers: scorePrefers.trim() || undefined,
+        avoids: scoreAvoids.trim() || undefined,
+      } as ScoringProfile,
+    };
+  }, [initialSettings, workdayOn, interval, maxLeads, maxRuns, niche, offer, buyer, scoreIdeal, scoreBudget, scoreTimeline, scoreTech, scorePrefers, scoreAvoids]);
+
+  // Auto-save: debounce 2s after any field change
+  useEffect(() => {
+    // Skip on first render (mount)
+    if (!mountedRef.current) {
+      mountedRef.current = true;
+      return;
+    }
+    setDirty(true);
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    autoSaveTimerRef.current = setTimeout(() => {
+      void doSave();
+    }, 2000);
+    return () => {
+      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workdayOn, interval, maxLeads, maxRuns, niche, offer, buyer, scoreIdeal, scoreBudget, scoreTimeline, scoreTech, scorePrefers, scoreAvoids]);
+
+  async function doSave() {
+    setSaving(true);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/ops/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(buildPayload()),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        setMessage(data?.error ?? "Save failed");
+        return;
+      }
+      setDirty(false);
+      setMessage("Saved!");
+      setTimeout(() => setMessage(null), 3000);
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : "Request failed");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   async function fetchRecommendations() {
     setRecsLoading(true);
@@ -231,48 +302,10 @@ export function OperatorSettingsPanel({
     setTimeout(() => setMessage(null), 5000);
   }
 
+  // Manual save (also used by the button)
   async function save() {
-    setSaving(true);
-    setMessage(null);
-    const parse = (s: string) => {
-      const n = parseInt(s.replace(/\D/g, ""), 10);
-      return Number.isFinite(n) && n > 0 ? n : undefined;
-    };
-    try {
-      const res = await fetch("/api/ops/settings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...initialSettings,
-          workdayEnabled: workdayOn,
-          workdayIntervalMinutes: parse(interval),
-          workdayMaxLeadsPerRun: parse(maxLeads),
-          workdayMaxRunsPerDay: parse(maxRuns),
-          nicheStatement: niche.trim() || undefined,
-          offerStatement: offer.trim() || undefined,
-          buyerProfile: buyer.trim() || undefined,
-          scoringProfile: {
-            idealProjects: scoreIdeal.trim() || undefined,
-            budgetRange: scoreBudget.trim() || undefined,
-            typicalTimeline: scoreTimeline.trim() || undefined,
-            techStack: scoreTech.trim() || undefined,
-            prefers: scorePrefers.trim() || undefined,
-            avoids: scoreAvoids.trim() || undefined,
-          } as ScoringProfile,
-        }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => null);
-        setMessage(data?.error ?? "Save failed");
-        return;
-      }
-      setMessage("Saved!");
-      setTimeout(() => setMessage(null), 3000);
-    } catch (e) {
-      setMessage(e instanceof Error ? e.message : "Request failed");
-    } finally {
-      setSaving(false);
-    }
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    await doSave();
   }
 
   const recSp = recs?.scoringProfile;
@@ -533,15 +566,23 @@ export function OperatorSettingsPanel({
         />
       </section>
 
-      {/* Save button */}
-      <div className="flex items-center gap-3">
+      {/* Save bar — sticky at bottom */}
+      <div className="sticky bottom-0 py-3 bg-neutral-950/90 backdrop-blur border-t border-neutral-800 -mx-6 px-6 flex items-center gap-3">
         <Button onClick={save} disabled={saving}>
           {saving ? "Saving…" : "Save settings"}
         </Button>
-        {message && (
+        {saving && (
+          <span className="text-sm text-neutral-500 flex items-center gap-1.5">
+            <Loader2 className="w-3 h-3 animate-spin" /> Saving...
+          </span>
+        )}
+        {!saving && message && (
           <span className={`text-sm ${message === "Saved!" ? "text-emerald-400" : "text-amber-400"}`}>
             {message}
           </span>
+        )}
+        {!saving && !message && dirty && (
+          <span className="text-sm text-amber-400/70">Unsaved changes — auto-saving in 2s</span>
         )}
       </div>
     </div>

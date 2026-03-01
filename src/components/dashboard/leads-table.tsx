@@ -1,18 +1,32 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useBrainPanel } from "@/contexts/BrainPanelContext";
 import Link from "next/link";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Trash2, Filter, X, Zap } from "lucide-react";
+import {
+  Plus,
+  Search,
+  Trash2,
+  Filter,
+  X,
+  Zap,
+  Rocket,
+  Users,
+  Loader2,
+  CheckCircle2,
+  XCircle,
+  Clock,
+} from "lucide-react";
 import { useAsyncAction } from "@/hooks/useAsyncAction";
 import { useConfirmDialog } from "@/hooks/useConfirmDialog";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { fetchJsonThrow } from "@/lib/http/fetch-json";
-import { useDomainContext } from "@/hooks/useDomainContext";
-import { IntelligenceBanner } from "@/components/dashboard/IntelligenceBanner";
+
+
 
 interface Lead {
   id: string;
@@ -26,6 +40,422 @@ interface Lead {
   tags: string[];
   _count?: { artifacts: number };
 }
+
+/* ─── Flywheel Dialog Types ───────────────────────────────────────── */
+
+type BatchResult = {
+  ok: boolean;
+  total: number;
+  succeeded: number;
+  failed: number;
+  results: Array<{
+    leadId: string;
+    title: string;
+    ok: boolean;
+    proposalId: string | null;
+    deliveryProjectId: string | null;
+    builderSiteId: string | null;
+    totalDurationMs: number;
+    error?: string;
+  }>;
+};
+
+type PreviewLead = {
+  id: string;
+  title: string;
+  source: string | null;
+  status: string;
+  contactName: string | null;
+  contactEmail: string | null;
+  createdAt: string;
+};
+
+/* ─── Toggle Component ────────────────────────────────────────────── */
+
+function Toggle({
+  checked,
+  onChange,
+  label,
+  description,
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  label: string;
+  description: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!checked)}
+      className="flex items-center justify-between w-full py-3 px-4 rounded-lg border border-neutral-800 bg-neutral-900/50 hover:bg-neutral-800/50 transition-colors"
+    >
+      <div className="text-left">
+        <p className="text-sm font-medium text-neutral-200">{label}</p>
+        <p className="text-xs text-neutral-500 mt-0.5">{description}</p>
+      </div>
+      <div
+        className={`relative w-10 h-5 rounded-full transition-colors shrink-0 ml-3 ${
+          checked ? "bg-amber-500" : "bg-neutral-700"
+        }`}
+      >
+        <div
+          className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
+            checked ? "translate-x-5" : "translate-x-0.5"
+          }`}
+        />
+      </div>
+    </button>
+  );
+}
+
+/* ─── Flywheel Batch Dialog ───────────────────────────────────────── */
+
+function FlywheelBatchDialog({
+  open,
+  onClose,
+  onComplete,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onComplete: () => void;
+}) {
+  const [autoSend, setAutoSend] = useState(false);
+  const [autoBuild, setAutoBuild] = useState(false);
+  const [leads, setLeads] = useState<PreviewLead[]>([]);
+  const [loadingPreview, setLoadingPreview] = useState(false);
+  const [running, setRunning] = useState(false);
+  const [batchResult, setBatchResult] = useState<BatchResult | null>(null);
+
+  // Schedule state
+  const [scheduleEnabled, setScheduleEnabled] = useState(false);
+  const [frequency, setFrequency] = useState<"daily" | "weekly">("daily");
+  const [dayOfWeek, setDayOfWeek] = useState(1); // Monday
+  const [scheduleTime, setScheduleTime] = useState("09:00");
+  const [savingSchedule, setSavingSchedule] = useState(false);
+  const [existingScheduleId, setExistingScheduleId] = useState<string | null>(null);
+
+  const loadPreview = useCallback(async () => {
+    setLoadingPreview(true);
+    try {
+      const [batchRes, schedRes] = await Promise.all([
+        fetch("/api/flywheel/batch", { credentials: "include", cache: "no-store" }),
+        fetch("/api/job-schedules", { credentials: "include", cache: "no-store" }),
+      ]);
+      if (batchRes.ok) {
+        const data = await batchRes.json();
+        setLeads(data.leads ?? []);
+      }
+      if (schedRes.ok) {
+        const schedules = await schedRes.json();
+        const existing = (Array.isArray(schedules) ? schedules : []).find(
+          (s: Record<string, unknown>) => s.key === "flywheel_batch"
+        );
+        if (existing) {
+          setExistingScheduleId(existing.id as string);
+          setScheduleEnabled(existing.isEnabled as boolean);
+          setFrequency((existing.cadenceType as string) === "weekly" ? "weekly" : "daily");
+          if (typeof existing.dayOfWeek === "number") setDayOfWeek(existing.dayOfWeek as number);
+          const h = String(existing.hour ?? 9).padStart(2, "0");
+          const m = String(existing.minute ?? 0).padStart(2, "0");
+          setScheduleTime(`${h}:${m}`);
+        } else {
+          setExistingScheduleId(null);
+          setScheduleEnabled(false);
+        }
+      }
+    } catch {
+      // Silent
+    } finally {
+      setLoadingPreview(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (open) {
+      setBatchResult(null);
+      void loadPreview();
+    }
+  }, [open, loadPreview]);
+
+  const handleRun = async () => {
+    setRunning(true);
+    setBatchResult(null);
+    try {
+      const data = await fetchJsonThrow<BatchResult>("/api/flywheel/batch", {
+        method: "POST",
+        body: JSON.stringify({
+          autoSendProposal: autoSend,
+          autoBuild,
+        }),
+      });
+      setBatchResult(data);
+      if (data.ok) {
+        toast.success(`Flywheel complete: ${data.succeeded}/${data.total} succeeded`);
+      } else {
+        toast.error(`Flywheel complete with errors: ${data.failed}/${data.total} failed`);
+      }
+      onComplete();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Flywheel batch failed");
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  const handleSaveSchedule = async () => {
+    setSavingSchedule(true);
+    try {
+      const [hour, minute] = scheduleTime.split(":").map(Number);
+      const body = {
+        key: "flywheel_batch",
+        title: "Flywheel — Auto-run",
+        jobType: "flywheel_batch",
+        cadenceType: frequency,
+        hour,
+        minute,
+        ...(frequency === "weekly" ? { dayOfWeek } : {}),
+        isEnabled: scheduleEnabled,
+        payloadTemplateJson: JSON.stringify({ autoSendProposal: autoSend, autoBuild }),
+      };
+
+      if (existingScheduleId) {
+        await fetchJsonThrow(`/api/job-schedules/${existingScheduleId}`, {
+          method: "PATCH",
+          body: JSON.stringify(body),
+        });
+      } else {
+        const created = await fetchJsonThrow<{ id: string }>("/api/job-schedules", {
+          method: "POST",
+          body: JSON.stringify(body),
+        });
+        setExistingScheduleId(created.id);
+      }
+      toast.success(
+        scheduleEnabled
+          ? `Flywheel scheduled ${frequency === "weekly" ? "weekly" : "daily"} at ${scheduleTime}`
+          : "Flywheel schedule disabled"
+      );
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to save schedule");
+    } finally {
+      setSavingSchedule(false);
+    }
+  };
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-lg mx-4 rounded-xl border border-neutral-700 bg-neutral-900 shadow-2xl">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-800">
+          <div>
+            <h2 className="text-lg font-semibold text-neutral-100 flex items-center gap-2">
+              <Rocket className="w-5 h-5 text-amber-400" />
+              Start Flywheel
+            </h2>
+            <p className="text-xs text-neutral-500 mt-0.5">
+              Run the full pipeline on all eligible leads: qualify → propose → deliver → build
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1.5 rounded-md text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800 transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="px-5 py-4 space-y-4">
+          {/* Preview */}
+          <div>
+            <p className="text-xs font-medium text-neutral-400 uppercase tracking-wider mb-2">
+              Eligible Leads
+            </p>
+            {loadingPreview ? (
+              <div className="flex items-center gap-2 text-sm text-neutral-500 py-3">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Loading leads...
+              </div>
+            ) : leads.length === 0 ? (
+              <p className="text-sm text-neutral-500 py-3">
+                No eligible leads found (status NEW/APPROVED, no proposal yet)
+              </p>
+            ) : (
+              <div className="max-h-40 overflow-y-auto rounded-lg border border-neutral-800 divide-y divide-neutral-800">
+                {leads.map((lead) => (
+                  <div key={lead.id} className="flex items-center justify-between px-3 py-2">
+                    <div className="min-w-0">
+                      <p className="text-sm text-neutral-200 truncate">{lead.title}</p>
+                      <p className="text-[10px] text-neutral-500">
+                        {lead.source ?? "manual"} · {lead.status}
+                        {lead.contactName ? ` · ${lead.contactName}` : ""}
+                      </p>
+                    </div>
+                    <span className="text-[10px] text-neutral-600 shrink-0 ml-2">
+                      {new Date(lead.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {leads.length > 0 && (
+              <p className="text-xs text-neutral-500 mt-1.5">
+                {leads.length} lead{leads.length !== 1 ? "s" : ""} will be processed
+              </p>
+            )}
+          </div>
+
+          {/* Toggles */}
+          <div className="space-y-2">
+            <Toggle
+              checked={autoSend}
+              onChange={setAutoSend}
+              label="Send proposals automatically?"
+              description="Proposals will be marked as sent. If off, they stay as drafts for manual review."
+            />
+            <Toggle
+              checked={autoBuild}
+              onChange={setAutoBuild}
+              label="Start builds automatically?"
+              description="Websites will be generated for each prospect. If off, only the proposal is created."
+            />
+          </div>
+
+          {/* Schedule */}
+          <div className="space-y-2">
+            <Toggle
+              checked={scheduleEnabled}
+              onChange={setScheduleEnabled}
+              label="Run on a schedule?"
+              description="Flywheel will run automatically at your chosen time."
+            />
+            {scheduleEnabled && (
+              <div className="ml-1 space-y-3 rounded-lg border border-neutral-800 bg-neutral-950/50 p-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex-1">
+                    <label className="text-[10px] text-neutral-500 uppercase tracking-wider">Frequency</label>
+                    <select
+                      value={frequency}
+                      onChange={(e) => setFrequency(e.target.value as "daily" | "weekly")}
+                      className="mt-1 w-full rounded-md bg-neutral-900 border border-neutral-700 px-3 py-1.5 text-sm text-neutral-200"
+                    >
+                      <option value="daily">Every day</option>
+                      <option value="weekly">Every week</option>
+                    </select>
+                  </div>
+                  {frequency === "weekly" && (
+                    <div className="flex-1">
+                      <label className="text-[10px] text-neutral-500 uppercase tracking-wider">Day</label>
+                      <select
+                        value={dayOfWeek}
+                        onChange={(e) => setDayOfWeek(Number(e.target.value))}
+                        className="mt-1 w-full rounded-md bg-neutral-900 border border-neutral-700 px-3 py-1.5 text-sm text-neutral-200"
+                      >
+                        <option value={1}>Monday</option>
+                        <option value={2}>Tuesday</option>
+                        <option value={3}>Wednesday</option>
+                        <option value={4}>Thursday</option>
+                        <option value={5}>Friday</option>
+                        <option value={6}>Saturday</option>
+                        <option value={0}>Sunday</option>
+                      </select>
+                    </div>
+                  )}
+                  <div className="flex-1">
+                    <label className="text-[10px] text-neutral-500 uppercase tracking-wider">Time</label>
+                    <input
+                      type="time"
+                      value={scheduleTime}
+                      onChange={(e) => setScheduleTime(e.target.value)}
+                      className="mt-1 w-full rounded-md bg-neutral-900 border border-neutral-700 px-3 py-1.5 text-sm text-neutral-200"
+                    />
+                  </div>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={savingSchedule}
+                  onClick={handleSaveSchedule}
+                  className="w-full gap-2 border-amber-700/50 text-amber-400 hover:bg-amber-900/20"
+                >
+                  {savingSchedule ? (
+                    <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Saving...</>
+                  ) : (
+                    <><Clock className="w-3.5 h-3.5" /> {existingScheduleId ? "Update Schedule" : "Save Schedule"}</>
+                  )}
+                </Button>
+              </div>
+            )}
+          </div>
+
+          {/* Results */}
+          {batchResult && (
+            <div
+              className={`rounded-lg border p-3 ${
+                batchResult.ok
+                  ? "border-emerald-500/30 bg-emerald-950/20"
+                  : "border-red-500/30 bg-red-950/20"
+              }`}
+            >
+              <p className={`text-sm font-medium ${batchResult.ok ? "text-emerald-300" : "text-red-300"}`}>
+                {batchResult.succeeded}/{batchResult.total} succeeded
+                {batchResult.failed > 0 && ` · ${batchResult.failed} failed`}
+              </p>
+              <div className="mt-2 max-h-32 overflow-y-auto space-y-1">
+                {batchResult.results.map((r) => (
+                  <div key={r.leadId} className="flex items-center gap-2 text-xs">
+                    {r.ok ? (
+                      <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
+                    ) : (
+                      <XCircle className="w-3 h-3 text-red-400 shrink-0" />
+                    )}
+                    <span className="text-neutral-300 truncate">{r.title}</span>
+                    <span className="text-neutral-600 ml-auto shrink-0">
+                      {(r.totalDurationMs / 1000).toFixed(1)}s
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-neutral-800">
+          <Button variant="outline" size="sm" onClick={onClose}>
+            {batchResult ? "Close" : "Cancel"}
+          </Button>
+          {!batchResult && (
+            <Button
+              size="sm"
+              disabled={running || leads.length === 0}
+              onClick={handleRun}
+              className="gap-2"
+            >
+              {running ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Running {leads.length} lead{leads.length !== 1 ? "s" : ""}...
+                </>
+              ) : (
+                <>
+                  <Rocket className="w-4 h-4" />
+                  Start Flywheel ({leads.length})
+                </>
+              )}
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Constants ────────────────────────────────────────────────────── */
 
 const STATUS_OPTIONS = ["ALL", "NEW", "ENRICHED", "SCORED", "APPROVED", "REJECTED", "BUILDING", "SHIPPED"];
 const SOURCE_OPTIONS = ["ALL", "manual", "upwork", "capture", "email", "facebook", "rss"];
@@ -46,10 +476,24 @@ export function LeadsTable() {
   const [error, setError] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [pipelineRunning, setPipelineRunning] = useState(false);
+  const [flywheelOpen, setFlywheelOpen] = useState(false);
 
   const toastFn = (m: string, t?: "success" | "error") => t === "error" ? toast.error(m) : toast.success(m);
   const { confirm, dialogProps } = useConfirmDialog();
-  const { risk, nba, loading: contextLoading } = useDomainContext("leads");
+
+  const { setPageData } = useBrainPanel();
+
+  // Push page data for Brain auto-summary
+  useEffect(() => {
+    if (loading || leads.length === 0) return;
+    const newCount = leads.filter((l) => l.status === "NEW").length;
+    const scoredCount = leads.filter((l) => l.score != null).length;
+    const approvedCount = leads.filter((l) => l.status === "APPROVED").length;
+    const topLead = leads[0]?.title ?? "none";
+    setPageData(
+      `Leads: ${leads.length} total, ${newCount} new, ${scoredCount} scored, ${approvedCount} approved. Top: ${topLead}.`
+    );
+  }, [leads, loading, setPageData]);
 
   const fetchLeads = useCallback(async () => {
     setLoading(true);
@@ -177,7 +621,6 @@ export function LeadsTable() {
 
   return (
     <div className="space-y-4">
-      <IntelligenceBanner risk={risk} nba={nba} score={null} loading={contextLoading} />
       {/* Toolbar */}
       <div className="flex items-center gap-3 flex-wrap">
         <div className="relative flex-1 min-w-[200px] max-w-md">
@@ -213,6 +656,15 @@ export function LeadsTable() {
             </Button>
           ) : null;
         })()}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setFlywheelOpen(true)}
+          className="border-amber-700 text-amber-400 hover:bg-amber-900/30"
+        >
+          <Rocket className="w-3.5 h-3.5" />
+          Start Flywheel
+        </Button>
         <Link href="/dashboard/leads/new">
           <Button size="sm"><Plus className="w-4 h-4" /> Add Lead</Button>
         </Link>
@@ -367,6 +819,11 @@ export function LeadsTable() {
       </div>
 
       <ConfirmDialog {...dialogProps} />
+      <FlywheelBatchDialog
+        open={flywheelOpen}
+        onClose={() => setFlywheelOpen(false)}
+        onComplete={() => void fetchLeads()}
+      />
     </div>
   );
 }

@@ -3,6 +3,10 @@ import { auth } from "@/lib/auth";
 import { SessionProvider } from "next-auth/react";
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { BrainPanelProvider } from "@/contexts/BrainPanelContext";
+import { BrainSlideOver } from "@/components/dashboard/brain/BrainSlideOver";
+import { BrainFloatingButton } from "@/components/dashboard/brain/BrainFloatingButton";
+import { IntelligenceBannerGlobal } from "@/components/dashboard/IntelligenceBannerGlobal";
 
 export const dynamic = "force-dynamic";
 
@@ -15,12 +19,17 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   return (
     <SessionProvider session={session}>
-      <div className="flex min-h-screen flex-col md:flex-row">
-        <Sidebar />
-        <main className="min-w-0 flex-1 p-4 md:p-6 overflow-auto">
-          <ErrorBoundary>{children}</ErrorBoundary>
-        </main>
-      </div>
+      <BrainPanelProvider>
+        <div className="flex min-h-screen flex-col md:flex-row">
+          <Sidebar />
+          <main className="min-w-0 flex-1 p-4 md:p-6 overflow-auto">
+            <IntelligenceBannerGlobal />
+            <ErrorBoundary>{children}</ErrorBoundary>
+          </main>
+        </div>
+        <BrainSlideOver />
+        <BrainFloatingButton />
+      </BrainPanelProvider>
     </SessionProvider>
   );
 }

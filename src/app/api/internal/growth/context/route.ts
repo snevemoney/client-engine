@@ -37,6 +37,7 @@ export async function GET(request: NextRequest) {
               overdueFollowUps: [],
               next7DaysFollowUps: [],
               lastActivityAt: null,
+              templateStats: [],
             };
           }
           const [riskFlags, nbaActions] = await Promise.all([

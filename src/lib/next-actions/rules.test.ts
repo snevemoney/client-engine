@@ -13,6 +13,8 @@ const baseCtx: NextActionContext = {
   wonNoDeliveryCount: 0,
   referralGapCount: 0,
   stageStallCount: 0,
+  builderPoorQualityCount: 0,
+  proposalOverdueFollowupCount: 0,
 };
 
 describe("next-actions rules", () => {
@@ -107,6 +109,18 @@ describe("next-actions rules", () => {
     });
     expect(out[0].score).toBeGreaterThanOrEqual(0);
     expect(out[0].score).toBeLessThanOrEqual(100);
+  });
+
+  it("emits builder_content_quality_poor when count > 0", () => {
+    const out = produceNextActions({
+      ...baseCtx,
+      builderPoorQualityCount: 2,
+      builderPoorQualityProjectId: "proj_123",
+    });
+    expect(out.length).toBe(1);
+    expect(out[0].createdByRule).toBe("builder_content_quality_poor");
+    expect(out[0].priority).toBe("medium");
+    expect(out[0].actionUrl).toContain("proj_123");
   });
 
   describe("founder_growth scope (Phase 6.3)", () => {

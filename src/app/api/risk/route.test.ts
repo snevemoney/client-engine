@@ -1,7 +1,7 @@
 /**
  * Phase 4.0.1: Risk list route contract tests.
  */
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { RiskSeverity, RiskStatus, RiskSourceType } from "@prisma/client";
@@ -18,6 +18,10 @@ describe("GET /api/risk", () => {
     vi.clearAllMocks();
     const { requireAuth } = await import("@/lib/api-utils");
     vi.mocked(requireAuth).mockResolvedValue({ user: { id: "u1", email: "t@t.com" }, expires: "" } as never);
+    await db.riskFlag.deleteMany({ where: { key: { startsWith: "test_risk_" } } });
+  });
+
+  afterEach(async () => {
     await db.riskFlag.deleteMany({ where: { key: { startsWith: "test_risk_" } } });
   });
 

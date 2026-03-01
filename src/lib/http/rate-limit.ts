@@ -9,6 +9,18 @@ type WindowEntry = {
 };
 
 const windows = new Map<string, WindowEntry>();
+let cleanupCounter = 0;
+const CLEANUP_INTERVAL = 1000;
+
+function maybeCleanup() {
+  cleanupCounter++;
+  if (cleanupCounter < CLEANUP_INTERVAL) return;
+  cleanupCounter = 0;
+  const now = Date.now();
+  for (const [key, entry] of windows) {
+    if (now >= entry.resetAt) windows.delete(key);
+  }
+}
 
 /**
  * Rate limit by key. Returns { ok, remaining, resetAt }.
@@ -21,6 +33,7 @@ export function rateLimitByKey(opts: {
   now?: number;
 }): { ok: boolean; remaining: number; resetAt: number } {
   try {
+    maybeCleanup();
     const now = opts.now ?? Date.now();
     const entry = windows.get(opts.key);
     if (!entry) {

@@ -1,7 +1,7 @@
 /**
  * Phase 4.0.1.5: Next Actions golden regression scenarios.
  */
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { db } from "@/lib/db";
 import { NextActionPriority, NextActionStatus, RiskSourceType } from "@prisma/client";
 import { produceNextActions } from "./rules";
@@ -12,6 +12,12 @@ const SCOPE = "golden_nba";
 
 describe("Next Actions golden regression", () => {
   beforeEach(async () => {
+    await db.nextBestAction.deleteMany({ where: { dedupeKey: { contains: SCOPE } } });
+    await db.nextBestAction.deleteMany({ where: { dedupeKey: { contains: "score_in_critical_band" } } });
+    await db.scoreSnapshot.deleteMany({ where: { entityId: "command_center" } });
+  });
+
+  afterEach(async () => {
     await db.nextBestAction.deleteMany({ where: { dedupeKey: { contains: SCOPE } } });
     await db.nextBestAction.deleteMany({ where: { dedupeKey: { contains: "score_in_critical_band" } } });
     await db.scoreSnapshot.deleteMany({ where: { entityId: "command_center" } });
@@ -29,6 +35,8 @@ describe("Next Actions golden regression", () => {
       wonNoDeliveryCount: 0,
       referralGapCount: 0,
       stageStallCount: 0,
+      builderPoorQualityCount: 0,
+      proposalOverdueFollowupCount: 0,
     };
     const candidates = produceNextActions(ctx);
     expect(candidates.length).toBeGreaterThanOrEqual(2);
@@ -60,6 +68,8 @@ describe("Next Actions golden regression", () => {
       wonNoDeliveryCount: 0,
       referralGapCount: 0,
       stageStallCount: 0,
+      builderPoorQualityCount: 0,
+      proposalOverdueFollowupCount: 0,
     };
     const candidates = produceNextActions(ctx);
     const r1 = await upsertNextActions(candidates);
@@ -95,6 +105,8 @@ describe("Next Actions golden regression", () => {
       wonNoDeliveryCount: 0,
       referralGapCount: 0,
       stageStallCount: 0,
+      builderPoorQualityCount: 0,
+      proposalOverdueFollowupCount: 0,
     };
     await upsertNextActions(produceNextActions(ctx));
     const still = await db.nextBestAction.findUnique({ where: { id: action.id } });

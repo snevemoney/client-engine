@@ -4,8 +4,6 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useConfirmDialog } from "@/hooks/useConfirmDialog";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { useIntelligenceContext } from "@/hooks/useIntelligenceContext";
-import { IntelligenceBanner } from "@/components/dashboard/IntelligenceBanner";
 
 type CTA = {
   label: string;
@@ -88,7 +86,6 @@ export default function CoachContent() {
     cta: CTA;
     result: ActionResult;
   } | null>(null);
-  const intel = useIntelligenceContext();
   const [context, setContext] = useState<ContextSnapshot>({
     score: "—",
     risk: "—",
@@ -301,7 +298,7 @@ export default function CoachContent() {
           Tool-backed guidance. No guessing. Every recommendation cites evidence from scores, risks, and next actions.
         </p>
       </div>
-      <IntelligenceBanner risk={intel.risk} nba={intel.nba} score={intel.score} loading={intel.loading} />
+
 
       <div className="flex gap-4 flex-1 min-h-0">
         <div

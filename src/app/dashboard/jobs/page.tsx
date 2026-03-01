@@ -67,6 +67,7 @@ export default function JobsPage() {
   const [error, setError] = useState<string | null>(null);
   const [runLoading, setRunLoading] = useState(false);
   const [tickLoading, setTickLoading] = useState(false);
+  const [retryAllLoading, setRetryAllLoading] = useState(false);
   const [actioningId, setActioningId] = useState<string | null>(null);
   const { confirm: confirmCancel, dialogProps: cancelDialogProps } = useConfirmDialog();
   const abortRef = useRef<AbortController | null>(null);
@@ -244,6 +245,34 @@ export default function JobsPage() {
           <Play className="w-4 h-4" />
           {runLoading ? "Running…" : "Run queue (10)"}
         </Button>
+        {((summary?.failed ?? 0) + (summary?.deadLetter ?? 0)) > 0 && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              setRetryAllLoading(true);
+              try {
+                const res = await fetch("/api/jobs/retry-failed", { method: "POST" });
+                const data = await res.json();
+                if (res.ok) {
+                  toast.success(`Retried ${data.retried} failed job(s)`);
+                  void fetchData();
+                } else {
+                  toast.error(data?.error ?? "Retry all failed");
+                }
+              } catch (e) {
+                toast.error(e instanceof Error ? e.message : "Retry all failed");
+              } finally {
+                setRetryAllLoading(false);
+              }
+            }}
+            disabled={retryAllLoading}
+            className="gap-2 text-red-400 border-red-500/50 hover:bg-red-500/10"
+          >
+            <RotateCcw className="w-4 h-4" />
+            {retryAllLoading ? "Retrying…" : `Retry All Failed (${(summary?.failed ?? 0) + (summary?.deadLetter ?? 0)})`}
+          </Button>
+        )}
         <Link href="/dashboard/job-schedules">
           <Button variant="ghost" size="sm" className="gap-2">
             Schedules

@@ -76,6 +76,10 @@ function safeProject(p: {
   upsellOpportunity?: string | null;
   upsellValueEstimate?: number | null;
   postDeliveryHealth?: string | null;
+  builderSiteId?: string | null;
+  builderPreviewUrl?: string | null;
+  builderLiveUrl?: string | null;
+  builderPreset?: string | null;
 }) {
   const health = computeProjectHealth({ status: p.status, dueDate: p.dueDate });
   return {
@@ -130,6 +134,10 @@ function safeProject(p: {
     upsellOpportunity: p.upsellOpportunity ?? null,
     upsellValueEstimate: p.upsellValueEstimate ?? null,
     postDeliveryHealth: p.postDeliveryHealth ?? "green",
+    builderSiteId: p.builderSiteId ?? null,
+    builderPreviewUrl: p.builderPreviewUrl ?? null,
+    builderLiveUrl: p.builderLiveUrl ?? null,
+    builderPreset: p.builderPreset ?? null,
   };
 }
 

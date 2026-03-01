@@ -40,6 +40,7 @@ model Lead {
   buildStartedAt    DateTime?
   buildCompletedAt  DateTime?
   dealOutcome       String?   // "won" | "lost" | null
+  wonAt             DateTime?  // when proposal was accepted (time-to-cash metric)
   createdAt         DateTime   @default(now())
   updatedAt         DateTime   @updatedAt
   tags         String[]
@@ -1372,6 +1373,14 @@ model DeliveryProject {
   upsellValueEstimate  Int?
   postDeliveryHealth   PostDeliveryHealth  @default(green)
   finalValue           Int?                // Phase 2.3: delivered value for revenue metrics
+  // Website Builder integration
+  builderSiteId        String?              // ID of site in builder service
+  builderPreviewUrl    String?              // preview URL for review
+  builderLiveUrl       String?              // production URL after deploy
+  builderPreset        String?              // industry preset (e.g. "health_coaching")
+  builderHealthScore     Int?               // 0-100 quality score from builder feedback
+  builderHealthLabel     String?            // "great" | "needs_work" | "poor"
+  builderHealthCheckedAt DateTime?          // when quality was last checked
 
   @@index([status])
   @@index([dueDate])
@@ -2079,6 +2088,7 @@ enum OperatorMemorySourceType {
   risk_resolve
   founder_review
   growth
+  agent_run
 }
 
 enum OperatorMemoryOutcome {
@@ -2399,4 +2409,85 @@ model FounderWeekReview {
   retroNotes   String?  @db.Text
 
   @@index([weekId])
+}
+
+// ----- Multi-Agent Business Automation -----
+
+enum AgentRunStatus {
+  running
+  completed
+  failed
+  awaiting_approval
+  timed_out
+}
+
+enum AgentRunTrigger {
+  brain_delegation
+  scheduled
+  event
+}
+
+model AgentRun {
+  id              String          @id @default(cuid())
+  agentId         String          // revenue, delivery, growth, retention, intelligence, system
+  triggerType     AgentRunTrigger
+  triggerSource   String?         // cron label, brain session id, event key
+  taskPrompt      String          @db.Text
+  status          AgentRunStatus  @default(running)
+  resultSummary   String?         @db.Text
+  toolCallsJson   Json            @default("[]")
+  tokenUsage      Json?           // { inputTokens, outputTokens }
+  errorMessage    String?         @db.Text
+  dedupeKey       String?         @unique
+  startedAt       DateTime        @default(now())
+  finishedAt      DateTime?
+  createdAt       DateTime        @default(now())
+
+  approvals       AgentApproval[]
+
+  @@index([agentId, status])
+  @@index([agentId, startedAt(sort: Desc)])
+  @@index([status])
+}
+
+enum ApprovalStatus {
+  pending
+  approved
+  rejected
+  expired
+}
+
+model AgentApproval {
+  id            String          @id @default(cuid())
+  agentRunId    String
+  agentRun      AgentRun        @relation(fields: [agentRunId], references: [id], onDelete: Cascade)
+  toolName      String
+  toolInputJson Json
+  reason        String          @db.Text
+  status        ApprovalStatus  @default(pending)
+  decidedBy     String?         // userId who approved/rejected
+  decidedAt     DateTime?
+  expiresAt     DateTime?       // auto-expire after this time
+  createdAt     DateTime        @default(now())
+
+  @@index([agentRunId])
+  @@index([status])
+  @@index([status, expiresAt])
+}
+
+model FlywheelRun {
+  id                String   @id @default(cuid())
+  leadId            String?
+  proposalId        String?
+  deliveryProjectId String?
+  builderSiteId     String?
+  status            String   @default("running") // running | completed | failed
+  stepsJson         Json     @default("[]")
+  totalDurationMs   Int?
+  failedStep        String?
+  createdAt         DateTime @default(now())
+  finishedAt        DateTime?
+
+  @@index([status])
+  @@index([createdAt(sort: Desc)])
 }

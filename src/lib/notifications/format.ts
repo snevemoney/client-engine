@@ -32,6 +32,10 @@ export function formatNotificationTitle(input: FormatInput): string {
       return "Forecast snapshot missing";
     case "delivery.retention_overdue":
       return "Retention follow-up overdue";
+    case "security.rate_limit_burst":
+      return `Rate limit burst: ${(meta?.clientKey as string) ?? "unknown source"}`;
+    case "security.auth_failure_burst":
+      return `Auth failure burst: ${(meta?.email as string) ?? "unknown account"}`;
     default:
       return (meta?.title as string) ?? eventKey ?? "Notification";
   }
@@ -63,6 +67,10 @@ export function formatNotificationMessage(input: FormatInput): string {
       return "Forecast snapshot has not been captured.";
     case "delivery.retention_overdue":
       return `Retention follow-up is overdue for delivery ${sourceId ?? "—"}.`;
+    case "security.rate_limit_burst":
+      return `${(meta?.count as number) ?? 0} rate-limited requests from ${(meta?.clientKey as string) ?? "unknown"} in 5 minutes. Possible abuse.`;
+    case "security.auth_failure_burst":
+      return `${(meta?.count as number) ?? 0} failed login attempts for ${(meta?.email as string) ?? "unknown"} in 5 minutes. Possible brute-force.`;
     default:
       return (meta?.message as string) ?? (meta?.description as string) ?? "";
   }

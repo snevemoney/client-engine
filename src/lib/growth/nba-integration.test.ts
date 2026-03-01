@@ -1,7 +1,7 @@
 /**
  * Phase 6.3.2: Growth NBA integration tests — founder_growth scope.
  */
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { db } from "@/lib/db";
 import { fetchNextActionContext } from "@/lib/next-actions/fetch-context";
 import { produceNextActions } from "@/lib/next-actions/rules";
@@ -19,6 +19,10 @@ const OWNER_USER_ID = "nba_growth_user";
 
 describe("Growth NBA integration (founder_growth scope)", () => {
   beforeEach(async () => {
+    await cleanupGoldenGrowth(OWNER_USER_ID);
+  });
+
+  afterEach(async () => {
     await cleanupGoldenGrowth(OWNER_USER_ID);
   });
 

@@ -11,7 +11,6 @@ import { AsyncState } from "@/components/ui/AsyncState";
 import { PaginationControls } from "@/components/ui/PaginationControls";
 import { formatDateSafe } from "@/lib/ui/date-safe";
 import { normalizePagination } from "@/lib/ui/pagination-safe";
-import { IntelligenceBanner } from "@/components/dashboard/IntelligenceBanner";
 import type { IntelligenceContext } from "@/hooks/useIntelligenceContext";
 
 type DeliveryProject = {
@@ -167,8 +166,6 @@ export function DeliveryClient({ initialData }: { initialData: DeliveryInitialDa
           Track projects from kickoff to completion. Request proof after delivery.
         </p>
       </div>
-      <IntelligenceBanner risk={risk} nba={nba} score={null} loading={loading} />
-
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-4">
           <p className="text-xs text-neutral-500 uppercase">In progress</p>

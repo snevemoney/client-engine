@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useBrainPanel } from "@/contexts/BrainPanelContext";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -23,8 +24,14 @@ type Proposal = {
   priceCurrency: string;
   intakeLead: { id: string; title: string; status: string } | null;
   pipelineLead: { id: string; title: string; status: string } | null;
+  sentAt: string | null;
   updatedAt: string;
 };
+
+function getDaysSinceSent(p: Proposal): number | null {
+  if (p.status !== "sent" || !p.sentAt) return null;
+  return Math.floor((Date.now() - new Date(p.sentAt).getTime()) / (1000 * 60 * 60 * 24));
+}
 
 function formatPrice(p: Proposal): string {
   if (p.priceMin != null && p.priceMax != null && p.priceMin !== p.priceMax) {
@@ -40,8 +47,29 @@ function StatusBadge({ status }: { status: string }) {
   return <Badge variant="outline" className="capitalize">{v}</Badge>;
 }
 
+function ProposalUrgency({ proposal }: { proposal: Proposal }) {
+  const days = getDaysSinceSent(proposal);
+  if (days === null) return <span className="text-neutral-600">—</span>;
+  if (days >= 7) {
+    return (
+      <span className="inline-flex items-center gap-1">
+        <Badge className="bg-red-500/20 text-red-400 border-red-500/30 text-xs">Stale {days}d</Badge>
+      </span>
+    );
+  }
+  if (days >= 3) {
+    return (
+      <span className="inline-flex items-center gap-1">
+        <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30 text-xs">Follow up {days}d</Badge>
+      </span>
+    );
+  }
+  return <span className="text-xs text-neutral-500">Sent {days}d ago</span>;
+}
+
 export default function ProposalsPage() {
   const url = useUrlQueryState();
+  const { setPageData } = useBrainPanel();
   const [search, setSearch] = useState(() => url.getString("search"));
   const debouncedSearch = useDebouncedValue(search, 300);
   const [proposals, setProposals] = useState<Proposal[]>([]);
@@ -50,6 +78,17 @@ export default function ProposalsPage() {
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const runIdRef = useRef(0);
+
+  // Push page data for Brain auto-summary
+  useEffect(() => {
+    if (loading || proposals.length === 0) return;
+    const byStatus: Record<string, number> = {};
+    for (const p of proposals) {
+      byStatus[p.status] = (byStatus[p.status] ?? 0) + 1;
+    }
+    const statusParts = Object.entries(byStatus).map(([k, v]) => `${v} ${k}`).join(", ");
+    setPageData(`Proposals: ${pagination.total} total (${statusParts}).`);
+  }, [proposals, loading, pagination.total, setPageData]);
 
   const statusFilter = url.getString("status", "all");
   const sourceFilter = url.getString("source", "all");
@@ -184,6 +223,7 @@ export default function ProposalsPage() {
                 <th className="text-left p-3 font-medium">Title</th>
                 <th className="text-left p-3 font-medium">Client / Company</th>
                 <th className="text-left p-3 font-medium">Status</th>
+                <th className="text-left p-3 font-medium">Urgency</th>
                 <th className="text-left p-3 font-medium">Price</th>
                 <th className="text-left p-3 font-medium">Source</th>
                 <th className="text-left p-3 font-medium">Updated</th>
@@ -200,6 +240,9 @@ export default function ProposalsPage() {
                   </td>
                   <td className="p-3 text-neutral-400">{p.clientName ?? p.company ?? "—"}</td>
                   <td className="p-3"><StatusBadge status={p.status} /></td>
+                  <td className="p-3">
+                    <ProposalUrgency proposal={p} />
+                  </td>
                   <td className="p-3 text-neutral-400">{formatPrice(p)}</td>
                   <td className="p-3 text-neutral-500 text-xs">
                     {p.intakeLead ? "Intake" : p.pipelineLead ? "Pipeline" : "—"}

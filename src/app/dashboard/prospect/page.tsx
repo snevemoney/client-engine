@@ -9,6 +9,9 @@ import { useAsyncAction } from "@/hooks/useAsyncAction";
 import { useConfirmDialog } from "@/hooks/useConfirmDialog";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { fetchJsonThrow } from "@/lib/http/fetch-json";
+import { WebResearchForm } from "@/components/dashboard/web-research/WebResearchForm";
+import { WebResearchResultPanel } from "@/components/dashboard/web-research/WebResearchResultPanel";
+import { AiProspectSearch } from "@/components/dashboard/prospect/AiProspectSearch";
 
 type ProspectResult = {
   id: string;
@@ -139,6 +142,14 @@ export default function ProspectPage() {
         </p>
       </div>
 
+      <AiProspectSearch />
+
+      <div className="flex items-center gap-3 py-1">
+        <div className="flex-1 border-t border-neutral-800" />
+        <span className="text-[10px] text-neutral-600">or search manually</span>
+        <div className="flex-1 border-t border-neutral-800" />
+      </div>
+
       <form onSubmit={handleSearch} className="border border-neutral-800 rounded-lg p-5 space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
@@ -198,6 +209,9 @@ export default function ProspectPage() {
           )}
         </div>
       </form>
+
+      {/* Web Research */}
+      <WebResearchForm />
 
       {/* Source routing panel */}
       {report?.sourceSelections && report.sourceSelections.length > 0 && (
@@ -337,6 +351,11 @@ export default function ProspectPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
+                    <WebResearchResultPanel
+                      title={result.title}
+                      url={result.url}
+                      description={result.description}
+                    />
                     {result.url && (
                       <a
                         href={result.url}

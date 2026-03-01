@@ -1,7 +1,7 @@
 /**
  * Phase 4.0.1: Risk PATCH [id] route contract tests.
  */
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { RiskSeverity, RiskStatus, RiskSourceType } from "@prisma/client";
@@ -34,6 +34,10 @@ describe("PATCH /api/risk/[id]", () => {
       },
     });
     riskId = r.id;
+  });
+
+  afterEach(async () => {
+    await db.riskFlag.deleteMany({ where: { key: { startsWith: "test_patch_risk_" } } });
   });
 
   it("dismiss sets status dismissed", async () => {

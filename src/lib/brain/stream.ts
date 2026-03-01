@@ -25,8 +25,10 @@ export async function* streamBrainWithTools(params: {
   userMessage: string;
   conversationHistory: BrainMessage[];
   toolContext: ToolContext;
+  systemSuffix?: string;
 }): AsyncGenerator<BrainStreamEvent> {
-  const system = buildSystemPrompt();
+  const base = buildSystemPrompt();
+  const system = params.systemSuffix ? `${base}\n\n${params.systemSuffix}` : base;
   const messages: BrainMessage[] = [
     ...params.conversationHistory,
     { role: "user", content: params.userMessage },

@@ -53,6 +53,14 @@ export async function POST(
         },
       });
 
+      // Track conversion timestamp for time-to-cash metrics
+      if (proposal.pipelineLeadId) {
+        await tx.lead.update({
+          where: { id: proposal.pipelineLeadId },
+          data: { wonAt: now, dealOutcome: "won" },
+        });
+      }
+
       if (proposal.intakeLeadId) {
         const intake = await tx.intakeLead.findUnique({
           where: { id: proposal.intakeLeadId },

@@ -25,6 +25,8 @@ export const RULE_SCOPES: Record<string, NBAScope[]> = {
   flywheel_won_no_delivery: ["command_center"],
   flywheel_referral_gap: ["command_center"],
   flywheel_stage_stall: ["command_center"],
+  builder_content_quality_poor: ["command_center"],
+  proposal_batch_review_due: ["command_center", "review_stream"],
   // Phase 6.3: Growth Engine
   growth_overdue_followups: ["founder_growth"],
   growth_no_outreach_sent: ["founder_growth"],

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useBrainPanel } from "@/contexts/BrainPanelContext";
 import { toast } from "sonner";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -78,6 +79,18 @@ function priorityColor(p: string): string {
 
 export function NextActionsClient({ initialData }: { initialData: NextActionsInitialData }) {
   const url = useUrlQueryState();
+  const { setPageData } = useBrainPanel();
+
+  // Push page data for Brain auto-summary
+  useEffect(() => {
+    const s = initialData.summary;
+    if (!s) return;
+    const bp = s.queuedByPriority;
+    const topAction = s.top5?.[0]?.title ?? "none";
+    setPageData(
+      `NBA: ${bp.critical} critical, ${bp.high} high, ${bp.medium} medium, ${bp.low} low queued. Top: ${topAction}.`
+    );
+  }, [initialData.summary, setPageData]);
   const [items, setItems] = useState<NextAction[]>(initialData.items);
   const [pagination, setPagination] = useState(() => normalizePagination(initialData.pagination, initialData.items.length));
   const [summary, setSummary] = useState<NBASummary | null>(initialData.summary);

@@ -19,6 +19,9 @@ export async function fetchNextActionContext(opts?: { now?: Date; ownerUserId?: 
   wonNoDeliveryCount: number;
   referralGapCount: number;
   stageStallCount: number;
+  builderPoorQualityCount: number;
+  builderPoorQualityProjectId: string | null;
+  proposalOverdueFollowupCount: number;
   /** Phase 6.3: Growth pipeline (when ownerUserId provided) */
   growthOverdueCount?: number;
   growthNoOutreachCount?: number;
@@ -46,6 +49,9 @@ export async function fetchNextActionContext(opts?: { now?: Date; ownerUserId?: 
     wonNoDelivery,
     referralGap,
     stageStall,
+    builderPoorQuality,
+    builderPoorQualityFirst,
+    proposalOverdueFollowups,
   ] = await Promise.all([
     db.scoreSnapshot.findFirst({
       where: { entityType: "command_center", entityId: "command_center" },
@@ -109,6 +115,30 @@ export async function fetchNextActionContext(opts?: { now?: Date; ownerUserId?: 
         status: { notIn: ["REJECTED"] },
         salesStage: { not: null },
         lastContactAt: { lt: tenDaysAgo, not: null },
+      },
+    }),
+    db.deliveryProject.count({
+      where: {
+        builderSiteId: { not: null },
+        builderHealthScore: { lt: 70, not: null },
+        status: { notIn: ["completed", "archived"] },
+      },
+    }),
+    db.deliveryProject.findFirst({
+      where: {
+        builderSiteId: { not: null },
+        builderHealthScore: { lt: 70, not: null },
+        status: { notIn: ["completed", "archived"] },
+      },
+      select: { id: true },
+      orderBy: { builderHealthScore: "asc" },
+    }),
+    db.proposal.count({
+      where: {
+        status: { in: ["sent", "viewed"] },
+        nextFollowUpAt: { lt: startToday, not: null },
+        acceptedAt: null,
+        rejectedAt: null,
       },
     }),
   ]);
@@ -214,6 +244,9 @@ export async function fetchNextActionContext(opts?: { now?: Date; ownerUserId?: 
     wonNoDeliveryCount: wonNoDelivery ?? 0,
     referralGapCount: referralGap ?? 0,
     stageStallCount: stageStall ?? 0,
+    builderPoorQualityCount: builderPoorQuality ?? 0,
+    builderPoorQualityProjectId: builderPoorQualityFirst?.id ?? null,
+    proposalOverdueFollowupCount: proposalOverdueFollowups ?? 0,
     ...(ownerUserId && {
       growthOverdueCount,
       growthNoOutreachCount,

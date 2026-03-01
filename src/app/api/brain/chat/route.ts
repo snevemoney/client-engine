@@ -11,6 +11,7 @@ import {
   createSession,
   addMessage,
   loadBrainHistory,
+  buildCrossSessionContext,
 } from "@/lib/copilot/session-service";
 import { streamBrainWithTools } from "@/lib/brain/stream";
 import { isWriteTool } from "@/lib/brain/executor";
@@ -42,15 +43,22 @@ export async function POST(request: NextRequest) {
   }
 
   // Parse body
-  let body: { message?: string; sessionId?: string };
+  let body: { message?: string; sessionId?: string; pageContext?: string; pageData?: string };
   try {
     body = await request.json();
   } catch {
     return jsonError("Invalid JSON", 400);
   }
 
-  const message = body.message?.trim();
+  const AUTO_SUMMARIZE_SENTINEL = "__auto_summarize__";
+  let message = body.message?.trim();
   if (!message) return jsonError("message is required", 400);
+
+  // Transform auto-summarize sentinel into a readable instruction
+  const isAutoSummarize = message === AUTO_SUMMARIZE_SENTINEL;
+  if (isAutoSummarize) {
+    message = "Summarize what I'm looking at on this page and highlight any items that need my attention.";
+  }
 
   // Session management
   let sessionId = body.sessionId;
@@ -68,10 +76,19 @@ export async function POST(request: NextRequest) {
 
   // Load conversation history
   let conversationHistory: BrainMessage[] = [];
+  let crossSessionContext: string | null = null;
+
   if (body.sessionId) {
     const history = await loadBrainHistory(sessionId);
     // Filter out the message we just added (it'll be passed separately)
     conversationHistory = history.slice(0, -1) as BrainMessage[];
+  } else {
+    // New session: inject cross-session context so Brain remembers past conversations
+    try {
+      crossSessionContext = await buildCrossSessionContext(sessionId);
+    } catch {
+      // Non-blocking
+    }
   }
 
   // Build tool context
@@ -115,10 +132,19 @@ export async function POST(request: NextRequest) {
           result: unknown;
         }> = [];
 
+        const pageContextSuffix = body.pageContext
+          ? `\n\n## Current Page Context\nThe user is currently viewing: ${body.pageContext}. Consider this when answering — they may be asking about what they see on this page.`
+          : "";
+        const pageDataSuffix = body.pageData
+          ? `\n\n## Live Page Data\n${body.pageData}`
+          : "";
+        const systemSuffix = [crossSessionContext, pageContextSuffix, pageDataSuffix].filter(Boolean).join("\n\n") || undefined;
+
         for await (const event of streamBrainWithTools({
           userMessage: message,
           conversationHistory,
           toolContext,
+          systemSuffix,
         })) {
           controller.enqueue(
             encoder.encode(`data: ${JSON.stringify(event)}\n\n`)

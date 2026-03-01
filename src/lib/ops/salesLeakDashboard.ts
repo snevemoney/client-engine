@@ -5,6 +5,7 @@
 
 import { db } from "@/lib/db";
 import { getSalesLeakReport } from "./salesLeak";
+import { getOverallReplyRate } from "@/lib/growth/template-effectiveness";
 
 const PBD_STAGES = [
   "PROSPECTING",
@@ -128,6 +129,22 @@ export async function getSalesLeakDashboard(): Promise<SalesLeakDashboardData> {
     return sorted.length % 2 ? sorted[mid]! : (sorted[mid - 1]! + sorted[mid]!) / 2;
   };
 
+  // Outreach reply rate (from growth engine OutreachMessage)
+  const replyRateData = await getOverallReplyRate();
+
+  // Repeat work rate: clients with 2+ accepted proposals (returning clients)
+  const acceptedProposals = await db.proposal.findMany({
+    where: { status: "accepted", clientEmail: { not: null } },
+    select: { clientEmail: true },
+  });
+  const emailCounts: Record<string, number> = {};
+  for (const p of acceptedProposals) {
+    if (p.clientEmail) emailCounts[p.clientEmail] = (emailCounts[p.clientEmail] ?? 0) + 1;
+  }
+  const repeatClients = Object.values(emailCounts).filter((c) => c >= 2).length;
+  const totalClients = Object.keys(emailCounts).length;
+  const repeatWorkRatePct = totalClients > 0 ? Math.round((repeatClients / totalClients) * 100) : null;
+
   // Build stage leak rows with evidence
   const stageLeaks: StageLeakRow[] = [];
   const stageLabels: Record<string, string> = {
@@ -191,15 +208,15 @@ export async function getSalesLeakDashboard(): Promise<SalesLeakDashboardData> {
     metrics: {
       newLeadsWeekly: report.prospectingCount,
       contactedLeads: report.newContactsMade,
-      replyRatePct: null, // would need reply tracking
-      meetingsBookedRatePct: null,
+      replyRatePct: replyRateData.replyRatePct,
+      meetingsBookedRatePct: null, // requires external booking integration
       proposalsSent: sent90,
       proposalCloseRatePct: proposalCloseRatePct,
       avgFollowUpCountBeforeClose: avgFollowUpCountBeforeClose,
       noResponseLeadsCount: noResponseLeadsCount,
       referralsRequested: report.referralAsksMade,
       referralsReceived: report.referralLeadsReceived,
-      repeatWorkRatePct: null,
+      repeatWorkRatePct,
       timeLeadToProposalMedianDays: median(leadToProposalDays),
       timeProposalToCloseMedianDays: median(proposalToCloseDays),
     },

@@ -42,6 +42,13 @@ type NavGroup = {
   defaultOpen: boolean;
   items: NavItem[];
 };
+type SidebarCounts = { nba: number; risk: number; proposalsOverdue: number };
+
+const COUNT_MAP: Record<string, keyof SidebarCounts> = {
+  "/dashboard/next-actions": "nba",
+  "/dashboard/risk": "risk",
+  "/dashboard/proposals": "proposalsOverdue",
+};
 
 const navGroups: NavGroup[] = [
   {
@@ -103,6 +110,7 @@ const navGroups: NavGroup[] = [
       { href: "/dashboard/settings", label: "Settings", icon: Settings },
       { href: "/dashboard/automation", label: "Automation", icon: Activity },
       { href: "/dashboard/flywheel", label: "Flywheel", icon: Zap },
+      { href: "/dashboard/system", label: "Execution Metrics", icon: BarChart3 },
       { href: "/dashboard/ops-health", label: "System Health", icon: Activity },
       { href: "/dashboard/notifications", label: "Alert History", icon: Layers },
     ],
@@ -129,6 +137,16 @@ function NavContent({ onLinkClick }: { onLinkClick?: () => void }) {
   const [openGroups, setOpenGroups] = React.useState<Record<string, boolean>>(defaultOpen);
   const [filter, setFilter] = React.useState("");
   const [hydrated, setHydrated] = React.useState(false);
+  const [counts, setCounts] = React.useState<SidebarCounts | null>(null);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    fetch("/api/internal/sidebar-counts", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (!cancelled && d) setCounts(d); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   React.useEffect(() => {
     try {
@@ -231,6 +249,8 @@ function NavContent({ onLinkClick }: { onLinkClick?: () => void }) {
                 <div className="space-y-0.5 mt-0.5">
                   {group.items.map((item) => {
                     const active = isItemActive(item.href, pathname);
+                    const countKey = COUNT_MAP[item.href];
+                    const count = countKey && counts ? counts[countKey] : 0;
                     return (
                       <Link
                         key={item.href}
@@ -240,6 +260,11 @@ function NavContent({ onLinkClick }: { onLinkClick?: () => void }) {
                       >
                         <item.icon className="w-4 h-4 shrink-0" />
                         {item.label}
+                        {count > 0 && (
+                          <span className="ml-auto text-[10px] font-medium leading-none px-1.5 py-0.5 rounded-full bg-red-500/20 text-red-400">
+                            {count}
+                          </span>
+                        )}
                       </Link>
                     );
                   })}

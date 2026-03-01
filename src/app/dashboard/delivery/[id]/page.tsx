@@ -11,7 +11,8 @@ import { useConfirmDialog } from "@/hooks/useConfirmDialog";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useAsyncAction } from "@/hooks/useAsyncAction";
 import { fetchJsonThrow } from "@/lib/http/fetch-json";
-import { Loader2 } from "lucide-react";
+import { Loader2, Sparkles } from "lucide-react";
+import { useBrainPanel } from "@/contexts/BrainPanelContext";
 
 type Project = {
   id: string;
@@ -94,6 +95,7 @@ export default function DeliveryDetailPage({ params }: { params: Promise<{ id: s
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const { confirm, dialogProps } = useConfirmDialog();
+  const { open: openBrain } = useBrainPanel();
   const toastFn = (m: string, t?: "success" | "error") => t === "error" ? toast.error(m) : toast.success(m);
 
   const refetch = useCallback(async () => {
@@ -158,70 +160,43 @@ export default function DeliveryDetailPage({ params }: { params: Promise<{ id: s
     <div className="space-y-6 max-w-3xl">
       <div>
         <Link href="/dashboard/delivery" className="text-sm text-neutral-400 hover:text-neutral-200">← Delivery</Link>
-        <div className="flex items-center gap-3 mt-2">
-          <h1 className="text-2xl font-semibold">{project.title}</h1>
-          <Badge variant="outline" className="capitalize">{project.status.replace(/_/g, " ")}</Badge>
-          <Badge variant="outline" className={project.health === "overdue" ? "text-red-400" : project.health === "due_soon" ? "text-amber-400" : ""}>
-            {project.health.replace(/_/g, " ")}
-          </Badge>
-        </div>
-        <p className="text-neutral-400 mt-1">{project.clientName ?? project.company ?? "—"}</p>
-      </div>
-
-      <div className="grid gap-4 text-sm">
-        <div><span className="text-neutral-500">Due:</span> {formatDate(project.dueDate)}</div>
-        {project.githubUrl && <div><a href={project.githubUrl} target="_blank" rel="noreferrer" className="text-emerald-400 hover:underline">GitHub</a></div>}
-        {project.loomUrl && <div><a href={project.loomUrl} target="_blank" rel="noreferrer" className="text-emerald-400 hover:underline">Loom</a></div>}
-        <div className="flex gap-4">
-          {project.pipelineLeadId && (
-            <Link href={`/dashboard/leads/${project.pipelineLeadId}`} className="text-emerald-400 hover:underline">View Lead</Link>
-          )}
-          {project.proposal && (
-            <Link href={`/dashboard/proposals/${project.proposal.id}`} className="text-emerald-400 hover:underline">View Proposal</Link>
-          )}
-        </div>
-      </div>
-
-      {/* Website Builder */}
-      {project.builderSiteId && (
-        <BuilderSection project={project} projectId={id} onReload={() => void refetch()} />
-      )}
-
-      {/* Flywheel Action Log */}
-      <FlywheelLog activities={project.activities ?? []} />
-
-      {project.summary && (
-        <div>
-          <h2 className="text-sm font-medium text-neutral-500 mb-1">Summary</h2>
-          <p className="text-neutral-300">{project.summary}</p>
-        </div>
-      )}
-
-      <MilestonesSection projectId={id} milestones={project.milestones} onUpdate={refetch} />
-
-      <DeliveryChecklist
-        projectId={project.id}
-        items={project.checklistItems}
-        onUpdate={(updated) =>
-          setProject((p) =>
-            p ? { ...p, checklistItems: updated } : null
-          )
-        }
-      />
-
-      {!project.completedAt && (
-        <div className="flex flex-wrap gap-2">
-          {project.readiness?.canComplete ? (
-            <Button onClick={handleComplete}>Mark completed</Button>
-          ) : (
-            <p className="text-sm text-amber-400">{project.readiness?.reasons?.join("; ") ?? "Complete checklist to mark done"}</p>
-          )}
-          <Button variant="outline" onClick={handleCreateProof} disabled={!!project.proofCandidateId}>
-            {project.proofCandidateId ? "Proof linked" : "Create proof candidate"}
+        <div className="flex items-center justify-between mt-2">
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-semibold">{project.title}</h1>
+            <Badge variant="outline" className="capitalize">{project.status.replace(/_/g, " ")}</Badge>
+            <Badge variant="outline" className={project.health === "overdue" ? "text-red-400" : project.health === "due_soon" ? "text-amber-400" : ""}>
+              {project.health.replace(/_/g, " ")}
+            </Badge>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={openBrain}
+            className="gap-1.5 border-amber-700 text-amber-400 hover:bg-amber-900/30 shrink-0"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            Ask AI
           </Button>
         </div>
-      )}
+        <div className="flex items-center gap-4 mt-1 text-sm">
+          <span className="text-neutral-400">{project.clientName ?? project.company ?? "—"}</span>
+          <span className="text-neutral-500">Due: {formatDate(project.dueDate)}</span>
+          {project.pipelineLeadId && (
+            <Link href={`/dashboard/leads/${project.pipelineLeadId}`} className="text-emerald-400 hover:underline text-xs">Lead</Link>
+          )}
+          {project.proposal && (
+            <Link href={`/dashboard/proposals/${project.proposal.id}`} className="text-emerald-400 hover:underline text-xs">Proposal</Link>
+          )}
+          {project.githubUrl && (
+            <a href={project.githubUrl} target="_blank" rel="noreferrer" className="text-emerald-400 hover:underline text-xs">GitHub</a>
+          )}
+          {project.loomUrl && (
+            <a href={project.loomUrl} target="_blank" rel="noreferrer" className="text-emerald-400 hover:underline text-xs">Loom</a>
+          )}
+        </div>
+      </div>
 
+      {/* Customer Feedback & Retention — top priority */}
       <DeliveryHandoffRetention
         project={{
           id: project.id,
@@ -255,6 +230,48 @@ export default function DeliveryDetailPage({ params }: { params: Promise<{ id: s
         }}
         onReload={() => void refetch()}
       />
+
+      {/* Progress */}
+      <MilestonesSection projectId={id} milestones={project.milestones} onUpdate={refetch} />
+
+      <DeliveryChecklist
+        projectId={project.id}
+        items={project.checklistItems}
+        onUpdate={(updated) =>
+          setProject((p) =>
+            p ? { ...p, checklistItems: updated } : null
+          )
+        }
+      />
+
+      {!project.completedAt && (
+        <div className="flex flex-wrap gap-2">
+          {project.readiness?.canComplete ? (
+            <Button onClick={handleComplete}>Mark completed</Button>
+          ) : (
+            <p className="text-sm text-amber-400">{project.readiness?.reasons?.join("; ") ?? "Complete checklist to mark done"}</p>
+          )}
+          <Button variant="outline" onClick={handleCreateProof} disabled={!!project.proofCandidateId}>
+            {project.proofCandidateId ? "Proof linked" : "Create proof candidate"}
+          </Button>
+        </div>
+      )}
+
+      {project.summary && (
+        <div>
+          <h2 className="text-sm font-medium text-neutral-500 mb-1">Summary</h2>
+          <p className="text-neutral-300">{project.summary}</p>
+        </div>
+      )}
+
+      {/* Website Builder */}
+      {project.builderSiteId && (
+        <BuilderSection project={project} projectId={id} onReload={() => void refetch()} />
+      )}
+
+      {/* Flywheel Action Log */}
+      <FlywheelLog activities={project.activities ?? []} />
+
       <ConfirmDialog {...dialogProps} />
     </div>
   );
@@ -528,7 +545,6 @@ function BuilderSection({
             src={project.builderPreviewUrl}
             title="Site preview"
             className="w-full h-[500px]"
-            sandbox="allow-scripts allow-same-origin"
           />
         </div>
       )}
@@ -802,21 +818,6 @@ function MilestonesSection({
     }
   };
 
-  const setStatus = async (milestoneId: string, status: MilestoneStatus) => {
-    setUpdatingId(milestoneId);
-    try {
-      await fetchJsonThrow(`/api/delivery-projects/${projectId}/milestones/${milestoneId}`, {
-        method: "PATCH",
-        body: JSON.stringify({ status }),
-      });
-      onUpdate();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to update");
-    } finally {
-      setUpdatingId(null);
-    }
-  };
-
   return (
     <div className="rounded-lg border border-neutral-800 p-4 space-y-3">
       <div className="flex items-center justify-between">
@@ -847,8 +848,7 @@ function MilestonesSection({
           const status = m.status as MilestoneStatus;
           const isUpdating = updatingId === m.id;
           return (
-            <div key={m.id} className="flex items-center gap-2 py-1.5 px-2 rounded hover:bg-neutral-800/30 group">
-              {/* Status indicator — click to cycle */}
+            <div key={m.id} className="flex items-center gap-2 py-1.5 px-2 rounded hover:bg-neutral-800/30">
               <button
                 onClick={() => cycleStatus(m)}
                 disabled={!!updatingId}
@@ -869,37 +869,12 @@ function MilestonesSection({
                   <span className="flex items-center justify-center w-4 h-4 rounded-full border-2 border-neutral-600" />
                 )}
               </button>
-
-              {/* Title */}
               <span className={`flex-1 text-sm ${status === "done" ? "text-neutral-500 line-through" : MILESTONE_TEXT[status]}`}>
                 {m.title}
               </span>
-
-              {/* Status badge + quick actions on hover */}
-              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                {MILESTONE_STATUSES.filter((s) => s !== status).map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => setStatus(m.id, s)}
-                    disabled={!!updatingId}
-                    className={`text-[10px] px-1.5 py-0.5 rounded border transition-colors capitalize ${
-                      s === "done"
-                        ? "border-emerald-800/50 text-emerald-400 hover:bg-emerald-950/30"
-                        : s === "in_progress"
-                          ? "border-blue-800/50 text-blue-400 hover:bg-blue-950/30"
-                          : s === "blocked"
-                            ? "border-red-800/50 text-red-400 hover:bg-red-950/30"
-                            : "border-neutral-700 text-neutral-500 hover:bg-neutral-800"
-                    }`}
-                  >
-                    {s.replace(/_/g, " ")}
-                  </button>
-                ))}
-              </div>
-
               <Badge
                 variant="outline"
-                className={`text-[10px] capitalize shrink-0 group-hover:hidden ${MILESTONE_TEXT[status]}`}
+                className={`text-[10px] capitalize shrink-0 ${MILESTONE_TEXT[status]}`}
               >
                 {status.replace(/_/g, " ")}
               </Badge>

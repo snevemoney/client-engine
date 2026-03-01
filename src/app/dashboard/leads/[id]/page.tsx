@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { ArrowLeft, ExternalLink, Plus, FileText, X, Sparkles, Target, Send, Hammer, CheckCircle, XCircle, RefreshCw, AlertTriangle } from "lucide-react";
+import { ArrowLeft, ExternalLink, Plus, FileText, X, Sparkles, Target, Send, Hammer, CheckCircle, XCircle, RefreshCw, AlertTriangle, Zap, Loader2, CheckCircle2 } from "lucide-react";
 import { useAsyncAction } from "@/hooks/useAsyncAction";
 import { useConfirmDialog } from "@/hooks/useConfirmDialog";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -25,6 +25,7 @@ import { SalesDriverCard } from "@/components/dashboard/leads/SalesDriverCard";
 import { TrustToCloseChecklistPanel } from "@/components/proposals/TrustToCloseChecklistPanel";
 import { parseLeadIntelligenceFromMeta } from "@/lib/lead-intelligence";
 import { ClientJourneyTimeline } from "@/components/dashboard/leads/ClientJourneyTimeline";
+import { useBrainPanel } from "@/contexts/BrainPanelContext";
 
 const TABS = [
   { key: "overview", label: "Overview" },
@@ -117,6 +118,7 @@ const statusColors: Record<string, "default" | "success" | "warning" | "destruct
 export default function LeadDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
+  const { open: openBrain, setPageData } = useBrainPanel();
   const [lead, setLead] = useState<Lead | null>(null);
   const [loading, setLoading] = useState(true);
   const [showArtifactForm, setShowArtifactForm] = useState(false);
@@ -134,6 +136,8 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   const [selectedProposalId, setSelectedProposalId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
   const [aiError, setAiError] = useState<string | null>(null);
+  const [flywheelRunning, setFlywheelRunning] = useState(false);
+  const [flywheelResult, setFlywheelResult] = useState<{ ok: boolean; steps: { step: string; status: string; detail: string; reasoning: string; durationMs: number }[]; deliveryProjectId: string | null; totalDurationMs: number } | null>(null);
 
   const toastFn = (m: string, t?: "success" | "error") => t === "error" ? toast.error(m) : toast.success(m);
   const { confirm, dialogProps } = useConfirmDialog();
@@ -324,6 +328,18 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
     return () => controller.abort();
   }, [id]);
 
+  // Push page data for Brain auto-summary
+  useEffect(() => {
+    if (loading || !lead) return;
+    const scoreStr = lead.score != null ? `Score: ${lead.score}` : "Unscored";
+    const budget = lead.budget ?? "—";
+    const proposalCount = lead.proposals?.length ?? 0;
+    const deliveryCount = lead.deliveryProjects?.length ?? 0;
+    setPageData(
+      `Lead: "${lead.title}" (${lead.status}). ${scoreStr}. Budget: ${budget}. Source: ${lead.source}. Proposals: ${proposalCount}. Deliveries: ${deliveryCount}.`
+    );
+  }, [loading, lead, setPageData]);
+
   async function updateStatus(status: string) {
     try {
       const updated = await fetchJsonThrow<Lead>(`/api/leads/${id}/status`, {
@@ -396,7 +412,18 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
       <div className="flex items-start gap-3">
         <Link href="/dashboard"><Button variant="ghost" size="icon"><ArrowLeft className="w-4 h-4" /></Button></Link>
         <div className="flex-1 min-w-0">
-          <h1 className="text-2xl font-semibold tracking-tight truncate">{lead.title}</h1>
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-semibold tracking-tight truncate">{lead.title}</h1>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={openBrain}
+              className="gap-1.5 border-amber-700 text-amber-400 hover:bg-amber-900/30 shrink-0 ml-3"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              Ask AI
+            </Button>
+          </div>
           <div className="flex items-center gap-2 mt-1 flex-wrap">
             <Badge variant={statusColors[lead.status]}>{lead.status}</Badge>
             <span className="text-sm text-neutral-500">via {lead.source}</span>
@@ -463,7 +490,68 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
             <Hammer className="w-3.5 h-3.5" /> {building ? "Building..." : "Build"}
           </Button>
         )}
+        <div className="w-px h-6 bg-neutral-700 mx-1" />
+        <Button
+          size="sm"
+          className="gap-1.5 bg-amber-600 hover:bg-amber-500 text-white"
+          disabled={flywheelRunning}
+          onClick={async () => {
+            const confirmed = await confirm({
+              title: "Launch full pipeline?",
+              body: "This will enrich, score, generate a proposal, accept the deal, and trigger a site build. Continue?",
+              confirmLabel: "Launch",
+            });
+            if (!confirmed) return;
+            setFlywheelRunning(true);
+            setFlywheelResult(null);
+            try {
+              const res = await fetchJsonThrow<{ ok: boolean; steps: { step: string; status: string; detail: string; reasoning: string; durationMs: number }[]; deliveryProjectId: string | null; totalDurationMs: number }>("/api/flywheel/trigger", {
+                method: "POST",
+                body: JSON.stringify({ leadId: id }),
+              });
+              setFlywheelResult(res);
+              if (res.ok) toast.success("Full pipeline completed");
+              else toast.error("Pipeline completed with errors");
+              // Refresh lead data
+              const updated = await fetch(`/api/leads/${id}`).then((r) => r.ok ? r.json() : null);
+              if (updated) setLead(updated);
+            } catch (err) {
+              toast.error(err instanceof Error ? err.message : "Pipeline failed");
+            } finally {
+              setFlywheelRunning(false);
+            }
+          }}
+        >
+          {flywheelRunning ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Running...</> : <><Zap className="w-3.5 h-3.5" /> Launch Full Pipeline</>}
+        </Button>
       </div>
+
+      {/* Flywheel result */}
+      {flywheelResult && (
+        <div className="border border-neutral-800 rounded-lg overflow-hidden">
+          <div className={`px-3 py-2 text-xs font-medium ${flywheelResult.ok ? "bg-emerald-950/40 text-emerald-300" : "bg-red-950/40 text-red-300"}`}>
+            Pipeline {flywheelResult.ok ? "completed" : "had errors"} — {(flywheelResult.totalDurationMs / 1000).toFixed(1)}s
+          </div>
+          <div className="divide-y divide-neutral-800">
+            {flywheelResult.steps.map((step, i) => (
+              <div key={i} className="px-3 py-2 flex items-start gap-2">
+                {step.status === "ok" ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 mt-0.5 shrink-0" /> : <XCircle className="w-3.5 h-3.5 text-red-400 mt-0.5 shrink-0" />}
+                <div>
+                  <span className="text-xs font-medium text-neutral-200">{step.step}</span>
+                  <span className="text-xs text-neutral-500 ml-2">{step.detail}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          {flywheelResult.deliveryProjectId && (
+            <div className="px-3 py-2 border-t border-neutral-800">
+              <Link href={`/dashboard/delivery/${flywheelResult.deliveryProjectId}`} className="text-xs text-emerald-400 hover:text-emerald-300 flex items-center gap-1">
+                View Delivery & Website Preview <ExternalLink className="w-3 h-3" />
+              </Link>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Tab navigation */}
       <div className="border-b border-neutral-800 -mx-1">

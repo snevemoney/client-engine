@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useBrainPanel } from "@/contexts/BrainPanelContext";
 import { toast } from "sonner";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -58,9 +59,21 @@ function severityColor(s: string): string {
 
 export function RiskClient({ initialData }: { initialData: RiskInitialData }) {
   const url = useUrlQueryState();
+  const { setPageData } = useBrainPanel();
   const [items, setItems] = useState<RiskFlag[]>(initialData.items);
   const [pagination, setPagination] = useState(() => normalizePagination(initialData.pagination, initialData.items.length));
   const [summary, setSummary] = useState<RiskSummary | null>(initialData.summary);
+
+  // Push page data for Brain auto-summary
+  useEffect(() => {
+    const s = initialData.summary;
+    if (!s) return;
+    const bs = s.openBySeverity;
+    const topRisk = initialData.items[0]?.title ?? "none";
+    setPageData(
+      `Risk: ${bs.critical} critical, ${bs.high} high, ${bs.medium} medium, ${bs.low} low open. ${s.snoozedCount} snoozed. Top: ${topRisk}.`
+    );
+  }, [initialData, setPageData]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);

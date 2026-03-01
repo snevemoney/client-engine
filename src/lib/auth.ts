@@ -3,6 +3,8 @@ import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import { compare, hash } from "bcryptjs";
 import { db } from "./db";
+import { trackSecurityEvent } from "./security/tracker";
+import { emitSecurityEvent } from "./security/events";
 
 const authSecret = process.env.AUTH_SECRET || (process.env.NODE_ENV === "production" ? undefined : "dev-secret-change-in-production");
 if (!authSecret && process.env.NODE_ENV === "production") {
@@ -14,6 +16,22 @@ const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET || process.env.AUTH_
 const hasGoogleOAuth = !!(googleClientId && googleClientSecret);
 
 const oauthSimulation = process.env.OAUTH_SIMULATION === "1";
+
+function trackAuthFailure(email: string) {
+  const burst = trackSecurityEvent({
+    key: `burst:auth:${email}`,
+    windowMs: 300_000,
+    threshold: 5,
+  });
+  if (burst.shouldNotify) {
+    void emitSecurityEvent({
+      type: "security.auth_failure_burst",
+      clientKey: email,
+      detail: `${burst.count} failed login attempts for ${email} in 5 minutes`,
+      meta: { count: burst.count, email },
+    });
+  }
+}
 
 function buildAuthorizeCredentials() {
   return async function authorize(
@@ -62,6 +80,7 @@ function buildAuthorizeCredentials() {
       if (process.env.NODE_ENV === "development") {
         console.warn("[auth] Login failed: no user for email", email);
       }
+      trackAuthFailure(email);
       return null;
     }
 
@@ -70,6 +89,7 @@ function buildAuthorizeCredentials() {
       if (process.env.NODE_ENV === "development") {
         console.warn("[auth] Login failed: wrong password for", email);
       }
+      trackAuthFailure(email);
       return null;
     }
 

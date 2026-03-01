@@ -46,6 +46,9 @@ function safeProject(p: {
   proposalId: string | null;
   intakeLeadId: string | null;
   pipelineLeadId: string | null;
+  testimonialStatus: string;
+  retentionStatus: string;
+  postDeliveryHealth: string;
   createdAt: Date;
   updatedAt: Date;
 }) {
@@ -69,6 +72,9 @@ function safeProject(p: {
     proposalId: p.proposalId ?? null,
     intakeLeadId: p.intakeLeadId ?? null,
     pipelineLeadId: p.pipelineLeadId ?? null,
+    testimonialStatus: p.testimonialStatus ?? "none",
+    retentionStatus: p.retentionStatus ?? "none",
+    postDeliveryHealth: p.postDeliveryHealth ?? "green",
     health,
     createdAt: p.createdAt.toISOString(),
     updatedAt: p.updatedAt.toISOString(),

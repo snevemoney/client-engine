@@ -4,6 +4,7 @@
  * Phase 3.2 + 3.3: Operational Score Visibility — scoreboard, trends, factor drilldown.
  */
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useBrainPanel } from "@/contexts/BrainPanelContext";
 import { useConfirmDialog } from "@/hooks/useConfirmDialog";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import Link from "next/link";
@@ -83,6 +84,7 @@ export default function InternalScoreboardPage() {
   const [success, setSuccess] = useState<string | null>(null);
   const inFlightRef = useRef(false);
   const { confirm: confirmRecomputeAction, dialogProps: recomputeDialogProps } = useConfirmDialog();
+  const { setPageData } = useBrainPanel();
 
   const fetchSummary = useCallback(async () => {
     setLoading(true);
@@ -135,6 +137,16 @@ export default function InternalScoreboardPage() {
   useEffect(() => {
     void fetchHistory();
   }, [fetchHistory]);
+
+  // Push page data for Brain auto-summary
+  useEffect(() => {
+    if (!data?.latest) return;
+    const l = data.latest;
+    const topFactors = l.factorSummary?.slice(0, 3).map((f) => f.key).join(", ") ?? "";
+    setPageData(
+      `Score: ${l.score}/100 (${l.band})${l.delta != null ? `, delta ${l.delta > 0 ? "+" : ""}${l.delta}` : ""}. Top factors: ${topFactors || "none"}.`
+    );
+  }, [data, setPageData]);
 
   const handleRecompute = async () => {
     if (inFlightRef.current) return;

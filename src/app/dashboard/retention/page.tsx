@@ -21,8 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { AsyncState } from "@/components/ui/AsyncState";
 import { formatDateSafe } from "@/lib/ui/date-safe";
-import { IntelligenceBanner } from "@/components/dashboard/IntelligenceBanner";
-import type { IntelligenceContext } from "@/hooks/useIntelligenceContext";
+
 
 type RetentionItem = {
   id: string;
@@ -89,8 +88,6 @@ export default function RetentionPage() {
   const [bucketFilter, setBucketFilter] = useState("all");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [risk, setRisk] = useState<IntelligenceContext["risk"] | null>(null);
-  const [nba, setNba] = useState<IntelligenceContext["nba"] | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const runIdRef = useRef(0);
 
@@ -121,16 +118,12 @@ export default function RetentionPage() {
       if (controller.signal.aborted || runId !== runIdRef.current) return;
       setItems(Array.isArray(json?.items) ? json.items : (Array.isArray(json) ? json : []));
       setSummary(sumJson && typeof sumJson === "object" ? sumJson : null);
-      setRisk(ctx?.risk ?? null);
-      setNba(ctx?.nba ?? null);
     } catch (e) {
       if (controller.signal.aborted || runId !== runIdRef.current) return;
       if (e instanceof Error && (e.name === "AbortError" || e.message?.includes("aborted"))) return;
       setError(e instanceof Error ? e.message : "Failed to load");
       setItems([]);
       setSummary(null);
-      setRisk(null);
-      setNba(null);
     } finally {
       if (runId === runIdRef.current) {
         setLoading(false);
@@ -181,7 +174,7 @@ export default function RetentionPage() {
           Follow up with delivered projects — get testimonials, reviews, referrals, and upsell.
         </p>
       </div>
-      <IntelligenceBanner risk={risk} nba={nba} score={null} loading={loading} />
+
 
       {/* Stats grid */}
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">

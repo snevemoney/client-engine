@@ -4,6 +4,7 @@
  */
 import { db } from "@/lib/db";
 import { DealStage } from "@prisma/client";
+import { getTemplateEffectiveness, type TemplateStats } from "./template-effectiveness";
 
 export type GrowthSummary = {
   countsByStage: Record<string, number>;
@@ -20,6 +21,7 @@ export type GrowthSummary = {
     nextFollowUpAt: string;
   }>;
   lastActivityAt: string | null;
+  templateStats: TemplateStats[];
 };
 
 export async function computeGrowthSummary(ownerUserId: string): Promise<GrowthSummary> {
@@ -35,6 +37,7 @@ export async function computeGrowthSummary(ownerUserId: string): Promise<GrowthS
       overdueFollowUps: [],
       next7DaysFollowUps: [],
       lastActivityAt: null,
+      templateStats: [],
     };
   }
 
@@ -134,10 +137,13 @@ export async function computeGrowthSummary(ownerUserId: string): Promise<GrowthS
     countsByStage[g.stage] = g._count.id;
   }
 
+  const templateStats = await getTemplateEffectiveness();
+
   return {
     countsByStage,
     overdueFollowUps: overdue,
     next7DaysFollowUps: next7Days,
     lastActivityAt,
+    templateStats,
   };
 }
