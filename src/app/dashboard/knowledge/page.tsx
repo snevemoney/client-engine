@@ -14,9 +14,9 @@ export default async function KnowledgePage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Knowledge</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Knowledge Base</h1>
         <p className="text-sm text-neutral-400 mt-1">
-          Ingest YouTube videos or channels. Transcripts, summaries, insights, improvement suggestions. Human approves before apply.
+          Search, ingest, and review knowledge. Semantic search across all business intelligence. Powers the AI Brain.
         </p>
       </div>
       <KnowledgePageClient

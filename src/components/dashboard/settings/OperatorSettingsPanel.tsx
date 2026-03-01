@@ -3,7 +3,10 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Sparkles, Loader2, Check, ChevronDown, ChevronUp } from "lucide-react";
 import type { OperatorSettings, ScoringProfile } from "@/lib/ops/settings";
+
+/* ── Helper components ──────────────────────────────────────────── */
 
 function Toggle({
   label,
@@ -48,6 +51,8 @@ function NumberField({
   onChange,
   placeholder,
   suffix,
+  recommended,
+  onAccept,
 }: {
   label: string;
   description?: string;
@@ -55,6 +60,8 @@ function NumberField({
   onChange: (v: string) => void;
   placeholder?: string;
   suffix?: string;
+  recommended?: string;
+  onAccept?: () => void;
 }) {
   return (
     <div className="py-2">
@@ -70,10 +77,81 @@ function NumberField({
           className="max-w-[120px] bg-neutral-900 border-neutral-700"
         />
         {suffix && <span className="text-xs text-neutral-500">{suffix}</span>}
+        {recommended && recommended !== value && (
+          <button
+            type="button"
+            onClick={onAccept}
+            className="text-xs text-amber-400 hover:text-amber-300 flex items-center gap-1 transition-colors"
+          >
+            <Sparkles className="w-3 h-3" /> AI suggests: {recommended}
+          </button>
+        )}
       </div>
     </div>
   );
 }
+
+function SmartField({
+  label,
+  placeholder,
+  value,
+  onChange,
+  recommended,
+  onAccept,
+}: {
+  label: string;
+  placeholder: string;
+  value: string;
+  onChange: (v: string) => void;
+  recommended?: string;
+  onAccept?: () => void;
+}) {
+  const hasRecommendation = recommended && recommended !== value;
+  return (
+    <div>
+      <label className="text-sm text-neutral-300 block mb-1">{label}</label>
+      <Input
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className={`bg-neutral-900 border-neutral-700 ${hasRecommendation ? "border-amber-800/50" : ""}`}
+      />
+      {hasRecommendation && (
+        <button
+          type="button"
+          onClick={onAccept}
+          className="mt-1.5 text-xs text-amber-400 hover:text-amber-300 flex items-center gap-1 transition-colors group"
+        >
+          <Sparkles className="w-3 h-3" />
+          <span className="group-hover:underline">{recommended}</span>
+          <Check className="w-3 h-3 ml-1 opacity-0 group-hover:opacity-100 transition-opacity" />
+        </button>
+      )}
+    </div>
+  );
+}
+
+/* ── Types ───────────────────────────────────────────────────── */
+
+type Recommendations = {
+  nicheStatement?: string;
+  offerStatement?: string;
+  buyerProfile?: string;
+  scoringProfile?: {
+    idealProjects?: string;
+    budgetRange?: string;
+    typicalTimeline?: string;
+    techStack?: string;
+    prefers?: string;
+    avoids?: string;
+  };
+  workdayIntervalMinutes?: number;
+  workdayMaxLeadsPerRun?: number;
+  workdayMaxRunsPerDay?: number;
+  reasoning?: string;
+};
+
+/* ── Main Panel ────────────────────────────────────────────── */
 
 export function OperatorSettingsPanel({
   initialSettings,
@@ -109,6 +187,49 @@ export function OperatorSettingsPanel({
 
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+
+  // AI recommendations state
+  const [recs, setRecs] = useState<Recommendations | null>(null);
+  const [recsLoading, setRecsLoading] = useState(false);
+  const [recsError, setRecsError] = useState<string | null>(null);
+  const [showReasoning, setShowReasoning] = useState(false);
+
+  async function fetchRecommendations() {
+    setRecsLoading(true);
+    setRecsError(null);
+    try {
+      const res = await fetch("/api/ops/settings/recommend", { method: "POST" });
+      if (!res.ok) {
+        const d = await res.json().catch(() => null);
+        setRecsError(d?.error ?? "Failed to generate recommendations");
+        return;
+      }
+      const data = await res.json();
+      setRecs(data.recommendations);
+    } catch (e) {
+      setRecsError(e instanceof Error ? e.message : "Request failed");
+    } finally {
+      setRecsLoading(false);
+    }
+  }
+
+  function acceptAllRecommendations() {
+    if (!recs) return;
+    if (recs.nicheStatement) setNiche(recs.nicheStatement);
+    if (recs.offerStatement) setOffer(recs.offerStatement);
+    if (recs.buyerProfile) setBuyer(recs.buyerProfile);
+    if (recs.scoringProfile?.idealProjects) setScoreIdeal(recs.scoringProfile.idealProjects);
+    if (recs.scoringProfile?.budgetRange) setScoreBudget(recs.scoringProfile.budgetRange);
+    if (recs.scoringProfile?.typicalTimeline) setScoreTimeline(recs.scoringProfile.typicalTimeline);
+    if (recs.scoringProfile?.techStack) setScoreTech(recs.scoringProfile.techStack);
+    if (recs.scoringProfile?.prefers) setScorePrefers(recs.scoringProfile.prefers);
+    if (recs.scoringProfile?.avoids) setScoreAvoids(recs.scoringProfile.avoids);
+    if (recs.workdayIntervalMinutes) setInterval_(String(recs.workdayIntervalMinutes));
+    if (recs.workdayMaxLeadsPerRun) setMaxLeads(String(recs.workdayMaxLeadsPerRun));
+    if (recs.workdayMaxRunsPerDay) setMaxRuns(String(recs.workdayMaxRunsPerDay));
+    setMessage("Recommendations applied — review and save when ready");
+    setTimeout(() => setMessage(null), 5000);
+  }
 
   async function save() {
     setSaving(true);
@@ -154,8 +275,84 @@ export function OperatorSettingsPanel({
     }
   }
 
+  const recSp = recs?.scoringProfile;
+
   return (
     <div className="space-y-8">
+      {/* AI Recommendations Banner */}
+      <section className="border border-amber-800/40 rounded-lg p-5 bg-gradient-to-br from-amber-950/20 to-neutral-900/50 space-y-3">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-amber-400" />
+              <h2 className="text-base font-medium text-amber-200/90">AI-Powered Settings</h2>
+            </div>
+            <p className="text-xs text-neutral-400 mt-1">
+              Analyzes your pipeline data, deal history, and chat conversations to recommend optimal settings.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {recs && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={acceptAllRecommendations}
+                className="text-amber-400 border-amber-800/50 hover:bg-amber-900/30"
+              >
+                <Check className="w-3.5 h-3.5 mr-1" />
+                Accept all
+              </Button>
+            )}
+            <Button
+              size="sm"
+              onClick={fetchRecommendations}
+              disabled={recsLoading}
+              className="bg-amber-600 hover:bg-amber-500 text-white"
+            >
+              {recsLoading ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                  Analyzing…
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-3.5 h-3.5 mr-1.5" />
+                  {recs ? "Refresh" : "Get AI recommendations"}
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+
+        {recsError && (
+          <p className="text-xs text-red-400">{recsError}</p>
+        )}
+
+        {recs?.reasoning && (
+          <div>
+            <button
+              type="button"
+              onClick={() => setShowReasoning(!showReasoning)}
+              className="text-xs text-neutral-400 hover:text-neutral-300 flex items-center gap-1 transition-colors"
+            >
+              {showReasoning ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+              AI reasoning
+            </button>
+            {showReasoning && (
+              <p className="text-xs text-neutral-400 mt-2 leading-relaxed border-l-2 border-amber-800/30 pl-3">
+                {recs.reasoning}
+              </p>
+            )}
+          </div>
+        )}
+
+        {recs && (
+          <p className="text-[10px] text-neutral-500">
+            Click individual suggestions below to accept them, or use &ldquo;Accept all&rdquo; above. Nothing is saved until you hit Save.
+          </p>
+        )}
+      </section>
+
       {/* Automation */}
       <section className="border border-neutral-800 rounded-lg p-6 space-y-2">
         <h2 className="text-base font-medium text-neutral-200">Automation</h2>
@@ -179,6 +376,8 @@ export function OperatorSettingsPanel({
               onChange={setInterval_}
               placeholder="60"
               suffix="minutes"
+              recommended={recs?.workdayIntervalMinutes ? String(recs.workdayIntervalMinutes) : undefined}
+              onAccept={() => recs?.workdayIntervalMinutes && setInterval_(String(recs.workdayIntervalMinutes))}
             />
             <NumberField
               label="Leads per run"
@@ -186,6 +385,8 @@ export function OperatorSettingsPanel({
               value={maxLeads}
               onChange={setMaxLeads}
               placeholder="20"
+              recommended={recs?.workdayMaxLeadsPerRun ? String(recs.workdayMaxLeadsPerRun) : undefined}
+              onAccept={() => recs?.workdayMaxLeadsPerRun && setMaxLeads(String(recs.workdayMaxLeadsPerRun))}
             />
             <NumberField
               label="Runs per day"
@@ -193,6 +394,8 @@ export function OperatorSettingsPanel({
               value={maxRuns}
               onChange={setMaxRuns}
               placeholder="4"
+              recommended={recs?.workdayMaxRunsPerDay ? String(recs.workdayMaxRunsPerDay) : undefined}
+              onAccept={() => recs?.workdayMaxRunsPerDay && setMaxRuns(String(recs.workdayMaxRunsPerDay))}
             />
           </div>
         )}
@@ -222,103 +425,112 @@ export function OperatorSettingsPanel({
 
       {/* Business profile */}
       <section className="border border-neutral-800 rounded-lg p-6 space-y-4">
-        <h2 className="text-base font-medium text-neutral-200">Your business</h2>
-        <p className="text-xs text-neutral-500">
-          Helps the system write better proposals and find the right leads for you.
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-base font-medium text-neutral-200">Your business</h2>
+            <p className="text-xs text-neutral-500 mt-0.5">
+              Helps the system write better proposals and find the right leads for you.
+            </p>
+          </div>
+          {recs && (recs.nicheStatement || recs.offerStatement || recs.buyerProfile) && (
+            <span className="text-[10px] text-amber-400 flex items-center gap-1">
+              <Sparkles className="w-3 h-3" /> AI suggestions available
+            </span>
+          )}
+        </div>
         <div className="space-y-3">
-          <div>
-            <label className="text-sm text-neutral-300 block mb-1">Who you help</label>
-            <Input
-              placeholder="e.g. Small business owners who need a website"
-              value={niche}
-              onChange={(e) => setNiche(e.target.value)}
-              className="bg-neutral-900 border-neutral-700"
-            />
-          </div>
-          <div>
-            <label className="text-sm text-neutral-300 block mb-1">What you offer</label>
-            <Input
-              placeholder="e.g. Custom websites and web apps"
-              value={offer}
-              onChange={(e) => setOffer(e.target.value)}
-              className="bg-neutral-900 border-neutral-700"
-            />
-          </div>
-          <div>
-            <label className="text-sm text-neutral-300 block mb-1">Ideal client</label>
-            <Input
-              placeholder="e.g. Growing companies with $5k-$20k budget"
-              value={buyer}
-              onChange={(e) => setBuyer(e.target.value)}
-              className="bg-neutral-900 border-neutral-700"
-            />
-          </div>
+          <SmartField
+            label="Who you help"
+            placeholder="e.g. Small business owners who need a website"
+            value={niche}
+            onChange={setNiche}
+            recommended={recs?.nicheStatement}
+            onAccept={() => recs?.nicheStatement && setNiche(recs.nicheStatement)}
+          />
+          <SmartField
+            label="What you offer"
+            placeholder="e.g. Custom websites and web apps"
+            value={offer}
+            onChange={setOffer}
+            recommended={recs?.offerStatement}
+            onAccept={() => recs?.offerStatement && setOffer(recs.offerStatement)}
+          />
+          <SmartField
+            label="Ideal client"
+            placeholder="e.g. Growing companies with $5k-$20k budget"
+            value={buyer}
+            onChange={setBuyer}
+            recommended={recs?.buyerProfile}
+            onAccept={() => recs?.buyerProfile && setBuyer(recs.buyerProfile)}
+          />
         </div>
       </section>
 
-      {/* Scoring profile — configurable, niche-agnostic */}
+      {/* Scoring profile */}
       <section className="border border-neutral-800 rounded-lg p-6 space-y-4">
-        <h2 className="text-base font-medium text-neutral-200">Scoring profile</h2>
-        <p className="text-xs text-neutral-500">
-          Used by the pipeline to score leads. Update when you change niche — no code changes needed.
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-base font-medium text-neutral-200">Scoring profile</h2>
+            <p className="text-xs text-neutral-500 mt-0.5">
+              Used by the pipeline to score leads. Update when you change niche — no code changes needed.
+            </p>
+          </div>
+          {recSp && (
+            <span className="text-[10px] text-amber-400 flex items-center gap-1">
+              <Sparkles className="w-3 h-3" /> AI suggestions available
+            </span>
+          )}
+        </div>
         <div className="grid gap-3 sm:grid-cols-2">
-          <div>
-            <label className="text-sm text-neutral-400 block mb-1">Ideal projects</label>
-            <Input
-              placeholder="e.g. web apps, dashboards, booking systems"
-              value={scoreIdeal}
-              onChange={(e) => setScoreIdeal(e.target.value)}
-              className="bg-neutral-900 border-neutral-700"
-            />
-          </div>
-          <div>
-            <label className="text-sm text-neutral-400 block mb-1">Budget range</label>
-            <Input
-              placeholder="e.g. $1,000-$10,000"
-              value={scoreBudget}
-              onChange={(e) => setScoreBudget(e.target.value)}
-              className="bg-neutral-900 border-neutral-700"
-            />
-          </div>
-          <div>
-            <label className="text-sm text-neutral-400 block mb-1">Typical timeline</label>
-            <Input
-              placeholder="e.g. 1-4 weeks"
-              value={scoreTimeline}
-              onChange={(e) => setScoreTimeline(e.target.value)}
-              className="bg-neutral-900 border-neutral-700"
-            />
-          </div>
-          <div>
-            <label className="text-sm text-neutral-400 block mb-1">Tech stack</label>
-            <Input
-              placeholder="e.g. Next.js, React, PostgreSQL"
-              value={scoreTech}
-              onChange={(e) => setScoreTech(e.target.value)}
-              className="bg-neutral-900 border-neutral-700"
-            />
-          </div>
-        </div>
-        <div>
-          <label className="text-sm text-neutral-400 block mb-1">Prefers</label>
-          <Input
-            placeholder="e.g. clear scope, responsive clients, repeat potential"
-            value={scorePrefers}
-            onChange={(e) => setScorePrefers(e.target.value)}
-            className="bg-neutral-900 border-neutral-700"
+          <SmartField
+            label="Ideal projects"
+            placeholder="e.g. web apps, dashboards, booking systems"
+            value={scoreIdeal}
+            onChange={setScoreIdeal}
+            recommended={recSp?.idealProjects}
+            onAccept={() => recSp?.idealProjects && setScoreIdeal(recSp.idealProjects)}
+          />
+          <SmartField
+            label="Budget range"
+            placeholder="e.g. $1,000-$10,000"
+            value={scoreBudget}
+            onChange={setScoreBudget}
+            recommended={recSp?.budgetRange}
+            onAccept={() => recSp?.budgetRange && setScoreBudget(recSp.budgetRange)}
+          />
+          <SmartField
+            label="Typical timeline"
+            placeholder="e.g. 1-4 weeks"
+            value={scoreTimeline}
+            onChange={setScoreTimeline}
+            recommended={recSp?.typicalTimeline}
+            onAccept={() => recSp?.typicalTimeline && setScoreTimeline(recSp.typicalTimeline)}
+          />
+          <SmartField
+            label="Tech stack"
+            placeholder="e.g. Next.js, React, PostgreSQL"
+            value={scoreTech}
+            onChange={setScoreTech}
+            recommended={recSp?.techStack}
+            onAccept={() => recSp?.techStack && setScoreTech(recSp.techStack)}
           />
         </div>
-        <div>
-          <label className="text-sm text-neutral-400 block mb-1">Avoids</label>
-          <Input
-            placeholder="e.g. maintenance-only, vague requests"
-            value={scoreAvoids}
-            onChange={(e) => setScoreAvoids(e.target.value)}
-            className="bg-neutral-900 border-neutral-700"
-          />
-        </div>
+        <SmartField
+          label="Prefers"
+          placeholder="e.g. clear scope, responsive clients, repeat potential"
+          value={scorePrefers}
+          onChange={setScorePrefers}
+          recommended={recSp?.prefers}
+          onAccept={() => recSp?.prefers && setScorePrefers(recSp.prefers)}
+        />
+        <SmartField
+          label="Avoids"
+          placeholder="e.g. maintenance-only, vague requests"
+          value={scoreAvoids}
+          onChange={setScoreAvoids}
+          recommended={recSp?.avoids}
+          onAccept={() => recSp?.avoids && setScoreAvoids(recSp.avoids)}
+        />
       </section>
 
       {/* Save button */}

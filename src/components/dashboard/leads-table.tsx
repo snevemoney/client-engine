@@ -259,15 +259,27 @@ export function LeadsTable() {
         </div>
       )}
 
-      {/* Stats bar */}
-      {(() => {
-        const newCount = leads.filter((l) => l.status === "NEW").length;
+      {/* Pipeline summary */}
+      {!loading && leads.length > 0 && (() => {
+        const newCount = leads.filter((l) => l.status === "NEW" || l.status === "ENRICHED").length;
+        const scoredCount = leads.filter((l) => l.score != null).length;
         const approvedCount = leads.filter((l) => l.status === "APPROVED").length;
+        const atRiskCount = leads.filter((l) => l.scoreVerdict === "REJECT" || (l.score != null && l.score < 40)).length;
+        const stats = [
+          { label: "Total", value: leads.length, color: "text-neutral-200" },
+          { label: "Needs pipeline", value: newCount, color: "text-amber-400" },
+          { label: "Scored", value: scoredCount, color: "text-blue-400" },
+          { label: "Approved", value: approvedCount, color: "text-emerald-400" },
+          { label: "At risk", value: atRiskCount, color: "text-red-400" },
+        ];
         return (
-          <div className="flex gap-4 text-xs text-neutral-500">
-            <span>{leads.length} lead{leads.length !== 1 ? "s" : ""}</span>
-            {newCount > 0 && <span>{newCount} new</span>}
-            {approvedCount > 0 && <span className="text-emerald-500">{approvedCount} approved</span>}
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+            {stats.map((s) => (
+              <div key={s.label} className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-3">
+                <p className="text-[10px] text-neutral-500 uppercase tracking-wider">{s.label}</p>
+                <p className={`text-lg font-semibold ${s.color}`}>{s.value}</p>
+              </div>
+            ))}
           </div>
         );
       })()}
@@ -305,7 +317,10 @@ export function LeadsTable() {
                 </td>
               </tr>
             ) : leads.length === 0 ? (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-neutral-500">No leads found.</td></tr>
+              <tr><td colSpan={6} className="px-4 py-12 text-center">
+                <p className="text-neutral-400 font-medium">No leads found</p>
+                <p className="text-sm text-neutral-500 mt-1">Add leads manually or import from Upwork, email, and other sources.</p>
+              </td></tr>
             ) : (
               sortedLeads.map((lead) => (
                 <tr key={lead.id} className="border-b border-neutral-800/50 hover:bg-neutral-900/30 transition-colors">
