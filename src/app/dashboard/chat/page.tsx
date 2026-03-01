@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 
-const ChatContent = dynamic(() => import("./ChatContent"), {
+const ChatContent = dynamic(() => import("./BrainChatContent"), {
   loading: () => (
     <div className="space-y-6 animate-pulse">
       <div className="h-8 w-44 rounded bg-muted" />

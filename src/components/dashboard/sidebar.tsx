@@ -7,39 +7,29 @@ import { cn } from "@/lib/utils";
 import {
   Inbox,
   FileText,
-  Rocket,
   Settings,
   LayoutDashboard,
   LogOut,
   BarChart3,
   TrendingUp,
   Quote,
-  ClipboardCheck,
-  ClipboardList,
   FileCheck,
-  Briefcase,
   MessageSquare,
-  BookOpen,
   Library,
   Menu,
-  Wrench,
   Activity,
   Target,
   Youtube,
   Megaphone,
-  Compass,
   Rss,
-  Users,
   Calendar,
   Package,
-  Award,
-  GraduationCap,
   Layers,
   ChevronRight,
   Bell,
   Search,
-  Eye,
-  ShieldCheck,
+  Zap,
+  Sparkles,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { Sheet } from "@/components/ui/sheet";
@@ -59,18 +49,11 @@ const navGroups: NavGroup[] = [
     label: "Today",
     defaultOpen: true,
     items: [
-      { href: "/dashboard/overview", label: "Overview", icon: LayoutDashboard },
-      { href: "/dashboard/founder", label: "Founder Mode", icon: Target },
-      { href: "/dashboard/founder/os", label: "Founder OS", icon: Layers },
-      { href: "/dashboard/command", label: "Dashboard", icon: Target },
-      { href: "/dashboard/command-center", label: "Daily Summary", icon: LayoutDashboard },
+      { href: "/dashboard/founder", label: "Home", icon: Target },
       { href: "/dashboard/leads", label: "Leads", icon: Inbox },
       { href: "/dashboard/followups", label: "Follow-ups", icon: Calendar },
       { href: "/dashboard/proposals", label: "Proposals", icon: FileText },
       { href: "/dashboard/inbox", label: "Inbox", icon: Bell },
-      { href: "/dashboard/next-actions", label: "Next Actions", icon: Target },
-      { href: "/dashboard/chat", label: "Chat", icon: MessageSquare },
-      { href: "/dashboard/copilot/coach", label: "Coach Mode", icon: GraduationCap },
     ],
   },
   {
@@ -78,13 +61,11 @@ const navGroups: NavGroup[] = [
     label: "Pipeline",
     defaultOpen: false,
     items: [
-      { href: "/dashboard/prospect", label: "Prospect Research", icon: Search },
+      { href: "/dashboard/prospect", label: "Prospect", icon: Search },
       { href: "/dashboard/intake", label: "Lead Intake", icon: Target },
-      { href: "/dashboard/proposal-followups", label: "Proposal Follow-ups", icon: Calendar },
       { href: "/dashboard/delivery", label: "Delivery", icon: Package },
       { href: "/dashboard/handoffs", label: "Handoffs", icon: FileCheck },
       { href: "/dashboard/retention", label: "Retention", icon: Target },
-      { href: "/dashboard/reminders", label: "Reminders", icon: Calendar },
       { href: "/dashboard/risk", label: "Risk", icon: Activity },
     ],
   },
@@ -93,42 +74,22 @@ const navGroups: NavGroup[] = [
     label: "Numbers",
     defaultOpen: false,
     items: [
-      { href: "/dashboard/sales", label: "Sales", icon: TrendingUp },
       { href: "/dashboard/forecast", label: "Forecast", icon: TrendingUp },
       { href: "/dashboard/intelligence", label: "Intelligence", icon: BarChart3 },
-      { href: "/dashboard/scoreboard", label: "Scoreboard", icon: Target },
-      { href: "/dashboard/results", label: "Results", icon: Target },
-      { href: "/dashboard/operator", label: "Operator Score", icon: Award },
-      { href: "/dashboard/sales-leak", label: "Sales Leak", icon: TrendingUp },
       { href: "/dashboard/conversion", label: "Conversion", icon: TrendingUp },
-    ],
-  },
-  {
-    key: "business",
-    label: "Business",
-    defaultOpen: false,
-    items: [
-      { href: "/dashboard/strategy", label: "Strategy", icon: Compass },
-      { href: "/dashboard/planning", label: "Planning", icon: Calendar },
-      { href: "/dashboard/team", label: "Team", icon: Users },
-      { href: "/dashboard/reviews", label: "Reviews", icon: ClipboardCheck },
-      { href: "/dashboard/grow", label: "GROW", icon: Target },
-      { href: "/work", label: "Website", icon: Briefcase },
+      { href: "/dashboard/internal/scoreboard", label: "Scoreboard", icon: BarChart3 },
     ],
   },
   {
     key: "content",
-    label: "Content & Learning",
+    label: "Content",
     defaultOpen: false,
     items: [
       { href: "/dashboard/signals", label: "Signals", icon: Rss },
       { href: "/dashboard/meta-ads", label: "Meta Ads", icon: Megaphone },
       { href: "/dashboard/youtube", label: "YouTube", icon: Youtube },
       { href: "/dashboard/knowledge", label: "Knowledge", icon: Library },
-      { href: "/dashboard/learning", label: "Learning", icon: BookOpen },
       { href: "/dashboard/proof", label: "Proof", icon: Quote },
-      { href: "/dashboard/proof-candidates", label: "Proof Candidates", icon: FileCheck },
-      { href: "/dashboard/content-assets", label: "Content Assets", icon: Layers },
     ],
   },
   {
@@ -138,30 +99,9 @@ const navGroups: NavGroup[] = [
     items: [
       { href: "/dashboard/settings", label: "Settings", icon: Settings },
       { href: "/dashboard/automation", label: "Automation", icon: Activity },
-      { href: "/dashboard/notifications", label: "Alert History", icon: Activity },
-      { href: "/dashboard/notification-channels", label: "Channels", icon: Layers },
-      { href: "/dashboard/jobs", label: "Jobs", icon: Layers },
-      { href: "/dashboard/job-schedules", label: "Schedules", icon: Calendar },
+      { href: "/dashboard/flywheel", label: "Flywheel", icon: Zap },
       { href: "/dashboard/ops-health", label: "System Health", icon: Activity },
-      { href: "/dashboard/build-ops", label: "Build Tracker", icon: Wrench },
-      { href: "/dashboard/metrics", label: "Metrics", icon: BarChart3 },
-      { href: "/dashboard/deploys", label: "Deploys", icon: Rocket },
-      { href: "/dashboard/checklist", label: "Checklist", icon: ClipboardList },
-    ],
-  },
-  {
-    key: "advanced",
-    label: "Advanced",
-    defaultOpen: false,
-    items: [
-      { href: "/dashboard/audit", label: "Audit", icon: FileCheck },
-      { href: "/dashboard/observability", label: "Monitoring", icon: Eye },
-      { href: "/dashboard/internal/scoreboard", label: "Operational Scores", icon: BarChart3 },
-      { href: "/dashboard/internal/scores/alerts", label: "Score Alerts", icon: Activity },
-      { href: "/dashboard/internal/qa/notifications", label: "QA: Notifications", icon: ShieldCheck },
-      { href: "/dashboard/internal/qa/scores", label: "QA: Scores", icon: BarChart3 },
-      { href: "/dashboard/internal/qa/risk", label: "QA: Risk", icon: ShieldCheck },
-      { href: "/dashboard/internal/qa/next-actions", label: "QA: Next Actions", icon: Target },
+      { href: "/dashboard/notifications", label: "Alert History", icon: Layers },
     ],
   },
 ];
@@ -232,6 +172,21 @@ function NavContent({ onLinkClick }: { onLinkClick?: () => void }) {
   return (
     <>
       <nav className="flex-1 px-2 py-2 space-y-0.5 overflow-auto">
+        {/* AI Brain — persistent top item */}
+        <Link
+          href="/dashboard/chat"
+          onClick={onLinkClick}
+          className={cn(
+            "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors mb-2",
+            isItemActive("/dashboard/chat", pathname)
+              ? "bg-amber-600/15 text-amber-400 border border-amber-600/20"
+              : "text-amber-400/80 hover:bg-amber-600/10 hover:text-amber-400 border border-transparent"
+          )}
+        >
+          <Sparkles className="w-4 h-4 shrink-0" />
+          AI Brain
+        </Link>
+
         {/* Quick filter */}
         <div className="relative px-1 pb-2">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-500 pointer-events-none" />

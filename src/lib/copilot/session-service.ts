@@ -20,7 +20,7 @@ export async function createSession(opts?: {
 
 export async function addMessage(
   sessionId: string,
-  role: "user" | "coach" | "system",
+  role: "user" | "coach" | "system" | "brain",
   contentJson: object,
   sourcesJson?: object,
   metaJson?: object
@@ -97,4 +97,28 @@ export async function closeSession(sessionId: string) {
     where: { id: sessionId },
     data: { status: "closed" },
   });
+}
+
+/**
+ * Load brain conversation history in Anthropic message format.
+ * Converts stored CopilotMessages to the { role, content } pairs
+ * that the Anthropic API expects. Limits to last 20 messages.
+ */
+export async function loadBrainHistory(
+  sessionId: string
+): Promise<Array<{ role: "user" | "assistant"; content: unknown }>> {
+  const messages = await db.copilotMessage.findMany({
+    where: { sessionId },
+    orderBy: { createdAt: "asc" },
+    select: { role: true, contentJson: true },
+    take: 40,
+  });
+
+  // Take the last 20 messages to cap context size
+  const recent = messages.slice(-20);
+
+  return recent.map((m) => ({
+    role: m.role === "user" ? ("user" as const) : ("assistant" as const),
+    content: m.contentJson as unknown,
+  }));
 }
