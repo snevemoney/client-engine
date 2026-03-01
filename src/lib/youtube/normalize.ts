@@ -19,6 +19,27 @@ const CHANNEL_PATTERNS = [
   { re: /youtube\.com\/user\/([a-zA-Z0-9_.-]+)/, field: "handle" as const },
 ];
 
+const PLAYLIST_PATTERN = /[?&]list=([a-zA-Z0-9_-]+)/;
+
+export function extractPlaylistId(url: string): string | null {
+  const m = url.trim().match(PLAYLIST_PATTERN);
+  return m?.[1] ?? null;
+}
+
+export function normalizePlaylistUrl(playlistId: string): string {
+  return `https://www.youtube.com/playlist?list=${playlistId}`;
+}
+
+export function validatePlaylistUrl(
+  input: string,
+): { ok: true; playlistId: string; normalizedUrl: string } | { ok: false; error: string } {
+  const trimmed = input.trim();
+  if (!trimmed) return { ok: false, error: "URL is required" };
+  const playlistId = extractPlaylistId(trimmed);
+  if (!playlistId) return { ok: false, error: "Invalid YouTube playlist URL" };
+  return { ok: true, playlistId, normalizedUrl: normalizePlaylistUrl(playlistId) };
+}
+
 export function extractVideoId(url: string): string | null {
   const trimmed = url.trim();
   for (const pattern of VIDEO_PATTERNS) {

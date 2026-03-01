@@ -123,8 +123,9 @@ export default function YouTubeIngestClient({
   initialFailedTranscripts: TranscriptRow[];
 }) {
   const [url, setUrl] = useState("");
-  const [urlType, setUrlType] = useState<"video" | "channel">("video");
+  const [urlType, setUrlType] = useState<"video" | "channel" | "playlist">("video");
   const [channelLimit, setChannelLimit] = useState(10);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
   const [jobs, setJobs] = useState(initialJobs);
@@ -153,8 +154,14 @@ export default function YouTubeIngestClient({
     setLoading(true);
     setResult(null);
     try {
-      const endpoint = urlType === "channel" ? "/api/youtube/ingest/channel" : "/api/youtube/ingest/video";
-      const body = urlType === "channel" ? { url: trimmed, limit: channelLimit } : { url: trimmed };
+      const endpoint = urlType === "channel"
+        ? "/api/youtube/ingest/channel"
+        : urlType === "playlist"
+          ? "/api/youtube/ingest/playlist"
+          : "/api/youtube/ingest/video";
+      const body = urlType === "channel" || urlType === "playlist"
+        ? { url: trimmed, limit: channelLimit }
+        : { url: trimmed };
       const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -162,8 +169,8 @@ export default function YouTubeIngestClient({
       });
       const data = await res.json();
       if (data.ok || res.ok) {
-        const msg = urlType === "channel"
-          ? `Channel: ${data.summary?.transcribed ?? 0} transcribed, ${data.summary?.failed ?? 0} failed, ${data.summary?.alreadyIngested ?? 0} already ingested`
+        const msg = urlType === "channel" || urlType === "playlist"
+          ? `${urlType === "playlist" ? "Playlist" : "Channel"}: ${data.summary?.transcribed ?? 0} transcribed, ${data.summary?.failed ?? 0} failed, ${data.summary?.alreadyIngested ?? 0} already ingested`
           : `Video ${data.videoId}: ${data.status}`;
         setResult({ ok: true, message: msg });
         setUrl("");
@@ -193,6 +200,25 @@ export default function YouTubeIngestClient({
       setResult({ ok: false, message: e instanceof Error ? e.message : "Retry failed" });
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleDelete(id: string) {
+    if (!confirm("Delete this transcript and all associated data?")) return;
+    setDeletingId(id);
+    try {
+      const res = await fetch(`/api/youtube/transcripts/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        toast.success("Transcript deleted");
+        await refreshData();
+      } else {
+        const d = await res.json().catch(() => null);
+        toast.error(d?.error ?? "Delete failed");
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Delete failed");
+    } finally {
+      setDeletingId(null);
     }
   }
 
@@ -257,19 +283,20 @@ export default function YouTubeIngestClient({
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleIngest()}
-              placeholder={urlType === "video" ? "https://www.youtube.com/watch?v=..." : "https://www.youtube.com/@channel"}
+              placeholder={urlType === "video" ? "https://www.youtube.com/watch?v=..." : urlType === "playlist" ? "https://www.youtube.com/playlist?list=..." : "https://www.youtube.com/@channel"}
               className="w-full rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 placeholder:text-neutral-500"
             />
           </div>
           <select
             value={urlType}
-            onChange={(e) => setUrlType(e.target.value as "video" | "channel")}
+            onChange={(e) => setUrlType(e.target.value as "video" | "channel" | "playlist")}
             className="rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-200"
           >
             <option value="video">Video</option>
             <option value="channel">Channel</option>
+            <option value="playlist">Playlist</option>
           </select>
-          {urlType === "channel" && (
+          {(urlType === "channel" || urlType === "playlist") && (
             <input
               type="number"
               min={1}
@@ -511,7 +538,8 @@ export default function YouTubeIngestClient({
                     <th className="pb-2 pr-3">Provider</th>
                     <th className="pb-2 pr-3">Lang</th>
                     <th className="pb-2 pr-3">Duration</th>
-                    <th className="pb-2">Date</th>
+                    <th className="pb-2 pr-3">Date</th>
+                    <th className="pb-2"></th>
                   </tr>
                 </thead>
                 <tbody className="text-neutral-300">
@@ -532,7 +560,17 @@ export default function YouTubeIngestClient({
                       <td className="py-2 pr-3 font-mono">{t.providerUsed}</td>
                       <td className="py-2 pr-3">{t.language ?? "—"}</td>
                       <td className="py-2 pr-3">{fmtDuration(t.durationSeconds)}</td>
-                      <td className="py-2">{fmtDate(t.createdAt)}</td>
+                      <td className="py-2 pr-3">{fmtDate(t.createdAt)}</td>
+                      <td className="py-2">
+                        <button
+                          onClick={() => handleDelete(t.id)}
+                          disabled={deletingId === t.id}
+                          className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-red-400/70 hover:text-red-400 hover:bg-red-900/20 disabled:opacity-50"
+                          title="Delete transcript"
+                        >
+                          <XCircle className="w-3 h-3" />
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

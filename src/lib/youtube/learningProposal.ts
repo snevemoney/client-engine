@@ -2,13 +2,10 @@
  * Learning Proposal Generator.
  *
  * Transcript → summary → claims/ideas → classification → system area mapping → action proposal.
- * All proposals are READY_FOR_REVIEW. Nothing auto-applies.
- *
- * GUARDRAILS:
- *   - No direct self-modification from transcripts
- *   - No automatic prompt overwrites
- *   - No automatic SOP replacements
- *   - All learning changes require human review
+ * Auto-categorization: LLM output determines status automatically.
+ *   - knowledge_only asset + no_action → KNOWLEDGE_ONLY
+ *   - actionable proposals → PROMOTED_TO_PLAYBOOK (+ creates ReusableAssetLog)
+ * Everything is deletable — cascade-deletes propagate to created assets.
  */
 
 import { db } from "@/lib/db";
@@ -126,6 +123,16 @@ Generate a learning proposal as JSON.`;
   const producedAssetType = validateAssetType(String(parsed.producedAssetType));
   const expectedImpact = validateImpact(String(parsed.expectedImpact));
 
+  // Auto-categorize: knowledge_only → KNOWLEDGE_ONLY, everything else → PROMOTED_TO_PLAYBOOK
+  const isKnowledgeOnly =
+    producedAssetType === "knowledge_only" &&
+    Array.isArray(parsed.proposedActions) &&
+    parsed.proposedActions.every((a) => a.type === "no_action");
+
+  const autoStatus = isKnowledgeOnly
+    ? TRANSCRIPT_STATUS.KNOWLEDGE_ONLY
+    : TRANSCRIPT_STATUS.PROMOTED_TO_PLAYBOOK;
+
   const proposal = await db.learningProposal.create({
     data: {
       transcriptId,
@@ -138,9 +145,50 @@ Generate a learning proposal as JSON.`;
       producedAssetType,
       expectedImpact,
       revenueLink: typeof parsed.revenueLink === "string" ? parsed.revenueLink : null,
-      status: TRANSCRIPT_STATUS.READY_FOR_REVIEW,
+      status: autoStatus,
+      reviewerNotes: `Auto-categorized as ${autoStatus.toLowerCase().replace(/_/g, " ")}`,
     },
   });
+
+  // For promoted proposals, create a ReusableAssetLog entry so it propagates through the system
+  if (autoStatus === TRANSCRIPT_STATUS.PROMOTED_TO_PLAYBOOK) {
+    try {
+      const assetTypeMap: Record<string, string> = {
+        proposal_template: "template",
+        sales_script: "sales_script",
+        followup_script: "sales_script",
+        objection_handling: "sales_script",
+        delivery_checklist: "checklist",
+        reusable_component: "component",
+        case_study_angle: "case_study",
+        positioning_note: "prompt_pattern",
+      };
+
+      await db.reusableAssetLog.create({
+        data: {
+          assetType: assetTypeMap[producedAssetType] ?? "prompt_pattern",
+          label: meta.title
+            ? `[YouTube] ${meta.title}`
+            : `[YouTube] Learning: ${category}`,
+          notes: [
+            proposal.summary,
+            parsed.revenueLink ? `Revenue link: ${parsed.revenueLink}` : null,
+            `Source: https://youtube.com/watch?v=${meta.videoId}`,
+          ]
+            .filter(Boolean)
+            .join("\n"),
+          reusabilityScore: isKnowledgeOnly ? 1 : 3,
+          whereStored: `LearningProposal:${proposal.id}`,
+          canProductize: producedAssetType === "reusable_component" ? "yes" : "maybe",
+        },
+      });
+    } catch (err) {
+      ytLog("warn", "failed to create ReusableAssetLog (non-blocking)", {
+        proposalId: proposal.id,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
 
   ytLog("info", "learning proposal created", {
     proposalId: proposal.id,
@@ -149,6 +197,7 @@ Generate a learning proposal as JSON.`;
     systemArea,
     producedAssetType,
     expectedImpact,
+    autoStatus,
   });
 
   return { id: proposal.id, summary: proposal.summary, category, systemArea };

@@ -168,6 +168,28 @@ export async function runClaimedJob(
       },
     });
     await addJobLog(id, "error", "Job dead-lettered (max attempts)", { error: errorMessage });
+
+    // Alert via notification system so operator sees dead-lettered jobs
+    try {
+      const { createNotificationEvent, queueNotificationDeliveries } = await import(
+        "@/lib/notifications/service"
+      );
+      const { id: eventId, created } = await createNotificationEvent({
+        eventKey: "job.dead_lettered",
+        title: `Job dead-lettered: ${jobType}`,
+        message: `Job ${id} (${jobType}) exhausted ${maxAttemptsVal} attempts. Last error: ${errorMessage}`,
+        severity: "critical",
+        sourceType: "job",
+        sourceId: id,
+        actionUrl: `/dashboard/jobs/${id}`,
+        dedupeKey: `job:dead_letter:${id}`,
+        createdByRule: "job.dead_letter_alert",
+      });
+      if (created) await queueNotificationDeliveries(eventId, ["in_app"]);
+    } catch {
+      // Non-blocking — notification failure shouldn't affect job processing
+    }
+
     return { ok: false, deadLettered: true };
   }
 }

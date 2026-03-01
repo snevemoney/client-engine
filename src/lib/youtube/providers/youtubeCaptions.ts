@@ -88,7 +88,7 @@ export const youtubeCaptionsProvider: TranscriptProvider = {
     let html: string;
     let cookieHeader = "";
     try {
-      const res = await fetch(watchUrl, { headers: FETCH_HEADERS });
+      const res = await globalThis.fetch(watchUrl, { headers: FETCH_HEADERS });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       cookieHeader = getCookieHeader(res);
       html = await res.text();
@@ -136,42 +136,92 @@ export const youtubeCaptionsProvider: TranscriptProvider = {
     const captionHeaders = { ...FETCH_HEADERS };
     if (cookieHeader) captionHeaders.Cookie = cookieHeader;
 
-    let xml: string;
-    try {
-      const captionRes = await fetch(track.baseUrl, { headers: captionHeaders });
-      if (!captionRes.ok) throw new Error(`HTTP ${captionRes.status}`);
-      xml = await captionRes.text();
-    } catch (e) {
-      return {
-        ok: false,
-        provider: PROVIDER_NAME,
-        error: e instanceof Error ? e.message : "Failed to fetch caption XML",
-        code: "NETWORK_ERROR",
-      };
-    }
+    // Try multiple caption formats — YouTube serves different formats depending on the video
+    const baseUrl = track.baseUrl;
+    const urlsToTry = [
+      baseUrl.includes("fmt=") ? baseUrl : `${baseUrl}&fmt=srv1`,
+      baseUrl.replace(/&fmt=[^&]+/, "") + "&fmt=json3",
+      baseUrl,
+    ];
 
-    const textTagRegex = /<text\s([^>]+)>([\s\S]*?)<\/text>/gi;
     const segments: TranscriptSegment[] = [];
-    let m: RegExpExecArray | null;
-    while ((m = textTagRegex.exec(xml)) !== null) {
-      const attrs = m[1]!;
-      const startMatch = attrs.match(/start="([\d.]+)"/);
-      const durMatch = attrs.match(/dur="([\d.]+)"/);
-      const start = startMatch ? Number(startMatch[1]) : 0;
-      const dur = durMatch ? Number(durMatch[1]) : 0;
-      let text = m[2]!.replace(/<\/?[^>]+(>|$)/g, "");
-      text = decodeHtmlEntities(text).trim();
-      if (text) {
-        segments.push({
-          text,
-          start: Number.isFinite(start) ? start : 0,
-          duration: Number.isFinite(dur) ? dur : 0,
-        });
+
+    for (const captionUrl of urlsToTry) {
+      if (segments.length > 0) break;
+
+      let body: string;
+      try {
+        const captionRes = await globalThis.fetch(captionUrl, { headers: captionHeaders });
+        if (!captionRes.ok) continue;
+        body = await captionRes.text();
+      } catch {
+        continue;
+      }
+
+      // Try JSON3 format (YouTube's newer default)
+      try {
+        const json = JSON.parse(body);
+        if (json?.events) {
+          for (const evt of json.events) {
+            if (!evt.segs) continue;
+            const text = evt.segs.map((s: { utf8?: string }) => s.utf8 ?? "").join("").trim();
+            if (text && text !== "\n") {
+              segments.push({
+                text: decodeHtmlEntities(text),
+                start: (evt.tStartMs ?? 0) / 1000,
+                duration: (evt.dDurationMs ?? 0) / 1000,
+              });
+            }
+          }
+          if (segments.length > 0) break;
+        }
+      } catch {
+        // Not JSON — try XML parsing
+      }
+
+      // Try srv1 XML format (<text start="..." dur="...">)
+      const textTagRegex = /<text\s([^>]+)>([\s\S]*?)<\/text>/gi;
+      let m: RegExpExecArray | null;
+      while ((m = textTagRegex.exec(body)) !== null) {
+        const attrs = m[1]!;
+        const startMatch = attrs.match(/start="([\d.]+)"/);
+        const durMatch = attrs.match(/dur="([\d.]+)"/);
+        const start = startMatch ? Number(startMatch[1]) : 0;
+        const dur = durMatch ? Number(durMatch[1]) : 0;
+        let text = m[2]!.replace(/<\/?[^>]+(>|$)/g, "");
+        text = decodeHtmlEntities(text).trim();
+        if (text) {
+          segments.push({
+            text,
+            start: Number.isFinite(start) ? start : 0,
+            duration: Number.isFinite(dur) ? dur : 0,
+          });
+        }
+      }
+      if (segments.length > 0) break;
+
+      // Try srv3 XML format (<p t="..." d="...">)
+      const pTagRegex = /<p\s([^>]+)>([\s\S]*?)<\/p>/gi;
+      while ((m = pTagRegex.exec(body)) !== null) {
+        const attrs = m[1]!;
+        const tMatch = attrs.match(/t="(\d+)"/);
+        const dMatch = attrs.match(/d="(\d+)"/);
+        const start = tMatch ? Number(tMatch[1]) / 1000 : 0;
+        const dur = dMatch ? Number(dMatch[1]) / 1000 : 0;
+        let text = m[2]!.replace(/<\/?[^>]+(>|$)/g, "");
+        text = decodeHtmlEntities(text).trim();
+        if (text) {
+          segments.push({
+            text,
+            start: Number.isFinite(start) ? start : 0,
+            duration: Number.isFinite(dur) ? dur : 0,
+          });
+        }
       }
     }
 
     if (segments.length === 0) {
-      return { ok: false, provider: PROVIDER_NAME, error: "No segments in caption XML", code: "TRANSCRIPT_UNAVAILABLE" };
+      return { ok: false, provider: PROVIDER_NAME, error: "No segments in any caption format", code: "TRANSCRIPT_UNAVAILABLE" };
     }
 
     const lang = track.languageCode ?? (track.vssId?.replace(/^[a.]/, "") || undefined);

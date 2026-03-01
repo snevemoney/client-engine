@@ -32,6 +32,11 @@ export async function POST(
     ? TRANSCRIPT_STATUS.KNOWLEDGE_ONLY
     : TRANSCRIPT_STATUS.REJECTED;
 
+  // Clean delete: remove linked ReusableAssetLog entries when rejecting
+  await db.reusableAssetLog.deleteMany({
+    where: { whereStored: `LearningProposal:${id}` },
+  });
+
   const updated = await db.learningProposal.update({
     where: { id },
     data: {

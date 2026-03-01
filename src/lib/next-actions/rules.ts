@@ -163,8 +163,42 @@ export function produceNextActions(
     });
   }
 
+  if (ctx.builderPoorQualityCount > 0) {
+    emit("builder_content_quality_poor", {
+      title: "Improve website content",
+      reason: `${ctx.builderPoorQualityCount} site(s) with content quality below 70/100`,
+      priority: NextActionPriority.medium,
+      sourceType: RiskSourceType.delivery_project,
+      sourceId: ctx.builderPoorQualityProjectId ?? null,
+      actionUrl: ctx.builderPoorQualityProjectId
+        ? `/dashboard/delivery/${ctx.builderPoorQualityProjectId}`
+        : "/dashboard/delivery",
+      payloadJson: { gap: "builder_poor_quality" },
+      countBoost: Math.min(10, ctx.builderPoorQualityCount * 2),
+    });
+  }
+
+  // Proposal batch review — fires when overdue proposals or multiple need follow-up
+  if (ctx.proposalOverdueFollowupCount > 0 || ctx.sentNoFollowupDateCount >= 2) {
+    const total = ctx.proposalOverdueFollowupCount + ctx.sentNoFollowupDateCount;
+    emit("proposal_batch_review_due", {
+      title: "Batch-review proposals",
+      reason: `${total} proposal(s) need review — batch them in a 3-min end-of-day block`,
+      priority: total >= 5 ? NextActionPriority.high : NextActionPriority.medium,
+      sourceType: RiskSourceType.proposal,
+      sourceId: null,
+      actionUrl: "/dashboard/proposal-followups",
+      payloadJson: {
+        overdueCount: ctx.proposalOverdueFollowupCount,
+        noFollowupCount: ctx.sentNoFollowupDateCount,
+      },
+      countBoost: Math.min(10, total * 2),
+    });
+  }
+
   // Phase 6.3: Growth Engine rules (founder_growth scope)
-  if ((ctx.growthOverdueCount ?? 0) > 0) {
+  // Only fire growth rules when growth data is populated (ownerUserId was provided)
+  if (ctx.growthOverdueCount != null && ctx.growthOverdueCount > 0) {
     emit("growth_overdue_followups", {
       title: "Follow up on growth pipeline",
       reason: `${ctx.growthOverdueCount} deal(s) with overdue follow-up`,
@@ -180,7 +214,7 @@ export function produceNextActions(
     });
   }
 
-  if ((ctx.growthNoOutreachCount ?? 0) > 0) {
+  if (ctx.growthNoOutreachCount != null && ctx.growthNoOutreachCount > 0) {
     emit("growth_no_outreach_sent", {
       title: "Send outreach to new prospects",
       reason: `${ctx.growthNoOutreachCount} new deal(s) with no outreach sent`,

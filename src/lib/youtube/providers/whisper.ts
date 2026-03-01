@@ -75,7 +75,7 @@ export const whisperProvider: TranscriptProvider = {
     try {
       const stats = await stat(audioPath);
       if (stats.size > MAX_AUDIO_SIZE_MB * 1024 * 1024) {
-        await unlink(audioPath).catch(() => {});
+        await unlink(audioPath).catch((e) => ytLog("warn", "whisper temp cleanup failed", { audioPath, error: e instanceof Error ? e.message : String(e) }));
         return {
           ok: false,
           provider: PROVIDER_NAME,
@@ -117,7 +117,7 @@ export const whisperProvider: TranscriptProvider = {
         code: "TRANSCRIPT_UNAVAILABLE",
       };
     } finally {
-      await unlink(audioPath).catch(() => {});
+      await unlink(audioPath).catch((e) => ytLog("warn", "whisper temp cleanup failed", { audioPath, error: e instanceof Error ? e.message : String(e) }));
     }
 
     const segments: TranscriptSegment[] =

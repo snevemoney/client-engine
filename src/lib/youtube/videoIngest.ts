@@ -1,8 +1,8 @@
 /**
  * Single video ingestion pipeline.
  *
- * Flow: validate URL → de-dupe → create source + job → resolve transcript → store → trigger learning proposal.
- * NEVER auto-applies anything. All proposals require human review.
+ * Flow: validate URL → de-dupe → create source + job → resolve transcript → store → auto-categorize learning proposal.
+ * Proposals are auto-categorized (promoted or knowledge-only). Deletable with cascade cleanup.
  */
 
 import { db } from "@/lib/db";
@@ -136,7 +136,32 @@ export async function ingestVideo(url: string): Promise<VideoIngestResult> {
   }
 
   // Build transcript text
-  const { segments, meta, language, provider, confidence } = resolved.success;
+  const { segments, meta: rawMeta, language, provider, confidence } = resolved.success;
+  const meta = { ...rawMeta };
+
+  // If title is still the fallback "Video {id}", fetch the real title from YouTube
+  if (!meta.title || meta.title === `Video ${videoId}`) {
+    try {
+      const watchRes = await globalThis.fetch(`https://www.youtube.com/watch?v=${videoId}`, {
+        headers: { "User-Agent": "Mozilla/5.0 (compatible; ClientEngine/1.0)" },
+        signal: AbortSignal.timeout(5000),
+      });
+      if (watchRes.ok) {
+        const html = await watchRes.text();
+        const titleMatch = html.match(/<title>(.+?)<\/title>/);
+        if (titleMatch?.[1]) {
+          const realTitle = titleMatch[1]
+            .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+            .replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+            .replace(/ - YouTube$/, "").trim();
+          if (realTitle) meta.title = realTitle;
+        }
+      }
+    } catch {
+      ytLog("warn", "failed to fetch real title (non-blocking)", { videoId });
+    }
+  }
+
   const transcriptText = segments.map((s: TranscriptSegment) => s.text).join("\n");
   const transcriptHash = hashTranscript(transcriptText);
   const durationSeconds = segments.length > 0
@@ -189,23 +214,37 @@ export async function ingestVideo(url: string): Promise<VideoIngestResult> {
     },
   });
 
-  // Generate learning proposal (human-gated)
+  // Generate learning proposal (auto-categorized)
   let proposalId: string | null = null;
+  let proposalFailed = false;
   try {
     const proposal = await generateLearningProposal(transcript.id, transcriptText, meta);
     proposalId = proposal.id;
   } catch (err) {
-    ytLog("warn", "learning proposal generation failed (non-blocking)", {
+    proposalFailed = true;
+    ytLog("error", "learning proposal generation failed", {
       videoId,
       error: err instanceof Error ? err.message : String(err),
     });
+  }
+
+  // Determine job status from the actual proposal status (auto-categorized)
+  let jobStatus: string = proposalFailed
+    ? TRANSCRIPT_STATUS.PROPOSAL_FAILED
+    : TRANSCRIPT_STATUS.TRANSCRIBED;
+  if (proposalId) {
+    const prop = await db.learningProposal.findUnique({
+      where: { id: proposalId },
+      select: { status: true },
+    });
+    jobStatus = prop?.status ?? TRANSCRIPT_STATUS.TRANSCRIBED;
   }
 
   // Update job to completed
   await db.youTubeIngestJob.update({
     where: { id: job.id },
     data: {
-      status: proposalId ? TRANSCRIPT_STATUS.READY_FOR_REVIEW : TRANSCRIPT_STATUS.TRANSCRIBED,
+      status: jobStatus,
       attempts: resolved.attempts,
       providerUsed: provider,
       completedAt: new Date(),
@@ -226,6 +265,7 @@ export async function ingestVideo(url: string): Promise<VideoIngestResult> {
     segments: segments.length,
     textLength: transcriptText.length,
     proposalId,
+    jobStatus,
   });
 
   return {
@@ -234,7 +274,7 @@ export async function ingestVideo(url: string): Promise<VideoIngestResult> {
     jobId: job.id,
     transcriptId: transcript.id,
     proposalId,
-    status: proposalId ? TRANSCRIPT_STATUS.READY_FOR_REVIEW : TRANSCRIPT_STATUS.TRANSCRIBED,
+    status: jobStatus,
     providerUsed: provider,
     error: null,
     attempts: resolved.attempts,
