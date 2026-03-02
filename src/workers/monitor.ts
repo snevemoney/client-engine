@@ -41,7 +41,7 @@ async function checkUrl(url: string, timeoutMs = 10000): Promise<CheckResult> {
 
 async function checkSslExpiry(hostname: string): Promise<CheckResult> {
   return new Promise((resolve) => {
-    const req = https.get({ hostname, port: 443, method: "HEAD" }, (res) => {
+    const req = https.get({ hostname, port: 443, method: "HEAD", rejectUnauthorized: false }, (res) => {
       const socket = res.socket as { getPeerCertificate?: () => { valid_to?: string } | null };
       if (socket.getPeerCertificate) {
         const cert = socket.getPeerCertificate();

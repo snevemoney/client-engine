@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "npx tsc --project tsconfig.worker.json && next build",
+    "build": "npx tsc --project tsconfig.worker.json && npx tsc-alias --project tsconfig.worker.json && next build",
     "start": "next start",
     "lint": "eslint",
     "worker": "npx tsx src/workers/index.ts",
@@ -92,6 +92,7 @@
     "happy-dom": "^20.7.0",
     "prisma": "^6.19.2",
     "tailwindcss": "^4",
+    "tsc-alias": "^1.8.16",
     "typescript": "^5",
     "vitest": "^4.0.18"
   }

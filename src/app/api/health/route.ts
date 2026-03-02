@@ -56,8 +56,9 @@ export async function GET() {
       retryStrategy: () => null, // Fail fast; no reconnect storm when Redis is down
       enableOfflineQueue: false,
     });
-    redis.on("error", () => {}); // Must be before ping() to prevent unhandled error event
+    redis.on("error", () => {}); // Must be before connect() to prevent unhandled error event
     try {
+      await redis.connect();
       await redis.ping();
       checks.redis = { ok: true };
     } catch (e: unknown) {

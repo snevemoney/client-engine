@@ -59,6 +59,8 @@ COPY --from=deps /app/node_modules/tlds ./node_modules/tlds
 COPY --from=builder /app/prisma/seed.mjs ./prisma/seed.mjs
 COPY --from=deps /app/node_modules/bcryptjs ./node_modules/bcryptjs
 
+RUN mkdir -p /app/.next/cache && chown -R nextjs:nodejs /app/.next
+
 USER nextjs
 EXPOSE 3000
 ENV PORT=3000
