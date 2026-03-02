@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Package, Plus, Search } from "lucide-react";
+import { useBrainPanel } from "@/contexts/BrainPanelContext";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useUrlQueryState } from "@/hooks/useUrlQueryState";
 import { AsyncState } from "@/components/ui/AsyncState";
@@ -22,6 +23,7 @@ type DeliveryProject = {
   dueDate: string | null;
   health: string;
   proofCandidateId: string | null;
+  proposalValue: { amount: number | null; currency: string } | null;
   createdAt: string;
 };
 
@@ -65,6 +67,7 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export function DeliveryClient({ initialData }: { initialData: DeliveryInitialData }) {
+  const { setPageData } = useBrainPanel();
   const url = useUrlQueryState();
   const [search, setSearch] = useState(() => url.getString("search"));
   const debouncedSearch = useDebouncedValue(search, 300);
@@ -156,6 +159,14 @@ export function DeliveryClient({ initialData }: { initialData: DeliveryInitialDa
     return () => { if (abortRef.current) abortRef.current.abort(); };
   }, [load]);
 
+  useEffect(() => {
+    if (loading || projects.length === 0) return;
+    const s2 = summary ?? { inProgress: 0, dueSoon: 0, overdue: 0, completedThisWeek: 0 };
+    setPageData(
+      `Delivery: ${projects.length} projects, ${s2.inProgress} in progress, ${s2.dueSoon} due soon, ${s2.overdue} overdue, ${s2.completedThisWeek} completed this week.`
+    );
+  }, [projects, summary, loading, setPageData]);
+
   const s = summary ?? { inProgress: 0, dueSoon: 0, overdue: 0, completedThisWeek: 0 };
 
   return (
@@ -232,6 +243,7 @@ export function DeliveryClient({ initialData }: { initialData: DeliveryInitialDa
                 <th className="text-left p-3 font-medium">Project</th>
                 <th className="text-left p-3 font-medium">Client / Company</th>
                 <th className="text-left p-3 font-medium">Status</th>
+                <th className="text-left p-3 font-medium hidden md:table-cell">Value</th>
                 <th className="text-left p-3 font-medium">Health</th>
                 <th className="text-left p-3 font-medium">Due</th>
                 <th className="text-left p-3 font-medium">Proof</th>
@@ -250,6 +262,11 @@ export function DeliveryClient({ initialData }: { initialData: DeliveryInitialDa
                     {p.clientName ?? p.company ?? "—"}
                   </td>
                   <td className="p-3"><StatusBadge status={p.status} /></td>
+                  <td className="p-3 text-neutral-400 text-xs hidden md:table-cell">
+                    {p.proposalValue?.amount != null
+                      ? `${p.proposalValue.currency} ${p.proposalValue.amount.toLocaleString("en-US")}`
+                      : "—"}
+                  </td>
                   <td className="p-3"><HealthBadge health={p.health} /></td>
                   <td className="p-3 text-neutral-400">{formatDateSafe(p.dueDate, { month: "short", day: "numeric" })}</td>
                   <td className="p-3">

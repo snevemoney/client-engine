@@ -39,6 +39,8 @@ interface Lead {
   createdAt: string;
   tags: string[];
   _count?: { artifacts: number };
+  proposals?: Array<{ id: string; status: string }>;
+  deliveryProjects?: Array<{ id: string; status: string }>;
 }
 
 /* ─── Flywheel Dialog Types ───────────────────────────────────────── */
@@ -105,6 +107,49 @@ function Toggle({
         />
       </div>
     </button>
+  );
+}
+
+/* ─── Pipeline Progress Badge ────────────────────────────────────── */
+
+const PROPOSAL_COLORS: Record<string, string> = {
+  accepted: "text-emerald-400 border-emerald-800",
+  sent: "text-amber-400 border-amber-800",
+  viewed: "text-amber-400 border-amber-800",
+  ready: "text-blue-400 border-blue-800",
+  draft: "text-neutral-400 border-neutral-700",
+  rejected: "text-red-400 border-red-800",
+};
+
+const DELIVERY_COLORS: Record<string, string> = {
+  completed: "text-emerald-400 border-emerald-800",
+  qa: "text-blue-400 border-blue-800",
+  in_progress: "text-amber-400 border-amber-800",
+  kickoff: "text-amber-400 border-amber-800",
+  not_started: "text-neutral-400 border-neutral-700",
+};
+
+function PipelineProgress({ lead }: { lead: Lead }) {
+  const proposal = lead.proposals?.[0];
+  const delivery = lead.deliveryProjects?.[0];
+
+  if (!proposal && !delivery) {
+    return <span className="text-neutral-600 text-xs">—</span>;
+  }
+
+  return (
+    <div className="flex items-center gap-1 flex-wrap">
+      {proposal && (
+        <span className={`text-[10px] px-1.5 py-0.5 rounded border ${PROPOSAL_COLORS[proposal.status] ?? "text-neutral-400 border-neutral-700"}`}>
+          P: {proposal.status}
+        </span>
+      )}
+      {delivery && (
+        <span className={`text-[10px] px-1.5 py-0.5 rounded border ${DELIVERY_COLORS[delivery.status] ?? "text-neutral-400 border-neutral-700"}`}>
+          D: {delivery.status.replace(/_/g, " ")}
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -714,18 +759,22 @@ export function LeadsTable() {
       {/* Pipeline summary */}
       {!loading && leads.length > 0 && (() => {
         const newCount = leads.filter((l) => l.status === "NEW" || l.status === "ENRICHED").length;
-        const scoredCount = leads.filter((l) => l.score != null).length;
+        const scoredCount = leads.filter((l) => l.status === "SCORED").length;
         const approvedCount = leads.filter((l) => l.status === "APPROVED").length;
         const atRiskCount = leads.filter((l) => l.scoreVerdict === "REJECT" || (l.score != null && l.score < 40)).length;
+        const withProposal = leads.filter((l) => (l.proposals?.length ?? 0) > 0).length;
+        const inDelivery = leads.filter((l) => (l.deliveryProjects?.length ?? 0) > 0).length;
         const stats = [
           { label: "Total", value: leads.length, color: "text-neutral-200" },
           { label: "Needs pipeline", value: newCount, color: "text-amber-400" },
           { label: "Scored", value: scoredCount, color: "text-blue-400" },
           { label: "Approved", value: approvedCount, color: "text-emerald-400" },
           { label: "At risk", value: atRiskCount, color: "text-red-400" },
+          { label: "Has proposal", value: withProposal, color: "text-violet-400" },
+          { label: "In delivery", value: inDelivery, color: "text-cyan-400" },
         ];
         return (
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
             {stats.map((s) => (
               <div key={s.label} className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-3">
                 <p className="text-[10px] text-neutral-500 uppercase tracking-wider">{s.label}</p>
@@ -745,6 +794,7 @@ export function LeadsTable() {
               <th className="text-left px-4 py-3 font-medium text-neutral-400 hidden sm:table-cell">Source</th>
               <th className="text-left px-4 py-3 font-medium text-neutral-400">Status</th>
               <th className="text-left px-4 py-3 font-medium text-neutral-400">Score</th>
+              <th className="text-left px-4 py-3 font-medium text-neutral-400 hidden md:table-cell">Pipeline</th>
               <th className="text-left px-4 py-3 font-medium text-neutral-400 hidden lg:table-cell">Budget</th>
               <th className="text-right px-4 py-3 font-medium text-neutral-400 w-16"></th>
             </tr>
@@ -757,19 +807,20 @@ export function LeadsTable() {
                   <td className="px-4 py-3 hidden sm:table-cell"><div className="h-4 w-16 rounded bg-muted" /></td>
                   <td className="px-4 py-3"><div className="h-5 w-20 rounded bg-muted" /></td>
                   <td className="px-4 py-3"><div className="h-4 w-8 rounded bg-muted" /></td>
+                  <td className="px-4 py-3 hidden md:table-cell"><div className="h-4 w-24 rounded bg-muted" /></td>
                   <td className="px-4 py-3 hidden lg:table-cell"><div className="h-4 w-16 rounded bg-muted" /></td>
                   <td className="px-4 py-3"><div className="h-4 w-4 rounded bg-muted ml-auto" /></td>
                 </tr>
               ))
             ) : error ? (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center">
+                <td colSpan={7} className="px-4 py-8 text-center">
                   <p className="text-amber-400">{error}</p>
                   <Button variant="outline" size="sm" className="mt-3" onClick={() => fetchLeads()}>Retry</Button>
                 </td>
               </tr>
             ) : leads.length === 0 ? (
-              <tr><td colSpan={6} className="px-4 py-12 text-center">
+              <tr><td colSpan={7} className="px-4 py-12 text-center">
                 <p className="text-neutral-400 font-medium">No leads found</p>
                 <p className="text-sm text-neutral-500 mt-1">Add leads manually or import from Upwork, email, and other sources.</p>
               </td></tr>
@@ -804,6 +855,9 @@ export function LeadsTable() {
                         </Badge>
                       )}
                     </div>
+                  </td>
+                  <td className="px-4 py-3 hidden md:table-cell">
+                    <PipelineProgress lead={lead} />
                   </td>
                   <td className="px-4 py-3 text-neutral-400 hidden lg:table-cell">{lead.budget || "—"}</td>
                   <td className="px-4 py-3 text-right">

@@ -6,6 +6,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { IntakeLeadStatus } from "@prisma/client";
 import { jsonError, withRouteTiming } from "@/lib/api-utils";
+import { logInteraction } from "@/lib/interactions/service";
 
 export async function POST(
   _req: NextRequest,
@@ -60,6 +61,17 @@ export async function POST(
           });
         }
       }
+
+      await logInteraction({
+        category: "proposal_sent",
+        summary: "Proposal marked as sent",
+        proposalId: id,
+        channel: "email",
+        direction: "outbound",
+        actorType: "user",
+        actorId: session.user?.id,
+        sourceModel: "ProposalActivity",
+      }, tx);
     });
 
     return NextResponse.json({ status: "sent", sentAt: now.toISOString() });

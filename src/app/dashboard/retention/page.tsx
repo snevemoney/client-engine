@@ -21,6 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { AsyncState } from "@/components/ui/AsyncState";
 import { formatDateSafe } from "@/lib/ui/date-safe";
+import { useBrainPanel } from "@/contexts/BrainPanelContext";
 
 
 type RetentionItem = {
@@ -90,6 +91,7 @@ export default function RetentionPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const runIdRef = useRef(0);
+  const { setPageData } = useBrainPanel();
 
   const fetchData = useCallback(async () => {
     if (abortRef.current) abortRef.current.abort();
@@ -136,6 +138,13 @@ export default function RetentionPage() {
     void fetchData();
     return () => { if (abortRef.current) abortRef.current.abort(); };
   }, [fetchData]);
+
+  useEffect(() => {
+    if (loading || !summary) return;
+    setPageData(
+      `Retention: ${summary.overdue} overdue, ${summary.dueToday} due today, ${summary.upcoming} upcoming, ${summary.upsellOpen} upsell open, ${summary.stalePostDelivery} stale. ${items.length} items shown.`
+    );
+  }, [summary, items.length, loading, setPageData]);
 
   const runAction = async (id: string, action: string, endpoint: string) => {
     setActionLoading(`${id}:${action}`);

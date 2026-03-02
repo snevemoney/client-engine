@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { toast } from "sonner";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -11,6 +12,7 @@ import { useConfirmDialog } from "@/hooks/useConfirmDialog";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { AsyncState } from "@/components/ui/AsyncState";
 import { fetchJsonThrow } from "@/lib/http/fetch-json";
+import { useBrainPanel } from "@/contexts/BrainPanelContext";
 
 type ForecastMetric = {
   key: string;
@@ -58,6 +60,7 @@ function formatValue(v: number, unit: string): string {
 }
 
 export default function ForecastPage() {
+  const { setPageData } = useBrainPanel();
   const { data, loading, error, refetch } = useRetryableFetch<ForecastData>("/api/forecast/current");
   const toastFn = (m: string, t?: "success" | "error") => t === "error" ? toast.error(m) : toast.success(m);
   const { confirm, dialogProps } = useConfirmDialog();
@@ -71,6 +74,15 @@ export default function ForecastPage() {
     if (!(await confirm({ title: "Capture forecast snapshot?", body: "This will record a point-in-time snapshot of the current forecast." }))) return;
     void handleSnapshot();
   };
+
+  useEffect(() => {
+    if (loading || !data) return;
+    const behind = data.behindPaceCount ?? 0;
+    const warns = data.warnings?.length ?? 0;
+    setPageData(
+      `Forecast: ${behind} metric${behind !== 1 ? "s" : ""} behind pace, ${warns} warning${warns !== 1 ? "s" : ""}.`
+    );
+  }, [data, loading, setPageData]);
 
   const weekly = data?.weekly ?? { metrics: [], warnings: [], periodStart: "", periodEnd: "", elapsedDays: 0, totalDays: 7 };
   const monthly = data?.monthly ?? { metrics: [], warnings: [], periodStart: "", periodEnd: "", elapsedDays: 0, totalDays: 30 };

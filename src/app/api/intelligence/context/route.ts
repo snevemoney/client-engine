@@ -31,6 +31,14 @@ export async function GET(request: NextRequest) {
       const key = summaryCacheKey("intelligence/context", { entityType, entityId });
 
       return await withSummaryCache(key, async () => {
+        const now = new Date();
+        const nbaWhere = {
+          entityType,
+          entityId,
+          status: NextActionStatus.queued,
+          OR: [{ snoozedUntil: null }, { snoozedUntil: { lte: now } }],
+        };
+
         const [
           riskBySeverity,
           riskTopFlags,
@@ -58,24 +66,16 @@ export async function GET(request: NextRequest) {
             },
           }),
 
-          // NBA: queued counts grouped by priority
+          // NBA: queued counts grouped by priority (exclude snoozed)
           db.nextBestAction.groupBy({
             by: ["priority"],
-            where: {
-              entityType,
-              entityId,
-              status: NextActionStatus.queued,
-            },
+            where: nbaWhere,
             _count: { id: true },
           }),
 
-          // NBA: top 3 queued actions by score
+          // NBA: top 3 queued actions by score (exclude snoozed)
           db.nextBestAction.findMany({
-            where: {
-              entityType,
-              entityId,
-              status: NextActionStatus.queued,
-            },
+            where: nbaWhere,
             orderBy: [{ score: "desc" }, { createdAt: "desc" }],
             take: 3,
             select: {

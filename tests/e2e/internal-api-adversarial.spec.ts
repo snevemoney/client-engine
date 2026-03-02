@@ -3,7 +3,7 @@
  * Uses authenticated fetch via page.evaluate (cookies from login).
  * Ensures 400 (not 500) for validation failures, sanitized error responses.
  */
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 import { baseURL as authBaseURL, loginAndWaitForDashboard } from "./helpers/auth";
 import { requireSafeE2EBaseUrl } from "./helpers/safety";
 
@@ -11,7 +11,7 @@ const baseURL = authBaseURL;
 const url = baseURL.replace(/\/$/, "");
 
 async function authFetch(
-  page: { evaluate: (fn: (arg: { url: string; init?: RequestInit }) => Promise<{ status: number; ok: boolean; body: unknown }>) => Promise<{ status: number; ok: boolean; body: unknown }> },
+  page: Page,
   endpoint: string,
   init?: RequestInit
 ): Promise<{ status: number; ok: boolean; body: unknown }> {

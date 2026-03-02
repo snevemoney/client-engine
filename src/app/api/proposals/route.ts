@@ -63,6 +63,7 @@ function safeProposal(p: {
   updatedAt: Date;
   intakeLead?: { id: string; title: string; status: string } | null;
   pipelineLead?: { id: string; title: string; status: string } | null;
+  deliveryProjects?: Array<{ id: string; status: string }>;
 }) {
   return {
     id: p.id,
@@ -95,6 +96,9 @@ function safeProposal(p: {
       : null,
     pipelineLead: p.pipelineLead
       ? { id: p.pipelineLead.id, title: p.pipelineLead.title, status: p.pipelineLead.status }
+      : null,
+    deliveryProject: p.deliveryProjects?.[0]
+      ? { id: p.deliveryProjects[0].id, status: p.deliveryProjects[0].status }
       : null,
     createdAt: p.createdAt.toISOString(),
     updatedAt: p.updatedAt.toISOString(),
@@ -138,6 +142,11 @@ export async function GET(req: NextRequest) {
         include: {
           intakeLead: { select: { id: true, title: true, status: true } },
           pipelineLead: { select: { id: true, title: true, status: true } },
+          deliveryProjects: {
+            select: { id: true, status: true },
+            orderBy: { updatedAt: "desc" },
+            take: 1,
+          },
         },
       }),
       db.proposal.count({ where }),
@@ -232,7 +241,7 @@ export async function POST(req: NextRequest) {
     if (proposal.pipelineLeadId) {
       await db.lead.update({
         where: { id: proposal.pipelineLeadId },
-        data: { proposalCount: { increment: 1 } },
+        data: { proposalCount: { increment: 1 }, status: "APPROVED", approvedAt: new Date() },
       });
     }
 

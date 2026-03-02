@@ -18,6 +18,8 @@ export async function fetchRiskRuleContext(opts?: { now?: Date; ownerUserId?: st
   commandCenterBand: string | null;
   proposalFollowupOverdueCount: number;
   retentionOverdueCount: number;
+  /** Phase 9.2: Clients with active proposal/delivery and 14+ days silence */
+  criticalInteractionGapCount: number;
   growthDealCount?: number;
   growthLastActivityAt?: Date | null;
 }> {
@@ -26,6 +28,8 @@ export async function fetchRiskRuleContext(opts?: { now?: Date; ownerUserId?: st
   const staleThreshold = new Date(now.getTime() - STALE_JOB_MINUTES * 60 * 1000);
   const startToday = getStartOfDay(now);
 
+  const fourteenDaysAgo = new Date(now.getTime() - 14 * 86400000);
+
   const [
     failedDeliveries,
     staleJobs,
@@ -33,6 +37,7 @@ export async function fetchRiskRuleContext(opts?: { now?: Date; ownerUserId?: st
     latestScore,
     proposalOverdue,
     retentionOverdue,
+    criticalInteractionGaps,
   ] = await Promise.all([
     // 1) Failed NotificationDelivery in last 24h
     db.notificationDelivery.count({
@@ -81,6 +86,22 @@ export async function fetchRiskRuleContext(opts?: { now?: Date; ownerUserId?: st
         retentionNextFollowUpAt: { lt: startToday, not: null },
       },
     }),
+    // 7) Phase 9.2: Clients with active proposal/delivery and 14+ days silence
+    db.clientInteraction.groupBy({
+      by: ["clientEmail"],
+      where: {
+        clientEmail: { not: null },
+        direction: { not: "internal" },
+        OR: [
+          { proposalId: { not: null } },
+          { deliveryProjectId: { not: null } },
+        ],
+      },
+      _max: { occurredAt: true },
+      having: {
+        occurredAt: { _max: { lt: fourteenDaysAgo } },
+      },
+    }),
   ]);
 
   let growthDealCount: number | undefined;
@@ -124,6 +145,7 @@ export async function fetchRiskRuleContext(opts?: { now?: Date; ownerUserId?: st
     commandCenterBand: latestScore?.band ?? null,
     proposalFollowupOverdueCount: proposalOverdue ?? 0,
     retentionOverdueCount: retentionOverdue ?? 0,
+    criticalInteractionGapCount: criticalInteractionGaps?.length ?? 0,
     ...(ownerUserId && { ownerUserId, growthDealCount, growthLastActivityAt }),
   };
 }

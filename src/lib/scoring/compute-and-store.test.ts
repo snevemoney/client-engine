@@ -89,6 +89,7 @@ describe("score events", () => {
   beforeEach(async () => {
     await db.scoreEvent.deleteMany({ where: { entityId: TEST_ENTITY } });
     await db.scoreSnapshot.deleteMany({ where: { entityId: TEST_ENTITY } });
+    await db.notificationDelivery.deleteMany({ where: { notificationEvent: { sourceType: "score" } } });
     await db.notificationEvent.deleteMany({ where: { sourceType: "score" } });
   });
 
@@ -200,6 +201,7 @@ describe("score notification integration", () => {
   beforeEach(async () => {
     await db.scoreEvent.deleteMany({ where: { entityId: TEST_ENTITY } });
     await db.scoreSnapshot.deleteMany({ where: { entityId: TEST_ENTITY } });
+    await db.notificationDelivery.deleteMany({ where: { notificationEvent: { sourceType: "score" } } });
     await db.notificationEvent.deleteMany({ where: { sourceType: "score" } });
     await updateScoreAlertsPreferences({ enabled: true, events: { threshold_breach: true, sharp_drop: true, recovery: true } });
   });
@@ -281,7 +283,7 @@ describe("score notification integration", () => {
   });
 
   it("3.6.3 event persistence contract: score events always stored even when notifications suppressed", async () => {
-    await updateScoreAlertsPreferences({ enabled: false, events: { threshold_breach: false } });
+    await updateScoreAlertsPreferences({ enabled: false, events: { threshold_breach: false, sharp_drop: true, recovery: true } });
     try {
       await computeAndStoreScore("command_center", TEST_ENTITY, {
         _testOverride: { score: 60, band: "warning" },

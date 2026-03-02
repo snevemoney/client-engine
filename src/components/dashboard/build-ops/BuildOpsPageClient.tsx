@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
+import { useBrainPanel } from "@/contexts/BrainPanelContext";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,12 +48,23 @@ export function BuildOpsPageClient({
   const [addBusinessImpact, setAddBusinessImpact] = useState<string>("");
   const [saving, setSaving] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const { setPageData } = useBrainPanel();
 
   const filtered = useMemo(() => tasks.filter((t) => {
     if (filterStatus && t.status !== filterStatus) return false;
     if (filterType && t.type !== filterType) return false;
     return true;
   }), [tasks, filterStatus, filterType]);
+
+  useEffect(() => {
+    const todo = tasks.filter((t) => t.status === "todo").length;
+    const inProg = tasks.filter((t) => t.status === "in_progress").length;
+    const review = tasks.filter((t) => t.status === "review").length;
+    const done = tasks.filter((t) => t.status === "done").length;
+    setPageData(
+      `Build Ops: ${tasks.length} tasks (${todo} todo, ${inProg} in progress, ${review} review, ${done} done).`
+    );
+  }, [tasks, setPageData]);
 
   async function createTask() {
     if (!addTitle.trim()) return;

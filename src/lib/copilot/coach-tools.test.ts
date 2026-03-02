@@ -15,7 +15,8 @@ import {
 const opts: CoachFetchOptions = { baseUrl: "http://localhost:3000", cookie: "session=test" };
 
 describe("coach-tools", () => {
-  let mockFetch: ReturnType<typeof vi.fn>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let mockFetch: any;
 
   beforeEach(() => {
     mockFetch = vi.fn();

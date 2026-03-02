@@ -7,6 +7,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { ProposalActivityType } from "@prisma/client";
 import { jsonError, withRouteTiming } from "@/lib/api-utils";
+import { logInteraction } from "@/lib/interactions/service";
 
 const PostSchema = z.object({
   note: z.string().max(2000).optional(),
@@ -30,22 +31,32 @@ export async function POST(
 
     const now = new Date();
 
-    await db.$transaction([
-      db.proposal.update({
+    await db.$transaction(async (tx) => {
+      await tx.proposal.update({
         where: { id },
         data: {
           lastContactedAt: now,
           followUpCount: { increment: 1 },
         },
-      }),
-      db.proposalActivity.create({
+      });
+      await tx.proposalActivity.create({
         data: {
           proposalId: id,
           type: "followup_call" as ProposalActivityType,
           message: note ?? "Call logged",
         },
-      }),
-    ]);
+      });
+      await logInteraction({
+        category: "call_completed",
+        summary: note ?? "Call logged",
+        proposalId: id,
+        channel: "call",
+        direction: "outbound",
+        actorType: "user",
+        actorId: session.user?.id,
+        sourceModel: "ProposalActivity",
+      }, tx);
+    });
 
     return NextResponse.json({ ok: true });
   });

@@ -165,6 +165,16 @@ export async function POST(request: NextRequest) {
           }
         }
 
+        // Append tool context to stored text so cross-turn history preserves what tools were used
+        if (toolCalls.length > 0) {
+          const toolSummaries = toolCalls.map((tc) => {
+            const resultStr = JSON.stringify(tc.result) ?? "";
+            const summary = resultStr.length > 200 ? resultStr.slice(0, 200) + "…" : resultStr;
+            return `${tc.name} → ${summary}`;
+          });
+          fullResponse += `\n\n---\n[Tools used: ${toolSummaries.join(" | ")}]`;
+        }
+
         // Store brain response
         await addMessage(sessionId!, "brain", {
           text: fullResponse,

@@ -11,6 +11,10 @@ import { IntelligenceBanner } from "./IntelligenceBanner";
 
 export function IntelligenceBannerGlobal() {
   const intel = useIntelligenceContext();
+
+  // Hide banner entirely on error instead of showing perpetual loading state
+  if (intel.error) return null;
+
   return (
     <IntelligenceBanner
       risk={intel.risk}

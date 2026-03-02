@@ -52,8 +52,7 @@ describe("Risk replay integration", () => {
     const riskItems = listData.items.filter((r: { createdByRule: string }) => r.createdByRule === "score_in_critical_band");
     expect(riskItems.length).toBeGreaterThanOrEqual(1);
 
-    const summaryReq = new NextRequest("http://x/api/risk/summary");
-    const summaryRes = await summaryGet(summaryReq);
+    const summaryRes = await summaryGet();
     const summaryData = await summaryRes.json();
     expect(summaryData.openBySeverity.critical).toBeGreaterThanOrEqual(1);
 

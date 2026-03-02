@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { useBrainPanel } from "@/contexts/BrainPanelContext";
 import {
   Youtube,
   RefreshCw,
@@ -133,6 +134,13 @@ export default function YouTubeIngestClient({
   const [proposals, setProposals] = useState(initialProposals);
   const [failed, setFailed] = useState(initialFailedTranscripts);
   const [activeTab, setActiveTab] = useState<"proposals" | "jobs" | "transcripts" | "failures">("proposals");
+  const { setPageData } = useBrainPanel();
+
+  useEffect(() => {
+    setPageData(
+      `YouTube Ingest: ${proposals.length} proposals, ${transcripts.length} transcripts, ${jobs.length} jobs, ${failed.length} failed.`
+    );
+  }, [proposals.length, transcripts.length, jobs.length, failed.length, setPageData]);
 
   async function refreshData() {
     const [jobsRes, transRes, propRes] = await Promise.all([

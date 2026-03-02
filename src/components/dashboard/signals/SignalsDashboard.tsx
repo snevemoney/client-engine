@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { useBrainPanel } from "@/contexts/BrainPanelContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -32,6 +33,7 @@ type Item = {
 };
 
 export function SignalsDashboard() {
+  const { setPageData } = useBrainPanel();
   const [sources, setSources] = useState<Source[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
@@ -65,6 +67,17 @@ export function SignalsDashboard() {
   useEffect(() => {
     if (!loading) loadItems();
   }, [filterSource, filterStatus, filterMinScore]);
+
+  useEffect(() => {
+    if (loading || (sources.length === 0 && items.length === 0)) return;
+    const enabledSources = sources.filter((s) => s.enabled).length;
+    const byStatus: Record<string, number> = {};
+    for (const i of items) byStatus[i.status] = (byStatus[i.status] ?? 0) + 1;
+    const statusParts = Object.entries(byStatus).map(([k, v]) => `${v} ${k}`).join(", ");
+    setPageData(
+      `Signal Engine: ${sources.length} sources (${enabledSources} enabled), ${items.length} items${statusParts ? ` (${statusParts})` : ""}.`
+    );
+  }, [sources, items, loading, setPageData]);
 
   async function handleAddSource() {
     if (!addName.trim() || !addUrl.trim()) return;

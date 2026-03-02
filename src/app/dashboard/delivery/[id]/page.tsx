@@ -95,7 +95,7 @@ export default function DeliveryDetailPage({ params }: { params: Promise<{ id: s
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const { confirm, dialogProps } = useConfirmDialog();
-  const { open: openBrain } = useBrainPanel();
+  const { open: openBrain, setPageData } = useBrainPanel();
   const toastFn = (m: string, t?: "success" | "error") => t === "error" ? toast.error(m) : toast.success(m);
 
   const refetch = useCallback(async () => {
@@ -125,6 +125,16 @@ export default function DeliveryDetailPage({ params }: { params: Promise<{ id: s
     void refetch();
     return () => { if (abortRef.current) abortRef.current.abort(); };
   }, [refetch]);
+
+  useEffect(() => {
+    if (loading || !project) return;
+    const done = project.checklistItems.filter((c) => c.isDone).length;
+    const total = project.checklistItems.length;
+    const msDone = project.milestones.filter((m) => m.status === "completed").length;
+    setPageData(
+      `Delivery: "${project.title}" for ${project.clientName ?? project.company ?? "—"}. Status: ${project.status}, Health: ${project.health}. Milestones: ${msDone}/${project.milestones.length}. Checklist: ${done}/${total}.`
+    );
+  }, [project, loading, setPageData]);
 
   if (loading) return <div className="py-12 text-neutral-500">Loading…</div>;
   if (error || !project) return (
@@ -426,6 +436,7 @@ function BuilderSection({
   const [loadingSections, setLoadingSections] = useState(false);
   const [supportRequests, setSupportRequests] = useState<SupportRequest[]>([]);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const editorRef = useRef<HTMLDivElement>(null);
 
   const siteId = project.builderSiteId;
   const builderApi = (path: string, opts?: RequestInit & { timeoutMs?: number }) =>
@@ -443,6 +454,10 @@ function BuilderSection({
   useEffect(() => {
     if (!showEditor || !siteId) return;
     setLoadingSections(true);
+    // Scroll editor into view after a tick so the DOM has rendered
+    requestAnimationFrame(() => {
+      editorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
     Promise.all([
       fetchJsonThrow<{ sections: SectionEntry[] }>(`/api/delivery-projects/${projectId}/builder/sections`),
       fetchJsonThrow<SiteFeedback>(`/api/delivery-projects/${projectId}/builder/feedback`),
@@ -603,7 +618,7 @@ function BuilderSection({
 
       {/* Section editor */}
       {showEditor && (
-        <div className="space-y-3">
+        <div ref={editorRef} className="space-y-3">
           {loadingSections ? (
             <p className="text-xs text-neutral-500">Loading sections…</p>
           ) : (

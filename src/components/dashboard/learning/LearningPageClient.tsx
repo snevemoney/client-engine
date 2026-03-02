@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { BookMarked, Package } from "lucide-react";
 import { toast } from "sonner";
+import { useBrainPanel } from "@/contexts/BrainPanelContext";
 
 type Run = { id: string; content: string; meta: unknown; createdAt: string };
 type Proposal = { id: string; title: string; content: string; meta: unknown; createdAt: string };
@@ -64,6 +65,13 @@ export function LearningPageClient({
   const [summaries, setSummaries] = useState(initialSummaries);
   const [filterChannel, setFilterChannel] = useState("");
   const [filterTag, setFilterTag] = useState("");
+  const { setPageData } = useBrainPanel();
+
+  useEffect(() => {
+    setPageData(
+      `Learning: ${proposals.length} proposals, ${summaries.length} summaries, ${runs.length} runs.`
+    );
+  }, [proposals.length, summaries.length, runs.length, setPageData]);
 
   async function updateProposalMeta(artifactId: string, updates: ProposalMetaUpdate) {
     try {

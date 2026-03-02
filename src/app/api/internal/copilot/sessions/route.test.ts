@@ -2,6 +2,7 @@
  * Phase 5.3: Sessions list route tests.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { NextRequest } from "next/server";
 
 vi.mock("@/lib/http/rate-limit", () => ({
   getRequestClientKey: () => "test-client",
@@ -33,7 +34,7 @@ describe("GET /api/internal/copilot/sessions", () => {
     vi.mocked(requireAuth).mockResolvedValueOnce(null);
 
     const { GET } = await import("./route");
-    const req = new Request("http://localhost:3000/api/internal/copilot/sessions");
+    const req = new NextRequest("http://localhost:3000/api/internal/copilot/sessions");
     const res = await GET(req);
 
     expect(res.status).toBe(401);
@@ -41,7 +42,7 @@ describe("GET /api/internal/copilot/sessions", () => {
 
   it("200 returns sessions list", async () => {
     const { GET } = await import("./route");
-    const req = new Request("http://localhost:3000/api/internal/copilot/sessions");
+    const req = new NextRequest("http://localhost:3000/api/internal/copilot/sessions");
     const res = await GET(req);
 
     expect(res.status).toBe(200);

@@ -14,7 +14,6 @@ import {
   TrendingUp,
   Quote,
   FileCheck,
-  MessageSquare,
   Library,
   Menu,
   Activity,
@@ -30,19 +29,22 @@ import {
   Search,
   Zap,
   Sparkles,
+  Wrench,
+  Shield,
+  Newspaper,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { Sheet } from "@/components/ui/sheet";
 import { InboxBadge } from "@/components/dashboard/InboxBadge";
 
-type NavItem = { href: string; label: string; icon: React.ElementType };
-type NavGroup = {
-  key: string;
-  label: string;
-  defaultOpen: boolean;
-  items: NavItem[];
-};
+/* ── Types ── */
+
+type SidebarMode = "daily" | "full";
+type NavItem = { href: string; label: string; icon: React.ElementType; group: string; dailyMode?: boolean };
+type NavGroupMeta = { key: string; label: string; defaultOpen: boolean };
 type SidebarCounts = { nba: number; risk: number; proposalsOverdue: number };
+
+/* ── Constants ── */
 
 const COUNT_MAP: Record<string, keyof SidebarCounts> = {
   "/dashboard/next-actions": "nba",
@@ -50,75 +52,73 @@ const COUNT_MAP: Record<string, keyof SidebarCounts> = {
   "/dashboard/proposals": "proposalsOverdue",
 };
 
-const navGroups: NavGroup[] = [
-  {
-    key: "today",
-    label: "Today",
-    defaultOpen: true,
-    items: [
-      { href: "/dashboard/founder", label: "Home", icon: Target },
-      { href: "/dashboard/leads", label: "Leads", icon: Inbox },
-      { href: "/dashboard/followups", label: "Follow-ups", icon: Calendar },
-      { href: "/dashboard/proposals", label: "Proposals", icon: FileText },
-      { href: "/dashboard/inbox", label: "Inbox", icon: Bell },
-      { href: "/dashboard/reviews", label: "Reviews", icon: FileCheck },
-      { href: "/dashboard/founder/os", label: "Founder OS", icon: Layers },
-    ],
-  },
-  {
-    key: "pipeline",
-    label: "Pipeline",
-    defaultOpen: false,
-    items: [
-      { href: "/dashboard/prospect", label: "Prospect", icon: Search },
-      { href: "/dashboard/intake", label: "Lead Intake", icon: Target },
-      { href: "/dashboard/delivery", label: "Delivery", icon: Package },
-      { href: "/dashboard/handoffs", label: "Handoffs", icon: FileCheck },
-      { href: "/dashboard/retention", label: "Retention", icon: Target },
-      { href: "/dashboard/risk", label: "Risk", icon: Activity },
-      { href: "/dashboard/growth", label: "Growth", icon: TrendingUp },
-    ],
-  },
-  {
-    key: "numbers",
-    label: "Numbers",
-    defaultOpen: false,
-    items: [
-      { href: "/dashboard/forecast", label: "Forecast", icon: TrendingUp },
-      { href: "/dashboard/intelligence", label: "Intelligence", icon: BarChart3 },
-      { href: "/dashboard/conversion", label: "Conversion", icon: TrendingUp },
-      { href: "/dashboard/internal/scoreboard", label: "Scoreboard", icon: BarChart3 },
-    ],
-  },
-  {
-    key: "content",
-    label: "Content",
-    defaultOpen: false,
-    items: [
-      { href: "/dashboard/signals", label: "Signals", icon: Rss },
-      { href: "/dashboard/meta-ads", label: "Meta Ads", icon: Megaphone },
-      { href: "/dashboard/youtube", label: "YouTube", icon: Youtube },
-      { href: "/dashboard/knowledge", label: "Knowledge", icon: Library },
-      { href: "/dashboard/proof", label: "Proof", icon: Quote },
-    ],
-  },
-  {
-    key: "system",
-    label: "System",
-    defaultOpen: false,
-    items: [
-      { href: "/dashboard/settings", label: "Settings", icon: Settings },
-      { href: "/dashboard/automation", label: "Automation", icon: Activity },
-      { href: "/dashboard/flywheel", label: "Flywheel", icon: Zap },
-      { href: "/dashboard/system", label: "Execution Metrics", icon: BarChart3 },
-      { href: "/dashboard/ops-health", label: "System Health", icon: Activity },
-      { href: "/dashboard/notifications", label: "Alert History", icon: Layers },
-    ],
-  },
+const LIFECYCLE_GROUPS: NavGroupMeta[] = [
+  { key: "capture",  label: "Capture",  defaultOpen: true },
+  { key: "convert",  label: "Convert",  defaultOpen: true },
+  { key: "build",    label: "Build",    defaultOpen: false },
+  { key: "prove",    label: "Prove",    defaultOpen: false },
+  { key: "optimize", label: "Optimize", defaultOpen: false },
+  { key: "system",   label: "System",   defaultOpen: false },
+];
+
+const NAV_ITEMS: NavItem[] = [
+  // CAPTURE
+  { href: "/dashboard/intake",    label: "Lead Intake",  icon: Target,   group: "capture" },
+  { href: "/dashboard/prospect",  label: "Prospect",     icon: Search,   group: "capture" },
+  { href: "/dashboard/signals",   label: "Signals",      icon: Rss,      group: "capture" },
+  { href: "/dashboard/growth",    label: "Growth",       icon: TrendingUp, group: "capture" },
+  { href: "/dashboard/copilot",   label: "Copilot",      icon: Sparkles, group: "capture" },
+  { href: "/dashboard/meta-ads",  label: "Meta Ads",     icon: Megaphone, group: "capture" },
+  { href: "/dashboard/youtube",   label: "YouTube",      icon: Youtube,  group: "capture" },
+
+  // CONVERT
+  { href: "/dashboard/leads",      label: "Leads",       icon: Inbox,     group: "convert", dailyMode: true },
+  { href: "/dashboard/proposals",  label: "Proposals",   icon: FileText,  group: "convert", dailyMode: true },
+  { href: "/dashboard/followups",  label: "Follow-ups",  icon: Calendar,  group: "convert", dailyMode: true },
+  { href: "/dashboard/forecast",   label: "Forecast",    icon: TrendingUp, group: "convert" },
+
+  // BUILD
+  { href: "/dashboard/delivery",  label: "Delivery",     icon: Package,  group: "build", dailyMode: true },
+  { href: "/dashboard/handoffs",  label: "Handoffs",     icon: FileCheck, group: "build" },
+  { href: "/dashboard/build-ops", label: "Build Ops",    icon: Wrench,   group: "build" },
+  { href: "/dashboard/deploys",   label: "Deploys",      icon: Zap,      group: "build" },
+
+  // PROVE
+  { href: "/dashboard/proof",            label: "Proof",            icon: Quote,     group: "prove" },
+  { href: "/dashboard/reviews",          label: "Reviews",          icon: FileCheck, group: "prove" },
+  { href: "/dashboard/proof-candidates", label: "Proof Candidates", icon: FileCheck, group: "prove" },
+  { href: "/dashboard/content-posts",   label: "Content Posts",    icon: Newspaper, group: "prove" },
+
+  // OPTIMIZE
+  { href: "/dashboard/conversion",         label: "Conversion",   icon: TrendingUp, group: "optimize" },
+  { href: "/dashboard/retention",          label: "Retention",    icon: Target,     group: "optimize" },
+  { href: "/dashboard/risk",              label: "Risk",         icon: Activity,   group: "optimize", dailyMode: true },
+  { href: "/dashboard/intelligence",      label: "Intelligence", icon: BarChart3,  group: "optimize" },
+  { href: "/dashboard/internal/scoreboard", label: "Scoreboard", icon: BarChart3,  group: "optimize" },
+
+  // SYSTEM
+  { href: "/dashboard/founder",              label: "Home",           icon: Target,   group: "system", dailyMode: true },
+  { href: "/dashboard/next-actions",         label: "Next Actions",   icon: Zap,      group: "system", dailyMode: true },
+  { href: "/dashboard/inbox",               label: "Inbox",          icon: Bell,     group: "system", dailyMode: true },
+  { href: "/dashboard/reminders",           label: "Reminders",      icon: Calendar, group: "system" },
+  { href: "/dashboard/founder/os",          label: "Founder OS",     icon: Layers,   group: "system" },
+  { href: "/dashboard/knowledge",           label: "Knowledge",      icon: Library,  group: "system" },
+  { href: "/dashboard/jobs",               label: "Jobs",           icon: Package,  group: "system" },
+  { href: "/dashboard/automation",          label: "Automation",     icon: Activity, group: "system" },
+  { href: "/dashboard/operator",           label: "Operator",       icon: Shield,   group: "system" },
+  { href: "/dashboard/settings",           label: "Settings",       icon: Settings, group: "system" },
+  { href: "/dashboard/notifications",      label: "Notifications",  icon: Bell,     group: "system" },
+  { href: "/dashboard/notification-channels", label: "Channels",    icon: Bell,     group: "system" },
+  { href: "/dashboard/flywheel",           label: "Flywheel",       icon: Zap,      group: "system" },
+  { href: "/dashboard/system",             label: "Exec Metrics",   icon: BarChart3, group: "system" },
+  { href: "/dashboard/ops-health",         label: "System Health",  icon: Activity, group: "system" },
+  { href: "/dashboard/job-schedules",      label: "Job Schedules",  icon: Calendar, group: "system" },
 ];
 
 const STORAGE_KEY = "sidebar-open-groups";
+const SIDEBAR_MODE_KEY = "sidebar-mode";
 
+/* ── Helpers ── */
 
 function isItemActive(href: string, pathname: string): boolean {
   if (href === "/dashboard/overview") return pathname === "/dashboard/overview";
@@ -128,25 +128,35 @@ function isItemActive(href: string, pathname: string): boolean {
   return pathname.startsWith(href);
 }
 
+/* ── NavContent ── */
+
 function NavContent({ onLinkClick }: { onLinkClick?: () => void }) {
   const pathname = usePathname();
-  const defaultOpen = React.useMemo(
-    () => Object.fromEntries(navGroups.map((g) => [g.key, g.defaultOpen])),
-    []
-  );
-  const [openGroups, setOpenGroups] = React.useState<Record<string, boolean>>(defaultOpen);
-  const [filter, setFilter] = React.useState("");
-  const [hydrated, setHydrated] = React.useState(false);
-  const [counts, setCounts] = React.useState<SidebarCounts | null>(null);
+
+  // Mode state (daily / full)
+  const [mode, setMode] = React.useState<SidebarMode>("daily");
+  const [modeHydrated, setModeHydrated] = React.useState(false);
 
   React.useEffect(() => {
-    let cancelled = false;
-    fetch("/api/internal/sidebar-counts", { credentials: "include" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => { if (!cancelled && d) setCounts(d); })
-      .catch(() => {});
-    return () => { cancelled = true; };
+    try {
+      const stored = localStorage.getItem(SIDEBAR_MODE_KEY);
+      if (stored === "daily" || stored === "full") setMode(stored);
+    } catch {}
+    setModeHydrated(true);
   }, []);
+
+  React.useEffect(() => {
+    if (!modeHydrated) return;
+    try { localStorage.setItem(SIDEBAR_MODE_KEY, mode); } catch {}
+  }, [mode, modeHydrated]);
+
+  // Group collapse state
+  const defaultOpenState = React.useMemo(
+    () => Object.fromEntries(LIFECYCLE_GROUPS.map((g) => [g.key, g.defaultOpen])),
+    []
+  );
+  const [openGroups, setOpenGroups] = React.useState<Record<string, boolean>>(defaultOpenState);
+  const [hydrated, setHydrated] = React.useState(false);
 
   React.useEffect(() => {
     try {
@@ -158,20 +168,32 @@ function NavContent({ onLinkClick }: { onLinkClick?: () => void }) {
 
   React.useEffect(() => {
     if (!hydrated) return;
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(openGroups));
-    } catch {}
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(openGroups)); } catch {}
   }, [openGroups, hydrated]);
 
-  // Auto-open the group that contains the active page
+  // Auto-open the group containing the active page (full mode only)
   React.useEffect(() => {
-    for (const group of navGroups) {
-      if (group.items.some((item) => isItemActive(item.href, pathname))) {
-        setOpenGroups((prev) => (prev[group.key] ? prev : { ...prev, [group.key]: true }));
+    if (mode !== "full") return;
+    for (const item of NAV_ITEMS) {
+      if (isItemActive(item.href, pathname)) {
+        setOpenGroups((prev) => (prev[item.group] ? prev : { ...prev, [item.group]: true }));
         break;
       }
     }
-  }, [pathname]);
+  }, [pathname, mode]);
+
+  // Filter + search
+  const [filter, setFilter] = React.useState("");
+  const [counts, setCounts] = React.useState<SidebarCounts | null>(null);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    fetch("/api/internal/sidebar-counts", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (!cancelled && d) setCounts(d); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   function toggleGroup(key: string) {
     setOpenGroups((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -183,12 +205,49 @@ function NavContent({ onLinkClick }: { onLinkClick?: () => void }) {
       active ? "bg-neutral-800 text-neutral-100" : "text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50"
     );
 
+  // Derive visible items from mode + search
   const lowerFilter = filter.toLowerCase();
-  const filteredGroups = lowerFilter
-    ? navGroups
-        .map((g) => ({ ...g, items: g.items.filter((i) => i.label.toLowerCase().includes(lowerFilter)) }))
-        .filter((g) => g.items.length > 0)
-    : navGroups;
+
+  const visibleItems = React.useMemo(() => {
+    const modeFiltered = mode === "daily" ? NAV_ITEMS.filter((i) => i.dailyMode) : NAV_ITEMS;
+    return lowerFilter
+      ? modeFiltered.filter((i) => i.label.toLowerCase().includes(lowerFilter))
+      : modeFiltered;
+  }, [mode, lowerFilter]);
+
+  // Group items for full mode
+  const groupedItems = React.useMemo(() => {
+    if (mode === "daily") return null;
+    const map = new Map<string, NavItem[]>();
+    for (const item of visibleItems) {
+      const arr = map.get(item.group) || [];
+      arr.push(item);
+      map.set(item.group, arr);
+    }
+    return map;
+  }, [mode, visibleItems]);
+
+  function renderLink(item: NavItem) {
+    const active = isItemActive(item.href, pathname);
+    const countKey = COUNT_MAP[item.href];
+    const count = countKey && counts ? counts[countKey] : 0;
+    return (
+      <Link
+        key={item.href}
+        href={item.href}
+        onClick={onLinkClick}
+        className={linkClass(active)}
+      >
+        <item.icon className="w-4 h-4 shrink-0" />
+        {item.label}
+        {count > 0 && (
+          <span className="ml-auto text-[10px] font-medium leading-none px-1.5 py-0.5 rounded-full bg-red-500/20 text-red-400">
+            {count}
+          </span>
+        )}
+      </Link>
+    );
+  }
 
   return (
     <>
@@ -208,21 +267,59 @@ function NavContent({ onLinkClick }: { onLinkClick?: () => void }) {
           AI Brain
         </Link>
 
+        {/* Mode toggle */}
+        <div className="flex rounded-lg bg-neutral-900 border border-neutral-800 p-0.5 mx-1 mb-2">
+          <button
+            type="button"
+            onClick={() => setMode("daily")}
+            className={cn(
+              "flex-1 rounded-md px-3 py-1 text-xs font-medium transition-colors",
+              mode === "daily"
+                ? "bg-neutral-700 text-neutral-100"
+                : "text-neutral-500 hover:text-neutral-300"
+            )}
+          >
+            Daily
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("full")}
+            className={cn(
+              "flex-1 rounded-md px-3 py-1 text-xs font-medium transition-colors",
+              mode === "full"
+                ? "bg-neutral-700 text-neutral-100"
+                : "text-neutral-500 hover:text-neutral-300"
+            )}
+          >
+            Full
+          </button>
+        </div>
+
         {/* Quick filter */}
         <div className="relative px-1 pb-2">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-500 pointer-events-none" />
           <input
             type="text"
-            placeholder="Find a page…"
+            placeholder="Find a page..."
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
             className="w-full rounded-md border border-neutral-800 bg-neutral-900 pl-8 pr-3 py-1.5 text-xs text-neutral-300 placeholder:text-neutral-600 focus:outline-none focus:border-neutral-600"
           />
         </div>
 
-        {filteredGroups.map((group) => {
+        {/* Daily mode — flat list */}
+        {mode === "daily" && (
+          <div className="space-y-0.5">
+            {visibleItems.map(renderLink)}
+          </div>
+        )}
+
+        {/* Full mode — lifecycle groups */}
+        {mode === "full" && LIFECYCLE_GROUPS.map((group) => {
+          const items = groupedItems?.get(group.key) || [];
+          if (items.length === 0) return null;
           const isOpen = lowerFilter ? true : openGroups[group.key] ?? group.defaultOpen;
-          const hasActive = group.items.some((item) => isItemActive(item.href, pathname));
+          const hasActive = items.some((item) => isItemActive(item.href, pathname));
 
           return (
             <div key={group.key} className="mb-1">
@@ -247,27 +344,7 @@ function NavContent({ onLinkClick }: { onLinkClick?: () => void }) {
               </button>
               {isOpen && (
                 <div className="space-y-0.5 mt-0.5">
-                  {group.items.map((item) => {
-                    const active = isItemActive(item.href, pathname);
-                    const countKey = COUNT_MAP[item.href];
-                    const count = countKey && counts ? counts[countKey] : 0;
-                    return (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        onClick={onLinkClick}
-                        className={linkClass(active)}
-                      >
-                        <item.icon className="w-4 h-4 shrink-0" />
-                        {item.label}
-                        {count > 0 && (
-                          <span className="ml-auto text-[10px] font-medium leading-none px-1.5 py-0.5 rounded-full bg-red-500/20 text-red-400">
-                            {count}
-                          </span>
-                        )}
-                      </Link>
-                    );
-                  })}
+                  {items.map(renderLink)}
                 </div>
               )}
             </div>

@@ -20,11 +20,11 @@ describe("growth templates", () => {
     }
   });
 
-  it("nextFollowUpDays is valid (2, 3, or 7)", () => {
+  it("nextFollowUpDays is valid (2, 3, 5, or 7)", () => {
     for (const key of TEMPLATE_KEYS) {
       const t = getTemplate(key);
       expect(t).toBeDefined();
-      expect([2, 3, 7]).toContain(t!.nextFollowUpDays);
+      expect([2, 3, 5, 7]).toContain(t!.nextFollowUpDays);
     }
   });
 
@@ -51,6 +51,8 @@ describe("growth templates", () => {
       "big_audience_no_site",
       "canva_site_upgrade",
       "calendly_blank_fix",
+      "followup_leakage_audit",
+      "proof_driven_intro",
     ];
     for (const k of expected) {
       expect(OUTREACH_TEMPLATES[k]).toBeDefined();

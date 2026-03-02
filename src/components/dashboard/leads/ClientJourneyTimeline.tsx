@@ -7,12 +7,16 @@ import { AsyncState } from "@/components/ui/AsyncState";
 
 interface TimelineEntry {
   id: string;
-  entityType: "intake" | "lead" | "proposal" | "delivery";
+  entityType: "intake" | "lead" | "proposal" | "delivery" | "interaction";
   entityId: string;
   entityTitle: string;
   activityType: string;
   message: string;
   createdAt: string;
+  channel?: string | null;
+  direction?: string | null;
+  nextActionSummary?: string | null;
+  nextActionDueAt?: string | null;
 }
 
 const entityColors: Record<string, string> = {
@@ -20,6 +24,7 @@ const entityColors: Record<string, string> = {
   lead: "border-neutral-700 text-neutral-300",
   proposal: "border-amber-800 text-amber-400",
   delivery: "border-emerald-800 text-emerald-400",
+  interaction: "border-violet-800 text-violet-400",
 };
 
 const entityLinks: Record<string, string> = {
@@ -95,6 +100,23 @@ export function ClientJourneyTimeline({ leadId }: { leadId: string }) {
                     </span>
                   </div>
                   <p className="text-neutral-300 text-xs mt-0.5 line-clamp-2">{entry.message}</p>
+                  {entry.entityType === "interaction" && (entry.channel || entry.nextActionSummary) && (
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                      {entry.channel && (
+                        <span className="text-[10px] text-violet-400 bg-violet-950/40 px-1.5 py-0.5 rounded">
+                          {entry.channel.replace("_", " ")}
+                        </span>
+                      )}
+                      {entry.direction && (
+                        <span className="text-[10px] text-neutral-500">{entry.direction}</span>
+                      )}
+                      {entry.nextActionSummary && (
+                        <span className="text-[10px] text-amber-400">
+                          Next: {entry.nextActionSummary}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             );

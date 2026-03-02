@@ -37,6 +37,8 @@ describe("Next Actions golden regression", () => {
       stageStallCount: 0,
       builderPoorQualityCount: 0,
       proposalOverdueFollowupCount: 0,
+      interactionsWithoutNextActionCount: 0,
+      clientInteractionGapCount: 0,
     };
     const candidates = produceNextActions(ctx);
     expect(candidates.length).toBeGreaterThanOrEqual(2);
@@ -70,6 +72,8 @@ describe("Next Actions golden regression", () => {
       stageStallCount: 0,
       builderPoorQualityCount: 0,
       proposalOverdueFollowupCount: 0,
+      interactionsWithoutNextActionCount: 0,
+      clientInteractionGapCount: 0,
     };
     const candidates = produceNextActions(ctx);
     const r1 = await upsertNextActions(candidates);
@@ -107,6 +111,8 @@ describe("Next Actions golden regression", () => {
       stageStallCount: 0,
       builderPoorQualityCount: 0,
       proposalOverdueFollowupCount: 0,
+      interactionsWithoutNextActionCount: 0,
+      clientInteractionGapCount: 0,
     };
     await upsertNextActions(produceNextActions(ctx));
     const still = await db.nextBestAction.findUnique({ where: { id: action.id } });

@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { LeadActivityType } from "@prisma/client";
 import { jsonError, withRouteTiming } from "@/lib/api-utils";
 import { computeSnoozeDate, isValidDate, type SnoozeType } from "@/lib/followup/dates";
+import { logInteraction } from "@/lib/interactions/service";
 
 const PostSchema = z.object({
   snoozeType: z.enum(["2d", "5d", "next_monday", "custom"]),
@@ -85,6 +86,21 @@ export async function POST(
           data: { nextContactAt: newDue },
         });
       }
+      const reasonPart2 = body.reason?.trim() ? ` — ${body.reason}` : "";
+      await logInteraction({
+        category: "followup_snoozed",
+        summary: `Follow-up snoozed until ${newDue.toISOString()}${reasonPart2}`,
+        intakeLeadId: id,
+        direction: "internal",
+        clientName: intake.contactName ?? intake.company ?? undefined,
+        clientEmail: intake.contactEmail ?? undefined,
+        actorType: "user",
+        actorId: session.user?.id,
+        sourceModel: "LeadActivity",
+        sourceId: id,
+        metaJson: { snoozeType: body.snoozeType, reason: body.reason ?? null },
+        nextActionDueAt: newDue,
+      }, tx);
     });
 
     const updated = await db.intakeLead.findUnique({

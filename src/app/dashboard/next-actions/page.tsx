@@ -36,7 +36,7 @@ export default async function NextActionsPage() {
     db.nextBestAction.count({ where }),
     db.nextBestAction.groupBy({
       by: ["priority"],
-      where: { entityType, entityId, status: NextActionStatus.queued },
+      where,
       _count: { id: true },
     }),
     db.nextActionRun.findFirst({

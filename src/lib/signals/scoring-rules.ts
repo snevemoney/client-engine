@@ -21,6 +21,17 @@ export const SIGNAL_KEYWORDS: { keyword: string; weight: number }[] = [
   { keyword: "newsletter", weight: 6 },
   { keyword: "content", weight: 4 },
   { keyword: "conversion", weight: 8 },
+  // Niche: high-ticket local service businesses
+  { keyword: "dental", weight: 12 },
+  { keyword: "med spa", weight: 12 },
+  { keyword: "contractor", weight: 10 },
+  { keyword: "local business", weight: 10 },
+  { keyword: "follow-up", weight: 15 },
+  { keyword: "appointment", weight: 8 },
+  { keyword: "booking", weight: 8 },
+  { keyword: "patient", weight: 6 },
+  { keyword: "real estate", weight: 10 },
+  { keyword: "coaching", weight: 8 },
 ];
 
 export function scoreSignalItem(title: string, summary: string | null): { score: number; tags: string[] } {

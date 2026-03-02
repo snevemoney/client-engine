@@ -201,6 +201,36 @@ function getBaseExplanation(ruleKey: string, ctx: NextActionContext): NextAction
         links: [{ label: "Proposal Follow-ups", href: "/dashboard/proposal-followups" }],
       };
 
+    case "client_no_next_action":
+      return {
+        ruleKey,
+        summary: "Recent client interactions have no next action scheduled. Every touchpoint should lead to a defined follow-up.",
+        evidence: [
+          { label: "Interactions without next action", value: ctx.interactionsWithoutNextActionCount, source: "db:ClientInteraction" },
+        ],
+        recommendedSteps: [
+          "Review recent interactions in the timeline",
+          "Schedule a follow-up call, email, or meeting for each",
+          "Set due dates within 48h for time-sensitive items",
+        ],
+        links: [{ label: "Next Actions", href: "/dashboard/next-actions" }],
+      };
+
+    case "client_interaction_gap":
+      return {
+        ruleKey,
+        summary: "Active clients have gone 7+ days with no recorded interaction. Re-engage before the relationship cools.",
+        evidence: [
+          { label: "Silent clients", value: ctx.clientInteractionGapCount, source: "db:ClientInteraction" },
+        ],
+        recommendedSteps: [
+          "Identify which clients have gone silent",
+          "Send a check-in email or schedule a call",
+          "Log the interaction to reset the gap timer",
+        ],
+        links: [{ label: "Risk Dashboard", href: "/dashboard/risk" }],
+      };
+
     case "growth_overdue_followups":
       return {
         ruleKey,

@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { LeadActivityType } from "@prisma/client";
 import { jsonError, withRouteTiming } from "@/lib/api-utils";
 import { parseDate, isValidDate } from "@/lib/followup/dates";
+import { logInteraction } from "@/lib/interactions/service";
 
 const PostSchema = z.object({
   note: z.string().max(2000).optional().nullable(),
@@ -80,6 +81,22 @@ export async function POST(
           data: { nextContactAt: dueAt, lastContactAt: now },
         });
       }
+      await logInteraction({
+        category: "followup_completed",
+        summary: body.note?.trim()
+          ? `Follow-up completed: ${body.note}`
+          : `Follow-up completed for "${intake.title ?? "Untitled"}"`,
+        intakeLeadId: id,
+        direction: "outbound",
+        clientName: intake.contactName ?? intake.company ?? undefined,
+        clientEmail: intake.contactEmail ?? undefined,
+        actorType: "user",
+        actorId: session.user?.id,
+        sourceModel: "LeadActivity",
+        sourceId: id,
+        nextActionSummary: nextAction ?? undefined,
+        nextActionDueAt: dueAt ?? undefined,
+      }, tx);
     });
 
     const updated = await db.intakeLead.findUnique({

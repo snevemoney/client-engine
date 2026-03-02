@@ -117,10 +117,19 @@ export async function loadBrainHistory(
   // Take the last 20 messages to cap context size
   const recent = messages.slice(-20);
 
-  return recent.map((m) => ({
-    role: m.role === "user" ? ("user" as const) : ("assistant" as const),
-    content: m.contentJson as unknown,
-  }));
+  return recent
+    .map((m) => ({
+      role: m.role === "user" ? ("user" as const) : ("assistant" as const),
+      content:
+        typeof m.contentJson === "object" &&
+        m.contentJson !== null &&
+        "text" in m.contentJson
+          ? String((m.contentJson as { text: unknown }).text)
+          : typeof m.contentJson === "string"
+            ? m.contentJson
+            : "",
+    }))
+    .filter((m) => m.content !== "");
 }
 
 /**

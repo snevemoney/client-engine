@@ -53,6 +53,7 @@ export async function runGoldenScenario(
 
   await db.scoreEvent.deleteMany({ where: { entityId } });
   await db.scoreSnapshot.deleteMany({ where: { entityId } });
+  await db.notificationDelivery.deleteMany({ where: { notificationEvent: { sourceType: "score" } } });
   await db.notificationEvent.deleteMany({ where: { sourceType: "score" } });
 
   if (s.preferencesOverride) {

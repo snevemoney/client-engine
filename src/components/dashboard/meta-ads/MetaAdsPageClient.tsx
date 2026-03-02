@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import { useBrainPanel } from "@/contexts/BrainPanelContext";
 import { RefreshCw, Megaphone, AlertTriangle, Heart, LayoutDashboard, Zap, History, Settings } from "lucide-react";
 import type { MetaAdsDashboardData, MetaAdsDashboardError, DateRangePreset } from "@/lib/meta-ads/types";
 import { MetaAdsKpiCards } from "./MetaAdsKpiCards";
@@ -81,6 +82,7 @@ export function MetaAdsPageClient() {
   const [lastGenerated, setLastGenerated] = useState<string | null>(null);
   const [metaMode, setMetaMode] = useState<"mock" | "live" | null>(null);
   const [metaMockScenario, setMetaMockScenario] = useState<string | null>(null);
+  const { setPageData } = useBrainPanel();
 
   useEffect(() => {
     fetch("/api/meta-ads/mode")
@@ -126,6 +128,15 @@ export function MetaAdsPageClient() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  useEffect(() => {
+    if (loading || !data?.ok) return;
+    const s = data.summary;
+    const attention = data.insights?.filter((i) => i.severity === "warn" || i.severity === "critical").length ?? 0;
+    setPageData(
+      `Meta Ads: ${data.campaigns.length} campaigns, ${data.adsets.length} ad sets, ${data.ads.length} ads. Spend: $${(s?.spend ?? 0).toFixed(0)}, Impressions: ${s?.impressions ?? 0}. ${attention} needs attention.`
+    );
+  }, [data, loading, setPageData]);
 
   useEffect(() => {
     if (tab === "recommendations" || tab === "settings") {

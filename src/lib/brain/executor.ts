@@ -249,7 +249,7 @@ async function executeDraftOutreach(
     if (!template) {
       return {
         result: null,
-        error: `Unknown template: ${templateKey}. Available: broken_link_fix, google_form_upgrade, linktree_cleanup, big_audience_no_site, canva_site_upgrade, calendly_blank_fix`,
+        error: `Unknown template: ${templateKey}. Available: broken_link_fix, google_form_upgrade, linktree_cleanup, big_audience_no_site, canva_site_upgrade, calendly_blank_fix, followup_leakage_audit, proof_driven_intro`,
       };
     }
     const rendered = renderTemplate(template, variables);
@@ -563,6 +563,156 @@ async function executeSendOperatorAlert(
   }
 }
 
+// ─── Distribution & Signals ────────────────────────────────────
+
+async function executeListProofRecords(
+  input: Record<string, unknown>
+): Promise<ToolResult> {
+  try {
+    const { db } = await import("@/lib/db");
+    const limit = Math.min((input.limit as number) || 20, 50);
+    const hasContentPost = input.hasContentPost as boolean | undefined;
+
+    const records = await db.proofRecord.findMany({
+      select: {
+        id: true,
+        title: true,
+        company: true,
+        outcome: true,
+        metricValue: true,
+        metricLabel: true,
+        proofSnippet: true,
+        createdAt: true,
+        _count: { select: { contentPosts: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: limit,
+    });
+
+    let filtered = records.map((r) => ({
+      id: r.id,
+      title: r.title,
+      company: r.company,
+      outcome: r.outcome,
+      metricValue: r.metricValue,
+      metricLabel: r.metricLabel,
+      hasSnippet: !!r.proofSnippet,
+      contentPostCount: r._count.contentPosts,
+      createdAt: r.createdAt,
+    }));
+
+    if (hasContentPost === true) {
+      filtered = filtered.filter((r) => r.contentPostCount > 0);
+    } else if (hasContentPost === false) {
+      filtered = filtered.filter((r) => r.contentPostCount === 0);
+    }
+
+    return { result: { count: filtered.length, records: filtered } };
+  } catch (e) {
+    return { result: null, error: e instanceof Error ? e.message : "Failed to list proof records" };
+  }
+}
+
+async function executeScheduleContentPost(
+  input: Record<string, unknown>
+): Promise<ToolResult> {
+  try {
+    const { generateContentPostDrafts, schedulePost } = await import(
+      "@/lib/distribution/service"
+    );
+    const proofRecordId = input.proofRecordId as string;
+    if (!proofRecordId) return { result: null, error: "proofRecordId is required" };
+
+    const platform = (input.platform as string) || "linkedin";
+    const validPlatforms = ["linkedin", "twitter", "email_newsletter"];
+    if (!validPlatforms.includes(platform)) {
+      return { result: null, error: `Invalid platform. Use: ${validPlatforms.join(", ")}` };
+    }
+
+    const drafts = await generateContentPostDrafts(
+      proofRecordId,
+      [platform as "linkedin" | "twitter" | "email_newsletter"],
+      "brain"
+    );
+
+    if (drafts.length === 0) {
+      return { result: { message: "Post already exists for this platform" } };
+    }
+
+    const draft = drafts[0];
+    let scheduled = false;
+
+    if (input.scheduledFor) {
+      const scheduledFor = new Date(input.scheduledFor as string);
+      await schedulePost(draft.contentPostId, scheduledFor);
+      scheduled = true;
+    }
+
+    return {
+      result: {
+        contentPostId: draft.contentPostId,
+        platform: draft.platform,
+        status: scheduled ? "scheduled" : "draft",
+        scheduled,
+      },
+    };
+  } catch (e) {
+    return { result: null, error: e instanceof Error ? e.message : "Failed to schedule content post" };
+  }
+}
+
+async function executeListSignals(
+  input: Record<string, unknown>
+): Promise<ToolResult> {
+  try {
+    const { db } = await import("@/lib/db");
+    const minScore = (input.minScore as number) || 0;
+    const status = input.status as string | undefined;
+    const limit = Math.min((input.limit as number) || 20, 50);
+
+    const where: Record<string, unknown> = { score: { gte: minScore } };
+    if (status) where.status = status;
+
+    const signals = await db.signalItem.findMany({
+      where,
+      select: {
+        id: true,
+        title: true,
+        score: true,
+        tags: true,
+        url: true,
+        status: true,
+        publishedAt: true,
+        createdAt: true,
+      },
+      orderBy: { score: "desc" },
+      take: limit,
+    });
+
+    return { result: { count: signals.length, signals } };
+  } catch (e) {
+    return { result: null, error: e instanceof Error ? e.message : "Failed to list signals" };
+  }
+}
+
+async function executeMatchSignalOpportunities(
+  input: Record<string, unknown>
+): Promise<ToolResult> {
+  try {
+    const { matchSignalToProspects } = await import(
+      "@/lib/signals/opportunity-matcher"
+    );
+    const signalItemId = input.signalItemId as string;
+    if (!signalItemId) return { result: null, error: "signalItemId is required" };
+
+    const topK = (input.topK as number) || 5;
+    const matches = await matchSignalToProspects(signalItemId, { topK });
+    return { result: matches };
+  } catch (e) {
+    return { result: null, error: e instanceof Error ? e.message : "Failed to match signal opportunities" };
+  }
+}
+
 // ─── Agent Delegation ──────────────────────────────────────────
 
 async function executeDelegateToAgent(
@@ -577,8 +727,9 @@ async function executeDelegateToAgent(
       return { result: null, error: "agentId and task are required" };
     }
 
-    const validAgents = ["revenue", "delivery", "growth", "retention", "intelligence", "system"];
-    if (!validAgents.includes(agentId)) {
+    const { getAgentIds } = await import("@/lib/agents/registry");
+    const validAgents = getAgentIds();
+    if (!validAgents.includes(agentId as import("@/lib/agents/types").AgentId)) {
       return { result: null, error: `Invalid agentId. Valid: ${validAgents.join(", ")}` };
     }
 
@@ -657,6 +808,14 @@ export async function executeTool(
         return executeManageDeal(input, ctx);
       case "send_operator_alert":
         return executeSendOperatorAlert(input, ctx);
+      case "list_proof_records":
+        return executeListProofRecords(input);
+      case "schedule_content_post":
+        return executeScheduleContentPost(input);
+      case "list_signals":
+        return executeListSignals(input);
+      case "match_signal_opportunities":
+        return executeMatchSignalOpportunities(input);
       case "delegate_to_agent":
         return executeDelegateToAgent(input, ctx);
       default:

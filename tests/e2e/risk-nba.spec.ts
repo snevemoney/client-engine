@@ -138,7 +138,7 @@ test.describe("Risk & Next Actions pages", () => {
 });
 
 test.describe("Command Center RiskNBA integration", () => {
-  test.describe.configure({ skip: skipIfProd() });
+  test.skip(skipIfProd(), "Skipping mutations on production");
 
   test.beforeEach(async ({ page }) => {
     await page.goto(`${baseURL}/login`);
@@ -181,7 +181,7 @@ test.describe("Command Center RiskNBA integration", () => {
 });
 
 test.describe("Phase 4.1: NBA v2 scope and Why", () => {
-  test.describe.configure({ skip: skipIfProd() });
+  test.skip(skipIfProd(), "Skipping mutations on production");
 
   test.beforeEach(async ({ page }) => {
     await page.goto(`${baseURL}/login`);

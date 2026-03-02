@@ -32,6 +32,7 @@ export type ScoreFactors = {
   frictionPenalty: number;
   dedupePenalty: number;
   learnedBoost: number;
+  revenueBoost: number;
   total: number;
 };
 
@@ -50,6 +51,8 @@ export function computeNextActionScore(
     existingInScope?: string[];
     learnedWeights?: LearnedWeightsParam;
     effectivenessByRuleKey?: EffectivenessByRuleKey;
+    /** Median deal value for revenue boost calculation */
+    baselineDealValue?: number;
   },
   _testOverride?: { now?: Date }
 ): { total: number; factors: ScoreFactors } {
@@ -80,6 +83,14 @@ export function computeNextActionScore(
     effectivenessBoost = Math.max(-6, Math.min(6, Math.round(netLift)));
   }
 
+  // Revenue boost: log-scale based on deal value vs baseline
+  let revenueBoost = 0;
+  const baseline = ctx.baselineDealValue ?? 0;
+  const atStake = action.revenueAtStake ?? 0;
+  if (atStake > 0 && baseline > 0) {
+    revenueBoost = Math.min(20, Math.max(0, Math.round(Math.log10(atStake / baseline) * 15)));
+  }
+
   // Impact: critical band, high failed count, etc.
   if (action.priority === "critical") impactBoost = Math.max(impactBoost, 5);
   if ((action.payloadJson as Record<string, unknown>)?.entityType === "command_center" && action.priority === "high") {
@@ -99,7 +110,8 @@ export function computeNextActionScore(
           frictionPenalty -
           dedupePenalty +
           learnedBoost +
-          effectivenessBoost
+          effectivenessBoost +
+          revenueBoost
       )
     )
   );
@@ -115,6 +127,7 @@ export function computeNextActionScore(
       frictionPenalty,
       dedupePenalty,
       learnedBoost,
+      revenueBoost,
       total,
     },
   };
@@ -134,7 +147,8 @@ export function rankNextActions(
   now: Date,
   existingInScope: string[] = [],
   learnedWeights?: LearnedWeightsParam,
-  effectivenessByRuleKey?: EffectivenessByRuleKey
+  effectivenessByRuleKey?: EffectivenessByRuleKey,
+  baselineDealValue?: number
 ): RankedCandidate[] {
   const withScores = actions.map((a) => {
     const { total, factors } = computeNextActionScore(a, {
@@ -142,6 +156,7 @@ export function rankNextActions(
       existingInScope,
       learnedWeights,
       effectivenessByRuleKey,
+      baselineDealValue,
     });
     return { ...a, score: total, _rankFactors: factors } as RankedCandidate;
   });

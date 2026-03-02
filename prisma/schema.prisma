@@ -99,6 +99,7 @@ model Lead {
   proposalCount         Int               @default(0)
   proposals             Proposal[]
   deliveryProjects      DeliveryProject[]
+  interactions          ClientInteraction[]
 }
 
 enum LeadStatus {
@@ -991,6 +992,7 @@ model IntakeLead {
   createdAt              DateTime          @default(now())
   updatedAt              DateTime          @updatedAt
   activities             LeadActivity[]
+  interactions           ClientInteraction[]
   proofRecords           ProofRecord[]
   proofCandidates        ProofCandidate[]
   proposalCount          Int               @default(0)
@@ -1036,6 +1038,7 @@ model ProofRecord {
   afterState          String?         @db.Text
   metricValue         String?
   metricLabel         String?
+  contentPosts        ContentPost[]
   createdAt           DateTime        @default(now())
   updatedAt           DateTime        @updatedAt
 
@@ -1196,6 +1199,7 @@ model Proposal {
   activities      ProposalActivity[]
   intakeLeadsAsLatest IntakeLead[]   @relation("LatestProposal")
   deliveryProjects DeliveryProject[]
+  interactions     ClientInteraction[]
 
   @@index([status])
   @@index([intakeLeadId])
@@ -1345,6 +1349,7 @@ model DeliveryProject {
   milestones        DeliveryMilestone[]
   checklistItems    DeliveryChecklistItem[]
   activities        DeliveryActivity[]
+  interactions      ClientInteraction[]
   // Phase 2.2: Handoff + Retention
   handoffStartedAt      DateTime?
   handoffCompletedAt   DateTime?
@@ -1897,6 +1902,7 @@ enum RiskSourceType {
   score
   system
   growth_pipeline
+  client_interaction
 }
 
 model RiskFlag {
@@ -2268,6 +2274,7 @@ model Deal {
   events             DealEvent[]
   outreachEvents     OutreachEvent[]
   followUpSchedules   FollowUpSchedule[]
+  interactions       ClientInteraction[]
 
   @@index([stage, nextFollowUpAt])
   @@index([ownerUserId, stage])
@@ -2490,4 +2497,107 @@ model FlywheelRun {
 
   @@index([status])
   @@index([createdAt(sort: Desc)])
+}
+
+// ===== Client Interaction Ledger (Phase 9.2) =====
+
+enum InteractionChannel {
+  email
+  call
+  linkedin_dm
+  meeting
+  sms
+  video_call
+  in_app
+  other
+}
+
+enum InteractionDirection {
+  outbound
+  inbound
+  internal
+}
+
+model ClientInteraction {
+  id              String               @id @default(cuid())
+  clientName      String?
+  clientEmail     String?
+  category        String               // "proposal_sent", "followup_completed", etc.
+  channel         InteractionChannel?
+  direction       InteractionDirection  @default(outbound)
+  summary         String               @db.Text
+  metaJson        Json?
+
+  // Entity links (all optional, multi-entity)
+  intakeLeadId       String?
+  intakeLead         IntakeLead?       @relation(fields: [intakeLeadId], references: [id], onDelete: SetNull)
+  pipelineLeadId     String?
+  pipelineLead       Lead?             @relation(fields: [pipelineLeadId], references: [id], onDelete: SetNull)
+  proposalId         String?
+  proposal           Proposal?         @relation(fields: [proposalId], references: [id], onDelete: SetNull)
+  deliveryProjectId  String?
+  deliveryProject    DeliveryProject?  @relation(fields: [deliveryProjectId], references: [id], onDelete: SetNull)
+  dealId             String?
+  deal               Deal?             @relation(fields: [dealId], references: [id], onDelete: SetNull)
+
+  // Next Action Enforcement
+  nextActionSummary     String?        @db.Text
+  nextActionDueAt       DateTime?
+  nextActionCompletedAt DateTime?
+
+  // Actor
+  actorType       String?
+  actorId         String?
+
+  // Source dedup (for dual-write migration)
+  sourceModel     String?
+  sourceId        String?
+
+  occurredAt      DateTime
+  createdAt       DateTime             @default(now())
+
+  @@index([clientEmail, occurredAt(sort: Desc)])
+  @@index([clientName])
+  @@index([intakeLeadId])
+  @@index([pipelineLeadId])
+  @@index([proposalId])
+  @@index([deliveryProjectId])
+  @@index([dealId])
+  @@index([occurredAt(sort: Desc)])
+  @@index([nextActionDueAt])
+  @@index([sourceModel, sourceId])
+}
+
+// ─── Content Distribution ────────────────────────────────────
+
+enum ContentPostPlatform {
+  twitter
+  linkedin
+  email_newsletter
+}
+
+enum ContentPostStatus {
+  draft
+  scheduled
+  posted
+  failed
+}
+
+model ContentPost {
+  id              String              @id @default(cuid())
+  proofRecordId   String
+  proofRecord     ProofRecord         @relation(fields: [proofRecordId], references: [id], onDelete: Cascade)
+  platform        ContentPostPlatform
+  content         String              @db.Text
+  status          ContentPostStatus   @default(draft)
+  scheduledFor    DateTime?
+  postedAt        DateTime?
+  errorMessage    String?             @db.Text
+  generatedBy     String?
+  agentRunId      String?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  @@index([proofRecordId])
+  @@index([status, scheduledFor])
 }

@@ -54,7 +54,7 @@ describe("score alerts preferences", () => {
   it("PUT merges partial updates", async () => {
     await updateScoreAlertsPreferences({ enabled: false });
     const updated = await updateScoreAlertsPreferences({
-      events: { recovery: false },
+      events: { threshold_breach: true, sharp_drop: true, recovery: false },
     });
     expect(updated.enabled).toBe(false);
     expect(updated.events.recovery).toBe(false);

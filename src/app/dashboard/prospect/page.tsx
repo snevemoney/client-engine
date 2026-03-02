@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { useBrainPanel } from "@/contexts/BrainPanelContext";
 import { Search, ExternalLink, Plus, Loader2, AlertCircle, CheckCircle2, XCircle, CircleDashed, Mail, Phone, Globe, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -79,6 +80,7 @@ export default function ProspectPage() {
   const [showRouting, setShowRouting] = useState(false);
   const { confirm, dialogProps } = useConfirmDialog();
   const toastFn = (m: string, t?: "success" | "error") => t === "error" ? toast.error(m) : toast.success(m);
+  const { setPageData } = useBrainPanel();
 
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -129,6 +131,13 @@ export default function ProspectPage() {
       });
     }
   }
+
+  useEffect(() => {
+    if (!report) return;
+    setPageData(
+      `Prospect Research: ${report.results.length} results from ${report.sourcesSearched.length} sources. Status: ${report.status}. ${report.errors.length} error${report.errors.length !== 1 ? "s" : ""}.`
+    );
+  }, [report, setPageData]);
 
   const selectedCount = report?.sourceSelections?.filter((s) => s.selected).length ?? 0;
   const totalSources = report?.sourceSelections?.length ?? 0;

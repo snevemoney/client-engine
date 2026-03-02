@@ -31,10 +31,16 @@ export async function POST(req: NextRequest) {
   // Use provided task or default to the first scheduled run's task
   const taskPrompt = task || config.scheduledRuns[0]?.taskPrompt || `Run ${config.name} default task.`;
 
+  const protocol = req.headers.get("x-forwarded-proto") || "http";
+  const host = req.headers.get("host") || "localhost:3000";
+  const baseUrl = `${protocol}://${host}`;
+  const cookie = req.headers.get("cookie") || undefined;
+
   try {
     const result = await runAgent(config.id, taskPrompt, {
       userId: session.user.id,
-      baseUrl: "",
+      baseUrl,
+      cookie,
       entityType: "command_center",
       entityId: "command_center",
     }, {

@@ -15,6 +15,8 @@ const baseCtx: NextActionContext = {
   stageStallCount: 0,
   builderPoorQualityCount: 0,
   proposalOverdueFollowupCount: 0,
+  interactionsWithoutNextActionCount: 0,
+  clientInteractionGapCount: 0,
 };
 
 describe("next-actions rules", () => {
@@ -60,8 +62,9 @@ describe("next-actions rules", () => {
       ...baseCtx,
       sentNoFollowupDateCount: 3,
     });
-    expect(out.length).toBe(1);
-    expect(out[0].createdByRule).toBe("proposals_sent_no_followup_date");
+    expect(out.some((a) => a.createdByRule === "proposals_sent_no_followup_date")).toBe(true);
+    // Also emits proposal_batch_review_due when sentNoFollowupDateCount >= 2
+    expect(out.some((a) => a.createdByRule === "proposal_batch_review_due")).toBe(true);
   });
 
   it("emits retention_overdue with priority based on count", () => {
@@ -121,6 +124,46 @@ describe("next-actions rules", () => {
     expect(out[0].createdByRule).toBe("builder_content_quality_poor");
     expect(out[0].priority).toBe("medium");
     expect(out[0].actionUrl).toContain("proj_123");
+  });
+
+  describe("client interaction ledger rules (Phase 9.2)", () => {
+    it("emits client_no_next_action when count > 0", () => {
+      const out = produceNextActions({
+        ...baseCtx,
+        interactionsWithoutNextActionCount: 4,
+      });
+      const rule = out.find((a) => a.createdByRule === "client_no_next_action");
+      expect(rule).toBeDefined();
+      expect(rule!.priority).toBe("high");
+    });
+
+    it("emits client_interaction_gap when count > 0", () => {
+      const out = produceNextActions({
+        ...baseCtx,
+        clientInteractionGapCount: 2,
+      });
+      const rule = out.find((a) => a.createdByRule === "client_interaction_gap");
+      expect(rule).toBeDefined();
+      expect(rule!.priority).toBe("medium");
+    });
+
+    it("escalates client_interaction_gap to high when count >= 3", () => {
+      const out = produceNextActions({
+        ...baseCtx,
+        clientInteractionGapCount: 3,
+      });
+      const rule = out.find((a) => a.createdByRule === "client_interaction_gap");
+      expect(rule).toBeDefined();
+      expect(rule!.priority).toBe("high");
+    });
+
+    it("appears in review_stream scope", () => {
+      const out = produceNextActions(
+        { ...baseCtx, interactionsWithoutNextActionCount: 2 },
+        "review_stream"
+      );
+      expect(out.some((a) => a.createdByRule === "client_no_next_action")).toBe(true);
+    });
   });
 
   describe("founder_growth scope (Phase 6.3)", () => {

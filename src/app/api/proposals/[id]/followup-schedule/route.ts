@@ -7,6 +7,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { ProposalActivityType } from "@prisma/client";
 import { jsonError, withRouteTiming } from "@/lib/api-utils";
+import { logInteraction } from "@/lib/interactions/service";
 import { parseDate } from "@/lib/followup/dates";
 
 const PostSchema = z.object({
@@ -33,20 +34,30 @@ export async function POST(
     const next = parseDate(parsed.data.nextFollowUpAt);
     if (!next) return jsonError("Invalid nextFollowUpAt date", 400);
 
-    await db.$transaction([
-      db.proposal.update({
+    await db.$transaction(async (tx) => {
+      await tx.proposal.update({
         where: { id },
         data: { nextFollowUpAt: next },
-      }),
-      db.proposalActivity.create({
+      });
+      await tx.proposalActivity.create({
         data: {
           proposalId: id,
           type: "followup_scheduled" as ProposalActivityType,
           message: parsed.data.nextAction ?? `Follow-up scheduled for ${next.toISOString()}`,
           metaJson: { nextFollowUpAt: next.toISOString() },
         },
-      }),
-    ]);
+      });
+      await logInteraction({
+        category: "followup_scheduled",
+        summary: `Follow-up scheduled for ${next.toISOString()}`,
+        proposalId: id,
+        direction: "internal",
+        actorType: "user",
+        actorId: session.user?.id,
+        sourceModel: "ProposalActivity",
+        metaJson: { nextFollowUpAt: next.toISOString() },
+      }, tx);
+    });
 
     return NextResponse.json({ ok: true, nextFollowUpAt: next.toISOString() });
   });

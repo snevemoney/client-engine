@@ -145,6 +145,9 @@ export default async function DeliveryPage() {
         retentionStatus: true,
         postDeliveryHealth: true,
         createdAt: true,
+        proposal: {
+          select: { finalValue: true, priceMin: true, priceMax: true, priceCurrency: true },
+        },
       },
     }),
     db.deliveryProject.count({ where: { status: { not: "archived" } } }),
@@ -163,6 +166,12 @@ export default async function DeliveryPage() {
     testimonialStatus: p.testimonialStatus,
     retentionStatus: p.retentionStatus,
     postDeliveryHealth: p.postDeliveryHealth,
+    proposalValue: p.proposal
+      ? {
+          amount: p.proposal.finalValue ?? p.proposal.priceMax ?? p.proposal.priceMin,
+          currency: p.proposal.priceCurrency ?? "CAD",
+        }
+      : null,
     createdAt: p.createdAt.toISOString(),
   }));
 

@@ -26,6 +26,10 @@ export type NextActionCandidate = {
   urgencyBoost?: number;
   impactBoost?: number;
   frictionPenalty?: number;
+  /** Revenue attribution: dollar value at stake for this action */
+  revenueAtStake?: number;
+  revenueCurrency?: string;
+  revenueLabel?: string;
 };
 
 export type NextActionContext = {
@@ -62,4 +66,8 @@ export type NextActionContext = {
   builderPoorQualityProjectId?: string | null;
   /** Proposals with overdue follow-ups */
   proposalOverdueFollowupCount: number;
+  /** Phase 9.2: Interactions (48h) with no next action scheduled */
+  interactionsWithoutNextActionCount: number;
+  /** Phase 9.2: Active clients with no interaction in 7+ days */
+  clientInteractionGapCount: number;
 };

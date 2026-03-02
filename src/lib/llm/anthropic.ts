@@ -41,7 +41,7 @@ export async function createBrainMessage(params: {
     system: params.system,
     messages: params.messages,
     tools: params.tools,
-    max_tokens: params.maxTokens ?? 4096,
+    max_tokens: params.maxTokens ?? 16384,
     temperature: params.temperature ?? 0.3,
   });
 }
@@ -60,7 +60,7 @@ export function streamBrainMessage(params: {
     system: params.system,
     messages: params.messages,
     tools: params.tools,
-    max_tokens: params.maxTokens ?? 4096,
+    max_tokens: params.maxTokens ?? 16384,
     temperature: params.temperature ?? 0.3,
   });
 }

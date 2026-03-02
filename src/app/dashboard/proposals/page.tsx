@@ -24,6 +24,7 @@ type Proposal = {
   priceCurrency: string;
   intakeLead: { id: string; title: string; status: string } | null;
   pipelineLead: { id: string; title: string; status: string } | null;
+  deliveryProject: { id: string; status: string } | null;
   sentAt: string | null;
   updatedAt: string;
 };
@@ -226,6 +227,7 @@ export default function ProposalsPage() {
                 <th className="text-left p-3 font-medium">Urgency</th>
                 <th className="text-left p-3 font-medium">Price</th>
                 <th className="text-left p-3 font-medium">Source</th>
+                <th className="text-left p-3 font-medium hidden lg:table-cell">Delivery</th>
                 <th className="text-left p-3 font-medium">Updated</th>
                 <th className="text-right p-3 font-medium">Actions</th>
               </tr>
@@ -246,6 +248,24 @@ export default function ProposalsPage() {
                   <td className="p-3 text-neutral-400">{formatPrice(p)}</td>
                   <td className="p-3 text-neutral-500 text-xs">
                     {p.intakeLead ? "Intake" : p.pipelineLead ? "Pipeline" : "—"}
+                  </td>
+                  <td className="p-3 hidden lg:table-cell">
+                    {p.deliveryProject ? (
+                      <Link href={`/dashboard/delivery/${p.deliveryProject.id}`}>
+                        <Badge
+                          variant="outline"
+                          className={`text-[10px] py-0 cursor-pointer hover:opacity-80 ${
+                            p.deliveryProject.status === "completed" ? "text-emerald-400 border-emerald-800"
+                            : p.deliveryProject.status === "in_progress" || p.deliveryProject.status === "qa" ? "text-amber-400 border-amber-800"
+                            : "text-neutral-400 border-neutral-700"
+                          }`}
+                        >
+                          {p.deliveryProject.status.replace(/_/g, " ")}
+                        </Badge>
+                      </Link>
+                    ) : (
+                      <span className="text-neutral-600 text-xs">—</span>
+                    )}
                   </td>
                   <td className="p-3 text-neutral-400">{formatDateSafe(p.updatedAt, { month: "short", day: "numeric" })}</td>
                   <td className="p-3 text-right">

@@ -3,12 +3,16 @@
  */
 
 export type AgentId =
-  | "revenue"
-  | "delivery"
-  | "growth"
-  | "retention"
-  | "intelligence"
-  | "system";
+  | "commander"
+  | "signal_scout"
+  | "outreach_writer"
+  | "distribution_ops"
+  | "conversion_analyst"
+  | "followup_enforcer"
+  | "proposal_architect"
+  | "scope_risk_ctrl"
+  | "proof_producer"
+  | "qa_sentinel";
 
 export type ScheduledRun = {
   cronLabel: string; // "daily_morning" | "weekly_monday" | "every_6h"

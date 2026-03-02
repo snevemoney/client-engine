@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { exportSessionMarkdown } from "@/lib/copilot/session-export";
+import { useBrainPanel } from "@/contexts/BrainPanelContext";
 
 type SessionSummary = {
   id: string;
@@ -44,6 +45,7 @@ export default function SessionsPage() {
   const [exported, setExported] = useState<string | null>(null);
   const listAbortRef = useRef<AbortController | null>(null);
   const detailAbortRef = useRef<AbortController | null>(null);
+  const { setPageData } = useBrainPanel();
 
   useEffect(() => {
     const controller = new AbortController();
@@ -81,6 +83,13 @@ export default function SessionsPage() {
       });
     return () => controller.abort();
   }, [selectedId]);
+
+  useEffect(() => {
+    if (loading) return;
+    setPageData(
+      `Coach Sessions: ${sessions.length} session${sessions.length !== 1 ? "s" : ""}.${selected ? ` Viewing: "${selected.title ?? "Untitled"}" (${selected.messages.length} messages, ${selected.actionLogs.length} actions).` : ""}`
+    );
+  }, [sessions.length, selected, loading, setPageData]);
 
   function handleSelect(id: string) {
     setSelectedId(id);

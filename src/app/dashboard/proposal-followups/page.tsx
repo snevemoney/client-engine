@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { AsyncState } from "@/components/ui/AsyncState";
 import { formatDateSafe } from "@/lib/ui/date-safe";
+import { useBrainPanel } from "@/contexts/BrainPanelContext";
 
 type ProposalItem = {
   id: string;
@@ -122,6 +123,7 @@ export default function ProposalFollowupsPage() {
   const [snoozePreset, setSnoozePreset] = useState<"2d" | "5d" | "next_monday">("2d");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkLoading, setBulkLoading] = useState(false);
+  const { setPageData } = useBrainPanel();
 
   const fetchData = useCallback(async () => {
     if (abortRef.current) abortRef.current.abort();
@@ -170,6 +172,14 @@ export default function ProposalFollowupsPage() {
     void fetchData();
     return () => { if (abortRef.current) abortRef.current.abort(); };
   }, [fetchData]);
+
+  useEffect(() => {
+    if (loading || !data) return;
+    const t = data.totals;
+    setPageData(
+      `Proposal Follow-ups: ${t.overdue} overdue, ${t.today} due today, ${t.upcoming} upcoming, ${t.stale} stale, ${t.noFollowup} with no follow-up scheduled.`
+    );
+  }, [data, loading, setPageData]);
 
   const runAction = async (itemId: string, fn: () => Promise<Response>) => {
     setActionLoading(itemId);

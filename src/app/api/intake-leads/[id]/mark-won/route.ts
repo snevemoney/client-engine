@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { jsonError, withRouteTiming } from "@/lib/api-utils";
 import { LeadActivityType } from "@prisma/client";
+import { logInteraction } from "@/lib/interactions/service";
 
 const PostSchema = z.object({
   outcomeReason: z.string().max(2000).optional().nullable(),
@@ -83,6 +84,19 @@ export async function POST(
           data: { dealOutcome: "won" },
         });
       }
+      await logInteraction({
+        category: "proposal_accepted",
+        summary: `Proposal accepted for "${intake.title ?? "Untitled"}"${outcomeReason ? ` — ${outcomeReason}` : ""}`,
+        intakeLeadId: id,
+        direction: "inbound",
+        clientName: intake.contactName ?? intake.company ?? undefined,
+        clientEmail: intake.contactEmail ?? undefined,
+        actorType: "user",
+        actorId: session.user?.id,
+        sourceModel: "LeadActivity",
+        sourceId: id,
+        metaJson: { proofRecordId: proofRecord.id, outcomeReason },
+      }, tx);
     });
 
     const { createAuditActionSafe } = await import("@/lib/audit/log");

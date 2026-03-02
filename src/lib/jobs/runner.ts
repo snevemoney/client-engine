@@ -18,6 +18,7 @@ import { handleNotificationsDispatchPending } from "./handlers/notifications-dis
 import { handleNotificationsEvaluateEscalations } from "./handlers/notifications-evaluate-escalations";
 import { handleScoreCompute } from "./handlers/score-compute";
 import { handleRetryFailedDeliveries } from "./handlers/retry-failed-deliveries";
+import { handleContentDispatchScheduled } from "./handlers/content-dispatch-scheduled";
 
 const DEFAULT_TIMEOUT_SECONDS = 120;
 
@@ -66,6 +67,8 @@ async function executeJobByType(
       return handleScoreCompute((payload ?? {}) as { entityType: string; entityId: string });
     case "retry_failed_deliveries":
       return handleRetryFailedDeliveries((payload ?? {}) as { nextActionId: string });
+    case "content.dispatch_scheduled":
+      return handleContentDispatchScheduled((payload ?? {}) as { limit?: number });
     default:
       throw new Error(`Unknown job type: ${jobType}`);
   }

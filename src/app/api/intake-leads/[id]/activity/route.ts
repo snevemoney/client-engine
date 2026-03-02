@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { LeadActivityType } from "@prisma/client";
 import { jsonError, withRouteTiming } from "@/lib/api-utils";
+import { logInteraction } from "@/lib/interactions/service";
 
 const TYPES = ["note", "status_change", "score", "draft", "sent", "followup", "manual"] as const;
 
@@ -43,13 +44,28 @@ export async function POST(
     }
     const body = parsed.data;
 
-    const activity = await db.leadActivity.create({
-      data: {
+    const activity = await db.$transaction(async (tx) => {
+      const act = await tx.leadActivity.create({
+        data: {
+          intakeLeadId: id,
+          type: (body.type as LeadActivityType) ?? LeadActivityType.note,
+          content: body.content,
+          metadataJson: body.metadataJson ?? undefined,
+        },
+      });
+      await logInteraction({
+        category: "note",
+        summary: body.content,
         intakeLeadId: id,
-        type: (body.type as LeadActivityType) ?? LeadActivityType.note,
-        content: body.content,
-        metadataJson: body.metadataJson ?? undefined,
-      },
+        direction: "internal",
+        clientName: existing.contactName ?? existing.company ?? undefined,
+        clientEmail: existing.contactEmail ?? undefined,
+        actorType: "user",
+        actorId: session.user?.id,
+        sourceModel: "LeadActivity",
+        sourceId: act.id,
+      }, tx);
+      return act;
     });
 
     return NextResponse.json(safeActivity(activity), { status: 201 });

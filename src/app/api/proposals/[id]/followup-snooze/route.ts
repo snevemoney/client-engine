@@ -7,6 +7,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { ProposalActivityType } from "@prisma/client";
 import { jsonError, withRouteTiming } from "@/lib/api-utils";
+import { logInteraction } from "@/lib/interactions/service";
 import { computeNextProposalFollowupDate } from "@/lib/proposals/followup";
 
 const PostSchema = z.object({
@@ -37,20 +38,30 @@ export async function POST(
     );
     if (!next) return jsonError("Invalid snooze preset or custom date", 400);
 
-    await db.$transaction([
-      db.proposal.update({
+    await db.$transaction(async (tx) => {
+      await tx.proposal.update({
         where: { id },
         data: { nextFollowUpAt: next },
-      }),
-      db.proposalActivity.create({
+      });
+      await tx.proposalActivity.create({
         data: {
           proposalId: id,
           type: "followup_snoozed" as ProposalActivityType,
           message: `Snoozed to ${next.toISOString()}`,
           metaJson: { preset: parsed.data.preset, nextFollowUpAt: next.toISOString() },
         },
-      }),
-    ]);
+      });
+      await logInteraction({
+        category: "followup_snoozed",
+        summary: `Follow-up snoozed to ${next.toISOString()}`,
+        proposalId: id,
+        direction: "internal",
+        actorType: "user",
+        actorId: session.user?.id,
+        sourceModel: "ProposalActivity",
+        metaJson: { preset: parsed.data.preset, nextFollowUpAt: next.toISOString() },
+      }, tx);
+    });
 
     return NextResponse.json({ ok: true, nextFollowUpAt: next.toISOString() });
   });

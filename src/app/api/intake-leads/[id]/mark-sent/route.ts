@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { jsonError, withRouteTiming } from "@/lib/api-utils";
 import { LeadActivityType } from "@prisma/client";
+import { logInteraction } from "@/lib/interactions/service";
 
 /** POST /api/intake-leads/[id]/mark-sent */
 export async function POST(
@@ -42,6 +43,19 @@ export async function POST(
           data: { proposalSentAt: now },
         });
       }
+      await logInteraction({
+        category: "proposal_sent",
+        summary: `Proposal sent for "${intake.title ?? "Untitled"}"`,
+        intakeLeadId: id,
+        channel: "email",
+        direction: "outbound",
+        clientName: intake.contactName ?? intake.company ?? undefined,
+        clientEmail: intake.contactEmail ?? undefined,
+        actorType: "user",
+        actorId: session.user?.id,
+        sourceModel: "LeadActivity",
+        sourceId: id,
+      }, tx);
     });
 
     return NextResponse.json({

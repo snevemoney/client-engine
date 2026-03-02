@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { toast } from "sonner";
+import { useBrainPanel } from "@/contexts/BrainPanelContext";
 import {
   Search,
   Youtube,
@@ -138,6 +139,13 @@ export function KnowledgePageClient({
   // YouTube learning proposals (fetched on demand)
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [proposalsLoaded, setProposalsLoaded] = useState(false);
+  const { setPageData } = useBrainPanel();
+
+  useEffect(() => {
+    setPageData(
+      `Knowledge Base: ${summaries.length} summaries, ${insights.length} insights, ${suggestions.length} suggestions, ${transcripts.length} transcripts, ${runs.length} runs.`
+    );
+  }, [summaries.length, insights.length, suggestions.length, transcripts.length, runs.length, setPageData]);
 
   async function refreshKnowledge() {
     try {

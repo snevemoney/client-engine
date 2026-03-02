@@ -22,6 +22,10 @@ export async function fetchNextActionContext(opts?: { now?: Date; ownerUserId?: 
   builderPoorQualityCount: number;
   builderPoorQualityProjectId: string | null;
   proposalOverdueFollowupCount: number;
+  /** Phase 9.2: Interactions without next action (48h) */
+  interactionsWithoutNextActionCount: number;
+  /** Phase 9.2: Active clients with no interaction in 7+ days */
+  clientInteractionGapCount: number;
   /** Phase 6.3: Growth pipeline (when ownerUserId provided) */
   growthOverdueCount?: number;
   growthNoOutreachCount?: number;
@@ -39,6 +43,8 @@ export async function fetchNextActionContext(opts?: { now?: Date; ownerUserId?: 
   const sevenDaysAgo = new Date(now.getTime() - 7 * msPerDay);
   const tenDaysAgo = new Date(now.getTime() - 10 * msPerDay);
 
+  const since48h = new Date(now.getTime() - 48 * 60 * 60 * 1000);
+
   const [
     latestScore,
     failedDeliveries,
@@ -52,6 +58,8 @@ export async function fetchNextActionContext(opts?: { now?: Date; ownerUserId?: 
     builderPoorQuality,
     builderPoorQualityFirst,
     proposalOverdueFollowups,
+    interactionsWithoutNextAction,
+    clientInteractionGaps,
   ] = await Promise.all([
     db.scoreSnapshot.findFirst({
       where: { entityType: "command_center", entityId: "command_center" },
@@ -139,6 +147,27 @@ export async function fetchNextActionContext(opts?: { now?: Date; ownerUserId?: 
         nextFollowUpAt: { lt: startToday, not: null },
         acceptedAt: null,
         rejectedAt: null,
+      },
+    }),
+    // Phase 9.2: Interactions without next action (last 48h)
+    db.clientInteraction.count({
+      where: {
+        nextActionDueAt: null,
+        nextActionCompletedAt: null,
+        occurredAt: { gte: since48h },
+        direction: { not: "internal" },
+      },
+    }),
+    // Phase 9.2: Active clients with no interaction in 7+ days
+    db.clientInteraction.groupBy({
+      by: ["clientEmail"],
+      where: {
+        clientEmail: { not: null },
+        direction: { not: "internal" },
+      },
+      _max: { occurredAt: true },
+      having: {
+        occurredAt: { _max: { lt: sevenDaysAgo } },
       },
     }),
   ]);
@@ -247,6 +276,8 @@ export async function fetchNextActionContext(opts?: { now?: Date; ownerUserId?: 
     builderPoorQualityCount: builderPoorQuality ?? 0,
     builderPoorQualityProjectId: builderPoorQualityFirst?.id ?? null,
     proposalOverdueFollowupCount: proposalOverdueFollowups ?? 0,
+    interactionsWithoutNextActionCount: interactionsWithoutNextAction ?? 0,
+    clientInteractionGapCount: clientInteractionGaps?.length ?? 0,
     ...(ownerUserId && {
       growthOverdueCount,
       growthNoOutreachCount,

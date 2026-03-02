@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { toast } from "sonner";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -11,6 +12,7 @@ import { useConfirmDialog } from "@/hooks/useConfirmDialog";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { AsyncState } from "@/components/ui/AsyncState";
 import { fetchJsonThrow } from "@/lib/http/fetch-json";
+import { useBrainPanel } from "@/contexts/BrainPanelContext";
 
 type MetricsSummary = {
   conversion?: {
@@ -81,6 +83,7 @@ function MetricCard({
 }
 
 export default function IntelligencePage() {
+  const { setPageData } = useBrainPanel();
   const { data, loading, error, refetch } = useRetryableFetch<MetricsSummary>("/api/metrics/summary");
   const toastFn = (m: string, t?: "success" | "error") => t === "error" ? toast.error(m) : toast.success(m);
   const { confirm, dialogProps } = useConfirmDialog();
@@ -94,6 +97,17 @@ export default function IntelligencePage() {
     if (!(await confirm({ title: "Capture weekly snapshot?", body: "This will record a point-in-time snapshot of the current metrics." }))) return;
     void handleSnapshot();
   };
+
+  useEffect(() => {
+    if (loading || !data) return;
+    const cv = data.conversion;
+    const rv = data.revenue;
+    const parts: string[] = [];
+    if (cv) parts.push(`${((cv.proposalSentToAcceptedRate ?? 0) * 100).toFixed(0)}% proposal→accepted`);
+    if (rv) parts.push(`$${(rv.deliveredValueThisWeek ?? 0).toLocaleString("en-US")} delivered this week`);
+    if (data.bottlenecks?.length) parts.push(`${data.bottlenecks.length} bottleneck${data.bottlenecks.length > 1 ? "s" : ""}`);
+    setPageData(`Intelligence: ${parts.join(", ")}.`);
+  }, [data, loading, setPageData]);
 
   const emptyConv = {
     proposalSentToAcceptedRate: 0,

@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { LeadActivityType } from "@prisma/client";
 import { jsonError, withRouteTiming } from "@/lib/api-utils";
 import { parseDate, isValidDate } from "@/lib/followup/dates";
+import { logInteraction } from "@/lib/interactions/service";
 
 const OUTCOMES = ["connected", "voicemail", "no_answer", "wrong_number", "other"] as const;
 
@@ -82,6 +83,22 @@ export async function POST(
           },
         });
       }
+      await logInteraction({
+        category: "call_completed",
+        summary: content,
+        intakeLeadId: id,
+        channel: "call",
+        direction: "outbound",
+        clientName: intake.contactName ?? intake.company ?? undefined,
+        clientEmail: intake.contactEmail ?? undefined,
+        actorType: "user",
+        actorId: session.user?.id,
+        sourceModel: "LeadActivity",
+        sourceId: id,
+        metaJson: { outcome: body.outcome, note: body.note ?? null },
+        nextActionSummary: nextAction ?? undefined,
+        nextActionDueAt: validDue ?? undefined,
+      }, tx);
     });
 
     const updated = await db.intakeLead.findUnique({

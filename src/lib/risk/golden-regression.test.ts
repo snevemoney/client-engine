@@ -27,6 +27,7 @@ describe("Risk golden regression", () => {
       commandCenterBand: null,
       proposalFollowupOverdueCount: 0,
       retentionOverdueCount: 0,
+      criticalInteractionGapCount: 0,
     };
     const candidates = evaluateRiskRules(ctx);
     expect(candidates).toHaveLength(0);
@@ -63,6 +64,7 @@ describe("Risk golden regression", () => {
       commandCenterBand: "critical",
       proposalFollowupOverdueCount: 0,
       retentionOverdueCount: 0,
+      criticalInteractionGapCount: 0,
     };
     const candidates = evaluateRiskRules(ctx);
     expect(candidates.some((c) => c.severity === RiskSeverity.critical)).toBe(true);
@@ -99,6 +101,7 @@ describe("Risk golden regression", () => {
       commandCenterBand: "critical",
       proposalFollowupOverdueCount: 0,
       retentionOverdueCount: 0,
+      criticalInteractionGapCount: 0,
     };
     const candidates = evaluateRiskRules(ctx);
 
@@ -139,6 +142,7 @@ describe("Risk golden regression", () => {
       commandCenterBand: null,
       proposalFollowupOverdueCount: 0,
       retentionOverdueCount: 0,
+      criticalInteractionGapCount: 0,
     };
     const candidates = evaluateRiskRules(ctx);
     expect(candidates.some((c) => c.createdByRule === "stale_running_jobs")).toBe(true);

@@ -12,6 +12,7 @@ import { formatDateTimeSafe } from "@/lib/ui/date-safe";
 import { normalizePagination } from "@/lib/ui/pagination-safe";
 import { useConfirmDialog } from "@/hooks/useConfirmDialog";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { useBrainPanel } from "@/contexts/BrainPanelContext";
 
 type Job = {
   id: string;
@@ -72,6 +73,7 @@ export default function JobsPage() {
   const { confirm: confirmCancel, dialogProps: cancelDialogProps } = useConfirmDialog();
   const abortRef = useRef<AbortController | null>(null);
   const runIdRef = useRef(0);
+  const { setPageData } = useBrainPanel();
 
   const statusFilter = url.getString("status", "");
   const jobTypeFilter = url.getString("jobType", "");
@@ -124,6 +126,13 @@ export default function JobsPage() {
       if (abortRef.current) abortRef.current.abort();
     };
   }, [fetchData]);
+
+  useEffect(() => {
+    if (loading || !summary) return;
+    setPageData(
+      `Jobs: ${summary.queued} queued, ${summary.running} running, ${summary.failed} failed, ${summary.succeeded24h} succeeded (24h)${summary.deadLetter ? `, ${summary.deadLetter} dead-letter` : ""}.`
+    );
+  }, [summary, loading, setPageData]);
 
   const handleRun = async () => {
     setRunLoading(true);

@@ -18,6 +18,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { AsyncState } from "@/components/ui/AsyncState";
+import { useBrainPanel } from "@/contexts/BrainPanelContext";
 
 type Suggestion = {
   id: string;
@@ -62,6 +63,7 @@ function timeAgo(date: string): string {
 }
 
 export default function AutomationPage() {
+  const { setPageData } = useBrainPanel();
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -113,6 +115,14 @@ export default function AutomationPage() {
     void fetchData();
     return () => { if (abortRef.current) abortRef.current.abort(); };
   }, [fetchData]);
+
+  useEffect(() => {
+    if (loading) return;
+    const s = summary;
+    setPageData(
+      `Automation: ${s?.pending ?? 0} pending suggestion${(s?.pending ?? 0) !== 1 ? "s" : ""}, ${s?.highPriority ?? 0} high priority, ${s?.appliedThisWeek ?? 0} applied this week.`
+    );
+  }, [summary, loading, setPageData]);
 
   const [mutatingId, setMutatingId] = useState<string | null>(null);
 

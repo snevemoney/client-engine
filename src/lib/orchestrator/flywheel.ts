@@ -180,7 +180,7 @@ export async function runFlywheel(input: FlywheelInput): Promise<FlywheelResult>
 
     await db.lead.update({
       where: { id: lead.id },
-      data: { proposalCount: { increment: 1 } },
+      data: { proposalCount: { increment: 1 }, status: "APPROVED", approvedAt: new Date() },
     });
 
     await db.proposalActivity.create({
@@ -242,7 +242,7 @@ export async function runFlywheel(input: FlywheelInput): Promise<FlywheelResult>
       });
       await tx.lead.update({
         where: { id: lead.id },
-        data: { wonAt: now, dealOutcome: "won" },
+        data: { wonAt: now, dealOutcome: "won", status: "BUILDING", buildStartedAt: now },
       });
       await tx.proposalActivity.create({
         data: {

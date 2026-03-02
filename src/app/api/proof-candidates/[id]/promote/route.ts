@@ -109,6 +109,13 @@ export async function POST(
       afterJson: { proofRecordId: result.id },
     });
 
+    // Auto-generate LinkedIn content post draft (non-blocking)
+    import("@/lib/distribution/service")
+      .then(({ generateContentPostDrafts }) =>
+        generateContentPostDrafts(result.id, ["linkedin"]).catch(() => {})
+      )
+      .catch(() => {});
+
     return NextResponse.json({
       ok: true,
       proofRecord: {

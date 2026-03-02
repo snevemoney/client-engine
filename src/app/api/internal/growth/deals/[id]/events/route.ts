@@ -8,6 +8,7 @@ import { db } from "@/lib/db";
 import { getRequestClientKey, rateLimitByKey } from "@/lib/http/rate-limit";
 import { DealEventType, DealStage } from "@prisma/client";
 import { ingestFromGrowthStageChange } from "@/lib/memory/growth-ingest";
+import { logInteraction } from "@/lib/interactions/service";
 
 export const dynamic = "force-dynamic";
 
@@ -101,6 +102,18 @@ export async function POST(
         });
         ingestFromGrowthStageChange(id, userId, deal.stage, newStage).catch(() => {});
       }
+
+      await logInteraction({
+        category: "deal_event",
+        summary: `Deal event: ${type} — ${summary}`,
+        dealId: id,
+        channel: "in_app",
+        direction: "internal",
+        actorType: "user",
+        actorId: userId,
+        sourceModel: "DealEvent",
+        sourceId: event.id,
+      });
 
       return NextResponse.json({
         event: { id: event.id, type: event.type, summary: event.summary, occurredAt: event.occurredAt },

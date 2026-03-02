@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
+import { useBrainPanel } from "@/contexts/BrainPanelContext";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
@@ -24,6 +25,7 @@ const SOURCE_OPTIONS = ["all", "upwork", "linkedin", "referral", "inbound", "rss
 const STATUS_OPTIONS = ["all", "new", "qualified", "proposal_drafted", "sent"];
 
 export default function FollowupsPage() {
+  const { setPageData } = useBrainPanel();
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -85,6 +87,14 @@ export default function FollowupsPage() {
       if (abortRef.current) abortRef.current.abort();
     };
   }, [fetchData]);
+
+  useEffect(() => {
+    if (loading || !data) return;
+    const t = data.totals;
+    setPageData(
+      `Follow-ups: ${t.overdue} overdue, ${t.today} due today, ${t.upcoming} upcoming, ${t.all} total.`
+    );
+  }, [data, loading, setPageData]);
 
   const runAction = async (
     itemId: string,

@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, Activity, Cpu, Zap, DollarSign, Clock, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { useBrainPanel } from "@/contexts/BrainPanelContext";
 
 type AgentSummary = {
   runs: number;
@@ -64,6 +65,7 @@ export default function SystemPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const { setPageData } = useBrainPanel();
 
   const fetchAll = useCallback(async () => {
     if (abortRef.current) abortRef.current.abort();
@@ -91,6 +93,14 @@ export default function SystemPage() {
   }, []);
 
   useEffect(() => { fetchAll(); return () => abortRef.current?.abort(); }, [fetchAll]);
+
+  useEffect(() => {
+    if (!metrics) return;
+    const h = health?.ok ? "healthy" : "unhealthy";
+    setPageData(
+      `System: ${h}. Agents: ${metrics.agents.totalRuns} runs, ${((metrics.agents.successRate ?? 0) * 100).toFixed(0)}% success. Pipeline: ${metrics.pipeline.totalRuns} runs. NBA: ${metrics.nba.pendingCount} pending. Flywheel: ${metrics.flywheel.totalRuns} runs, ${metrics.flywheel.failed} failed.`
+    );
+  }, [metrics, health, setPageData]);
 
   if (loading && !metrics) {
     return (

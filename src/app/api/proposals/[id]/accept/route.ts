@@ -7,6 +7,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { IntakeLeadStatus } from "@prisma/client";
 import { jsonError, withRouteTiming } from "@/lib/api-utils";
+import { logInteraction } from "@/lib/interactions/service";
 import { buildDefaultDeliveryChecklist, buildDefaultMilestonesFromProposal } from "@/lib/delivery/templates";
 
 const PostSchema = z.object({
@@ -57,7 +58,7 @@ export async function POST(
       if (proposal.pipelineLeadId) {
         await tx.lead.update({
           where: { id: proposal.pipelineLeadId },
-          data: { wonAt: now, dealOutcome: "won" },
+          data: { wonAt: now, dealOutcome: "won", status: "BUILDING", buildStartedAt: now },
         });
       }
 
@@ -120,6 +121,16 @@ export async function POST(
         });
         deliveryProjectId = project.id;
       }
+
+      await logInteraction({
+        category: "proposal_accepted",
+        summary: "Proposal accepted",
+        proposalId: id,
+        direction: "inbound",
+        actorType: "user",
+        actorId: session.user?.id,
+        sourceModel: "ProposalActivity",
+      }, tx);
     });
 
     if (!deliveryProjectId && createProject) {

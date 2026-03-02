@@ -10,6 +10,7 @@ const baseCtx: RiskRuleContext = {
   commandCenterBand: null,
   proposalFollowupOverdueCount: 0,
   retentionOverdueCount: 0,
+  criticalInteractionGapCount: 0,
 };
 
 describe("risk rules", () => {
@@ -113,6 +114,27 @@ describe("risk rules", () => {
     expect(rules).toContain("critical_notifications_failed_delivery");
     expect(rules).toContain("stale_running_jobs");
     expect(rules).toContain("score_in_critical_band");
+  });
+
+  describe("client_silence_critical (Phase 9.2)", () => {
+    it("does not fire when criticalInteractionGapCount is 0", () => {
+      const out = evaluateRiskRules({ ...baseCtx, criticalInteractionGapCount: 0 });
+      expect(out.every((r) => r.createdByRule !== "client_silence_critical")).toBe(true);
+    });
+
+    it("fires as high when count is 1-2", () => {
+      const out = evaluateRiskRules({ ...baseCtx, criticalInteractionGapCount: 2 });
+      const rule = out.find((r) => r.createdByRule === "client_silence_critical");
+      expect(rule).toBeDefined();
+      expect(rule!.severity).toBe("high");
+    });
+
+    it("fires as critical when count >= 3", () => {
+      const out = evaluateRiskRules({ ...baseCtx, criticalInteractionGapCount: 3 });
+      const rule = out.find((r) => r.createdByRule === "client_silence_critical");
+      expect(rule).toBeDefined();
+      expect(rule!.severity).toBe("critical");
+    });
   });
 
   describe("growth_pipeline_zero_activity_7d (Phase 6.3)", () => {

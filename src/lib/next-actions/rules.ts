@@ -196,6 +196,33 @@ export function produceNextActions(
     });
   }
 
+  // Phase 9.2: Client Interaction Ledger rules
+  if (ctx.interactionsWithoutNextActionCount > 0) {
+    emit("client_no_next_action", {
+      title: "Schedule next actions for recent interactions",
+      reason: `${ctx.interactionsWithoutNextActionCount} interaction(s) in 48h with no next action`,
+      priority: NextActionPriority.high,
+      sourceType: RiskSourceType.client_interaction,
+      sourceId: null,
+      actionUrl: "/dashboard/next-actions",
+      payloadJson: { gap: "no_next_action" },
+      countBoost: Math.min(10, ctx.interactionsWithoutNextActionCount * 2),
+    });
+  }
+
+  if (ctx.clientInteractionGapCount > 0) {
+    emit("client_interaction_gap", {
+      title: "Re-engage silent clients",
+      reason: `${ctx.clientInteractionGapCount} client(s) with no interaction in 7+ days`,
+      priority: ctx.clientInteractionGapCount >= 3 ? NextActionPriority.high : NextActionPriority.medium,
+      sourceType: RiskSourceType.client_interaction,
+      sourceId: null,
+      actionUrl: "/dashboard/risk",
+      payloadJson: { gap: "interaction_gap" },
+      countBoost: Math.min(10, ctx.clientInteractionGapCount * 2),
+    });
+  }
+
   // Phase 6.3: Growth Engine rules (founder_growth scope)
   // Only fire growth rules when growth data is populated (ownerUserId was provided)
   if (ctx.growthOverdueCount != null && ctx.growthOverdueCount > 0) {

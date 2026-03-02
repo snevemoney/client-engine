@@ -13,6 +13,7 @@ import { normalizePagination } from "@/lib/ui/pagination-safe";
 import { useUrlQueryState } from "@/hooks/useUrlQueryState";
 import { useConfirmDialog } from "@/hooks/useConfirmDialog";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { useBrainPanel } from "@/contexts/BrainPanelContext";
 
 type InAppItem = {
   id: string;
@@ -43,6 +44,7 @@ function severityColor(s: string): string {
 }
 
 export default function InboxPage() {
+  const { setPageData } = useBrainPanel();
   const { confirm, dialogProps } = useConfirmDialog();
   const url = useUrlQueryState();
   const [items, setItems] = useState<InAppItem[]>([]);
@@ -84,6 +86,13 @@ export default function InboxPage() {
   useEffect(() => {
     void fetchData();
   }, [fetchData]);
+
+  useEffect(() => {
+    if (loading || !summary) return;
+    setPageData(
+      `Inbox: ${summary.unreadInApp} unread, ${summary.criticalOpen} critical open, ${summary.pending} pending, ${summary.sentToday} sent today, ${summary.failedToday} failed today.`
+    );
+  }, [summary, loading, setPageData]);
 
   const handleMarkRead = async (id: string) => {
     if (actioningId) return;

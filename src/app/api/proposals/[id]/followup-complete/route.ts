@@ -7,6 +7,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { ProposalActivityType } from "@prisma/client";
 import { jsonError, withRouteTiming } from "@/lib/api-utils";
+import { logInteraction } from "@/lib/interactions/service";
 
 const PostSchema = z.object({
   note: z.string().max(2000).optional(),
@@ -30,8 +31,8 @@ export async function POST(
 
     const now = new Date();
 
-    await db.$transaction([
-      db.proposal.update({
+    await db.$transaction(async (tx) => {
+      await tx.proposal.update({
         where: { id },
         data: {
           followUpCompletedAt: now,
@@ -39,15 +40,24 @@ export async function POST(
           lastContactedAt: now,
           nextFollowUpAt: null,
         },
-      }),
-      db.proposalActivity.create({
+      });
+      await tx.proposalActivity.create({
         data: {
           proposalId: id,
           type: "followup_completed" as ProposalActivityType,
           message: note ?? "Follow-up completed",
         },
-      }),
-    ]);
+      });
+      await logInteraction({
+        category: "followup_completed",
+        summary: note ?? "Follow-up completed",
+        proposalId: id,
+        direction: "outbound",
+        actorType: "user",
+        actorId: session.user?.id,
+        sourceModel: "ProposalActivity",
+      }, tx);
+    });
 
     return NextResponse.json({ ok: true });
   });

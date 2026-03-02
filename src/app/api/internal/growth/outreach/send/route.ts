@@ -10,6 +10,7 @@ import { getRequestClientKey, rateLimitByKey } from "@/lib/http/rate-limit";
 import { getTemplate } from "@/lib/growth/templates";
 import { OutreachChannel } from "@prisma/client";
 import { ingestFromGrowthOutreach } from "@/lib/memory/growth-ingest";
+import { logInteraction } from "@/lib/interactions/service";
 
 export const dynamic = "force-dynamic";
 
@@ -153,6 +154,18 @@ export async function POST(request: NextRequest) {
             },
           });
         }
+
+        await logInteraction({
+          category: "outreach_sent",
+          summary: `Outreach sent via ${channel} using template "${templateKey}"`,
+          dealId,
+          channel: "email",
+          direction: "outbound",
+          actorType: "user",
+          actorId: userId,
+          sourceModel: "OutreachEvent",
+          sourceId: evt.id,
+        }, tx);
 
         return [evt, msg];
       });

@@ -6,6 +6,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { DeliveryActivityType } from "@prisma/client";
 import { requireDeliveryProject, withRouteTiming } from "@/lib/api-utils";
+import { logInteraction } from "@/lib/interactions/service";
 
 const PostSchema = z.object({
   notes: z.string().max(5000).optional().nullable(),
@@ -20,7 +21,7 @@ export async function POST(
     const { id } = await params;
     const result = await requireDeliveryProject(id);
     if (!result.ok) return result.response;
-    const { project } = result;
+    const { project, session } = result;
 
     const raw = await req.json().catch(() => ({}));
     const parsed = PostSchema.safeParse(raw);
@@ -38,7 +39,7 @@ export async function POST(
           referralNotes: notes ?? undefined,
         },
       });
-      await tx.deliveryActivity.create({
+      const activity = await tx.deliveryActivity.create({
         data: {
           deliveryProjectId: id,
           type: "referral_received" as DeliveryActivityType,
@@ -46,6 +47,18 @@ export async function POST(
           metaJson: { notes },
         },
       });
+      await logInteraction({
+        category: "referral_received",
+        summary: "Referral received for delivery project",
+        deliveryProjectId: id,
+        channel: "email",
+        direction: "inbound",
+        actorType: "user",
+        actorId: session.user?.id,
+        sourceModel: "DeliveryActivity",
+        sourceId: activity.id,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      }, tx as any);
     });
 
     return NextResponse.json({

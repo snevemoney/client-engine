@@ -1,7 +1,7 @@
 /**
  * GET /api/leads/[id]/timeline — Unified client journey timeline.
  * Aggregates LeadActivity (from promotedFromIntake), ProposalActivity,
- * and DeliveryActivity across linked entities.
+ * DeliveryActivity, and ClientInteraction (Phase 9.2) across linked entities.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { jsonError, requireAuth, withRouteTiming } from "@/lib/api-utils";
@@ -9,12 +9,17 @@ import { db } from "@/lib/db";
 
 interface TimelineEntry {
   id: string;
-  entityType: "intake" | "lead" | "proposal" | "delivery";
+  entityType: "intake" | "lead" | "proposal" | "delivery" | "interaction";
   entityId: string;
   entityTitle: string;
   activityType: string;
   message: string;
   createdAt: string;
+  /** Phase 9.2: interaction metadata */
+  channel?: string | null;
+  direction?: string | null;
+  nextActionSummary?: string | null;
+  nextActionDueAt?: string | null;
 }
 
 export async function GET(
@@ -27,34 +32,42 @@ export async function GET(
 
     const { id } = await params;
 
-    const lead = await db.lead.findUnique({
-      where: { id },
-      select: {
-        id: true,
-        title: true,
-        promotedFromIntake: {
-          select: {
-            id: true,
-            title: true,
-            activities: { orderBy: { createdAt: "desc" }, take: 25 },
+    const [lead, interactions] = await Promise.all([
+      db.lead.findUnique({
+        where: { id },
+        select: {
+          id: true,
+          title: true,
+          promotedFromIntake: {
+            select: {
+              id: true,
+              title: true,
+              activities: { orderBy: { createdAt: "desc" }, take: 25 },
+            },
+          },
+          proposals: {
+            select: {
+              id: true,
+              title: true,
+              activities: { orderBy: { createdAt: "desc" }, take: 25 },
+            },
+          },
+          deliveryProjects: {
+            select: {
+              id: true,
+              title: true,
+              activities: { orderBy: { createdAt: "desc" }, take: 25 },
+            },
           },
         },
-        proposals: {
-          select: {
-            id: true,
-            title: true,
-            activities: { orderBy: { createdAt: "desc" }, take: 25 },
-          },
-        },
-        deliveryProjects: {
-          select: {
-            id: true,
-            title: true,
-            activities: { orderBy: { createdAt: "desc" }, take: 25 },
-          },
-        },
-      },
-    });
+      }),
+      // Phase 9.2: ClientInteraction records linked to this lead
+      db.clientInteraction.findMany({
+        where: { pipelineLeadId: id },
+        orderBy: { occurredAt: "desc" },
+        take: 50,
+      }),
+    ]);
 
     if (!lead) return jsonError("Not found", 404);
 
@@ -104,6 +117,23 @@ export async function GET(
           createdAt: a.createdAt.toISOString(),
         });
       }
+    }
+
+    // Phase 9.2: Client Interaction ledger entries
+    for (const ci of interactions) {
+      entries.push({
+        id: ci.id,
+        entityType: "interaction",
+        entityId: ci.id,
+        entityTitle: ci.clientName ?? "Client Interaction",
+        activityType: ci.category,
+        message: ci.summary,
+        createdAt: ci.occurredAt.toISOString(),
+        channel: ci.channel,
+        direction: ci.direction,
+        nextActionSummary: ci.nextActionSummary,
+        nextActionDueAt: ci.nextActionDueAt?.toISOString() ?? null,
+      });
     }
 
     entries.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());

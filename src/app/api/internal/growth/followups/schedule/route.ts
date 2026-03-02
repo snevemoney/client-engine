@@ -7,6 +7,7 @@ import { jsonError, requireAuth, withRouteTiming } from "@/lib/api-utils";
 import { sanitizeErrorMessage } from "@/lib/ops-events/sanitize";
 import { db } from "@/lib/db";
 import { getRequestClientKey, rateLimitByKey } from "@/lib/http/rate-limit";
+import { logInteraction } from "@/lib/interactions/service";
 
 export const dynamic = "force-dynamic";
 
@@ -100,6 +101,18 @@ export async function POST(request: NextRequest) {
           occurredAt: new Date(),
           metaJson: { nextFollowUpAt: nextFollowUpAt.toISOString(), cadenceDays },
         },
+      });
+
+      await logInteraction({
+        category: "followup_scheduled",
+        summary: `Follow-up scheduled for ${nextFollowUpAt.toISOString()} (every ${cadenceDays}d)`,
+        dealId,
+        channel: "in_app",
+        direction: "internal",
+        actorType: "user",
+        actorId: userId,
+        sourceModel: "FollowUpSchedule",
+        sourceId: existing?.id,
       });
 
       return NextResponse.json({

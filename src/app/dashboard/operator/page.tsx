@@ -12,6 +12,7 @@ import { useConfirmDialog } from "@/hooks/useConfirmDialog";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { AsyncState } from "@/components/ui/AsyncState";
 import { fetchJsonThrow } from "@/lib/http/fetch-json";
+import { useBrainPanel } from "@/contexts/BrainPanelContext";
 
 type ScoreData = {
   score: number;
@@ -31,6 +32,7 @@ type OperatorScoreData = {
 };
 
 export default function OperatorPage() {
+  const { setPageData } = useBrainPanel();
   const [data, setData] = useState<OperatorScoreData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -74,6 +76,16 @@ export default function OperatorPage() {
     void fetchData();
     return () => { if (abortRef.current) abortRef.current.abort(); };
   }, [fetchData]);
+
+  useEffect(() => {
+    if (loading || !data) return;
+    const w = data.weekly;
+    const delta = w.deltaVsPrev?.delta ?? 0;
+    const dir = delta > 0 ? `+${delta}` : delta < 0 ? `${delta}` : "flat";
+    setPageData(
+      `Operator: weekly score ${w.score} (${w.grade}), ${dir} vs last week. ${w.topRisks?.length ?? 0} risk${(w.topRisks?.length ?? 0) !== 1 ? "s" : ""}, ${w.topWins?.length ?? 0} win${(w.topWins?.length ?? 0) !== 1 ? "s" : ""}.`
+    );
+  }, [data, loading, setPageData]);
 
   const { execute: handleSnapshot, pending: snapshotLoading } = useAsyncAction(
     async () => fetchJsonThrow("/api/operator-score/snapshot", { method: "POST" }),

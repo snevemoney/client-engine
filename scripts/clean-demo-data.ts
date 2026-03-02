@@ -287,6 +287,13 @@ async function main() {
   if (scoreResult.count > 0) console.log(`Deleted ${scoreResult.count} test score snapshots`);
   deleted += scoreResult.count;
 
+  // 12. Test notification channels (created by notification service tests)
+  const channelResult = await db.notificationChannel.deleteMany({
+    where: { key: { startsWith: "test_" } },
+  });
+  if (channelResult.count > 0) console.log(`Deleted ${channelResult.count} test notification channels`);
+  deleted += channelResult.count;
+
   console.log(`Done. Removed demo/test data.`);
 }
 

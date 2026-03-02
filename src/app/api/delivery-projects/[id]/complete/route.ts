@@ -71,6 +71,13 @@ export async function POST(
         },
       });
 
+      if (project.pipelineLeadId) {
+        await tx.lead.update({
+          where: { id: project.pipelineLeadId },
+          data: { status: "SHIPPED", buildCompletedAt: now },
+        });
+      }
+
       if (project.intakeLeadId && project.intakeLead) {
         const intake = project.intakeLead;
         const updates: Record<string, unknown> = { deliveryCompletedAt: now };

@@ -7,6 +7,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { IntakeLeadStatus } from "@prisma/client";
 import { jsonError, withRouteTiming } from "@/lib/api-utils";
+import { logInteraction } from "@/lib/interactions/service";
 
 const PostSchema = z.object({
   reason: z.string().max(1000).optional().nullable(),
@@ -55,6 +56,17 @@ export async function POST(
           });
         }
       }
+
+      await logInteraction({
+        category: "proposal_rejected",
+        summary: reason ? `Proposal rejected: ${reason}` : "Proposal rejected",
+        proposalId: id,
+        direction: "inbound",
+        actorType: "user",
+        actorId: session.user?.id,
+        sourceModel: "ProposalActivity",
+        metaJson: reason ? { reason } : undefined,
+      }, tx);
     });
 
     return NextResponse.json({ status: "rejected", rejectedAt: now.toISOString() });

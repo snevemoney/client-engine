@@ -15,6 +15,9 @@ export type RiskRuleResult = {
   suggestedFix?: string | null;
   evidenceJson?: Record<string, unknown> | null;
   createdByRule: string;
+  /** Revenue exposed by this risk (dollars, when computable) */
+  exposedRevenue?: number;
+  exposedRevenueCurrency?: string;
 };
 
 export type RiskCandidate = RiskRuleResult & { dedupeKey: string };
@@ -37,4 +40,6 @@ export type RiskRuleContext = {
   ownerUserId?: string;
   growthDealCount?: number;
   growthLastActivityAt?: Date | null;
+  /** Phase 9.2: Clients with active proposal/delivery and 14+ days silence */
+  criticalInteractionGapCount: number;
 };

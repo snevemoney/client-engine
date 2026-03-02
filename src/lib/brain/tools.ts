@@ -168,7 +168,7 @@ export const BRAIN_TOOLS: BrainToolDefinition[] = [
         templateKey: {
           type: "string",
           description:
-            "Template key: cold_dm, follow_up, referral_ask, or value_add.",
+            "Template key: broken_link_fix, canva_site_upgrade, google_form_upgrade, linktree_cleanup, big_audience_no_site, calendly_blank_fix, followup_leakage_audit, or proof_driven_intro.",
         },
         variables: {
           type: "object",
@@ -320,19 +320,111 @@ export const BRAIN_TOOLS: BrainToolDefinition[] = [
     },
   },
 
+  // ─── Distribution & Signals ─────────────────────────────────
+
+  {
+    name: "list_proof_records",
+    description:
+      "List proof records with optional filters. Returns id, title, company, outcome, metricValue, metricLabel, createdAt, and whether content posts exist. Use to find proof for distribution or analysis.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        hasContentPost: {
+          type: "boolean",
+          description: "Filter: true = only records with posts, false = only records without posts.",
+        },
+        limit: {
+          type: "number",
+          description: "Max results. Defaults to 20.",
+          default: 20,
+        },
+      },
+      required: [],
+    },
+  },
+  {
+    name: "schedule_content_post",
+    description:
+      "Generate and optionally schedule a content post from a proof record. Creates a draft post for the given platform. If scheduledFor is provided, also schedules it.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        proofRecordId: {
+          type: "string",
+          description: "The proof record ID to create content from.",
+        },
+        platform: {
+          type: "string",
+          description: "Platform: linkedin, twitter, or email_newsletter. Defaults to linkedin.",
+          default: "linkedin",
+        },
+        scheduledFor: {
+          type: "string",
+          description: "Optional ISO 8601 datetime to schedule the post.",
+        },
+      },
+      required: ["proofRecordId"],
+    },
+  },
+  {
+    name: "list_signals",
+    description:
+      "List signal items with optional filters. Returns id, title, score, tags, sourceUrl, status, createdAt. Use to find opportunities for outreach.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        minScore: {
+          type: "number",
+          description: "Minimum score filter. Defaults to 0.",
+          default: 0,
+        },
+        status: {
+          type: "string",
+          description: "Filter by status: new, reviewed, actioned, dismissed.",
+        },
+        limit: {
+          type: "number",
+          description: "Max results. Defaults to 20.",
+          default: 20,
+        },
+      },
+      required: [],
+    },
+  },
+  {
+    name: "match_signal_opportunities",
+    description:
+      "Match a signal item to existing prospects/deals by niche, platform, and keywords. Returns ranked matches with relevance scores and suggested outreach template.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        signalItemId: {
+          type: "string",
+          description: "The signal item ID to match against prospects.",
+        },
+        topK: {
+          type: "number",
+          description: "Max matches to return. Defaults to 5.",
+          default: 5,
+        },
+      },
+      required: ["signalItemId"],
+    },
+  },
+
   // ─── Agent Delegation ─────────────────────────────────────────
 
   {
     name: "delegate_to_agent",
     description:
-      "Delegate a complex task to a specialized domain agent. Agents: revenue (sales pipeline), delivery (projects), growth (prospecting/outreach), retention (client health), intelligence (analytics), system (infra health). Use when the task involves multiple steps within one domain.",
+      "Delegate a complex task to a specialized worker. Workers: commander (orchestration/self-healing), signal_scout (RSS/opportunity detection), outreach_writer (template personalization/drip), distribution_ops (proof-to-post scheduling), conversion_analyst (funnel analysis), followup_enforcer (stale lead/proposal escalation), proposal_architect (pricing/presentation), scope_risk_ctrl (deadline/quality gates), proof_producer (testimonial/review requests), qa_sentinel (content quality audits). Use when the task involves multiple steps within one domain.",
     input_schema: {
       type: "object" as const,
       properties: {
         agentId: {
           type: "string",
           description:
-            "Agent to delegate to: revenue, delivery, growth, retention, intelligence, or system.",
+            "Worker to delegate to: commander, signal_scout, outreach_writer, distribution_ops, conversion_analyst, followup_enforcer, proposal_architect, scope_risk_ctrl, proof_producer, or qa_sentinel.",
         },
         task: {
           type: "string",
@@ -366,7 +458,11 @@ export const TOOL_DISPLAY_NAMES: Record<string, string> = {
   update_delivery_project: "Updating delivery project",
   manage_deal: "Managing deal",
   send_operator_alert: "Sending alert",
-  delegate_to_agent: "Delegating to agent",
+  list_proof_records: "Listing proof records",
+  schedule_content_post: "Scheduling content post",
+  list_signals: "Listing signals",
+  match_signal_opportunities: "Matching signal opportunities",
+  delegate_to_agent: "Delegating to worker",
 };
 
 /** Tools that modify state and should be confirmed before execution. */
@@ -381,5 +477,6 @@ export const WRITE_TOOLS = new Set([
   "update_delivery_project",
   "manage_deal",
   "send_operator_alert",
+  "schedule_content_post",
   "delegate_to_agent",
 ]);

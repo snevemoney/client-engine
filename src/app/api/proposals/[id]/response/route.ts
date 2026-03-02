@@ -8,6 +8,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { ProposalActivityType, ProposalResponseStatus } from "@prisma/client";
 import { jsonError, withRouteTiming } from "@/lib/api-utils";
+import { logInteraction } from "@/lib/interactions/service";
 import { parseDate } from "@/lib/followup/dates";
 
 const RESPONSE_STATUSES = ["viewed", "replied", "meeting_booked", "negotiating"] as const;
@@ -61,20 +62,30 @@ export async function POST(
     const activityType: ProposalActivityType =
       status === "meeting_booked" ? "meeting_booked" : "response_logged";
 
-    await db.$transaction([
-      db.proposal.update({
+    await db.$transaction(async (tx) => {
+      await tx.proposal.update({
         where: { id },
         data: data as Parameters<typeof db.proposal.update>[0]["data"],
-      }),
-      db.proposalActivity.create({
+      });
+      await tx.proposalActivity.create({
         data: {
           proposalId: id,
           type: activityType,
           message: `Response: ${status}`,
           metaJson: { responseStatus: status, responseSummary: parsed.data.responseSummary },
         },
-      }),
-    ]);
+      });
+      await logInteraction({
+        category: "proposal_response_logged",
+        summary: `Proposal response logged: ${status}`,
+        proposalId: id,
+        direction: "inbound",
+        actorType: "user",
+        actorId: session.user?.id,
+        sourceModel: "ProposalActivity",
+        metaJson: { responseStatus: status },
+      }, tx);
+    });
 
     return NextResponse.json({ ok: true });
   });

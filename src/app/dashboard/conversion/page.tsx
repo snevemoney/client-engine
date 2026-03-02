@@ -1,8 +1,10 @@
 "use client";
 
+import { useEffect } from "react";
 import { BarChart3 } from "lucide-react";
 import { useRetryableFetch } from "@/hooks/useRetryableFetch";
 import { AsyncState } from "@/components/ui/AsyncState";
+import { useBrainPanel } from "@/contexts/BrainPanelContext";
 
 interface ConversionData {
   counts: { total: number; proposalSent: number; approved: number; buildStarted: number; buildCompleted: number; won: number; lost: number };
@@ -29,7 +31,17 @@ function formatMs(ms: number | null): string {
 }
 
 export default function ConversionPage() {
+  const { setPageData } = useBrainPanel();
   const { data, loading, error, refetch } = useRetryableFetch<ConversionData>("/api/metrics/conversion");
+
+  useEffect(() => {
+    if (loading || !data) return;
+    const c = data.counts;
+    const r = data.rates;
+    setPageData(
+      `Conversion: ${c.total} leads, ${c.won} won (${(r.winRate * 100).toFixed(0)}% win rate), ${c.proposalSent} proposals sent, ${c.buildCompleted} builds completed.`
+    );
+  }, [data, loading, setPageData]);
 
   const counts = data?.counts ?? { total: 0, proposalSent: 0, approved: 0, buildStarted: 0, buildCompleted: 0, won: 0, lost: 0 };
   const rates = data?.rates ?? { proposalSentRate: 0, approvedRate: 0, buildStartRate: 0, buildCompleteRate: 0, winRate: 0 };

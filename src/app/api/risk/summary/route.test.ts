@@ -23,8 +23,7 @@ describe("GET /api/risk/summary", () => {
 
   it("returns stable shape with openBySeverity and snoozedCount", async () => {
     const { GET } = await import("./route");
-    const req = new NextRequest("http://x/api/risk/summary");
-    const res = await GET(req);
+    const res = await GET();
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(data).toHaveProperty("openBySeverity");
@@ -41,8 +40,7 @@ describe("GET /api/risk/summary", () => {
 
   it("asserts Cache-Control header includes short caching", async () => {
     const { GET } = await import("./route");
-    const req = new NextRequest("http://x/api/risk/summary");
-    const res = await GET(req);
+    const res = await GET();
     const cc = res.headers.get("Cache-Control");
     expect(cc).toBeDefined();
     expect(cc).toMatch(/max-age=15|max-age=\d+/);

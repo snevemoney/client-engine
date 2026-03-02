@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { DeliveryActivityType } from "@prisma/client";
 import { jsonError, requireDeliveryProject, withRouteTiming } from "@/lib/api-utils";
 import { computeHandoffReadiness } from "@/lib/delivery/handoff-readiness";
+import { logInteraction } from "@/lib/interactions/service";
 
 const PostSchema = z.object({
   handoffSummary: z.string().max(10000).optional().nullable(),
@@ -22,7 +23,7 @@ export async function POST(
     const { id } = await params;
     const result = await requireDeliveryProject(id, { include: { checklistItems: true } });
     if (!result.ok) return result.response;
-    const { project } = result;
+    const { project, session } = result;
 
     const raw = await req.json().catch(() => ({}));
     const parsed = PostSchema.safeParse(raw);
@@ -66,7 +67,7 @@ export async function POST(
           handoffStartedAt: project.handoffStartedAt ?? now,
         },
       });
-      await tx.deliveryActivity.create({
+      const activity = await tx.deliveryActivity.create({
         data: {
           deliveryProjectId: id,
           type: "handoff_completed" as DeliveryActivityType,
@@ -74,6 +75,18 @@ export async function POST(
           metaJson: { handoffSummary: body.handoffSummary, handoffOwner: body.handoffOwner },
         },
       });
+      await logInteraction({
+        category: "handoff_completed",
+        summary: "Handoff completed for delivery project",
+        deliveryProjectId: id,
+        channel: "in_app",
+        direction: "outbound",
+        actorType: "user",
+        actorId: session.user?.id,
+        sourceModel: "DeliveryActivity",
+        sourceId: activity.id,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      }, tx as any);
     });
 
     return NextResponse.json({

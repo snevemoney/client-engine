@@ -7,6 +7,7 @@ import { useAsyncAction } from "@/hooks/useAsyncAction";
 import { AsyncState } from "@/components/ui/AsyncState";
 import { fetchJsonThrow } from "@/lib/http/fetch-json";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { useBrainPanel } from "@/contexts/BrainPanelContext";
 
 type GrowthSummary = {
   countsByStage: Record<string, number>;
@@ -37,6 +38,7 @@ export default function GrowthPage() {
   const [filterDue, setFilterDue] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const { setPageData } = useBrainPanel();
 
   const debouncedStage = useDebouncedValue(filterStage, 300);
   const debouncedDue = useDebouncedValue(filterDue, 300);
@@ -85,6 +87,14 @@ export default function GrowthPage() {
     void fetchData();
     return () => { if (abortRef.current) abortRef.current.abort(); };
   }, [fetchData]);
+
+  useEffect(() => {
+    if (loading || !summary) return;
+    const stages = Object.entries(summary.countsByStage).map(([k, v]) => `${v} ${k}`).join(", ");
+    setPageData(
+      `Growth Pipeline: ${deals.length} deals (${stages}). ${summary.overdueFollowUps.length} overdue follow-ups, ${summary.next7DaysFollowUps.length} due next 7 days.`
+    );
+  }, [summary, deals.length, loading, setPageData]);
 
   const { execute: handleRunGrowthNBA, pending: runNBALoading } = useAsyncAction(
     async () => fetchJsonThrow("/api/next-actions/run?entityType=founder_growth&entityId=founder_growth", { method: "POST" }),

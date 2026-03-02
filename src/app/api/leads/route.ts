@@ -46,7 +46,19 @@ export async function GET(req: NextRequest) {
       where,
       orderBy: { createdAt: "desc" },
       take: limit,
-      include: { _count: { select: { artifacts: true } } },
+      include: {
+        _count: { select: { artifacts: true } },
+        proposals: {
+          select: { id: true, status: true },
+          orderBy: { updatedAt: "desc" },
+          take: 1,
+        },
+        deliveryProjects: {
+          select: { id: true, status: true },
+          orderBy: { updatedAt: "desc" },
+          take: 1,
+        },
+      },
     });
 
     return NextResponse.json(leads, {
