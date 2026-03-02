@@ -82,6 +82,7 @@ services:
       - "127.0.0.1:3001:3001"
     environment:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - BUILDER_API_KEY=dev-key
       - BUILDER_PUBLIC_URL=https://evenslouis.ca/builder
       - BUILDER_PUBLIC_HOSTNAME=evenslouis.ca
       - BUILDER_BASE_PATH=/builder
