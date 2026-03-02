@@ -68,6 +68,28 @@ services:
       - redisdata:/data
     restart: unless-stopped
 
+  builder:
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    build:
+      context: ./builder
+      args:
+        BUILDER_BASE_PATH: /builder
+    ports:
+      - "127.0.0.1:3001:3001"
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - BUILDER_PUBLIC_URL=https://evenslouis.ca/builder
+      - BUILDER_PUBLIC_HOSTNAME=evenslouis.ca
+      - BUILDER_BASE_PATH=/builder
+    volumes:
+      - builder-data:/app/prisma
+    restart: unless-stopped
+
 volumes:
   pgdata:
   redisdata:
+  builder-data:

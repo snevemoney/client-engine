@@ -10,3 +10,4 @@ playwright-report
 coverage
 *.log
 dist
+builder
