@@ -1,7 +1,6 @@
 # Log rotation (max-size 10m, max-file 3) prevents container logs from filling disk.
 services:
   app:
-    image: ghcr.io/snevemoney/client-engine-app:latest
     logging:
       driver: json-file
       options:
@@ -21,7 +20,6 @@ services:
     restart: unless-stopped
 
   worker:
-    image: ghcr.io/snevemoney/client-engine-worker:latest
     logging:
       driver: json-file
       options:
