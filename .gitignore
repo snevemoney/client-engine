@@ -50,3 +50,9 @@ dist/
 .claude/
 .cursor/
 .playwright-mcp/
+
+# Dev artifacts
+*.png
+prisma/dev.db
+dump.rdb
+playwright-report/
