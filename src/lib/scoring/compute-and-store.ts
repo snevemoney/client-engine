@@ -82,6 +82,7 @@ async function shouldSuppressEvent(
   const existing = await db.scoreEvent.findFirst({
     where: { dedupeKey },
     orderBy: { createdAt: "desc" },
+    select: { createdAt: true },
   });
   if (!existing) return false;
   const ageMs = Date.now() - existing.createdAt.getTime();
@@ -219,6 +220,7 @@ export async function computeAndStoreScore(
   context?: ComputeAndStoreContext
 ): Promise<ComputeAndStoreResult> {
   let result: import("./types").ScoreComputationResult;
+  let previous: { score: number; band: string } | null;
   if (context?._testOverride) {
     const { score, band } = context._testOverride;
     result = {
@@ -228,12 +230,15 @@ export async function computeAndStoreScore(
       factorBreakdown: [],
       computedAt: new Date(),
     };
+    previous = await getPreviousSnapshot(entityType, entityId);
   } else {
-    const { factors } = await getFactors(entityType, entityId);
+    const [{ factors }, prev] = await Promise.all([
+      getFactors(entityType, entityId),
+      getPreviousSnapshot(entityType, entityId),
+    ]);
     result = computeScore({ factors });
+    previous = prev;
   }
-
-  const previous = await getPreviousSnapshot(entityType, entityId);
   const delta = previous != null ? result.score - previous.score : null;
 
   const snapshot = await db.scoreSnapshot.create({

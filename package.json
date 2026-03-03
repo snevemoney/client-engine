@@ -42,7 +42,11 @@
     "ops:deploy:fast": "bash scripts/deploy-fast.sh",
     "ops:deploy:safe": "bash scripts/deploy-safe.sh",
     "ops:logs": "bash scripts/watch-prod.sh",
-    "ops:health": "curl -sf http://127.0.0.1:3200/api/health 2>/dev/null || curl -sf https://evenslouis.ca/api/health"
+    "ops:health": "curl -sf http://127.0.0.1:3200/api/health 2>/dev/null || curl -sf https://evenslouis.ca/api/health",
+    "docs:generate": "npx tsx scripts/generate-docs.ts",
+    "docs:check": "npx tsx scripts/generate-docs.ts --check",
+    "docs:context": "npx tsx scripts/generate-ai-context.ts",
+    "docs:context:copy": "npx tsx scripts/generate-ai-context.ts --clipboard"
   },
   "prisma": {
     "seed": "node prisma/seed.mjs"

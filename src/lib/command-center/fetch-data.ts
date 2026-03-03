@@ -10,6 +10,12 @@ import { fetchConversionInput, fetchRevenueInput } from "@/lib/metrics/fetch-met
 import { computeConversionMetrics } from "@/lib/metrics/conversion";
 import { computeRevenueMetrics } from "@/lib/metrics/revenue";
 import { fetchBottlenecks } from "@/lib/metrics/bottlenecks";
+import { classifyRetentionBucket, computeRetentionStale } from "@/lib/delivery/retention";
+import { classifyReminderBucket } from "@/lib/reminders/dates";
+import { fetchOperatorScoreInput } from "@/lib/operator-score/fetch-input";
+import { computeOperatorScore } from "@/lib/operator-score/score";
+import { fetchWeeklyForecastInput, fetchMonthlyForecastInput } from "@/lib/forecasting/fetch-input";
+import { computeWeeklyForecast, computeMonthlyForecast } from "@/lib/forecasting/forecast";
 
 export type CommandCenterData = {
   todaysPriorities: { id: string; title: string; status: string; dueDate: string | null }[];
@@ -494,7 +500,6 @@ export async function fetchCommandCenterData(): Promise<CommandCenterData> {
           retentionLastContactedAt: true,
         },
       });
-      const { classifyRetentionBucket, computeRetentionStale } = await import("@/lib/delivery/retention");
       let retentionOverdue = 0;
       let completedNoTestimonialRequest = 0;
       let completedNoReviewRequest = 0;
@@ -624,7 +629,14 @@ export async function fetchCommandCenterData(): Promise<CommandCenterData> {
       retainerOpen: 0,
       stalePostDelivery: 0,
     },
-    revenueIntelligence: await (async () => {
+    ...(await computeExtendedCommandCenterData(now)),
+  };
+}
+
+/** Compute extended metrics in parallel (revenue, forecast, observability, audit, jobs, reminders). */
+async function computeExtendedCommandCenterData(now: Date) {
+  const [revenueIntelligence, operatorForecast, observability, auditSummary, jobsSummaryResult, remindersAutomation] = await Promise.all([
+    (async () => {
       try {
         const [convInput, revInput, bottlenecks] = await Promise.all([
           fetchConversionInput("this_week"),
@@ -639,35 +651,15 @@ export async function fetchCommandCenterData(): Promise<CommandCenterData> {
           acceptedToDeliveryStartedRate: conversion.acceptedToDeliveryStartedRate,
           deliveryCompletedToProofRate: conversion.deliveryCompletedToProofRate,
           deliveredValueThisWeek: revenue.deliveredValueThisWeek,
-          topBottleneck: topBottleneck
-            ? { label: topBottleneck.label, count: topBottleneck.count }
-            : null,
+          topBottleneck: topBottleneck ? { label: topBottleneck.label, count: topBottleneck.count } : null,
         };
       } catch {
-        return {
-          proposalSentToAcceptedRate: 0,
-          acceptedToDeliveryStartedRate: 0,
-          deliveryCompletedToProofRate: 0,
-          deliveredValueThisWeek: 0,
-          topBottleneck: null,
-        };
+        return { proposalSentToAcceptedRate: 0, acceptedToDeliveryStartedRate: 0, deliveryCompletedToProofRate: 0, deliveredValueThisWeek: 0, topBottleneck: null };
       }
     })(),
-    operatorForecast: await (async () => {
+    (async () => {
       try {
-        const [
-          { fetchOperatorScoreInput },
-          { computeOperatorScore },
-          { fetchWeeklyForecastInput, fetchMonthlyForecastInput },
-          { computeWeeklyForecast, computeMonthlyForecast },
-        ] = await Promise.all([
-          import("@/lib/operator-score/fetch-input"),
-          import("@/lib/operator-score/score"),
-          import("@/lib/forecasting/fetch-input"),
-          import("@/lib/forecasting/forecast"),
-        ]);
-        const now = new Date();
-        const [weeklyScoreInput, monthlyScoreInput, weeklyForecastInput, monthlyForecastInput] = await Promise.all([
+        const [weeklyScoreInput, monthlyScoreInput, wfi, mfi] = await Promise.all([
           fetchOperatorScoreInput("weekly"),
           fetchOperatorScoreInput("monthly"),
           fetchWeeklyForecastInput(now),
@@ -675,92 +667,51 @@ export async function fetchCommandCenterData(): Promise<CommandCenterData> {
         ]);
         const weeklyScore = computeOperatorScore(weeklyScoreInput);
         const monthlyScore = computeOperatorScore(monthlyScoreInput);
-        const weeklyForecast = computeWeeklyForecast(weeklyForecastInput);
-        const monthlyForecast = computeMonthlyForecast(monthlyForecastInput);
+        const weeklyForecast = computeWeeklyForecast(wfi);
+        const monthlyForecast = computeMonthlyForecast(mfi);
         const deliveredMetric = monthlyForecast.metrics.find((m) => m.key === "delivered_value");
         const behindWarnings = weeklyForecast.warnings.concat(monthlyForecast.warnings).filter((w) => w.includes("Behind pace"));
         return {
-          weeklyScore: weeklyScore.score,
-          weeklyGrade: weeklyScore.grade,
-          monthlyScore: monthlyScore.score,
-          monthlyGrade: monthlyScore.grade,
+          weeklyScore: weeklyScore.score, weeklyGrade: weeklyScore.grade,
+          monthlyScore: monthlyScore.score, monthlyGrade: monthlyScore.grade,
           behindPaceWarning: behindWarnings[0] ?? null,
           deliveredValueProjectedMonth: deliveredMetric?.projected ?? null,
         };
       } catch {
-        return {
-          weeklyScore: null,
-          weeklyGrade: null,
-          monthlyScore: null,
-          monthlyGrade: null,
-          behindPaceWarning: null,
-          deliveredValueProjectedMonth: null,
-        };
+        return { weeklyScore: null, weeklyGrade: null, monthlyScore: null, monthlyGrade: null, behindPaceWarning: null, deliveredValueProjectedMonth: null };
       }
     })(),
-    observability: await (async () => {
+    (async () => {
       try {
         const todayStart = getStartOfDay(now);
         const [eventsToday, errorsToday, slowToday, lastError, topError] = await Promise.all([
           db.opsEvent.count({ where: { createdAt: { gte: todayStart } } }),
           db.opsEvent.count({ where: { createdAt: { gte: todayStart }, level: "error" } }),
           db.opsEvent.count({ where: { createdAt: { gte: todayStart }, durationMs: { gte: 2000 } } }),
-          db.opsEvent.findFirst({
-            where: { level: "error" },
-            orderBy: { createdAt: "desc" },
-            select: { createdAt: true, eventKey: true },
-          }),
-          db.opsEvent.groupBy({
-            by: ["eventKey"],
-            where: { createdAt: { gte: todayStart }, level: "error" },
-            _count: { id: true },
-            orderBy: { _count: { eventKey: "desc" } },
-            take: 1,
-          }),
+          db.opsEvent.findFirst({ where: { level: "error" }, orderBy: { createdAt: "desc" }, select: { createdAt: true, eventKey: true } }),
+          db.opsEvent.groupBy({ by: ["eventKey"], where: { createdAt: { gte: todayStart }, level: "error" }, _count: { id: true }, orderBy: { _count: { eventKey: "desc" } }, take: 1 }),
         ]);
-        return {
-          eventsToday: eventsToday ?? 0,
-          errorsToday: errorsToday ?? 0,
-          slowEventsToday: slowToday ?? 0,
-          lastErrorAt: lastError?.createdAt?.toISOString() ?? null,
-          topFailingAction: topError[0]?.eventKey ?? null,
-        };
+        return { eventsToday: eventsToday ?? 0, errorsToday: errorsToday ?? 0, slowEventsToday: slowToday ?? 0, lastErrorAt: lastError?.createdAt?.toISOString() ?? null, topFailingAction: topError[0]?.eventKey ?? null };
       } catch {
-        return {
-          eventsToday: 0,
-          errorsToday: 0,
-          slowEventsToday: 0,
-          lastErrorAt: null,
-          topFailingAction: null,
-        };
+        return { eventsToday: 0, errorsToday: 0, slowEventsToday: 0, lastErrorAt: null, topFailingAction: null };
       }
     })(),
-    auditSummary: await (async () => {
+    (async () => {
       try {
         const todayStart = getStartOfDay(now);
-        const weekStart = getWeekStart(now);
+        const ws = getWeekStart(now);
         const [actionsToday, proposalsSent, deliveriesCompleted, proofsPromoted] = await Promise.all([
           db.auditAction.count({ where: { createdAt: { gte: todayStart } } }),
-          db.auditAction.count({ where: { createdAt: { gte: weekStart }, actionKey: "proposal.mark_sent" } }),
-          db.auditAction.count({ where: { createdAt: { gte: weekStart }, actionKey: "delivery.complete" } }),
-          db.auditAction.count({ where: { createdAt: { gte: weekStart }, actionKey: "proof.promote" } }),
+          db.auditAction.count({ where: { createdAt: { gte: ws }, actionKey: "proposal.mark_sent" } }),
+          db.auditAction.count({ where: { createdAt: { gte: ws }, actionKey: "delivery.complete" } }),
+          db.auditAction.count({ where: { createdAt: { gte: ws }, actionKey: "proof.promote" } }),
         ]);
-        return {
-          actionsToday: actionsToday ?? 0,
-          proposalsSentThisWeek: proposalsSent ?? 0,
-          deliveriesCompletedThisWeek: deliveriesCompleted ?? 0,
-          proofsPromotedThisWeek: proofsPromoted ?? 0,
-        };
+        return { actionsToday: actionsToday ?? 0, proposalsSentThisWeek: proposalsSent ?? 0, deliveriesCompletedThisWeek: deliveriesCompleted ?? 0, proofsPromotedThisWeek: proofsPromoted ?? 0 };
       } catch {
-        return {
-          actionsToday: 0,
-          proposalsSentThisWeek: 0,
-          deliveriesCompletedThisWeek: 0,
-          proofsPromotedThisWeek: 0,
-        };
+        return { actionsToday: 0, proposalsSentThisWeek: 0, deliveriesCompletedThisWeek: 0, proofsPromotedThisWeek: 0 };
       }
     })(),
-    jobsSummary: await (async () => {
+    (async () => {
       try {
         const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
         const staleThreshold = new Date(Date.now() - 10 * 60 * 1000);
@@ -770,68 +721,23 @@ export async function fetchCommandCenterData(): Promise<CommandCenterData> {
           db.jobRun.count({ where: { status: "failed" } }),
           db.jobRun.count({ where: { status: "dead_letter" } }),
           db.jobRun.count({ where: { status: "succeeded", finishedAt: { gte: dayAgo } } }),
-          db.jobRun.findFirst({
-            where: { status: { in: ["failed", "dead_letter"] } },
-            orderBy: { finishedAt: "desc" },
-            select: { jobType: true },
-          }),
-          db.jobRun.count({
-            where: {
-              status: "running",
-              OR: [
-                { lockedAt: { lt: staleThreshold } },
-                { lockedAt: null, startedAt: { lt: staleThreshold } },
-              ],
-            },
-          }),
-          db.jobSchedule.count({
-            where: { isEnabled: true, nextRunAt: { lte: new Date() } },
-          }),
+          db.jobRun.findFirst({ where: { status: { in: ["failed", "dead_letter"] } }, orderBy: { finishedAt: "desc" }, select: { jobType: true } }),
+          db.jobRun.count({ where: { status: "running", OR: [{ lockedAt: { lt: staleThreshold } }, { lockedAt: null, startedAt: { lt: staleThreshold } }] } }),
+          db.jobSchedule.count({ where: { isEnabled: true, nextRunAt: { lte: new Date() } } }),
         ]);
-        return {
-          queued: queued ?? 0,
-          running: running ?? 0,
-          failed: failed ?? 0,
-          deadLetter: deadLetter ?? 0,
-          succeeded24h: succeeded24h ?? 0,
-          latestFailedJobType: latestFailed?.jobType ?? null,
-          staleRunning: staleRunning ?? 0,
-          dueSchedules: dueSchedules ?? 0,
-        };
+        return { queued: queued ?? 0, running: running ?? 0, failed: failed ?? 0, deadLetter: deadLetter ?? 0, succeeded24h: succeeded24h ?? 0, latestFailedJobType: latestFailed?.jobType ?? null, staleRunning: staleRunning ?? 0, dueSchedules: dueSchedules ?? 0 };
       } catch {
-        return {
-          queued: 0,
-          running: 0,
-          failed: 0,
-          deadLetter: 0,
-          succeeded24h: 0,
-          latestFailedJobType: null,
-          staleRunning: 0,
-          dueSchedules: 0,
-        };
+        return { queued: 0, running: 0, failed: 0, deadLetter: 0, succeeded24h: 0, latestFailedJobType: null, staleRunning: 0, dueSchedules: 0 };
       }
     })(),
-    remindersAutomation: await (async () => {
+    (async () => {
       try {
-        const { classifyReminderBucket } = await import("@/lib/reminders/dates");
-        const now = new Date();
         const startToday = getStartOfDay(now);
         const [openReminders, pendingSuggestions] = await Promise.all([
-          db.opsReminder.findMany({
-            where: { status: { in: ["open", "snoozed"] } },
-            select: { id: true, title: true, dueAt: true, snoozedUntil: true, status: true, priority: true, actionUrl: true },
-            orderBy: [{ priority: "desc" }, { dueAt: "asc" }],
-            take: 10,
-          }),
-          db.automationSuggestion.findMany({
-            where: { status: "pending" },
-            select: { id: true, title: true, actionUrl: true },
-            take: 5,
-          }),
+          db.opsReminder.findMany({ where: { status: { in: ["open", "snoozed"] } }, select: { id: true, title: true, dueAt: true, snoozedUntil: true, status: true, priority: true, actionUrl: true }, orderBy: [{ priority: "desc" }, { dueAt: "asc" }], take: 10 }),
+          db.automationSuggestion.findMany({ where: { status: "pending" }, select: { id: true, title: true, actionUrl: true }, take: 5 }),
         ]);
-        let overdue = 0;
-        let today = 0;
-        let highPriority = 0;
+        let overdue = 0, today = 0, highPriority = 0;
         for (const r of openReminders) {
           const b = classifyReminderBucket(r.dueAt, r.snoozedUntil, r.status, now);
           if (b === "overdue") overdue++;
@@ -841,9 +747,7 @@ export async function fetchCommandCenterData(): Promise<CommandCenterData> {
         const bestReminder = openReminders[0];
         const bestSuggestion = pendingSuggestions[0];
         return {
-          remindersOverdue: overdue,
-          remindersDueToday: today,
-          remindersHighPriority: highPriority,
+          remindersOverdue: overdue, remindersDueToday: today, remindersHighPriority: highPriority,
           suggestionsPending: pendingSuggestions.length,
           bestNextAction: bestReminder
             ? { type: "reminder", title: bestReminder.title, url: bestReminder.actionUrl ?? "/dashboard/reminders" }
@@ -852,14 +756,9 @@ export async function fetchCommandCenterData(): Promise<CommandCenterData> {
               : null,
         };
       } catch {
-        return {
-          remindersOverdue: 0,
-          remindersDueToday: 0,
-          remindersHighPriority: 0,
-          suggestionsPending: 0,
-          bestNextAction: null,
-        };
+        return { remindersOverdue: 0, remindersDueToday: 0, remindersHighPriority: 0, suggestionsPending: 0, bestNextAction: null };
       }
     })(),
-  };
+  ]);
+  return { revenueIntelligence, operatorForecast, observability, auditSummary, jobsSummary: jobsSummaryResult, remindersAutomation };
 }

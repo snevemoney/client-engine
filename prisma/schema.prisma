@@ -1206,6 +1206,7 @@ model Proposal {
   @@index([pipelineLeadId])
   @@index([nextFollowUpAt])
   @@index([responseStatus])
+  @@index([status, nextFollowUpAt])
 }
 
 model ProposalVersion {
@@ -1394,6 +1395,7 @@ model DeliveryProject {
   @@index([intakeLeadId])
   @@index([retentionNextFollowUpAt])
   @@index([retentionStatus])
+  @@index([status, retentionNextFollowUpAt])
 }
 
 model DeliveryMilestone {
@@ -1458,6 +1460,7 @@ model WeeklyMetricSnapshot {
   @@index([weekStart])
   @@index([metricKey])
   @@index([metricGroup])
+  @@index([weekStart, metricGroup, metricKey])
 }
 
 // ----- Phase 2.4: Operator Score + Forecasting -----
@@ -1522,6 +1525,7 @@ model OpsReminder {
   @@index([sourceType, sourceId])
   @@index([status, dueAt])
   @@index([snoozedUntil])
+  @@index([status, priority, dueAt])
 }
 
 model AutomationSuggestion {
@@ -1838,6 +1842,7 @@ model NotificationDelivery {
   @@index([channelId, status])
   @@index([notificationEventId])
   @@index([dedupeKey])
+  @@index([status, createdAt(sort: Desc)])
 }
 
 model InAppNotification {
@@ -2566,6 +2571,7 @@ model ClientInteraction {
   @@index([occurredAt(sort: Desc)])
   @@index([nextActionDueAt])
   @@index([sourceModel, sourceId])
+  @@index([direction, occurredAt(sort: Desc)])
 }
 
 // ─── Content Distribution ────────────────────────────────────

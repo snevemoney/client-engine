@@ -175,11 +175,14 @@ export async function fetchRevenueInput(range: MetricsRange) {
 
   const [proposals, deliveryProjects, retainerCount] = await Promise.all([
     db.proposal.findMany({
-      where: { acceptedAt: { not: null } },
+      where: { acceptedAt: { not: null, gte: weekStart, lte: weekEnd } },
       select: { finalValue: true, priceMin: true, priceMax: true, acceptedAt: true },
     }),
     db.deliveryProject.findMany({
-      where: { status: { in: ["completed", "archived"] } },
+      where: {
+        status: { in: ["completed", "archived"] },
+        completedAt: { gte: weekStart, lte: weekEnd },
+      },
       select: {
         finalValue: true,
         completedAt: true,

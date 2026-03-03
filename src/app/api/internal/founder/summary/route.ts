@@ -63,10 +63,12 @@ async function buildFounderSummary(entityType: string, entityId: string) {
     copilotActions,
     nbaExecutions,
     lastJobRuns,
+    nbaLastRun,
   ] = await Promise.all([
             db.scoreSnapshot.findFirst({
               where: { entityType, entityId },
               orderBy: { computedAt: "desc" },
+              select: { id: true, score: true, band: true, delta: true, computedAt: true },
             }),
             db.scoreSnapshot.findMany({
               where: { entityType, entityId },
@@ -140,6 +142,11 @@ async function buildFounderSummary(entityType: string, entityId: string) {
               orderBy: { startedAt: "desc" },
               take: 5,
               select: { id: true, jobType: true, status: true, startedAt: true, finishedAt: true },
+            }),
+            db.nextActionRun.findFirst({
+              where: { runKey: { startsWith: `nba:${entityType}:${entityId}:` } },
+              orderBy: { createdAt: "desc" },
+              select: { createdAt: true },
             }),
           ]);
 
@@ -218,12 +225,7 @@ async function buildFounderSummary(entityType: string, entityId: string) {
             })),
           };
 
-          const lastRun = await db.nextActionRun.findFirst({
-            where: { runKey: { contains: `:${entityType}:${entityId}:` } },
-            orderBy: { createdAt: "desc" },
-            select: { createdAt: true },
-          });
-          nba.summary.lastRunAt = lastRun?.createdAt.toISOString() ?? null;
+          nba.summary.lastRunAt = nbaLastRun?.createdAt.toISOString() ?? null;
 
           const todayPlan = pickTopMoves({
             score: {
