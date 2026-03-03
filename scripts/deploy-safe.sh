@@ -25,8 +25,8 @@ docker info >/dev/null 2>&1 || { echo "FAIL: Docker not available"; exit 1; }
 echo "  OK   Preflight passed"
 echo ""
 
-echo "==> Building..."
-docker compose build app worker
+echo "==> Pulling latest images..."
+docker compose pull app worker 2>/dev/null || echo "  (pull failed — using local images)"
 
 echo "==> Restarting..."
 docker compose up -d
