@@ -6,6 +6,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+- Pipeline LLM: ANTHROPIC_API_KEY support — when set, pipeline uses Claude (claude-3-5-haiku) instead of OpenAI; fixes 4XX errors when only Anthropic key is available
+- POST /api/pipeline/retry-failed — bulk retry all failed runs (including OPENAI_4XX); auth: session or Bearer AGENT_CRON_SECRET
 - S1: requireLeadAccess, requireProposalAccess helpers; applied to leads/proposals/delivery-projects routes
 - S3: checkStateChangeRateLimit for capture, enrich, score, leads CRUD, proposals, delivery-projects
 - S4: Health endpoint requires Bearer AGENT_CRON_SECRET or session for full response; unauthenticated gets minimal { ok }

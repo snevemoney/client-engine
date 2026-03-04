@@ -22,7 +22,13 @@ export function classifyPipelineError(err: unknown): { code: PipelineErrorCode; 
   if (lower.includes("500") || lower.includes("502") || lower.includes("503") || lower.includes("openai api error: 5")) {
     return { code: "OPENAI_5XX", message: msg };
   }
-  if (lower.includes("openai api error: 4") || lower.includes("401") || lower.includes("invalid")) {
+  if (
+    lower.includes("openai api error: 4") ||
+    lower.includes("anthropic api error: 4") ||
+    lower.includes("api error: 4") ||
+    lower.includes("401") ||
+    lower.includes("invalid")
+  ) {
     return { code: "OPENAI_4XX", message: msg };
   }
   if (lower.includes("fetch") || lower.includes("network") || lower.includes("econnrefused") || lower.includes("timeout")) {

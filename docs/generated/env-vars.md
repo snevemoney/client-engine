@@ -8,10 +8,10 @@
 | `DB_PASSWORD` | — |
 | `ADMIN_EMAIL` | Admin sign-in (used by prisma/seed.mjs — set these then run seed) |
 | `ADMIN_PASSWORD` | — |
-| `OPENAI_API_KEY` | OpenAI (required for enrich / score / position / propose / build) |
+| `ANTHROPIC_API_KEY` | - OPENAI_API_KEY (fallback; uses gpt-4o-mini) |
 | `AUTH_SECRET` | Auth (required for login/session; NextAuth) |
 | `NEXTAUTH_URL` | Production: must match your public URL (stops redirect loops) |
-| `PIPELINE_DRY_RUN` | For real lead scores, set to 0 and ensure OPENAI_API_KEY is set. |
+| `PIPELINE_DRY_RUN` | For real lead scores, set to 0 and ensure ANTHROPIC_API_KEY or OPENAI_API_KEY is set. |
 | `RESEARCH_CRON_SECRET` | E2E + local: use this so Bearer auth tests run. Prod: set a strong random secret. |
 | `IMAP_HOST` | Email ingestion (worker) — Hostinger IMAP; set IMAP_USER and IMAP_PASS to connect inbox |
 | `IMAP_PORT` | — |

@@ -49,7 +49,7 @@ export async function runEnrich(leadId: string, provenance?: Provenance): Promis
         leadId,
         type: "notes",
         title: "AI Enrichment Report",
-        content: "**[DRY RUN]** Placeholder enrichment. Set PIPELINE_DRY_RUN=0 and OPENAI_API_KEY for real run.",
+        content: "**[DRY RUN]** Placeholder enrichment. Set PIPELINE_DRY_RUN=0 and ANTHROPIC_API_KEY or OPENAI_API_KEY for real run.",
         ...(meta ? { meta } : {}),
       },
     });

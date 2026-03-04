@@ -1,6 +1,6 @@
 # API Routes
 
-> Auto-generated on 2026-03-04. 341 route files.
+> Auto-generated on 2026-03-04. 342 route files.
 
 | Path | Methods |
 |------|---------|
@@ -271,6 +271,7 @@
 | `/api/ops/weekly-snapshot` | POST |
 | `/api/ops/workday-run` | POST |
 | `/api/owned-audience` | GET, POST |
+| `/api/pipeline/retry-failed` | POST |
 | `/api/pipeline/retry/[leadId]` | POST |
 | `/api/pipeline/run/[leadId]` | POST |
 | `/api/pipeline/run` | POST |

@@ -66,8 +66,8 @@ export async function runPipelineIfEligible(
       return { run: false, reason: "not_eligible" };
     }
 
-    if (!isDryRun() && !process.env.OPENAI_API_KEY) {
-      return { run: false, reason: "openai_not_configured" };
+    if (!isDryRun() && !process.env.ANTHROPIC_API_KEY && !process.env.OPENAI_API_KEY) {
+      return { run: false, reason: "llm_not_configured" };
     }
 
     const runId = await createRun(leadId);
