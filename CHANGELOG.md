@@ -28,6 +28,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ### Fixed
 - Founder summary: LIKE '%pattern%' full table scan → startsWith prefix match on nextActionRun.runKey
 - Score event dedup: shouldSuppressEvent overfetching full ScoreEvent row → select only createdAt
+- Dockerfile: addgroup/adduser use Alpine-compatible flags (-S -g -u -G) instead of Debian long-form (--system --gid --uid)
 
 ---
 

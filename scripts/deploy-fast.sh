@@ -22,8 +22,8 @@ on_fail() {
 }
 trap on_fail ERR
 
-echo "==> [1/4] Building app + worker (BuildKit cached)..."
-DOCKER_BUILDKIT=1 COMPOSE_DOCKER_CLI_BUILD=1 docker compose build app worker
+echo "==> [1/4] Building app + worker..."
+docker compose build app worker
 
 echo "==> [2/4] Restarting services..."
 docker compose up -d app worker

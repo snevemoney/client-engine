@@ -36,30 +36,14 @@ rsync -avz --delete \
   --exclude=.cursor \
   "$ROOT/" "$SERVER:$REMOTE_DIR/"
 
-# 3) Run deploy on server (detached so SSH timeout can't kill the build)
+# 3) Run deploy on server
 DEPLOY_SCRIPT="deploy-fast.sh"
 [[ "${1:-}" == "--full" ]] && DEPLOY_SCRIPT="deploy-safe.sh"
-echo "==> Running $DEPLOY_SCRIPT on server (detached)..."
-ssh -o ConnectTimeout=15 "$SERVER" \
-  "cd $REMOTE_DIR && nohup bash scripts/$DEPLOY_SCRIPT > /tmp/deploy.log 2>&1 &
-   DEPLOY_PID=\$!
-   echo \"Deploy started (PID \$DEPLOY_PID). Tailing log...\"
-   # Follow the log but exit cleanly if SSH drops — build continues on server
-   tail -f /tmp/deploy.log --pid=\$DEPLOY_PID 2>/dev/null || true
-   wait \$DEPLOY_PID 2>/dev/null
-   exit \$?"
+echo "==> Running $DEPLOY_SCRIPT on server..."
+ssh -o ConnectTimeout=15 "$SERVER" "cd $REMOTE_DIR && bash scripts/$DEPLOY_SCRIPT"
 
-# 4) Health check (retry a few times — container may still be starting)
+# 4) Health check
 echo "==> Health check..."
-for i in 1 2 3 4 5; do
-  if curl -fsS https://evenslouis.ca/api/health >/dev/null 2>&1; then
-    echo "PASS: Health check OK"
-    echo "==> Dev and prod synced ✅"
-    exit 0
-  fi
-  echo "  Waiting... ($i)"
-  sleep 5
-done
-echo "WARN: Health check didn't pass yet. Build may still be running on VPS."
-echo "  Check: ssh $SERVER 'tail -f /tmp/deploy.log'"
-echo "  Or:    curl https://evenslouis.ca/api/health"
+curl -fsS https://evenslouis.ca/api/health
+echo ""
+echo "==> Dev and prod synced ✅"
