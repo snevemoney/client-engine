@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
 import { estimateLeadRoi, getLeadRoiEstimate } from "@/lib/revenue/roi";
 
 export const dynamic = "force-dynamic";
@@ -27,6 +28,8 @@ export async function POST(
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { id } = await params;
+  const lead = await db.lead.findUnique({ where: { id } });
+  if (!lead) return NextResponse.json({ error: "Lead not found" }, { status: 404 });
   try {
     const { artifactId, estimate } = await estimateLeadRoi(id);
     return NextResponse.json({ artifactId, estimate });

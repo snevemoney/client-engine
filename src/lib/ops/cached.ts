@@ -15,6 +15,8 @@ import { getOrCreateSystemLead as _getOrCreateSystemLead } from "./systemLead";
 import { getOpsHealth as _getOpsHealth } from "./opsHealth";
 import { getSalesLeakReport as _getSalesLeakReport } from "./salesLeak";
 import { getCurrentStrategyWeek as _getCurrentStrategyWeek } from "./strategyWeek";
+import { getARSummary as _getARSummary } from "./arSummary";
+import { getCadenceDueSummary as _getCadenceDueSummary } from "./cadenceSummary";
 
 const CACHE_TTL = 45;
 
@@ -36,4 +38,10 @@ export const getCachedSalesLeakReport = cache(
 );
 export const getCachedCurrentStrategyWeek = cache(
   unstable_cache(_getCurrentStrategyWeek, ["strategy-week-current"], { revalidate: CACHE_TTL })
+);
+export const getCachedARSummary = cache(
+  unstable_cache(_getARSummary, ["ar-summary"], { revalidate: CACHE_TTL })
+);
+export const getCachedCadenceDueSummary = cache(
+  unstable_cache(_getCadenceDueSummary, ["cadence-due-summary"], { revalidate: CACHE_TTL })
 );

@@ -2,6 +2,7 @@ import { ImapFlow } from "imapflow";
 import { simpleParser } from "mailparser";
 import { PrismaClient } from "@prisma/client";
 import crypto from "crypto";
+import { notifyNewLead } from "@/lib/notify";
 
 const db = new PrismaClient();
 
@@ -14,11 +15,11 @@ interface ParsedLead {
   tags: string[];
 }
 
-function computeHash(title: string, content: string): string {
+export function computeEmailHash(title: string, content: string): string {
   return crypto.createHash("sha256").update(`${title}|${content.slice(0, 500)}`).digest("hex").slice(0, 32);
 }
 
-function parseUpworkEmail(subject: string, text: string, html: string): ParsedLead | null {
+export function parseUpworkEmail(subject: string, text: string, html: string): ParsedLead | null {
   const titleMatch = subject.match(/new job:?\s*(.+)/i) || subject.match(/invitation:?\s*(.+)/i);
   if (!titleMatch) return null;
 
@@ -47,7 +48,7 @@ function parseUpworkEmail(subject: string, text: string, html: string): ParsedLe
   };
 }
 
-function parseGenericEmail(subject: string, text: string, from: string): ParsedLead {
+export function parseGenericEmail(subject: string, text: string, from: string): ParsedLead {
   return {
     title: subject || "Untitled lead",
     description: `From: ${from}\n\n${text.slice(0, 3000)}`,
@@ -56,7 +57,7 @@ function parseGenericEmail(subject: string, text: string, from: string): ParsedL
   };
 }
 
-async function ingestEmail(subject: string, text: string, html: string, from: string): Promise<string | null> {
+export async function ingestEmail(subject: string, text: string, html: string, from: string): Promise<string | null> {
   const isUpwork = from.includes("upwork.com") || subject.toLowerCase().includes("upwork");
 
   const parsed = isUpwork
@@ -65,7 +66,7 @@ async function ingestEmail(subject: string, text: string, html: string, from: st
 
   if (!parsed) return null;
 
-  const hash = computeHash(parsed.title, parsed.description);
+  const hash = computeEmailHash(parsed.title, parsed.description);
 
   const existing = await db.lead.findFirst({
     where: { OR: [{ contentHash: hash }, ...(parsed.sourceUrl ? [{ sourceUrl: parsed.sourceUrl }] : [])] },
@@ -90,6 +91,7 @@ async function ingestEmail(subject: string, text: string, html: string, from: st
   });
 
   console.log(`[email] Created lead: "${lead.title}" (${lead.id})`);
+  notifyNewLead(lead.id, lead.title, lead.source);
 
   try {
     const { runPipelineIfEligible } = await import("@/lib/pipeline/orchestrator");
@@ -105,6 +107,25 @@ async function ingestEmail(subject: string, text: string, html: string, from: st
   }
 
   return lead.id;
+}
+
+const IMAP_LAST_UID_KEY = "email_ingestion_last_uid";
+
+async function getLastUid(): Promise<number | null> {
+  const row = await db.internalSetting.findUnique({
+    where: { key: IMAP_LAST_UID_KEY },
+  });
+  if (!row?.valueJson || typeof row.valueJson !== "object") return null;
+  const v = row.valueJson as { lastUid?: number };
+  return typeof v.lastUid === "number" ? v.lastUid : null;
+}
+
+async function setLastUid(uid: number): Promise<void> {
+  await db.internalSetting.upsert({
+    where: { key: IMAP_LAST_UID_KEY },
+    create: { key: IMAP_LAST_UID_KEY, valueJson: { lastUid: uid, lastRunAt: new Date().toISOString() } },
+    update: { valueJson: { lastUid: uid, lastRunAt: new Date().toISOString() } },
+  });
 }
 
 export async function runEmailIngestion() {
@@ -132,14 +153,24 @@ export async function runEmailIngestion() {
 
     const lock = await client.getMailboxLock("INBOX");
     try {
+      const lastUid = await getLastUid();
       const since = new Date();
       since.setHours(since.getHours() - 24);
 
       let count = 0;
+      let highestUid = 0;
+
+      const fetchOptions = lastUid != null
+        ? { uid: `${lastUid + 1}:*` as `${number}:*` }
+        : { since, seen: false };
+
       for await (const message of client.fetch(
-        { since, seen: false },
-        { source: true, envelope: true }
+        fetchOptions,
+        { source: true, envelope: true, uid: true },
+        lastUid != null ? { uid: true } : undefined
       )) {
+        const uid = message.uid;
+        if (uid != null && uid > highestUid) highestUid = uid;
         if (!message.source) continue;
         const parsed = await simpleParser(message.source as Buffer);
         const subject = (parsed && typeof parsed === "object" && "subject" in parsed ? String(parsed.subject) : "") || "";
@@ -150,6 +181,8 @@ export async function runEmailIngestion() {
         const leadId = await ingestEmail(subject, text, html, from);
         if (leadId) count++;
       }
+
+      if (highestUid > 0) await setLastUid(highestUid);
 
       console.log(`[email] Ingestion complete: ${count} new leads`);
     } finally {

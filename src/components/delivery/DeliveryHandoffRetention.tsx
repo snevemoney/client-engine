@@ -79,15 +79,17 @@ export function DeliveryHandoffRetention({
   const [upsellOpportunity, setUpsellOpportunity] = useState("");
   const [upsellValueEstimate, setUpsellValueEstimate] = useState("");
   const [clientConfirmNote, setClientConfirmNote] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   const run = async (action: string, fn: () => Promise<Response>) => {
     setLoading(action);
+    setError(null);
     try {
       const res = await fn();
       if (res.ok) onReload();
       else {
         const d = await res.json();
-        alert(d?.error ?? "Action failed");
+        setError(d?.error ?? "Action failed");
       }
     } finally {
       setLoading(null);
@@ -273,6 +275,7 @@ export function DeliveryHandoffRetention({
   return (
     <div className="rounded-lg border border-neutral-800 p-4 space-y-6">
       <h2 className="text-sm font-medium text-neutral-500 uppercase tracking-wider">Handoff & Retention</h2>
+      {error && <p className="text-sm text-red-400">{error}</p>}
 
       {/* Handoff */}
       <div>

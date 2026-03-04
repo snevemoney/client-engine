@@ -15,8 +15,12 @@ import { join } from "path";
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3000";
 const url = baseURL.replace(/\/$/, "");
 
-// Routes that may return 503 when service not configured (e.g. Meta Ads cron)
-const ALLOW_503_PATHS = ["/api/meta-ads/scheduler/run-cron", "/api/meta-ads/scheduler/run"];
+// Routes that may return 503 when service not configured (e.g. Meta Ads cron, AI fill)
+const ALLOW_503_PATHS = [
+  "/api/meta-ads/scheduler/run-cron",
+  "/api/meta-ads/scheduler/run",
+  "/api/ops/strategy-week/ai-fill",
+];
 
 // Placeholder IDs for dynamic segments (valid format, may 404)
 const PLACEHOLDERS: Record<string, string> = {

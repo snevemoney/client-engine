@@ -86,6 +86,9 @@ export async function DELETE(
       await db.nextActionPreference.delete({ where: { id } });
       return NextResponse.json({ ok: true });
     } catch (err) {
+      if (err && typeof err === "object" && "code" in err && (err as { code: string }).code === "P2025") {
+        return jsonError("Preference not found", 404);
+      }
       return jsonError(sanitizeErrorMessage(err) ?? "Failed to delete", 500);
     }
   });

@@ -5,6 +5,7 @@
 
 import { db } from "@/lib/db";
 import type { ScorecardSnapshot } from "./types";
+import { ENRICHMENT_ARTIFACT_TYPE, ENRICHMENT_ARTIFACT_TITLE } from "@/lib/pipeline/enrich";
 
 const RECENT_DAYS = 14;
 
@@ -56,7 +57,9 @@ export async function getScorecardSnapshot(): Promise<ScorecardSnapshot> {
   }
 
   const withEnrich = leads.filter((l) =>
-    l.artifacts.some((a) => a.type === "notes" && a.title === "AI Enrichment Report")
+    l.artifacts.some(
+      (a) => (a.type === ENRICHMENT_ARTIFACT_TYPE || a.type === "notes") && a.title === ENRICHMENT_ARTIFACT_TITLE
+    )
   );
   const withProposal = leads.filter((l) => l.artifacts.some((a) => a.type === "proposal"));
   const approved = leads.filter((l) => l.approvedAt != null);

@@ -9,7 +9,7 @@ interface CheckResult {
   responseTime?: number;
 }
 
-async function checkUrl(url: string, timeoutMs = 10000): Promise<CheckResult> {
+export async function checkUrl(url: string, timeoutMs = 10000): Promise<CheckResult> {
   return new Promise((resolve) => {
     const start = Date.now();
     const mod = url.startsWith("https") ? https : http;
@@ -39,6 +39,13 @@ async function checkUrl(url: string, timeoutMs = 10000): Promise<CheckResult> {
   });
 }
 
+/** Pure threshold logic for testing. <7 days = error, <30 = warning, else ok. */
+export function sslStatusFromDaysLeft(daysLeft: number): "ok" | "warning" | "error" {
+  if (daysLeft < 7) return "error";
+  if (daysLeft < 30) return "warning";
+  return "ok";
+}
+
 async function checkSslExpiry(hostname: string): Promise<CheckResult> {
   return new Promise((resolve) => {
     const req = https.get({ hostname, port: 443, method: "HEAD", rejectUnauthorized: false }, (res) => {
@@ -48,13 +55,14 @@ async function checkSslExpiry(hostname: string): Promise<CheckResult> {
         if (cert && cert.valid_to) {
           const expiry = new Date(cert.valid_to);
           const daysLeft = Math.floor((expiry.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-          if (daysLeft < 7) {
-            resolve({ url: hostname, status: "error", message: `SSL expires in ${daysLeft} days (${cert.valid_to})` });
-          } else if (daysLeft < 30) {
-            resolve({ url: hostname, status: "warning", message: `SSL expires in ${daysLeft} days` });
-          } else {
-            resolve({ url: hostname, status: "ok", message: `SSL valid for ${daysLeft} days` });
-          }
+          const status = sslStatusFromDaysLeft(daysLeft);
+          const message =
+            status === "error"
+              ? `SSL expires in ${daysLeft} days (${cert.valid_to})`
+              : status === "warning"
+                ? `SSL expires in ${daysLeft} days`
+                : `SSL valid for ${daysLeft} days`;
+          resolve({ url: hostname, status, message });
         } else {
           resolve({ url: hostname, status: "warning", message: "Could not read certificate" });
         }

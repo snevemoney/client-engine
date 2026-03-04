@@ -5,13 +5,14 @@
 import { db } from "@/lib/db";
 import { finishStep } from "@/lib/pipeline-metrics";
 import { normalizeUsage } from "@/lib/pipeline/usage";
-import { runEnrich } from "@/lib/pipeline/enrich";
+import { runEnrich, ENRICHMENT_ARTIFACT_TYPE, ENRICHMENT_ARTIFACT_TITLE } from "@/lib/pipeline/enrich";
 import { runScore } from "@/lib/pipeline/score";
 import { runPositioning } from "@/lib/pipeline/positioning";
 import { runPropose } from "@/lib/pipeline/propose";
 import { buildProvenance } from "@/lib/pipeline/provenance";
 import { trackPipelineEvent } from "@/lib/analytics";
 import { upsertArtifact } from "@/lib/pinecone";
+import { notifyDecisionReadyForLead } from "@/lib/notify";
 
 export type LeadWithArtifacts = {
   id: string;
@@ -22,7 +23,9 @@ export type LeadWithArtifacts = {
 };
 
 function hasEnrichment(artifacts: { type: string; title?: string }[]): boolean {
-  return artifacts.some((a) => a.type === "notes" && a.title === "AI Enrichment Report");
+  return artifacts.some(
+    (a) => (a.type === ENRICHMENT_ARTIFACT_TYPE || a.type === "notes") && a.title === ENRICHMENT_ARTIFACT_TITLE
+  );
 }
 
 function hasScore(lead: { scoredAt: Date | null }): boolean {
@@ -39,7 +42,7 @@ function hasProposal(artifacts: { type: string }[]): boolean {
 
 /** Apply in-memory update after step runs. Mutates current. */
 function applyEnrichDelta(current: LeadWithArtifacts): void {
-  current.artifacts.push({ type: "notes", title: "AI Enrichment Report" });
+  current.artifacts.push({ type: ENRICHMENT_ARTIFACT_TYPE, title: ENRICHMENT_ARTIFACT_TITLE });
 }
 
 function applyScoreDelta(current: LeadWithArtifacts): void {
@@ -123,6 +126,13 @@ export async function runPositionStep(
   trackPipelineEvent(leadId, "lead_positioned", { runId });
   db.artifact.findUnique({ where: { id: artifactId } }).then((a) => a && upsertArtifact(a).catch(() => {}));
   applyPositionDelta(current);
+  // MAYBE leads with positioning only (no proposal yet) — notify for review
+  if (!hasProposal(current.artifacts)) {
+    const lead = await db.lead.findUnique({ where: { id: leadId }, select: { scoreVerdict: true } });
+    if (lead?.scoreVerdict === "MAYBE") {
+      notifyDecisionReadyForLead(leadId, current.title, "positioning_only");
+    }
+  }
   return { skipped: false };
 }
 
@@ -148,5 +158,6 @@ export async function runProposeStep(
   trackPipelineEvent(leadId, "lead_proposed", { runId });
   db.artifact.findUnique({ where: { id: artifactId } }).then((a) => a && upsertArtifact(a).catch(() => {}));
   applyProposeDelta(current);
+  notifyDecisionReadyForLead(leadId, current.title, "proposal_ready");
   return { skipped: false };
 }

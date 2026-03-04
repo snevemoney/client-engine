@@ -5,8 +5,8 @@
 
 import { db } from "@/lib/db";
 import { LeadIntelligenceSchema, type LeadIntelligence } from "@/lib/lead-intelligence/schema";
+import { ENRICHMENT_ARTIFACT_TYPE, ENRICHMENT_ARTIFACT_TITLE } from "@/lib/pipeline/enrich";
 
-const ENRICH_TITLE = "AI Enrichment Report";
 const POSITIONING_TITLE = "POSITIONING_BRIEF";
 
 export async function getLeadIntelligenceForLead(leadId: string): Promise<LeadIntelligence | null> {
@@ -14,7 +14,8 @@ export async function getLeadIntelligenceForLead(leadId: string): Promise<LeadIn
     where: {
       leadId,
       OR: [
-        { type: "notes", title: ENRICH_TITLE },
+        { type: ENRICHMENT_ARTIFACT_TYPE, title: ENRICHMENT_ARTIFACT_TITLE },
+        { type: "notes", title: ENRICHMENT_ARTIFACT_TITLE }, // legacy
         { type: "positioning", title: POSITIONING_TITLE },
       ],
     },

@@ -1,6 +1,6 @@
 import { buildBrief } from "@/lib/orchestrator/brief";
 import { getQueueSummary } from "@/lib/ops/queueSummary";
-import { getCachedConstraintSnapshot, getCachedFailuresAndInterventions, getCachedMoneyScorecard, getCachedOperatorSettings } from "@/lib/ops/cached";
+import { getCachedARSummary, getCachedCadenceDueSummary, getCachedConstraintSnapshot, getCachedFailuresAndInterventions, getCachedMoneyScorecard, getCachedOperatorSettings } from "@/lib/ops/cached";
 import { getLatestOperatorBrief } from "@/lib/ops/operatorBrief";
 import { getRecentOperatorFeedbackNotes } from "@/lib/ops/feedback";
 import { getLearningInboxSummary } from "@/lib/learning/ingest";
@@ -44,6 +44,8 @@ import { NetworkingEventsCard } from "@/components/dashboard/command/NetworkingE
 import { PatTomWeeklyScorecardCard } from "@/components/dashboard/command/PatTomWeeklyScorecardCard";
 import { NotificationsCard } from "@/components/dashboard/command/NotificationsCard";
 import { FollowUpQueueCard } from "@/components/dashboard/command/FollowUpQueueCard";
+import { ARPanelCard } from "@/components/dashboard/command/ARPanelCard";
+import { CadenceDueCard } from "@/components/dashboard/command/CadenceDueCard";
 import { logSlow, PERF } from "@/lib/perf";
 
 /** Second wave: all remaining cards. Streams in after Section 1. */
@@ -72,6 +74,8 @@ export default async function CommandSection2() {
     prospectingSources,
     channelRoleCritique,
     notificationSummary,
+    arSummary,
+    cadenceDueSummary,
   ] = await Promise.all([
     buildBrief(),
     getQueueSummary(),
@@ -102,6 +106,8 @@ export default async function CommandSection2() {
     getProspectingSourceMetrics(),
     getChannelRoleCritique(),
     getNotificationSummary(),
+    getCachedARSummary(),
+    getCachedCadenceDueSummary(),
   ]);
   const ms = Math.round(performance.now() - start); // eslint-disable-line react-hooks/purity
   if (ms > PERF.SLOW_PAGE_MS) logSlow("page", "/dashboard/command Section2", ms);
@@ -126,6 +132,8 @@ export default async function CommandSection2() {
       <FollowUpQueueCard />
       <FailuresInterventionsCard data={failuresInterventions} />
       <BuildOpsCard data={buildOpsSummary} />
+      <ARPanelCard data={arSummary} />
+      <CadenceDueCard data={cadenceDueSummary} />
       <ReusableAssetSummaryCard data={reusableAssetSummary} />
       <PatTomWeeklyScorecardCard data={patTomScorecard} />
       <div className="grid gap-4 sm:grid-cols-2">

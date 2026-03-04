@@ -3,14 +3,21 @@
  *
  * Pulls enrichment + positioning artifacts from the linked lead so generated
  * copy reflects the client's actual business, not generic placeholders.
+ * Optional body: { context: string } — client feedback notes to incorporate.
  */
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { jsonError, requireDeliveryProject, withRouteTiming } from "@/lib/api-utils";
 import { generateContent, getSiteWithSections } from "@/lib/builder/client";
 import { db } from "@/lib/db";
+import { ENRICHMENT_ARTIFACT_TYPE, ENRICHMENT_ARTIFACT_TITLE } from "@/lib/pipeline/enrich";
+
+const PostSchema = z.object({
+  context: z.string().max(5000).optional(),
+});
 
 export async function POST(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   return withRouteTiming(
@@ -39,6 +46,10 @@ export async function POST(
         return jsonError("No builder site linked to this project", 400, "NO_SITE");
       }
 
+      const raw = await req.json().catch(() => ({}));
+      const parsed = PostSchema.safeParse(raw);
+      const contextFromBody = parsed.success ? parsed.data.context : undefined;
+
       // Get current site data to know which sections to regenerate
       const site = await getSiteWithSections(project.builderSiteId);
 
@@ -48,7 +59,16 @@ export async function POST(
       let positionArtifact: { content: string; meta: unknown } | null = null;
       if (leadId) {
         [enrichArtifact, positionArtifact] = await Promise.all([
-          db.artifact.findFirst({ where: { leadId, type: "notes" }, orderBy: { createdAt: "desc" } }),
+          db.artifact.findFirst({
+            where: {
+              leadId,
+              OR: [
+                { type: ENRICHMENT_ARTIFACT_TYPE, title: ENRICHMENT_ARTIFACT_TITLE },
+                { type: "notes", title: ENRICHMENT_ARTIFACT_TITLE },
+              ],
+            },
+            orderBy: { createdAt: "desc" },
+          }),
           db.artifact.findFirst({ where: { leadId, type: "positioning" }, orderBy: { createdAt: "desc" } }),
         ]);
       }
@@ -57,12 +77,28 @@ export async function POST(
       const enrichData = (enrichArtifact?.meta as Record<string, unknown> | null)?.leadIntelligence as Record<string, unknown> | undefined;
       const lead = project.pipelineLead as { title?: string; contactName?: string; description?: string; scoreVerdict?: string; scoreReason?: string } | null;
 
+      // Client feedback: from body or latest client_note activities
+      let clientFeedback = contextFromBody?.trim();
+      if (!clientFeedback) {
+        const clientNotes = await db.deliveryActivity.findMany({
+          where: { deliveryProjectId: id, type: "client_note" },
+          orderBy: { createdAt: "desc" },
+          take: 5,
+        });
+        clientFeedback = clientNotes.map((n) => n.message).filter(Boolean).join("\n\n").trim() || undefined;
+      }
+
+      const baseBio = enrichArtifact?.content?.slice(0, 1500) ?? lead?.description ?? project.summary ?? undefined;
+      const bioWithFeedback = clientFeedback
+        ? `${baseBio ?? ""}\n\n[Client feedback to incorporate]\n${clientFeedback}`.trim()
+        : baseBio;
+
       await generateContent(project.builderSiteId, {
         sections: site.sections.map((s) => s.type),
         clientInfo: {
           name: project.clientName ?? lead?.contactName ?? project.title,
           niche: site.contentHints ?? (posData?.feltProblem as string | undefined),
-          bio: enrichArtifact?.content?.slice(0, 1500) ?? lead?.description ?? project.summary ?? undefined,
+          bio: bioWithFeedback,
           services: posData?.packaging ? [String(posData.packaging)] : undefined,
           tone: "professional, warm, approachable",
           feltProblem: posData?.feltProblem as string | undefined,

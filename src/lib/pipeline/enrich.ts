@@ -2,9 +2,12 @@ import { db } from "@/lib/db";
 import { chat, type ChatUsage } from "@/lib/llm";
 import { safeParseJSON } from "@/lib/llm/safe-parse-json";
 import { isDryRun } from "@/lib/pipeline/dry-run";
+import { ENRICHMENT_ARTIFACT_TYPE, ENRICHMENT_ARTIFACT_TITLE } from "@/lib/pipeline/enrich-constants";
 import type { Provenance } from "@/lib/pipeline/provenance";
 import { LeadIntelligenceSchema, type LeadIntelligence } from "@/lib/lead-intelligence/schema";
 import { scrapeUrl, isFirecrawlEnabled } from "@/lib/firecrawl";
+
+export { ENRICHMENT_ARTIFACT_TYPE, ENRICHMENT_ARTIFACT_TITLE };
 
 const ENRICH_PROMPT = `You are a lead analyst for a freelance software developer. Analyze this lead and extract structured information.
 
@@ -47,8 +50,8 @@ export async function runEnrich(leadId: string, provenance?: Provenance): Promis
     const artifact = await db.artifact.create({
       data: {
         leadId,
-        type: "notes",
-        title: "AI Enrichment Report",
+        type: ENRICHMENT_ARTIFACT_TYPE,
+        title: ENRICHMENT_ARTIFACT_TITLE,
         content: "**[DRY RUN]** Placeholder enrichment. Set PIPELINE_DRY_RUN=0 and ANTHROPIC_API_KEY or OPENAI_API_KEY for real run.",
         ...(meta ? { meta } : {}),
       },
@@ -123,8 +126,8 @@ export async function runEnrich(leadId: string, provenance?: Provenance): Promis
   const artifact = await db.artifact.create({
     data: {
       leadId,
-      type: "notes",
-      title: "AI Enrichment Report",
+      type: ENRICHMENT_ARTIFACT_TYPE,
+      title: ENRICHMENT_ARTIFACT_TITLE,
       meta: Object.keys(artifactMeta).length ? (artifactMeta as object) : undefined,
       content: [
         `**Category:** ${enriched.category}`,

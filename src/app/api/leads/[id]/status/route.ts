@@ -2,12 +2,15 @@ import { LeadStatus } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { createCadence } from "@/lib/cadence/service";
 
 const STATUS_ORDER: LeadStatus[] = [
   "NEW",
   "ENRICHED",
   "SCORED",
   "APPROVED",
+  "SCOPE_SENT",
+  "SCOPE_APPROVED",
   "REJECTED",
   "BUILDING",
   "SHIPPED",
@@ -17,7 +20,9 @@ const ALLOWED_TRANSITIONS: Record<LeadStatus, LeadStatus[]> = {
   NEW: ["ENRICHED", "SCORED", "REJECTED"],
   ENRICHED: ["SCORED", "REJECTED"],
   SCORED: ["APPROVED", "REJECTED"],
-  APPROVED: ["BUILDING", "REJECTED"],
+  APPROVED: ["BUILDING", "SCOPE_SENT", "REJECTED"],
+  SCOPE_SENT: ["SCOPE_APPROVED", "REJECTED"],
+  SCOPE_APPROVED: ["BUILDING", "REJECTED"],
   REJECTED: [],
   BUILDING: ["SHIPPED"],
   SHIPPED: [],
@@ -50,7 +55,7 @@ export async function PATCH(
   const nextStatus = parseStatus(body.status);
   if (!nextStatus) {
     return NextResponse.json(
-      { error: "status must be one of NEW, ENRICHED, SCORED, APPROVED, REJECTED, BUILDING, SHIPPED" },
+      { error: "status must be one of NEW, ENRICHED, SCORED, APPROVED, SCOPE_SENT, SCOPE_APPROVED, REJECTED, BUILDING, SHIPPED" },
       { status: 400 }
     );
   }
@@ -107,6 +112,12 @@ export async function PATCH(
     where: { id },
     data,
   });
+
+  if (nextStatus === "SCOPE_SENT") {
+    createCadence("lead", id, "scope_sent").catch((e) =>
+      console.warn("[cadence] scope_sent failed:", e)
+    );
+  }
 
   return NextResponse.json(updated);
 }

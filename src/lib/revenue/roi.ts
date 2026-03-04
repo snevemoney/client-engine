@@ -8,6 +8,7 @@ import { chat } from "@/lib/llm";
 import { safeParseJSON } from "@/lib/llm/safe-parse-json";
 import type { RoiEstimate } from "./types";
 import { ROI_ESTIMATE_ARTIFACT_TYPE } from "./types";
+import { ENRICHMENT_ARTIFACT_TYPE, ENRICHMENT_ARTIFACT_TITLE } from "@/lib/pipeline/enrich";
 
 const POSITIONING_TITLE = "POSITIONING_BRIEF";
 const RESEARCH_SNAPSHOT_TITLE = "RESEARCH_SNAPSHOT";
@@ -21,7 +22,8 @@ export async function estimateLeadRoi(leadId: string): Promise<{ artifactId: str
           OR: [
             { type: "positioning", title: POSITIONING_TITLE },
             { type: "research", title: RESEARCH_SNAPSHOT_TITLE },
-            { type: "notes" },
+            { type: ENRICHMENT_ARTIFACT_TYPE, title: ENRICHMENT_ARTIFACT_TITLE },
+            { type: "notes", title: ENRICHMENT_ARTIFACT_TITLE }, // legacy
             { type: "proposal" },
           ],
         },
@@ -35,7 +37,9 @@ export async function estimateLeadRoi(leadId: string): Promise<{ artifactId: str
 
   const positioning = lead.artifacts.find((a) => a.type === "positioning" && a.title === POSITIONING_TITLE);
   const research = lead.artifacts.find((a) => a.type === "research" && a.title === RESEARCH_SNAPSHOT_TITLE);
-  const enrichment = lead.artifacts.find((a) => a.type === "notes" && a.title === "AI Enrichment Report");
+  const enrichment = lead.artifacts.find(
+    (a) => (a.type === ENRICHMENT_ARTIFACT_TYPE || a.type === "notes") && a.title === ENRICHMENT_ARTIFACT_TITLE
+  );
   const proposalDraft = lead.artifacts.find((a) => a.type === "proposal");
 
   const contextParts: string[] = [];

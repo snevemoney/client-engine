@@ -9,6 +9,7 @@ import { formatStepFailureNotes } from "@/lib/pipeline/error-classifier";
 import { buildProvenance } from "@/lib/pipeline/provenance";
 import { rateLimit } from "@/lib/rate-limit";
 import { buildCursorRulesFallback } from "@/lib/build/buildCursorRules";
+import { generateHandoffChecklist } from "@/lib/build/handoffChecklist";
 
 const LIMIT = 10;
 const WINDOW_MS = 60_000;
@@ -80,32 +81,31 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const { id } = await params;
   const lead = await db.lead.findUnique({
     where: { id },
-    include: { project: true, artifacts: { where: { type: "proposal" }, take: 1 } },
+    include: { project: true, artifacts: true },
   });
   if (!lead) return NextResponse.json({ error: "Lead not found" }, { status: 404 });
 
-  if (lead.project) {
-    return NextResponse.json({ error: "Project already exists for this lead", project: lead.project }, { status: 409 });
-  }
+  const hasProject = !!lead.project;
+  const proposalArtifacts = lead.artifacts.filter((a) => a.type === "proposal");
+  const scopeArtifacts = lead.artifacts.filter((a) => a.type === "scope");
 
-  // Approval gate: Build is only allowed when lead is explicitly approved
-  if (lead.status !== "APPROVED") {
+  // Approval gate: Build requires APPROVED or SCOPE_APPROVED
+  const allowedStatuses = ["APPROVED", "SCOPE_APPROVED"];
+  if (!allowedStatuses.includes(lead.status)) {
     return NextResponse.json(
       {
         error: "Lead not approved for build",
-        requiredStatus: "APPROVED",
+        requiredStatus: "APPROVED or SCOPE_APPROVED",
         currentStatus: lead.status,
       },
       { status: 403 }
     );
   }
 
-  // Require at least one proposal artifact (positioning gate implies proposal exists for approved flow)
-  if (!lead.artifacts?.length) {
+  // Require at least one proposal artifact for initial build (regeneration updates specs only)
+  if (!hasProject && !proposalArtifacts.length) {
     return NextResponse.json(
-      {
-        error: "No proposal artifact for this lead. Run propose step first.",
-      },
+      { error: "No proposal artifact for this lead. Run propose step first." },
       { status: 403 }
     );
   }
@@ -174,6 +174,49 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       model: "gpt-4o-mini",
       temperature: 0.4,
     });
+    const handoffContent = generateHandoffChecklist(lead);
+
+    if (hasProject) {
+      // Regeneration: update existing scope artifacts or create if missing
+      await db.$transaction(async (tx) => {
+        const specArtifact = scopeArtifacts.find((a) => a.title === "PROJECT_SPEC.md");
+        const tasksArtifact = scopeArtifacts.find((a) => a.title === "DO_THIS_NEXT.md");
+        const rulesArtifact = scopeArtifacts.find((a) => a.title === "CURSOR_RULES.md");
+        const handoffArtifact = scopeArtifacts.find((a) => a.title === "HANDOFF_CHECKLIST.md");
+
+        const metaSpec = { provenance, buildArtifact: { kind: "project_spec" } } as object;
+        const metaTasks = { provenance, buildArtifact: { kind: "do_this_next" } } as object;
+        const metaRules = { provenance, buildArtifact: { kind: "cursor_rules" } } as object;
+
+        if (specArtifact) await tx.artifact.update({ where: { id: specArtifact.id }, data: { content: spec, meta: metaSpec } });
+        else await tx.artifact.create({ data: { leadId: id, type: "scope", title: "PROJECT_SPEC.md", content: spec, meta: metaSpec } });
+
+        if (tasksArtifact) await tx.artifact.update({ where: { id: tasksArtifact.id }, data: { content: tasks, meta: metaTasks } });
+        else await tx.artifact.create({ data: { leadId: id, type: "scope", title: "DO_THIS_NEXT.md", content: tasks, meta: metaTasks } });
+
+        if (rulesArtifact) await tx.artifact.update({ where: { id: rulesArtifact.id }, data: { content: cursorRulesContent, meta: metaRules } });
+        else await tx.artifact.create({ data: { leadId: id, type: "scope", title: "CURSOR_RULES.md", content: cursorRulesContent, meta: metaRules } });
+        if (handoffArtifact) {
+          await tx.artifact.update({ where: { id: handoffArtifact.id }, data: { content: handoffContent } });
+        } else {
+          await tx.artifact.create({
+            data: {
+              leadId: id,
+              type: "scope",
+              title: "HANDOFF_CHECKLIST.md",
+              content: handoffContent,
+              meta: { provenance, buildArtifact: { kind: "handoff_checklist" } } as object,
+            },
+          });
+        }
+      });
+
+      const norm = normalizeUsage(usage, "gpt-4o-mini");
+      await finishStep(stepId, { success: true, tokensUsed: norm.tokensUsed, costEstimate: norm.costEstimate });
+      await finishRun(runId, true);
+      return NextResponse.json({ regenerated: true, spec: spec.slice(0, 200), tasks: tasks.slice(0, 200) });
+    }
+
     const project = await db.$transaction(async (tx) => {
       const startedAt = new Date();
       const createdProject = await tx.project.create({
@@ -217,6 +260,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           title: "CURSOR_RULES.md",
           content: cursorRulesContent,
           meta: { provenance, buildArtifact: { kind: "cursor_rules" } } as object,
+        },
+      });
+      await tx.artifact.create({
+        data: {
+          leadId: id,
+          type: "scope",
+          title: "HANDOFF_CHECKLIST.md",
+          content: handoffContent,
+          meta: { provenance, buildArtifact: { kind: "handoff_checklist" } } as object,
         },
       });
 

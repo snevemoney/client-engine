@@ -5,6 +5,7 @@
  */
 
 import type { LeadIntelligence } from "@/lib/lead-intelligence/schema";
+import { getOutreachSectionPrompt, getOutreachHeader } from "@/lib/proposals/outreach";
 
 /** Format lead intelligence for the proposal prompt; supports full schema including trustSensitivity, changeSurface, safeStartingPoint, rolloutNotes, influence/stance. */
 function formatLeadIntelligenceForPrompt(li: LeadIntelligence | null | undefined): string {
@@ -67,7 +68,7 @@ ${stakeholders}
 - Mention reversibility/rollback in plain language when trust friction is present.
 - Speak to the primary buyer's outcome, but reduce fear for approvers/blockers.
 - The opening should be confidence + clarity, not hype.
-- The Upwork snippet must be concise and low-friction.
+- The outreach snippet (Upwork/email/pitch) must be concise and low-friction.
 - Questions should reduce uncertainty and de-risk implementation.
 - Reduce perceived risk in the opening; emphasize reversibility and safe rollout.
 - The proposal must feel safe to approve; use the least risky credible path.
@@ -82,6 +83,8 @@ export type LeadForProposal = {
   timeline: string | null;
   platform: string | null;
   techStack: string[];
+  /** Lead source for channel-aware outreach (upwork, email, prospect, etc.). */
+  source?: string | null;
   /** When lead comes from research engine: use for "Why them" and "Why now". */
   researchSnapshot?: string | null;
   researchSourceUrl?: string | null;
@@ -93,15 +96,28 @@ export type LeadForProposal = {
   leadIntelligence?: LeadIntelligence | null;
 };
 
+export type BuildProposalOptions = {
+  proofLinks?: string;
+};
+
 /**
  * Build the full proposal prompt from lead + positioning brief.
  * positioningBrief is required — proposals must use positioning.
  * When researchSnapshot is present (research-sourced lead), proposal can cite it for "Why now" and "Opening".
+ * When proofLinks is present, inject before Proof section to ground credibility bullets.
  */
 export function buildProposalPrompt(
   lead: LeadForProposal,
-  positioningBrief: string
+  positioningBrief: string,
+  options?: BuildProposalOptions
 ): string {
+  const proofLinksBlock = options?.proofLinks?.trim()
+    ? `
+---
+${options.proofLinks}
+---
+`
+    : "";
   const leadBlock = `
 Title: ${lead.title}
 Description: ${lead.description ?? "No description provided"}
@@ -161,6 +177,7 @@ ${positioningBrief}
 
 ${leadBlock}
 ${researchBlock}
+${proofLinksBlock}
 ${leadIntelligenceBlock}
 ${lead.resultTarget
     ? `
@@ -186,7 +203,7 @@ One short paragraph: the client’s felt problem in their words, then one senten
 One short line on why this is the right moment (timing, urgency, or opportunity).${lead.roiSummary ? " If an ROI summary is provided below, ground this in it." : ""}
 
 ## Proof / credibility / mechanism
-Exactly 3 bullets: proof you can do this, credibility (relevant experience or outcome), and the mechanism (how you’ll deliver). Be specific, not generic.
+Exactly 3 bullets: proof you can do this, credibility (relevant experience or outcome), and the mechanism (how you’ll deliver). Be specific, not generic.${options?.proofLinks ? " Use the case study links provided above to ground these bullets." : ""}
 
 ## Opening (2–3 sentences)
 A personalized opener that reflects the positioning. Reference something specific from their description. No "Dear Sir/Madam" or "I saw your posting."
@@ -207,15 +224,14 @@ ${lead.roiSummary}
 ## Questions Before Starting
 3-5 smart questions that show expertise and help define scope better.
 
-## Upwork Snippet
-A standalone 3-4 sentence version suitable for an Upwork proposal cover letter (under 600 characters).
+${getOutreachSectionPrompt(lead.source)}
 
 ## Questions Before Starting
 3-5 smart questions that show expertise and help define scope better (or use header ## Questions).
 
 Return EXACTLY this markdown structure so the proposal console can parse sections:
 - ## Opening — 3–8 sentences, outcome-first, stakeholder-safe, no hype.
-- ## Upwork Snippet — <= 600 characters, concise, client-facing.
+- ${getOutreachHeader(lead.source)} — concise, client-facing (see char limit above).
 - ## Questions Before Starting (or ## Questions) — 5–10 bullets max, clarifying questions that reduce risk or scope ambiguity.
 
 Do not add extra sections that would break the console parser. Use the exact headers above. Write the full proposal in markdown.`;

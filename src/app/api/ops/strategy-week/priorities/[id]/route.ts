@@ -47,12 +47,18 @@ export async function PATCH(
     if (data.description !== undefined) update.description = data.description;
     if (data.status !== undefined) update.status = data.status;
 
-    const priority = await db.strategyWeekPriority.update({
-      where: { id },
-      data: update,
-    });
-
-    return NextResponse.json(priority);
+    try {
+      const priority = await db.strategyWeekPriority.update({
+        where: { id },
+        data: update,
+      });
+      return NextResponse.json(priority);
+    } catch (err) {
+      if (err && typeof err === "object" && "code" in err && (err as { code: string }).code === "P2025") {
+        return jsonError("Priority not found", 404);
+      }
+      throw err;
+    }
   });
 }
 
@@ -66,8 +72,14 @@ export async function DELETE(
 
     const { id } = await params;
 
-    await db.strategyWeekPriority.delete({ where: { id } });
-
-    return NextResponse.json({ ok: true });
+    try {
+      await db.strategyWeekPriority.delete({ where: { id } });
+      return NextResponse.json({ ok: true });
+    } catch (err) {
+      if (err && typeof err === "object" && "code" in err && (err as { code: string }).code === "P2025") {
+        return jsonError("Priority not found", 404);
+      }
+      throw err;
+    }
   });
 }

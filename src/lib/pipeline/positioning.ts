@@ -5,6 +5,7 @@ import { isDryRun } from "@/lib/pipeline/dry-run";
 import { PositioningMetaSchema } from "@/lib/pipeline/positioning-schema";
 import type { Provenance } from "@/lib/pipeline/provenance";
 import { parseLeadIntelligenceFromMeta } from "@/lib/lead-intelligence";
+import { ENRICHMENT_ARTIFACT_TYPE, ENRICHMENT_ARTIFACT_TITLE } from "@/lib/pipeline/enrich";
 
 const POSITIONING_PROMPT = `You are a positioning strategist for a freelance full-stack developer. Given this lead, produce two outputs.
 
@@ -46,7 +47,13 @@ export async function runPositioning(
   if (!lead) throw new Error("Lead not found");
 
   const enrichArtifact = await db.artifact.findFirst({
-    where: { leadId, type: "notes", title: "AI Enrichment Report" },
+    where: {
+      leadId,
+      OR: [
+        { type: ENRICHMENT_ARTIFACT_TYPE, title: ENRICHMENT_ARTIFACT_TITLE },
+        { type: "notes", title: ENRICHMENT_ARTIFACT_TITLE }, // legacy
+      ],
+    },
     orderBy: { createdAt: "desc" },
   });
   const leadIntelligence = enrichArtifact?.meta ? parseLeadIntelligenceFromMeta(enrichArtifact.meta) : null;

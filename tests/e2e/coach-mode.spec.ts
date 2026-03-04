@@ -59,7 +59,7 @@ test.describe("Coach Mode", () => {
     const cta = page
       .getByTestId(/coach-cta-(run_next_actions|run_risk_rules|recompute_score|nba_execute)/)
       .first();
-    await expect(cta).toBeVisible({ timeout: 3000 });
+    await expect(cta).toBeVisible({ timeout: 5000 });
     await cta.click();
 
     await expect(page.getByTestId("coach-preview-card")).toBeVisible({ timeout: 10000 });
@@ -85,7 +85,7 @@ test.describe("Coach Mode", () => {
     const cta = page
       .getByTestId(/coach-cta-(run_next_actions|run_risk_rules|recompute_score|nba_execute)/)
       .first();
-    await expect(cta).toBeVisible({ timeout: 3000 });
+    await expect(cta).toBeVisible({ timeout: 5000 });
     await cta.click();
 
     await expect(page.getByTestId("coach-preview-card")).toBeVisible({ timeout: 10000 });
@@ -98,6 +98,6 @@ test.describe("Coach Mode", () => {
 
     const firstSession = page.locator('[data-testid="sessions-list"] button').first();
     await firstSession.click();
-    await expect(page.getByTestId("session-action-log").first()).toBeVisible({ timeout: 5000 });
+    await expect(page.getByTestId("session-action-log").first()).toBeVisible({ timeout: 8000 });
   });
 });

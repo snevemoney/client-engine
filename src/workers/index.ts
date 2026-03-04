@@ -24,7 +24,13 @@ const builderDeployWorker = createWorker<BuilderDeployJob>("builder-deploy", asy
   const { deliveryProjectId, siteId, domain } = job.data;
   const { deploySite } = await import("../lib/builder/client");
   const { db } = await import("../lib/db");
+  const { notifyDeployComplete, notifyClientDeployed, getAppUrl } = await import("../lib/notify");
+  const { createCadence } = await import("../lib/cadence/service");
   const deployed = await deploySite(siteId, domain);
+  const project = await db.deliveryProject.findUnique({
+    where: { id: deliveryProjectId },
+    select: { title: true, clientToken: true, pipelineLead: { select: { contactEmail: true } } },
+  });
   await db.$transaction([
     db.deliveryProject.update({
       where: { id: deliveryProjectId },
@@ -39,6 +45,14 @@ const builderDeployWorker = createWorker<BuilderDeployJob>("builder-deploy", asy
       },
     }),
   ]);
+  notifyDeployComplete(deliveryProjectId, project?.title ?? "Unknown", deployed.liveUrl);
+  createCadence("delivery_project", deliveryProjectId, "deployed").catch((e) =>
+    console.warn("[cadence] deployed failed:", e)
+  );
+  const contactEmail = project?.pipelineLead && "contactEmail" in project.pipelineLead ? (project.pipelineLead as { contactEmail?: string }).contactEmail : undefined;
+  if (contactEmail?.trim() && project?.clientToken) {
+    notifyClientDeployed(contactEmail.trim(), project.title, deployed.liveUrl, `${getAppUrl()}/portal/${project.clientToken}`);
+  }
   return { siteId: deployed.siteId, liveUrl: deployed.liveUrl };
 });
 

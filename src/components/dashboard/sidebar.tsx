@@ -73,6 +73,7 @@ const NAV_ITEMS: NavItem[] = [
 
   // CONVERT
   { href: "/dashboard/leads",      label: "Leads",       icon: Inbox,     group: "convert", dailyMode: true },
+  { href: "/dashboard/decisions", label: "Decisions",    icon: FileCheck, group: "convert", dailyMode: true },
   { href: "/dashboard/proposals",  label: "Proposals",   icon: FileText,  group: "convert", dailyMode: true },
   { href: "/dashboard/followups",  label: "Follow-ups",  icon: Calendar,  group: "convert", dailyMode: true },
   { href: "/dashboard/forecast",   label: "Forecast",    icon: TrendingUp, group: "convert" },
@@ -85,6 +86,8 @@ const NAV_ITEMS: NavItem[] = [
 
   // PROVE
   { href: "/dashboard/proof",            label: "Proof",            icon: Quote,     group: "prove" },
+  { href: "/dashboard/scorecard",        label: "Scorecard",       icon: BarChart3, group: "prove" },
+  { href: "/dashboard/campaigns",        label: "Campaigns",        icon: Megaphone, group: "prove" },
   { href: "/dashboard/reviews",          label: "Reviews",          icon: FileCheck, group: "prove" },
   { href: "/dashboard/proof-candidates", label: "Proof Candidates", icon: FileCheck, group: "prove" },
   { href: "/dashboard/content-posts",   label: "Content Posts",    icon: Newspaper, group: "prove" },

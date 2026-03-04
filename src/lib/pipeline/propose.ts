@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { chat, type ChatUsage } from "@/lib/llm";
 import { buildProposalPrompt } from "@/lib/pipeline/prompts/buildProposalPrompt";
 import { isDryRun } from "@/lib/pipeline/dry-run";
+import { getProofLinks } from "@/lib/proof/getProofLinks";
 import type { Provenance } from "@/lib/pipeline/provenance";
 import { getLeadRoiEstimate } from "@/lib/revenue/roi";
 import { getClientSuccessData } from "@/lib/client-success";
@@ -82,6 +83,8 @@ export async function runPropose(leadId: string, provenance?: Provenance): Promi
     return { artifactId: artifact.id };
   }
 
+  const proofLinks = await getProofLinks(leadId);
+
   const prompt = buildProposalPrompt(
     {
       title: lead.title,
@@ -90,13 +93,15 @@ export async function runPropose(leadId: string, provenance?: Provenance): Promi
       timeline: lead.timeline,
       platform: lead.platform,
       techStack: lead.techStack,
+      source: lead.source ?? undefined,
       researchSnapshot: researchSnapshot ?? undefined,
       researchSourceUrl: researchSourceUrl ?? undefined,
       roiSummary: roiSummary ?? undefined,
       resultTarget: resultTarget ?? undefined,
       leadIntelligence: leadIntelligence ?? undefined,
     },
-    positioning.content
+    positioning.content,
+    { proofLinks: proofLinks || undefined }
   );
 
   const { content, usage } = await chat(

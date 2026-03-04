@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/api-utils";
 import { db } from "@/lib/db";
 import { chat } from "@/lib/llm";
+import { ENRICHMENT_ARTIFACT_TYPE, ENRICHMENT_ARTIFACT_TITLE } from "@/lib/pipeline/enrich";
 
 const DRIVER_TYPES = ["survival", "status", "freedom", "cause", "competition", "enemy", "unknown"] as const;
 const SALES_STAGES = ["PROSPECTING", "APPROACH_CONTACT", "PRESENTATION", "FOLLOW_UP", "REFERRAL", "RELATIONSHIP_MAINTENANCE"] as const;
@@ -40,7 +41,8 @@ export async function POST(
       artifacts: {
         where: {
           OR: [
-            { type: "notes", title: "AI Enrichment Report" },
+            { type: ENRICHMENT_ARTIFACT_TYPE, title: ENRICHMENT_ARTIFACT_TITLE },
+            { type: "notes", title: ENRICHMENT_ARTIFACT_TITLE }, // legacy
             { type: "positioning", title: "POSITIONING_BRIEF" },
           ],
         },
@@ -52,7 +54,9 @@ export async function POST(
 
   if (!lead) return NextResponse.json({ error: "Lead not found" }, { status: 404 });
 
-  const enrichArtifact = lead.artifacts.find((a) => a.type === "notes" && a.title === "AI Enrichment Report");
+  const enrichArtifact = lead.artifacts.find(
+    (a) => (a.type === ENRICHMENT_ARTIFACT_TYPE || a.type === "notes") && a.title === ENRICHMENT_ARTIFACT_TITLE
+  );
   const positioningArtifact = lead.artifacts.find((a) => a.type === "positioning" && a.title === "POSITIONING_BRIEF");
 
   const leadContext = {

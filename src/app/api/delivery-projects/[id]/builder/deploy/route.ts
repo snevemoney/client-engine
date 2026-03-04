@@ -10,6 +10,8 @@ import { db } from "@/lib/db";
 import { jsonError, requireDeliveryProject, withRouteTiming } from "@/lib/api-utils";
 import { deploySite, getSiteStatus, type BuilderSiteStatus } from "@/lib/builder/client";
 import { addDeployJob } from "@/lib/builder/deploy-queue";
+import { notifyDeployComplete, notifyClientDeployed, getAppUrl } from "@/lib/notify";
+import { createCadence } from "@/lib/cadence/service";
 
 const DEPLOY_BLOCKED_STATUSES: BuilderSiteStatus[] = ["creating", "content_generating", "error"];
 
@@ -25,7 +27,9 @@ export async function POST(
     "POST /api/delivery-projects/[id]/builder/deploy",
     async () => {
       const { id } = await params;
-      const result = await requireDeliveryProject(id);
+      const result = await requireDeliveryProject(id, {
+        include: { pipelineLead: { select: { contactEmail: true } } },
+      });
       if (!result.ok) return result.response;
       const { project } = result;
 
@@ -79,6 +83,14 @@ export async function POST(
           },
         }),
       ]);
+      notifyDeployComplete(id, project.title, deployed.liveUrl);
+      createCadence("delivery_project", id, "deployed").catch((e) =>
+        console.warn("[cadence] deployed failed:", e)
+      );
+      const contactEmail = (project.pipelineLead as { contactEmail?: string })?.contactEmail;
+      if (contactEmail?.trim() && project.clientToken) {
+        notifyClientDeployed(contactEmail.trim(), project.title, deployed.liveUrl, `${getAppUrl()}/portal/${project.clientToken}`);
+      }
       return NextResponse.json({ siteId: deployed.siteId, liveUrl: deployed.liveUrl, status: "live" });
     },
   );

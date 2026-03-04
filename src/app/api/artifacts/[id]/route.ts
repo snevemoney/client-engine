@@ -6,9 +6,9 @@ import {
   parseProposalSections,
   buildProposalContentFromSections,
   getSnippetCharCount,
-  UPWORK_SNIPPET_MAX,
   type ProposalSections,
 } from "@/lib/proposals/sections";
+import { getOutreachCharLimit } from "@/lib/proposals/outreach";
 
 const ProposalSectionsSchema = z.object({
   opening: z.string().optional(),
@@ -53,7 +53,7 @@ export async function GET(
   const { id } = await params;
   const artifact = await db.artifact.findUnique({
     where: { id },
-    include: { lead: { select: { id: true, title: true, status: true, proposalSentAt: true } } },
+    include: { lead: { select: { id: true, title: true, status: true, source: true, proposalSentAt: true } } },
   });
 
   if (!artifact) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -85,11 +85,15 @@ export async function PATCH(
   if (!session) return jsonError("Unauthorized", 401);
 
   const { id } = await params;
-  const artifact = await db.artifact.findUnique({ where: { id } });
+  const artifact = await db.artifact.findUnique({
+    where: { id },
+    include: { lead: { select: { source: true } } },
+  });
   if (!artifact) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (artifact.type !== "proposal") {
     return NextResponse.json({ error: "Not a proposal artifact" }, { status: 400 });
   }
+  const leadSource = (artifact.lead as { source?: string | null } | null)?.source ?? null;
 
   let body: unknown;
   try {
@@ -134,13 +138,14 @@ export async function PATCH(
       questions: patch.sections.questions ?? existingSections.questions ?? "",
     };
     const snippetLen = getSnippetCharCount(merged.upworkSnippet);
-    if (snippetLen > UPWORK_SNIPPET_MAX) {
+    const maxChars = getOutreachCharLimit(leadSource);
+    if (snippetLen > maxChars) {
       return NextResponse.json(
-        { error: "Upwork snippet must be 600 characters or fewer." },
+        { error: `Outreach snippet must be ${maxChars} characters or fewer.` },
         { status: 400 }
       );
     }
-    nextContent = buildProposalContentFromSections(merged);
+    nextContent = buildProposalContentFromSections(merged, leadSource);
     proposalUiUpdates.upworkSnippetChars = snippetLen;
     proposalUiUpdates.updatedAt = new Date().toISOString();
     nextMeta.updatedAt = new Date().toISOString();
@@ -170,7 +175,7 @@ export async function PATCH(
   if (Object.keys(updates).length === 0) {
     const withLead = await db.artifact.findUnique({
       where: { id },
-      include: { lead: { select: { id: true, title: true, status: true, proposalSentAt: true } } },
+      include: { lead: { select: { id: true, title: true, status: true, source: true, proposalSentAt: true } } },
     });
     return NextResponse.json(withLead ?? artifact);
   }
@@ -178,7 +183,7 @@ export async function PATCH(
   const updated = await db.artifact.update({
     where: { id },
     data: updates,
-    include: { lead: { select: { id: true, title: true, status: true, proposalSentAt: true } } },
+    include: { lead: { select: { id: true, title: true, status: true, source: true, proposalSentAt: true } } },
   });
   return NextResponse.json(updated);
 }

@@ -11,7 +11,7 @@ import { useConfirmDialog } from "@/hooks/useConfirmDialog";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useAsyncAction } from "@/hooks/useAsyncAction";
 import { fetchJsonThrow } from "@/lib/http/fetch-json";
-import { Loader2, Sparkles } from "lucide-react";
+import { Loader2, Sparkles, Share2, MessageSquare } from "lucide-react";
 import { useBrainPanel } from "@/contexts/BrainPanelContext";
 
 type Project = {
@@ -203,8 +203,12 @@ export default function DeliveryDetailPage({ params }: { params: Promise<{ id: s
           {project.loomUrl && (
             <a href={project.loomUrl} target="_blank" rel="noreferrer" className="text-emerald-400 hover:underline text-xs">Loom</a>
           )}
+          <SharePortalButton projectId={id} />
         </div>
       </div>
+
+      {/* Client notes / Builder feedback */}
+      <ClientNotesSection activities={project.activities ?? []} />
 
       {/* Customer Feedback & Retention — top priority */}
       <DeliveryHandoffRetention
@@ -276,13 +280,80 @@ export default function DeliveryDetailPage({ params }: { params: Promise<{ id: s
 
       {/* Website Builder */}
       {project.builderSiteId && (
-        <BuilderSection project={project} projectId={id} onReload={() => void refetch()} />
+        <BuilderSection
+          project={project}
+          projectId={id}
+          onReload={() => void refetch()}
+          clientNotesCount={(project.activities ?? []).filter((a) => a.type === "client_note").length}
+        />
       )}
 
       {/* Flywheel Action Log */}
       <FlywheelLog activities={project.activities ?? []} />
 
       <ConfirmDialog {...dialogProps} />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Share Portal Button
+// ---------------------------------------------------------------------------
+
+function SharePortalButton({ projectId }: { projectId: string }) {
+  const [copying, setCopying] = useState(false);
+  const handleCopy = async () => {
+    setCopying(true);
+    try {
+      const res = await fetchJsonThrow<{ portalUrl: string }>(`/api/delivery-projects/${projectId}/portal-token`, { method: "POST", body: "{}" });
+      await navigator.clipboard.writeText(res.portalUrl);
+      toast.success("Portal link copied to clipboard");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to copy");
+    } finally {
+      setCopying(false);
+    }
+  };
+  return (
+    <button
+      onClick={handleCopy}
+      disabled={copying}
+      className="text-emerald-400 hover:underline text-xs inline-flex items-center gap-1"
+    >
+      <Share2 className="w-3 h-3" />
+      {copying ? "Copying…" : "Copy portal link"}
+    </button>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Client Notes Section
+// ---------------------------------------------------------------------------
+
+function ClientNotesSection({
+  activities,
+}: {
+  activities: { id: string; type: string; message: string | null; metaJson: Record<string, unknown> | null; createdAt: string }[];
+}) {
+  const clientNotes = activities.filter((a) => a.type === "client_note");
+  if (clientNotes.length === 0) return null;
+  return (
+    <div className="rounded-lg border border-neutral-800 p-4 space-y-3">
+      <h2 className="text-sm font-medium text-neutral-400 flex items-center gap-2">
+        <MessageSquare className="w-4 h-4 text-amber-400" />
+        Client notes / Builder feedback
+      </h2>
+      <div className="space-y-2">
+        {clientNotes.map((a) => (
+          <div
+            key={a.id}
+            className="text-sm p-3 rounded-lg border border-amber-900/50 bg-amber-950/20 text-amber-100"
+          >
+            <p className="whitespace-pre-wrap">{a.message ?? "—"}</p>
+            <p className="text-xs text-neutral-500 mt-1">{formatDate(a.createdAt)}</p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -421,10 +492,12 @@ function BuilderSection({
   project,
   projectId,
   onReload,
+  clientNotesCount = 0,
 }: {
   project: Project;
   projectId: string;
   onReload: () => void;
+  clientNotesCount?: number;
 }) {
   const [deploying, setDeploying] = useState(false);
   const [showPreview, setShowPreview] = useState(true);
@@ -581,7 +654,7 @@ function BuilderSection({
           </Button>
         )}
         <Button size="sm" variant="outline" onClick={handleRegenerate} disabled={regenerating}>
-          {regenerating ? "Regenerating…" : "Regenerate content"}
+          {regenerating ? "Regenerating…" : clientNotesCount > 0 ? "Regenerate from feedback" : "Regenerate content"}
         </Button>
       </div>
 

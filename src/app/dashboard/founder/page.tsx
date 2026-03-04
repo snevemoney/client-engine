@@ -241,6 +241,7 @@ export default function FounderPage() {
                           type="button"
                           onClick={() => executeAction(m.actionKey, m.nextActionId, m.nbaActionKey)}
                           disabled={actionPending}
+                          data-testid="founder-run-next-actions"
                           className="rounded bg-amber-500/20 text-amber-400 px-2 py-0.5 text-xs hover:bg-amber-500/30 disabled:opacity-50"
                         >
                           Execute

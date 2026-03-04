@@ -4,8 +4,30 @@ import { ProductionDeployCard } from "@/components/dashboard/deploys/ProductionD
 
 export const dynamic = "force-dynamic";
 
-export default async function DeploysPage() {
+type Filter = "all" | "unpaid" | "invoiced" | "paid";
+
+function buildWhere(filter: Filter) {
+  if (filter === "all") return undefined;
+  if (filter === "unpaid")
+    return { OR: [{ paymentStatus: "unpaid" }, { paymentStatus: null }] };
+  if (filter === "invoiced")
+    return { paymentStatus: { in: ["invoiced", "partial"] } };
+  if (filter === "paid") return { paymentStatus: "paid" };
+  return undefined;
+}
+
+export default async function DeploysPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ filter?: string; highlight?: string }>;
+}) {
+  const { filter: raw, highlight: highlightProjectId } = await searchParams;
+  const filter: Filter =
+    raw === "unpaid" || raw === "invoiced" || raw === "paid" ? raw : "all";
+  const where = buildWhere(filter);
+
   const projects = await db.project.findMany({
+    where,
     orderBy: { updatedAt: "desc" },
     take: 50,
     include: { lead: { select: { id: true, title: true, status: true } } },
@@ -22,13 +44,16 @@ export default async function DeploysPage() {
 
       <ProductionDeployCard />
 
-      <DeploysTable projects={projects} />
-
-      {projects.length === 0 && (
-        <div className="border border-neutral-800 rounded-lg p-8 text-center text-neutral-500">
-          No projects yet. Create a project via &quot;Start Build&quot; on a lead.
-        </div>
-      )}
+      <DeploysTable
+        projects={projects.map((p) => ({
+          ...p,
+          paymentAmount:
+            p.paymentAmount != null ? Number(p.paymentAmount) : null,
+          proofPublishedAt: p.proofPublishedAt?.toISOString() ?? null,
+        }))}
+        filter={filter}
+        highlightProjectId={highlightProjectId ?? null}
+      />
     </div>
   );
 }

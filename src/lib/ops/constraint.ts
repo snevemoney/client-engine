@@ -5,6 +5,7 @@
 
 import { db } from "@/lib/db";
 import type { ConstraintSnapshot } from "./types";
+import { ENRICHMENT_ARTIFACT_TYPE, ENRICHMENT_ARTIFACT_TITLE } from "@/lib/pipeline/enrich";
 
 const CONSTRAINT_KEYS = [
   "research_intake",
@@ -68,7 +69,9 @@ export async function getConstraintSnapshot(): Promise<ConstraintSnapshot | null
   if (total === 0) return null;
 
   const withEnrich = leads.filter((l) =>
-    l.artifacts.some((a) => a.type === "notes" && a.title === "AI Enrichment Report")
+    l.artifacts.some(
+      (a) => (a.type === ENRICHMENT_ARTIFACT_TYPE || a.type === "notes") && a.title === ENRICHMENT_ARTIFACT_TITLE
+    )
   );
   const withScore = leads.filter((l) => l.scoredAt != null);
   const withPosition = leads.filter((l) =>

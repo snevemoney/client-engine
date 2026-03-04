@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
 import { generateFollowUpSequence, getFollowUpSequence, logTouchSent } from "@/lib/revenue/followup";
 
 export const dynamic = "force-dynamic";
@@ -33,6 +34,9 @@ export async function POST(
   } catch {
     body = {};
   }
+  const lead = await db.lead.findUnique({ where: { id: leadId } });
+  if (!lead) return NextResponse.json({ error: "Lead not found" }, { status: 404 });
+
   if (body.action === "logTouch" && typeof body.touchIndex === "number") {
     try {
       await logTouchSent(leadId, body.touchIndex, body.note);

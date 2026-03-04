@@ -39,15 +39,21 @@ export async function PATCH(
       );
     }
 
-    const item = await db.signalItem.update({
-      where: { id },
-      data: parsed.data,
-    });
-
-    return NextResponse.json({
-      id: item.id,
-      status: item.status,
-      tags: item.tags,
-    });
+    try {
+      const item = await db.signalItem.update({
+        where: { id },
+        data: parsed.data,
+      });
+      return NextResponse.json({
+        id: item.id,
+        status: item.status,
+        tags: item.tags,
+      });
+    } catch (err) {
+      if (err && typeof err === "object" && "code" in err && (err as { code: string }).code === "P2025") {
+        return jsonError("Signal item not found", 404);
+      }
+      throw err;
+    }
   });
 }

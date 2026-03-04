@@ -16,6 +16,7 @@ import { fetchJsonThrow } from "@/lib/http/fetch-json";
 import { OpportunityBriefCard } from "@/components/dashboard/leads/OpportunityBriefCard";
 import { RoiEstimateCard } from "@/components/dashboard/leads/RoiEstimateCard";
 import { FollowUpSequenceCard } from "@/components/dashboard/leads/FollowUpSequenceCard";
+import { CadencesSection } from "@/components/dashboard/leads/CadencesSection";
 import { ClientSuccessCard } from "@/components/dashboard/leads/ClientSuccessCard";
 import { ClientResultsGlance } from "@/components/dashboard/leads/ClientResultsGlance";
 import { ReusableAssetLogCard } from "@/components/dashboard/leads/ReusableAssetLogCard";
@@ -24,6 +25,7 @@ import { SalesProcessPanel } from "@/components/dashboard/leads/SalesProcessPane
 import { SalesDriverCard } from "@/components/dashboard/leads/SalesDriverCard";
 import { TrustToCloseChecklistPanel } from "@/components/proposals/TrustToCloseChecklistPanel";
 import { parseLeadIntelligenceFromMeta } from "@/lib/lead-intelligence";
+import { ENRICHMENT_ARTIFACT_TYPE, ENRICHMENT_ARTIFACT_TITLE } from "@/lib/pipeline/enrich-constants";
 import { ClientJourneyTimeline } from "@/components/dashboard/leads/ClientJourneyTimeline";
 import { useBrainPanel } from "@/contexts/BrainPanelContext";
 
@@ -103,16 +105,18 @@ interface Lead {
   promotedFromIntake?: { id: string; title: string; source: string; status: string; score: number | null; createdAt: string } | null;
   proposals?: { id: string; title: string; status: string; sentAt: string | null; createdAt: string }[];
   deliveryProjects?: { id: string; title: string; status: string; dueDate: string | null; completedAt: string | null }[];
+  project?: { id: string; name: string; status: string } | null;
   meta?: unknown;
 }
 
-const STATUSES = ["NEW", "ENRICHED", "SCORED", "APPROVED", "REJECTED", "BUILDING", "SHIPPED"];
+const STATUSES = ["NEW", "ENRICHED", "SCORED", "APPROVED", "SCOPE_SENT", "SCOPE_APPROVED", "REJECTED", "BUILDING", "SHIPPED"];
 const SALES_STAGES = ["PROSPECTING", "APPROACH_CONTACT", "PRESENTATION", "FOLLOW_UP", "REFERRAL", "RELATIONSHIP_MAINTENANCE"] as const;
 const ARTIFACT_TYPES = ["notes", "proposal", "scope", "screenshot", "case_study"];
 
 const statusColors: Record<string, "default" | "success" | "warning" | "destructive"> = {
   NEW: "default", ENRICHED: "default", SCORED: "warning",
-  APPROVED: "success", REJECTED: "destructive", BUILDING: "warning", SHIPPED: "success",
+  APPROVED: "success", SCOPE_SENT: "warning", SCOPE_APPROVED: "success",
+  REJECTED: "destructive", BUILDING: "warning", SHIPPED: "success",
 };
 
 export default function LeadDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -402,8 +406,10 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   if (!lead) return <div className="text-neutral-500 py-12 text-center">Lead not found.</div>;
 
   const proposalCount = lead.artifacts.filter((a) => a.type === "proposal").length;
+  const hasEnrichment = (a: { type: string; title?: string }) =>
+    (a.type === ENRICHMENT_ARTIFACT_TYPE || a.type === "notes") && a.title === ENRICHMENT_ARTIFACT_TITLE;
   const hasIntelligence = !!lead.artifacts.find((a) => a.type === "positioning" && a.title === "POSITIONING_BRIEF") ||
-    !!lead.artifacts.find((a) => a.type === "notes" && a.title === "AI Enrichment Report") ||
+    !!lead.artifacts.find((a) => hasEnrichment(a)) ||
     (lead.meta && typeof lead.meta === "object");
 
   return (
@@ -483,12 +489,20 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
         })} disabled={proposing}>
           <Send className="w-3.5 h-3.5" /> {proposing ? "Generating..." : "Propose"}
         </Button>
-        {lead.status === "APPROVED" && (
-          <Button variant="outline" size="sm" onClick={() => runAiAction(startBuild, setBuilding, "Build", 1, () => {
-            toast.success("Build started");
-          })} disabled={building}>
-            <Hammer className="w-3.5 h-3.5" /> {building ? "Building..." : "Build"}
-          </Button>
+        {(["APPROVED", "SCOPE_APPROVED"] as const).includes(lead.status as "APPROVED" | "SCOPE_APPROVED") && (
+          lead.project ? (
+            <Button variant="outline" size="sm" onClick={() => runAiAction(startBuild, setBuilding, "Regenerate Specs", 1, () => {
+              toast.success("Specs regenerated");
+            })} disabled={building}>
+              <RefreshCw className={`w-3.5 h-3.5 ${building ? "animate-spin" : ""}`} /> {building ? "Regenerating..." : "Regenerate Specs"}
+            </Button>
+          ) : (
+            <Button variant="outline" size="sm" onClick={() => runAiAction(startBuild, setBuilding, "Build", 1, () => {
+              toast.success("Build started");
+            })} disabled={building}>
+              <Hammer className="w-3.5 h-3.5" /> {building ? "Building..." : "Build"}
+            </Button>
+          )
         )}
         <div className="w-px h-6 bg-neutral-700 mx-1" />
         <Button
@@ -801,6 +815,8 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
             dealOutcome={lead.dealOutcome}
             onSequenceGenerated={() => fetch(`/api/leads/${id}`).then((r) => r.ok && r.json()).then((d) => d && setLead(d))}
           />
+
+          <CadencesSection leadId={id} onUpdate={refetchLead} />
         </>
       )}
 
@@ -811,7 +827,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
             <div className="border border-neutral-800 rounded-lg p-4">
               <h3 className="text-xs font-medium text-neutral-500 uppercase tracking-wider mb-2">Pipeline artifacts</h3>
               <div className="flex gap-2 flex-wrap">
-                {lead.artifacts.some((a) => a.type === "notes" && a.title === "AI Enrichment Report") && <Badge variant="outline">Enrichment</Badge>}
+                {lead.artifacts.some((a) => hasEnrichment(a)) && <Badge variant="outline">Enrichment</Badge>}
                 {lead.score != null && <Badge variant="outline">Score</Badge>}
                 {lead.artifacts.some((a) => a.type === "positioning" && a.title === "POSITIONING_BRIEF") && <Badge variant="outline">Positioning</Badge>}
                 {hasProposal && <Badge variant="outline">Proposal</Badge>}
@@ -946,7 +962,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
         <>
           {(() => {
             const positioningArtifact = lead.artifacts.find((a) => a.type === "positioning" && a.title === "POSITIONING_BRIEF");
-            const enrichArtifact = lead.artifacts.find((a) => a.type === "notes" && a.title === "AI Enrichment Report");
+            const enrichArtifact = lead.artifacts.find((a) => hasEnrichment(a));
             const li =
               parseLeadIntelligenceFromMeta(positioningArtifact?.meta) ||
               parseLeadIntelligenceFromMeta(enrichArtifact?.meta) ||
@@ -1084,7 +1100,11 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                   </button>
                   {expandedArtifact === a.id && (
                     <div className="px-3 pb-3 border-t border-neutral-800/50">
-                      <p className="text-sm text-neutral-300 whitespace-pre-wrap mt-2">{a.content}</p>
+                      {a.title === "HANDOFF_CHECKLIST.md" ? (
+                        <ChecklistRenderer content={a.content} />
+                      ) : (
+                        <p className="text-sm text-neutral-300 whitespace-pre-wrap mt-2">{a.content}</p>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1099,6 +1119,52 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
       )}
 
       <ConfirmDialog {...dialogProps} />
+    </div>
+  );
+}
+
+function ChecklistRenderer({ content }: { content: string }) {
+  const [checked, setChecked] = useState<Set<number>>(new Set());
+  const lines = content.split("\n");
+  const checklistItems = lines
+    .map((line, i) => {
+      const m = line.match(/^(\s*[-*]\s*)\[([ xX])\]\s*(.*)$/);
+      if (!m) return null;
+      return { index: i, prefix: m[1], checked: m[2].toLowerCase() === "x", text: m[3] };
+    })
+    .filter((x): x is NonNullable<typeof x> => x !== null);
+
+  const total = checklistItems.length;
+  const done = checklistItems.filter((c) => checked.has(c.index) || c.checked).length;
+
+  return (
+    <div className="mt-2 space-y-1">
+      {total > 0 && (
+        <p className="text-xs text-neutral-500 mb-2">
+          {done} / {total} completed
+        </p>
+      )}
+      {lines.map((line, i) => {
+        const item = checklistItems.find((c) => c.index === i);
+        if (!item) return <p key={i} className="text-sm text-neutral-300 whitespace-pre-wrap">{line || " "}</p>;
+        const isChecked = checked.has(i) || item.checked;
+        return (
+          <label key={i} className="flex items-start gap-2 cursor-pointer group">
+            <input
+              type="checkbox"
+              checked={isChecked}
+              onChange={() => setChecked((s) => {
+                const next = new Set(s);
+                if (next.has(i)) next.delete(i);
+                else next.add(i);
+                return next;
+              })}
+              className="mt-1 rounded border-neutral-600 bg-neutral-800"
+            />
+            <span className={`text-sm ${isChecked ? "text-neutral-500 line-through" : "text-neutral-300"}`}>{item.text}</span>
+          </label>
+        );
+      })}
     </div>
   );
 }

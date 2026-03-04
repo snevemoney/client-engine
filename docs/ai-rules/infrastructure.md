@@ -274,6 +274,7 @@ External cron (VPS crontab or external service) hits these endpoints:
 |----------|----------|------|
 | `POST /api/agents/cron` | Per agent schedule | Bearer `AGENT_CRON_SECRET` |
 | `POST /api/jobs/tick` | Every 1-5 minutes | Bearer or session |
+| `POST /api/cadence/process` | Daily (e.g. 8am) | Bearer `AGENT_CRON_SECRET` or session |
 | `POST /api/ops/workday-run` | Daily morning | Bearer `RESEARCH_CRON_SECRET` |
 | `POST /api/meta-ads/scheduler/run-cron` | Per settings | `x-cron-key` header |
 | `POST /api/notifications/run-escalations` | Every 15 minutes | Session |
@@ -282,4 +283,5 @@ External cron (VPS crontab or external service) hits these endpoints:
 ```cron
 */5 * * * * curl -sf -X POST https://evenslouis.ca/api/jobs/tick -H "Authorization: Bearer $AGENT_CRON_SECRET"
 0 8 * * * curl -sf -X POST https://evenslouis.ca/api/ops/workday-run -H "Authorization: Bearer $RESEARCH_CRON_SECRET"
+0 8 * * * curl -sf -X POST https://evenslouis.ca/api/cadence/process -H "Authorization: Bearer $AGENT_CRON_SECRET"
 ```

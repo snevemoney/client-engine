@@ -5,6 +5,7 @@
 
 import { db } from "@/lib/db";
 import type { OpportunityBrief } from "./types";
+import { ENRICHMENT_ARTIFACT_TYPE, ENRICHMENT_ARTIFACT_TITLE } from "@/lib/pipeline/enrich";
 
 export async function getOpportunityBriefForLead(leadId: string): Promise<OpportunityBrief | null> {
   const lead = await db.lead.findUnique({
@@ -12,7 +13,7 @@ export async function getOpportunityBriefForLead(leadId: string): Promise<Opport
     include: {
       artifacts: {
         where: {
-          type: { in: ["notes", "positioning", "research"] },
+          type: { in: ["enrichment", "notes", "positioning", "research"] }, // notes = legacy enrichment
         },
         select: { type: true, title: true, content: true },
       },
@@ -20,7 +21,9 @@ export async function getOpportunityBriefForLead(leadId: string): Promise<Opport
   });
   if (!lead) return null;
 
-  const enrich = lead.artifacts.find((a) => a.type === "notes" && a.title === "AI Enrichment Report");
+  const enrich = lead.artifacts.find(
+    (a) => (a.type === ENRICHMENT_ARTIFACT_TYPE || a.type === "notes") && a.title === ENRICHMENT_ARTIFACT_TITLE
+  );
   const positioning = lead.artifacts.find((a) => a.type === "positioning" && a.title === "POSITIONING_BRIEF");
   const research = lead.artifacts.find((a) => a.type === "research" && a.title === "RESEARCH_SNAPSHOT");
 

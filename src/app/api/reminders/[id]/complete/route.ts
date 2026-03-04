@@ -30,6 +30,9 @@ export async function POST(
         completedAt: reminder.completedAt?.toISOString(),
       });
     } catch (err) {
+      if (err && typeof err === "object" && "code" in err && (err as { code: string }).code === "P2025") {
+        return jsonError("Reminder not found", 404);
+      }
       console.error("[reminders complete]", err);
       return jsonError("Failed to complete reminder", 500);
     }

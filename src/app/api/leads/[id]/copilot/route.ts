@@ -4,6 +4,7 @@ import { requireAuth } from "@/lib/api-utils";
 import { db } from "@/lib/db";
 import { chat } from "@/lib/llm";
 import { getLeadIntelligenceForLead } from "@/lib/pipeline/getLeadIntelligenceForLead";
+import { ENRICHMENT_ARTIFACT_TYPE, ENRICHMENT_ARTIFACT_TITLE } from "@/lib/pipeline/enrich";
 import { getLeadRoiEstimate } from "@/lib/revenue/roi";
 import { getClientSuccessData } from "@/lib/client-success";
 import { buildLeadCopilotPrompt } from "@/lib/copilot/buildLeadCopilotPrompt";
@@ -77,7 +78,8 @@ export async function POST(
       artifacts: {
         where: {
           OR: [
-            { type: "notes", title: "AI Enrichment Report" },
+            { type: ENRICHMENT_ARTIFACT_TYPE, title: ENRICHMENT_ARTIFACT_TITLE },
+            { type: "notes", title: ENRICHMENT_ARTIFACT_TITLE }, // legacy
             { type: "positioning", title: "POSITIONING_BRIEF" },
             { type: "proposal" },
           ],
@@ -96,7 +98,9 @@ export async function POST(
 
   if (!lead) return NextResponse.json({ error: "Lead not found" }, { status: 404 });
 
-  const enrichArtifact = lead.artifacts.find((a) => a.type === "notes" && a.title === "AI Enrichment Report");
+  const enrichArtifact = lead.artifacts.find(
+    (a) => (a.type === ENRICHMENT_ARTIFACT_TYPE || a.type === "notes") && a.title === ENRICHMENT_ARTIFACT_TITLE
+  );
   const positioningArtifact = lead.artifacts.find((a) => a.type === "positioning" && a.title === "POSITIONING_BRIEF");
   const proposalArtifact = lead.artifacts.find((a) => a.type === "proposal");
 

@@ -21,8 +21,8 @@ export async function POST() {
     } catch (err) {
       console.error("[strategy-week/ai-fill]", err);
       return NextResponse.json(
-        { error: err instanceof Error ? err.message : "AI fill failed" },
-        { status: 500 }
+        { error: err instanceof Error ? err.message : "Strategy week AI fill failed" },
+        { status: 503 }
       );
     }
   });

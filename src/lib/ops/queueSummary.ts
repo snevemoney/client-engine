@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { ENRICHMENT_ARTIFACT_TYPE, ENRICHMENT_ARTIFACT_TITLE } from "@/lib/pipeline/enrich";
 
 export type QueueSummary = {
   new: number;
@@ -25,8 +26,10 @@ export async function getQueueSummary(): Promise<QueueSummary> {
     },
   });
 
-  const hasEnrich = (a: { type: string; title: string }[]) =>
-    a.some((x) => x.type === "notes" && x.title === "AI Enrichment Report");
+  const hasEnrich = (a: { type: string; title?: string }[]) =>
+    a.some(
+      (x) => (x.type === ENRICHMENT_ARTIFACT_TYPE || x.type === "notes") && x.title === ENRICHMENT_ARTIFACT_TITLE
+    );
   const hasPosition = (a: { type: string; title: string }[]) =>
     a.some((x) => x.type === "positioning" && x.title === "POSITIONING_BRIEF");
   const hasProposal = (a: { type: string }[]) => a.some((x) => x.type === "proposal");

@@ -107,6 +107,8 @@ enum LeadStatus {
   ENRICHED
   SCORED
   APPROVED
+  SCOPE_SENT
+  SCOPE_APPROVED
   REJECTED
   BUILDING
   SHIPPED
@@ -167,21 +169,75 @@ model Artifact {
 }
 
 model Project {
-  id           String   @id @default(cuid())
-  leadId       String?  @unique
-  lead         Lead?    @relation(fields: [leadId], references: [id])
-  slug         String   @unique
-  name         String
-  description  String?  @db.Text
-  demoUrl      String?
-  repoUrl      String?
-  repoPath     String?
-  techStack    String[]
-  screenshots  String[]
-  status       String   @default("draft")
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  reusableAssetLogs ReusableAssetLog[]
+  id                 String    @id @default(cuid())
+  leadId             String?   @unique
+  lead               Lead?     @relation(fields: [leadId], references: [id])
+  slug               String    @unique
+  name               String
+  description        String?   @db.Text
+  demoUrl            String?
+  repoUrl            String?
+  repoPath           String?
+  techStack          String[]
+  screenshots        String[]
+  status             String    @default("draft")
+  paymentStatus      String?   @default("unpaid")
+  paymentAmount      Decimal?  @db.Decimal(10, 2)
+  invoicedAt         DateTime?
+  paidAt             DateTime?
+  proofPublishedAt   DateTime?
+  proofHeadline      String?   // max 120 chars for OG meta
+  proofSummary       String?   @db.Text
+  proofTestimonial   String?   @db.Text
+  campaignTags       String[]  @default([])
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  reusableAssetLogs  ReusableAssetLog[]
+  outcome            Outcome?
+}
+
+model Outcome {
+  id                String    @id @default(cuid())
+  projectId         String    @unique
+  project           Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  actualRevenue     Int?      // cents
+  repeatClient      Boolean   @default(false)
+  referralSource    String?   @db.Text
+  satisfactionScore Int?      // 1-5
+  lessonsLearned    String?   @db.Text
+  recordedAt        DateTime  @default(now())
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([projectId])
+}
+
+model Campaign {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  title       String
+  filterTag   String
+  published   Boolean  @default(false)
+  ctaLabel    String?
+  ctaUrl      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Cadence {
+  id           String    @id @default(cuid())
+  sourceType   String    // "lead" | "delivery_project" | "project"
+  sourceId     String
+  trigger      String    // "scope_sent" | "deployed" | "invoiced" | ...
+  dueAt        DateTime
+  completedAt  DateTime?
+  snoozedUntil DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([sourceType, sourceId])
+  @@index([dueAt])
+  @@index([trigger])
 }
 
 model PipelineRun {
@@ -1268,6 +1324,7 @@ enum DeliveryActivityType {
   milestone
   checklist
   note
+  client_note
   qa
   handoff
   completed
@@ -1387,6 +1444,7 @@ model DeliveryProject {
   builderHealthScore     Int?               // 0-100 quality score from builder feedback
   builderHealthLabel     String?            // "great" | "needs_work" | "poor"
   builderHealthCheckedAt DateTime?          // when quality was last checked
+  clientToken            String?            @unique  // CUID for public portal; generated on first share
 
   @@index([status])
   @@index([dueDate])

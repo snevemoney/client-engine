@@ -1,6 +1,6 @@
 # API Routes
 
-> Auto-generated on 2026-03-04. 342 route files.
+> Auto-generated on 2026-03-04. 351 route files.
 
 | Path | Methods |
 |------|---------|
@@ -22,6 +22,11 @@
 | `/api/build-tasks/[id]` | GET, PATCH |
 | `/api/build-tasks` | GET, POST |
 | `/api/build/[id]` | POST |
+| `/api/cadence/[id]` | PATCH |
+| `/api/cadence/process` | POST |
+| `/api/cadence` | GET |
+| `/api/campaigns/[id]` | GET, PATCH, DELETE |
+| `/api/campaigns` | GET, POST |
 | `/api/capture` | POST |
 | `/api/checklist/generate` | POST |
 | `/api/checklist` | GET |
@@ -30,6 +35,7 @@
 | `/api/content-assets` | GET, POST |
 | `/api/content-posts/[id]` | PATCH |
 | `/api/content-posts` | GET |
+| `/api/decisions` | GET |
 | `/api/delivery-milestones/[id]` | PATCH |
 | `/api/delivery-projects/[id]/activity` | POST |
 | `/api/delivery-projects/[id]/builder/create` | POST |
@@ -49,6 +55,7 @@
 | `/api/delivery-projects/[id]/handoff/start` | POST |
 | `/api/delivery-projects/[id]/milestones/[milestoneId]` | PATCH |
 | `/api/delivery-projects/[id]/milestones` | POST |
+| `/api/delivery-projects/[id]/portal-token` | POST |
 | `/api/delivery-projects/[id]/referral/decline` | POST |
 | `/api/delivery-projects/[id]/referral/receive` | POST |
 | `/api/delivery-projects/[id]/referral/request` | POST |
@@ -275,8 +282,10 @@
 | `/api/pipeline/retry/[leadId]` | POST |
 | `/api/pipeline/run/[leadId]` | POST |
 | `/api/pipeline/run` | POST |
+| `/api/portal/notes` | POST |
 | `/api/portfolio/[id]` | POST |
 | `/api/position/[id]` | POST |
+| `/api/projects/[id]/outcome` | GET, POST, PATCH |
 | `/api/projects/[id]` | GET, PATCH |
 | `/api/projects/github` | POST |
 | `/api/proof-assets` | GET, POST |

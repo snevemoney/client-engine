@@ -20,9 +20,11 @@ export function DeliveryChecklist({
   onUpdate: (items: ChecklistItem[]) => void;
 }) {
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const handleToggle = async (item: ChecklistItem) => {
     if (togglingId) return;
+    setError(null);
     const nextDone = !item.isDone;
     setTogglingId(item.id);
     const prevItems = items;
@@ -41,11 +43,11 @@ export function DeliveryChecklist({
       if (!res.ok) {
         onUpdate(prevItems);
         const d = await res.json();
-        alert(d?.error ?? "Failed to toggle");
+        setError(d?.error ?? "Failed to toggle");
       }
     } catch {
       onUpdate(prevItems);
-      alert("Failed to toggle");
+      setError("Failed to toggle");
     } finally {
       setTogglingId(null);
     }
@@ -54,6 +56,7 @@ export function DeliveryChecklist({
   return (
     <div>
       <h2 className="text-sm font-medium text-neutral-500 mb-2">Checklist</h2>
+      {error && <p className="text-sm text-red-400 mb-2">{error}</p>}
       <ul className="space-y-1">
         {items.map((c) => (
           <li key={c.id} className="flex items-center gap-2">

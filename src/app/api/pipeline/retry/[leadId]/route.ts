@@ -3,12 +3,15 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { runPipelineIfEligible } from "@/lib/pipeline/runPipeline";
 import { rateLimit } from "@/lib/rate-limit";
+import { ENRICHMENT_ARTIFACT_TYPE, ENRICHMENT_ARTIFACT_TITLE } from "@/lib/pipeline/enrich";
 
 const LIMIT = 10;
 const WINDOW_MS = 60_000;
 
 function detailsForLead(lead: { status: string; scoredAt: Date | null; artifacts: { type: string; title: string }[] }) {
-  const hasEnrich = lead.artifacts.some((a) => a.type === "notes" && a.title === "AI Enrichment Report");
+  const hasEnrich = lead.artifacts.some(
+    (a) => (a.type === ENRICHMENT_ARTIFACT_TYPE || a.type === "notes") && a.title === ENRICHMENT_ARTIFACT_TITLE
+  );
   const hasScore = lead.scoredAt != null;
   const hasPosition = lead.artifacts.some((a) => a.type === "positioning" && a.title === "POSITIONING_BRIEF");
   const hasProposal = lead.artifacts.some((a) => a.type === "proposal");

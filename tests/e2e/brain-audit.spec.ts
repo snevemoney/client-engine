@@ -129,23 +129,26 @@ test.describe("Sidebar navigation", () => {
     await expect(page).toHaveURL(/\/dashboard\/chat/, { timeout: 10000 });
   });
 
-  test("sidebar has 5 groups", async ({ page }) => {
+  test("sidebar has 6 groups", async ({ page }) => {
     await login(page);
     await page.goto(`${baseURL}/dashboard/founder`);
 
-    // Count group headers (uppercase labels)
+    // Switch to Full mode to show lifecycle groups (Capture, Convert, Build, Prove, Optimize, System)
+    await page.getByRole("button", { name: "Full" }).click();
+
+    // Count group headers
     const groupLabels = page.locator(
-      'button:has-text("Today"), button:has-text("Pipeline"), button:has-text("Numbers"), button:has-text("Content"), button:has-text("System")'
+      'button:has-text("Capture"), button:has-text("Convert"), button:has-text("Build"), button:has-text("Prove"), button:has-text("Optimize"), button:has-text("System")'
     );
     const count = await groupLabels.count();
-    expect(count).toBe(5);
+    expect(count).toBe(6);
   });
 
   test("sidebar search filter works", async ({ page }) => {
     await login(page);
     await page.goto(`${baseURL}/dashboard/founder`);
 
-    const searchInput = page.locator('input[placeholder="Find a page"]').first();
+    const searchInput = page.locator('input[placeholder="Find a page..."]').first();
     if (await searchInput.isVisible().catch(() => false)) {
       await searchInput.fill("Leads");
       // Should show Leads link

@@ -33,12 +33,12 @@ export default function NewLeadPage() {
         tags: (fd.get("tags") as string)?.split(",").map((t) => t.trim()).filter(Boolean) || [],
       };
 
-      await fetchJsonThrow("/api/leads", {
+      const lead = await fetchJsonThrow<{ id: string }>("/api/leads", {
         method: "POST",
         body: JSON.stringify(body),
       });
 
-      router.push("/dashboard");
+      router.push(`/dashboard/leads/${lead.id}`);
     },
     { toast: toastFn, successMessage: "Lead created" },
   );

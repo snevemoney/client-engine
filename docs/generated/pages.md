@@ -1,10 +1,11 @@
 # Dashboard Pages
 
-> Auto-generated on 2026-03-04. 83 pages.
+> Auto-generated on 2026-03-04. 86 pages.
 
 - `/dashboard/audit`
 - `/dashboard/automation`
 - `/dashboard/build-ops`
+- `/dashboard/campaigns`
 - `/dashboard/chat`
 - `/dashboard/checklist`
 - `/dashboard/command`
@@ -14,6 +15,7 @@
 - `/dashboard/copilot/coach`
 - `/dashboard/copilot`
 - `/dashboard/copilot/sessions`
+- `/dashboard/decisions`
 - `/dashboard/delivery/[id]`
 - `/dashboard/delivery/new`
 - `/dashboard/delivery`
@@ -78,6 +80,7 @@
 - `/dashboard/sales-leak`
 - `/dashboard/sales`
 - `/dashboard/scoreboard`
+- `/dashboard/scorecard`
 - `/dashboard/settings`
 - `/dashboard/signals`
 - `/dashboard/strategy`

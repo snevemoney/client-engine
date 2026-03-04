@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import crypto from "crypto";
 import { checkStateChangeRateLimit } from "@/lib/api-utils";
+import { notifyNewLead } from "@/lib/notify";
 
 function computeHash(url: string | undefined, title: string, content: string | undefined): string {
   const raw = [url || "", title, (content || "").slice(0, 500)].join("|");
@@ -77,6 +78,8 @@ export async function POST(req: NextRequest) {
         techStack: [],
       },
     });
+
+    notifyNewLead(lead.id, lead.title, lead.source);
 
     return NextResponse.json({ message: "created", leadId: lead.id }, { status: 201 });
   } catch (e) {

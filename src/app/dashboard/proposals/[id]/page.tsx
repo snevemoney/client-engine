@@ -50,7 +50,7 @@ type ProposalArtifact = {
   meta: unknown;
   createdAt?: string;
   updatedAt?: string;
-  lead?: { id: string; title: string; status: string } | null;
+  lead?: { id: string; title: string; status: string; source?: string | null } | null;
 };
 
 type PageData = { type: "proposal"; data: Phase2Proposal } | { type: "artifact"; data: ProposalArtifact };
@@ -164,6 +164,7 @@ export default function ProposalDetailPage({ params }: { params: Promise<{ id: s
                 meta: pageData.data.meta ?? {},
                 updatedAt: pageData.data.updatedAt ?? pageData.data.createdAt ?? new Date().toISOString(),
               }}
+              leadSource={pageData.data.lead?.source}
             />
           </>
         )}

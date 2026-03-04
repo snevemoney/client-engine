@@ -6,9 +6,9 @@ import {
   buildProposalContentFromSections,
   getSnippetCharCount,
   parseProposalSections,
-  UPWORK_SNIPPET_MAX,
   type ProposalSections,
 } from "@/lib/proposals/sections";
+import { getOutreachLabel, getOutreachCharLimit } from "@/lib/proposals/outreach";
 import { useAsyncAction } from "@/hooks/useAsyncAction";
 import { fetchJsonThrow } from "@/lib/http/fetch-json";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
@@ -28,10 +28,12 @@ type Artifact = {
 
 type Props = {
   artifact: Artifact;
+  /** Lead source for channel-aware label and char limit (upwork, email, prospect, etc.). */
+  leadSource?: string | null;
   onSaved?: (artifact: Artifact) => void;
 };
 
-export default function ProposalConsoleEditor({ artifact, onSaved }: Props) {
+export default function ProposalConsoleEditor({ artifact, leadSource, onSaved }: Props) {
   const initialSections = useMemo(
     () => parseProposalSections(artifact.content ?? ""),
     [artifact.content]
@@ -49,8 +51,10 @@ export default function ProposalConsoleEditor({ artifact, onSaved }: Props) {
 
   const debouncedSections = useDebouncedValue(sections, 400);
 
+  const outreachLabel = getOutreachLabel(leadSource);
+  const outreachCharLimit = getOutreachCharLimit(leadSource);
   const upworkCount = getSnippetCharCount(sections.upworkSnippet);
-  const overLimit = upworkCount > UPWORK_SNIPPET_MAX;
+  const overLimit = upworkCount > outreachCharLimit;
 
   const metaUpdatedAt = (meta.updatedAt ?? proposalUi.updatedAt) as string | undefined;
 
@@ -76,7 +80,7 @@ export default function ProposalConsoleEditor({ artifact, onSaved }: Props) {
         ...debouncedSections,
         ...(next ?? {}),
       };
-      const content = buildProposalContentFromSections(merged);
+      const content = buildProposalContentFromSections(merged, leadSource);
       const updated = await fetchJsonThrow<Artifact>(`/api/artifacts/${artifact.id}`, {
         method: "PATCH",
         body: JSON.stringify({
@@ -198,7 +202,7 @@ export default function ProposalConsoleEditor({ artifact, onSaved }: Props) {
               disabled={saving}
               className="rounded border-neutral-600 bg-neutral-800"
             />
-            Sent on Upwork
+            Sent
           </label>
         </div>
         <p className="text-xs text-neutral-500 mt-2">
@@ -229,12 +233,12 @@ export default function ProposalConsoleEditor({ artifact, onSaved }: Props) {
         />
       </section>
 
-      {/* Upwork Snippet */}
+      {/* Outreach Snippet (channel-aware) */}
       <section className="rounded-lg border border-neutral-800 p-4 bg-neutral-900/30 space-y-2">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-medium text-neutral-400 uppercase tracking-wider">Upwork Snippet</h2>
+          <h2 className="text-sm font-medium text-neutral-400 uppercase tracking-wider">{outreachLabel}</h2>
           <div className={`text-xs ${overLimit ? "text-amber-400" : "text-neutral-500"}`}>
-            {upworkCount} / {UPWORK_SNIPPET_MAX}
+            {upworkCount} / {outreachCharLimit}
           </div>
         </div>
         <textarea
@@ -244,19 +248,19 @@ export default function ProposalConsoleEditor({ artifact, onSaved }: Props) {
           className={`w-full rounded-lg border p-3 text-sm text-neutral-200 placeholder:text-neutral-500 focus:outline-none focus:border-neutral-600 bg-neutral-900 ${
             overLimit ? "border-amber-600" : "border-neutral-700"
           }`}
-          placeholder="Short Upwork message (keep under 600 chars)"
+          placeholder={`Short message for this channel (keep under ${outreachCharLimit} chars)`}
         />
         {overLimit ? (
-          <div className="text-xs text-amber-400">Over 600 characters. Trim before sending.</div>
+          <div className="text-xs text-amber-400">Over {outreachCharLimit} characters. Trim before sending.</div>
         ) : null}
         <Button
           variant="ghost"
           size="sm"
           className="text-neutral-400 hover:text-white -mt-1"
-          onClick={() => copyToClipboard(sections.upworkSnippet, "upwork")}
+          onClick={() => copyToClipboard(sections.upworkSnippet, "outreach")}
         >
-          {copied === "upwork" ? <Check className="w-4 h-4 mr-1" /> : <Copy className="w-4 h-4 mr-1" />}
-          Copy Upwork Snippet
+          {copied === "outreach" ? <Check className="w-4 h-4 mr-1" /> : <Copy className="w-4 h-4 mr-1" />}
+          Copy {outreachLabel}
         </Button>
       </section>
 
@@ -287,7 +291,7 @@ export default function ProposalConsoleEditor({ artifact, onSaved }: Props) {
       <section className="rounded-lg border border-neutral-800 p-4 bg-neutral-900/30">
         <div className="text-sm font-medium text-neutral-400 uppercase tracking-wider mb-2">Preview (saved markdown)</div>
         <pre className="whitespace-pre-wrap text-xs rounded-lg border border-neutral-800 p-3 bg-neutral-950 text-neutral-400 overflow-auto max-h-48">
-          {buildProposalContentFromSections(sections)}
+          {buildProposalContentFromSections(sections, leadSource)}
         </pre>
       </section>
     </div>

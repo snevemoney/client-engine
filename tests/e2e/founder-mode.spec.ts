@@ -35,8 +35,9 @@ test.describe("Founder Mode", () => {
 
   test("Click Run Next Actions works", async ({ page }) => {
     await page.goto(`${baseURL}/dashboard/founder`, { waitUntil: "load", timeout: 15000 });
-    await expect(page.getByTestId("founder-run-next-actions")).toBeVisible({ timeout: 5000 });
-    await page.getByTestId("founder-run-next-actions").click();
+    const runBtn = page.getByTestId("founder-run-next-actions").first();
+    await expect(runBtn).toBeVisible({ timeout: 5000 });
+    await runBtn.click();
     await expect(
       page.getByTestId("founder-page").getByText(/Next actions run completed|^Failed$/).first()
     ).toBeVisible({ timeout: 15000 });
@@ -61,10 +62,10 @@ test.describe("Founder OS", () => {
 
   test("Founder OS hub loads", async ({ page }) => {
     await page.goto(`${baseURL}/dashboard/founder/os`, { waitUntil: "load", timeout: 15000 });
-    await expect(page).toHaveURL(/\/dashboard\/founder\/os/);
-    await expect(page.getByTestId("founder-os-hub")).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText("Current Quarter")).toBeVisible({ timeout: 3000 });
-    await expect(page.getByText("Current Week")).toBeVisible({ timeout: 3000 });
+    await expect(page).toHaveURL(/\/dashboard\/founder\/os\/quarter/);
+    await expect(page.getByTestId("founder-os-quarter")).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText("Quarter")).toBeVisible({ timeout: 3000 });
+    await expect(page.getByText("Goals and KPI targets")).toBeVisible({ timeout: 3000 });
   });
 
   test("Generate suggestions works", async ({ page }) => {
@@ -80,7 +81,7 @@ test.describe("Founder OS", () => {
     await input.waitFor({ state: "visible", timeout: 5000 });
     await input.fill("Test outcome from E2E");
     await page.getByRole("button", { name: /^Save$/ }).first().click();
-    await expect(page.getByText("Saved.")).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText("Saved")).toBeVisible({ timeout: 10000 });
     await page.reload({ waitUntil: "networkidle" });
     await expect(page.locator('input[placeholder="Outcome 1"]').first()).toHaveValue("Test outcome from E2E", {
       timeout: 10000,

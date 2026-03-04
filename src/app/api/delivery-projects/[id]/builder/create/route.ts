@@ -9,11 +9,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { jsonError, requireDeliveryProject, withRouteTiming } from "@/lib/api-utils";
+import { randomBytes } from "crypto";
 import {
   createSite,
   generateContent,
   type BuilderIndustryPreset,
 } from "@/lib/builder/client";
+import { notifyClientPreview, getAppUrl } from "@/lib/notify";
+import { ENRICHMENT_ARTIFACT_TYPE, ENRICHMENT_ARTIFACT_TITLE } from "@/lib/pipeline/enrich";
 
 const PostSchema = z.object({
   industry: z
@@ -51,6 +54,7 @@ export async function POST(
               title: true,
               description: true,
               contactName: true,
+              contactEmail: true,
               score: true,
               scoreReason: true,
               scoreVerdict: true,
@@ -118,13 +122,33 @@ export async function POST(
         ...builderMilestones(id),
       ]);
 
+      // Notify client when preview is ready (if contactEmail set; create portal token if needed)
+      const contactEmail = (project.pipelineLead as { contactEmail?: string })?.contactEmail;
+      if (contactEmail?.trim()) {
+        let token = project.clientToken;
+        if (!token) {
+          token = randomBytes(18).toString("base64url");
+          await db.deliveryProject.update({ where: { id }, data: { clientToken: token } });
+        }
+        notifyClientPreview(contactEmail.trim(), project.title, site.previewUrl, `${getAppUrl()}/portal/${token}`);
+      }
+
       // 4. Pull enrichment + positioning artifacts from the linked lead
       const leadId = project.pipelineLeadId ?? project.intakeLeadId;
       let enrichArtifact: { content: string; meta: unknown } | null = null;
       let positionArtifact: { content: string; meta: unknown } | null = null;
       if (leadId) {
         [enrichArtifact, positionArtifact] = await Promise.all([
-          db.artifact.findFirst({ where: { leadId, type: "notes" }, orderBy: { createdAt: "desc" } }),
+          db.artifact.findFirst({
+            where: {
+              leadId,
+              OR: [
+                { type: ENRICHMENT_ARTIFACT_TYPE, title: ENRICHMENT_ARTIFACT_TITLE },
+                { type: "notes", title: ENRICHMENT_ARTIFACT_TITLE },
+              ],
+            },
+            orderBy: { createdAt: "desc" },
+          }),
           db.artifact.findFirst({ where: { leadId, type: "positioning" }, orderBy: { createdAt: "desc" } }),
         ]);
       }

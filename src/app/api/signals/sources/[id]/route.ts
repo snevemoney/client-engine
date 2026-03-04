@@ -43,12 +43,18 @@ export async function PATCH(
       );
     }
 
-    const source = await db.signalSource.update({
-      where: { id },
-      data: parsed.data,
-    });
-
-    return NextResponse.json(source);
+    try {
+      const source = await db.signalSource.update({
+        where: { id },
+        data: parsed.data,
+      });
+      return NextResponse.json(source);
+    } catch (err) {
+      if (err && typeof err === "object" && "code" in err && (err as { code: string }).code === "P2025") {
+        return jsonError("Signal source not found", 404);
+      }
+      throw err;
+    }
   });
 }
 
@@ -62,8 +68,14 @@ export async function DELETE(
 
     const { id } = await params;
 
-    await db.signalSource.delete({ where: { id } });
-
-    return NextResponse.json({ ok: true });
+    try {
+      await db.signalSource.delete({ where: { id } });
+      return NextResponse.json({ ok: true });
+    } catch (err) {
+      if (err && typeof err === "object" && "code" in err && (err as { code: string }).code === "P2025") {
+        return jsonError("Signal source not found", 404);
+      }
+      throw err;
+    }
   });
 }

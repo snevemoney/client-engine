@@ -7,6 +7,7 @@
 import { db } from "@/lib/db";
 import { getClientSuccessData, buildProofSummaryFromSuccessData } from "@/lib/client-success";
 import { buildProofLines } from "./proof-lines";
+import { ENRICHMENT_ARTIFACT_TYPE, ENRICHMENT_ARTIFACT_TITLE } from "@/lib/pipeline/enrich";
 
 export type ProofPostResult = {
   lines: string[];
@@ -85,7 +86,7 @@ export async function buildProofPost(leadId: string): Promise<ProofPostResult | 
   const artifactIds: string[] = [];
 
   const enrichment = lead.artifacts.find(
-    (a) => a.type === "notes" && a.title === "AI Enrichment Report"
+    (a) => (a.type === ENRICHMENT_ARTIFACT_TYPE || a.type === "notes") && a.title === ENRICHMENT_ARTIFACT_TITLE
   );
   const researchSnapshot = lead.artifacts.find(
     (a) => a.type === "research" && a.title === "RESEARCH_SNAPSHOT"

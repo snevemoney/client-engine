@@ -13,6 +13,13 @@ function getAppBaseUrl(): string {
 }
 
 async function sendResend(opts: { subject: string; text: string; html: string }): Promise<boolean> {
+  return sendResendTo(NOTIFY_EMAIL, opts);
+}
+
+async function sendResendTo(
+  to: string,
+  opts: { subject: string; text: string; html: string }
+): Promise<boolean> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) return false;
   const from = process.env.SITE_FROM_EMAIL ?? "Client Engine <onboarding@resend.dev>";
@@ -21,7 +28,7 @@ async function sendResend(opts: { subject: string; text: string; html: string })
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       from,
-      to: [NOTIFY_EMAIL],
+      to: [to],
       subject: opts.subject,
       text: opts.text,
       html: opts.html,
@@ -35,6 +42,13 @@ async function sendResend(opts: { subject: string; text: string; html: string })
 }
 
 async function sendSMTP(opts: { subject: string; text: string; html: string }): Promise<boolean> {
+  return sendSMTPTo(NOTIFY_EMAIL, opts);
+}
+
+async function sendSMTPTo(
+  to: string,
+  opts: { subject: string; text: string; html: string }
+): Promise<boolean> {
   const host = process.env.SMTP_HOST;
   const port = parseInt(process.env.SMTP_PORT ?? "465", 10);
   const user = process.env.SMTP_USER ?? process.env.IMAP_USER;
@@ -50,7 +64,7 @@ async function sendSMTP(opts: { subject: string; text: string; html: string }): 
   try {
     await transporter.sendMail({
       from: from.includes("<") ? from : `${from.split("@")[0]} <${from}>`,
-      to: NOTIFY_EMAIL,
+      to,
       subject: opts.subject,
       text: opts.text,
       html: opts.html,
@@ -62,7 +76,7 @@ async function sendSMTP(opts: { subject: string; text: string; html: string }): 
   }
 }
 
-function getAppUrl(): string {
+export function getAppUrl(): string {
   const u =
     process.env.NEXT_PUBLIC_APP_URL ??
     process.env.APP_URL ??
@@ -201,5 +215,127 @@ export function notifyHealthFailure(reason: string): void {
     subject: "[Client Engine] Health check failed",
     body,
     webhookContext: { event: "health_failure", message: reason },
+  });
+}
+
+/** Call when a new lead is captured (capture API or email ingestion). */
+export function notifyNewLead(leadId: string, leadTitle: string, source?: string): void {
+  const appUrl = getAppUrl();
+  const body = [
+    `New lead captured.`,
+    ``,
+    `Lead: ${leadTitle}`,
+    `Lead ID: ${leadId}`,
+    source ? `Source: ${source}` : null,
+    appUrl ? `Dashboard: ${appUrl}/dashboard/leads/${leadId}` : "",
+  ].filter(Boolean).join("\n");
+  sendOperatorAlert({
+    subject: `[Client Engine] New lead: ${leadTitle.slice(0, 50)}${leadTitle.length > 50 ? "…" : ""}`,
+    body,
+    webhookContext: { event: "new_lead", leadId, leadTitle, message: `New lead from ${source ?? "unknown"}` },
+  });
+}
+
+/** Call after a successful builder deploy. Operator alert to follow up on payment. */
+export function notifyDeployComplete(
+  deliveryProjectId: string,
+  projectTitle: string,
+  liveUrl: string
+): void {
+  const appUrl = getAppUrl();
+  const link = `${appUrl}/dashboard/delivery/${deliveryProjectId}`;
+  const body = [
+    `Project ${projectTitle} deployed to ${liveUrl}.`,
+    ``,
+    `Follow up on payment if not yet invoiced.`,
+    ``,
+    `Delivery project: ${link}`,
+  ].join("\n");
+  sendOperatorAlert({
+    subject: `[Client Engine] Deploy complete: ${projectTitle.slice(0, 40)}${projectTitle.length > 40 ? "…" : ""}`,
+    body,
+    webhookContext: {
+      event: "deploy_complete",
+      message: `Deploy complete: ${projectTitle}`,
+      leadId: deliveryProjectId,
+      leadTitle: projectTitle,
+    },
+  });
+}
+
+/** Fire-and-forget: notify client that preview is ready. Skip if no contactEmail or no portal. */
+export function notifyClientPreview(
+  contactEmail: string,
+  projectTitle: string,
+  previewUrl: string,
+  portalUrl: string
+): void {
+  const subject = `Preview ready: ${projectTitle.slice(0, 50)}${projectTitle.length > 50 ? "…" : ""}`;
+  const body = [
+    `Your project preview is ready.`,
+    ``,
+    `Project: ${projectTitle}`,
+    `Preview: ${previewUrl}`,
+    ``,
+    `View your project and submit feedback:`,
+    portalUrl,
+  ].join("\n");
+  const html = body.replace(/\n/g, "<br>\n");
+  Promise.all([
+    sendResendTo(contactEmail, { subject, text: body, html }),
+    sendSMTPTo(contactEmail, { subject, text: body, html }),
+  ]).catch((e) => console.warn("[notify] notifyClientPreview failed:", e));
+}
+
+/** Fire-and-forget: notify client that site is deployed. Skip if no contactEmail or no portal. */
+export function notifyClientDeployed(
+  contactEmail: string,
+  projectTitle: string,
+  liveUrl: string,
+  portalUrl: string
+): void {
+  const subject = `Your site is live: ${projectTitle.slice(0, 50)}${projectTitle.length > 50 ? "…" : ""}`;
+  const body = [
+    `Your project has been deployed.`,
+    ``,
+    `Project: ${projectTitle}`,
+    `Live site: ${liveUrl}`,
+    ``,
+    `View your project and submit feedback:`,
+    portalUrl,
+  ].join("\n");
+  const html = body.replace(/\n/g, "<br>\n");
+  Promise.all([
+    sendResendTo(contactEmail, { subject, text: body, html }),
+    sendSMTPTo(contactEmail, { subject, text: body, html }),
+  ]).catch((e) => console.warn("[notify] notifyClientDeployed failed:", e));
+}
+
+/** Call when a lead is ready for human decision (positioning only or proposal ready). */
+export function notifyDecisionReadyForLead(
+  leadId: string,
+  leadTitle: string,
+  kind: "positioning_only" | "proposal_ready"
+): void {
+  const appUrl = getAppUrl();
+  const label = kind === "positioning_only" ? "Positioning ready for review" : "Proposal ready for review";
+  const body = [
+    `${label}.`,
+    ``,
+    `Lead: ${leadTitle}`,
+    `Lead ID: ${leadId}`,
+    kind === "positioning_only" ? "Positioning only (no proposal yet)." : "Proposal drafted; ready to approve or send.",
+    appUrl ? `Decisions: ${appUrl}/dashboard/decisions` : "",
+    appUrl ? `Lead: ${appUrl}/dashboard/leads/${leadId}` : "",
+  ].filter(Boolean).join("\n");
+  sendOperatorAlert({
+    subject: `[Client Engine] Decision ready: ${leadTitle.slice(0, 40)}${leadTitle.length > 40 ? "…" : ""}`,
+    body,
+    webhookContext: {
+      event: "decision_ready",
+      leadId,
+      leadTitle,
+      message: label,
+    },
   });
 }
