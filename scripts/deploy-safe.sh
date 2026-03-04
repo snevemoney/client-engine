@@ -29,7 +29,7 @@ echo "==> Building..."
 docker compose build app worker
 
 echo "==> Restarting..."
-docker compose up -d
+docker compose up -d app worker postgres redis
 
 echo "==> DB migrations (prisma migrate deploy)..."
 docker compose run --rm --no-deps worker npx prisma migrate deploy

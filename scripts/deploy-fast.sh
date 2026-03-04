@@ -26,7 +26,7 @@ echo "==> [1/4] Building app + worker..."
 docker compose build app worker
 
 echo "==> [2/4] Restarting services..."
-docker compose up -d app worker
+docker compose up -d app worker postgres redis
 
 if [[ -n "$DO_SCHEMA" ]]; then
   echo "==> [2b/4] DB migrations (prisma migrate deploy)..."
