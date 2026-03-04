@@ -3,6 +3,7 @@
  */
 
 import { chat } from "@/lib/llm";
+import { safeParseJSON } from "@/lib/llm/safe-parse-json";
 import type { EngineImprovementProposal, VideoMetadata } from "./types";
 import type { LearningExtraction } from "./summarize";
 
@@ -57,7 +58,7 @@ Generate one engine improvement proposal as JSON. sourceVideo: "${videoUrl}".`;
 
   let proposal: EngineImprovementProposal;
   try {
-    const parsed = JSON.parse(content.trim()) as Record<string, unknown>;
+    const parsed = safeParseJSON<Record<string, unknown>>(content);
     const insightType = INSIGHT_TYPES.includes(parsed.insightType as EngineImprovementProposal["insightType"])
       ? (parsed.insightType as EngineImprovementProposal["insightType"])
       : "ops";

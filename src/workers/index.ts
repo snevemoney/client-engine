@@ -18,6 +18,30 @@ const monitorWorker = createWorker<MonitorJob>("monitor", async (job) => {
   console.log(`[monitor] Running check: ${job.data.type}`);
 });
 
+// Builder deploy worker: processes async deploy jobs from API
+interface BuilderDeployJob { deliveryProjectId: string; siteId: string; domain?: string }
+const builderDeployWorker = createWorker<BuilderDeployJob>("builder-deploy", async (job) => {
+  const { deliveryProjectId, siteId, domain } = job.data;
+  const { deploySite } = await import("../lib/builder/client");
+  const { db } = await import("../lib/db");
+  const deployed = await deploySite(siteId, domain);
+  await db.$transaction([
+    db.deliveryProject.update({
+      where: { id: deliveryProjectId },
+      data: { builderLiveUrl: deployed.liveUrl, artifactUrl: deployed.liveUrl },
+    }),
+    db.deliveryActivity.create({
+      data: {
+        deliveryProjectId,
+        type: "note",
+        message: `Website deployed to production: ${deployed.liveUrl}`,
+        metaJson: { action: "builder_site_deployed", siteId: deployed.siteId, liveUrl: deployed.liveUrl },
+      },
+    }),
+  ]);
+  return { siteId: deployed.siteId, liveUrl: deployed.liveUrl };
+});
+
 // Email ingestion runs every 15 minutes (optional: requires imapflow/mailparser)
 const EMAIL_INTERVAL = 15 * 60 * 1000;
 async function emailLoop() {
@@ -60,6 +84,7 @@ process.on("SIGTERM", async () => {
   await enrichWorker.close();
   await scoreWorker.close();
   await monitorWorker.close();
+  await builderDeployWorker.close();
   process.exit(0);
 });
 

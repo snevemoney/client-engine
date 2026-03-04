@@ -11,6 +11,7 @@ import { getConstraintSnapshot } from "@/lib/ops/constraint";
 import { getOperatorSettings } from "@/lib/ops/settings";
 import { getFailuresAndInterventions } from "@/lib/ops/failuresInterventions";
 import { db } from "@/lib/db";
+import { safeParseJSON } from "@/lib/llm/safe-parse-json";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -176,7 +177,7 @@ ${chatSnippets || "No chat history yet."}`;
         jsonText = jsonText.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
       }
 
-      const recommendations = JSON.parse(jsonText);
+      const recommendations = safeParseJSON(jsonText);
       return NextResponse.json({ recommendations });
     } catch (e) {
       console.error("[settings/recommend] Error:", e);

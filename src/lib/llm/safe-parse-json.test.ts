@@ -23,6 +23,6 @@ describe("safeParseJSON", () => {
   });
 
   it("throws on invalid JSON", () => {
-    expect(() => safeParseJSON("not json")).toThrow(SyntaxError);
+    expect(() => safeParseJSON("not json")).toThrow(/Invalid JSON/);
   });
 });

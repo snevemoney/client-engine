@@ -1,12 +1,6 @@
 import { db } from "@/lib/db";
 import { createRun, startStep, finishStep, finishRun } from "@/lib/pipeline-metrics";
 import { tryAdvisoryLock, releaseAdvisoryLock } from "@/lib/db-lock";
-import { normalizeUsage } from "@/lib/pipeline/usage";
-import { runEnrich } from "@/lib/pipeline/enrich";
-import { runScore } from "@/lib/pipeline/score";
-import { runPositioning } from "@/lib/pipeline/positioning";
-import { runPropose } from "@/lib/pipeline/propose";
-import { buildProvenance } from "@/lib/pipeline/provenance";
 import { isDryRun } from "@/lib/pipeline/dry-run";
 import {
   classifyPipelineError,
@@ -15,9 +9,20 @@ import {
 } from "@/lib/pipeline/error-classifier";
 import { notifyPipelineFailure } from "@/lib/notify";
 import { trackPipelineEvent } from "@/lib/analytics";
-import { upsertArtifact } from "@/lib/pinecone";
+import {
+  runEnrichStep,
+  runScoreStep,
+  runPositionStep,
+  runProposeStep,
+  type LeadWithArtifacts,
+} from "@/lib/pipeline/steps";
 
-const PIPELINE_STEPS = ["enrich", "score", "position", "propose"] as const;
+const PIPELINE_STEPS = [
+  { name: "enrich" as const, handler: runEnrichStep },
+  { name: "score" as const, handler: runScoreStep },
+  { name: "position" as const, handler: runPositionStep },
+  { name: "propose" as const, handler: runProposeStep },
+] as const;
 
 export type PipelineRunResult =
   | { run: true; runId: string; stepsRun: number; stepsSkipped: number }
@@ -35,30 +40,14 @@ export function isEligibleForAutoRun(lead: {
   return true;
 }
 
-function hasEnrichment(artifacts: { type: string; title: string }[]): boolean {
-  return artifacts.some((a) => a.type === "notes" && a.title === "AI Enrichment Report");
-}
-
-function hasScore(lead: { scoredAt: Date | null }): boolean {
-  return lead.scoredAt != null;
-}
-
-function hasPositioning(artifacts: { type: string; title: string }[]): boolean {
-  return artifacts.some((a) => a.type === "positioning" && a.title === "POSITIONING_BRIEF");
-}
-
-function hasProposal(artifacts: { type: string }[]): boolean {
-  return artifacts.some((a) => a.type === "proposal");
-}
-
 /**
  * Run the pipeline for a lead if eligible: Enrich → Score → Position → Propose (draft only).
  * Uses advisory lock to prevent concurrent runs. Idempotent: skips steps that already have output.
- * Never runs Build (money-path gate remains manual).
+ * Loads lead once per run (no N+1). Never runs Build (money-path gate remains manual).
  */
 export async function runPipelineIfEligible(
   leadId: string,
-  reason: string
+  _reason: string
 ): Promise<PipelineRunResult> {
   const acquired = await tryAdvisoryLock(leadId);
   if (!acquired) {
@@ -85,84 +74,24 @@ export async function runPipelineIfEligible(
     let stepsRun = 0;
     let stepsSkipped = 0;
 
-    for (const stepName of PIPELINE_STEPS) {
+    // Load lead once; pass mutable current through steps (A4: no N+1)
+    const current: LeadWithArtifacts = {
+      id: lead.id,
+      title: lead.title,
+      status: lead.status,
+      scoredAt: lead.scoredAt,
+      artifacts: lead.artifacts.map((a) => ({ type: a.type, title: a.title })),
+    };
+
+    for (const { name: stepName, handler } of PIPELINE_STEPS) {
       const stepId = await startStep(runId, stepName);
-      const current = await db.lead.findUnique({
-        where: { id: leadId },
-        include: { artifacts: true },
-      });
-      if (!current) break;
 
       try {
-        if (stepName === "enrich") {
-          if (hasEnrichment(current.artifacts)) {
-            await finishStep(stepId, { success: true, notes: "skipped: artifact exists" });
-            stepsSkipped++;
-          } else {
-            const provenance = buildProvenance(runId, "enrich", { temperature: 0.3 });
-            const { artifactId, usage } = await runEnrich(leadId, provenance);
-            const norm = normalizeUsage(usage, "gpt-4o-mini");
-            await finishStep(stepId, {
-              success: true,
-              outputArtifactIds: [artifactId],
-              tokensUsed: norm.tokensUsed,
-              costEstimate: norm.costEstimate,
-            });
-            trackPipelineEvent(leadId, "lead_enriched", { runId });
-            db.artifact.findUnique({ where: { id: artifactId } }).then((a) => a && upsertArtifact(a).catch(() => {}));
-            stepsRun++;
-          }
-        } else if (stepName === "score") {
-          if (hasScore(current)) {
-            await finishStep(stepId, { success: true, notes: "skipped: artifact exists" });
-            stepsSkipped++;
-          } else {
-            const { usage } = await runScore(leadId);
-            const norm = normalizeUsage(usage, "gpt-4o-mini");
-            await finishStep(stepId, {
-              success: true,
-              tokensUsed: norm.tokensUsed,
-              costEstimate: norm.costEstimate,
-            });
-            trackPipelineEvent(leadId, "lead_scored", { runId });
-            stepsRun++;
-          }
-        } else if (stepName === "position") {
-          if (hasPositioning(current.artifacts)) {
-            await finishStep(stepId, { success: true, notes: "skipped: artifact exists" });
-            stepsSkipped++;
-          } else {
-            const provenance = buildProvenance(runId, "position", { temperature: 0.4 });
-            const { artifactId, usage } = await runPositioning(leadId, provenance);
-            const norm = normalizeUsage(usage, "gpt-4o-mini");
-            await finishStep(stepId, {
-              success: true,
-              outputArtifactIds: [artifactId],
-              tokensUsed: norm.tokensUsed,
-              costEstimate: norm.costEstimate,
-            });
-            trackPipelineEvent(leadId, "lead_positioned", { runId });
-            db.artifact.findUnique({ where: { id: artifactId } }).then((a) => a && upsertArtifact(a).catch(() => {}));
-            stepsRun++;
-          }
-        } else if (stepName === "propose") {
-          if (hasProposal(current.artifacts)) {
-            await finishStep(stepId, { success: true, notes: "skipped: artifact exists" });
-            stepsSkipped++;
-          } else {
-            const provenance = buildProvenance(runId, "propose", { temperature: 0.6 });
-            const { artifactId, usage } = await runPropose(leadId, provenance);
-            const norm = normalizeUsage(usage, "gpt-4o-mini");
-            await finishStep(stepId, {
-              success: true,
-              outputArtifactIds: [artifactId],
-              tokensUsed: norm.tokensUsed,
-              costEstimate: norm.costEstimate,
-            });
-            trackPipelineEvent(leadId, "lead_proposed", { runId });
-            db.artifact.findUnique({ where: { id: artifactId } }).then((a) => a && upsertArtifact(a).catch(() => {}));
-            stepsRun++;
-          }
+        const { skipped } = await handler(leadId, runId, stepId, current);
+        if (skipped) {
+          stepsSkipped++;
+        } else {
+          stepsRun++;
         }
       } catch (err: unknown) {
         const notes = formatStepFailureNotes(err);
@@ -173,7 +102,6 @@ export async function runPipelineIfEligible(
           where: { id: runId },
           select: { status: true },
         });
-        // Only update retry/error fields once per run (guard for future parallel steps)
         if (run?.status === "running") {
           await db.pipelineRun.update({
             where: { id: runId },
@@ -188,7 +116,7 @@ export async function runPipelineIfEligible(
         const errMsg = err instanceof Error ? err.message : stepName + " failed";
         await finishRun(runId, false, errMsg);
         trackPipelineEvent(leadId, "pipeline_step_failed", { runId, stepName, errorCode: code });
-        notifyPipelineFailure(leadId, lead.title, stepName, errMsg, current?.status ?? lead.status ?? undefined);
+        notifyPipelineFailure(leadId, lead.title, stepName, errMsg, current.status ?? undefined);
         throw err;
       }
     }

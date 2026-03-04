@@ -1,6 +1,6 @@
 # Prisma Models
 
-> Auto-generated on 2026-03-02. 93 models, 58 enums.
+> Auto-generated on 2026-03-04. 93 models, 58 enums.
 
 ## Models
 

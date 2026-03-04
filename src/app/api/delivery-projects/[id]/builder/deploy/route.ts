@@ -1,14 +1,15 @@
 /**
  * POST /api/delivery-projects/[id]/builder/deploy
  *
- * Deploy the builder site to production. Validates that content generation
- * is complete before deploying. Stores the live URL on the delivery project.
+ * Queues deploy as BullMQ job when Redis available; returns 202 with jobId.
+ * Falls back to sync deploy when Redis unavailable (e.g. dev without Redis).
  */
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { jsonError, requireDeliveryProject, withRouteTiming } from "@/lib/api-utils";
 import { deploySite, getSiteStatus, type BuilderSiteStatus } from "@/lib/builder/client";
+import { addDeployJob } from "@/lib/builder/deploy-queue";
 
 const DEPLOY_BLOCKED_STATUSES: BuilderSiteStatus[] = ["creating", "content_generating", "error"];
 
@@ -32,7 +33,6 @@ export async function POST(
         return jsonError("No builder site linked to this project", 400, "NO_SITE");
       }
 
-      // Check site status before deploying
       const site = await getSiteStatus(project.builderSiteId);
       if (DEPLOY_BLOCKED_STATUSES.includes(site.status)) {
         return jsonError(
@@ -46,35 +46,40 @@ export async function POST(
       const parsed = PostSchema.safeParse(raw);
       const domain = parsed.success ? parsed.data.domain : undefined;
 
-      const deployed = await deploySite(project.builderSiteId, domain);
+      // Queue when Redis available; return 202
+      if (process.env.REDIS_URL) {
+        try {
+          const jobId = await addDeployJob({
+            deliveryProjectId: id,
+            siteId: project.builderSiteId,
+            domain,
+          });
+          return NextResponse.json(
+            { jobId, status: "queued", message: "Deploy queued. Poll /builder/deploy/status?jobId=" + jobId },
+            { status: 202 }
+          );
+        } catch (e) {
+          console.warn("[builder/deploy] Queue failed, falling back to sync:", e);
+        }
+      }
 
+      // Fallback: sync deploy (dev without Redis)
+      const deployed = await deploySite(project.builderSiteId, domain);
       await db.$transaction([
         db.deliveryProject.update({
           where: { id },
-          data: {
-            builderLiveUrl: deployed.liveUrl,
-            artifactUrl: deployed.liveUrl,
-          },
+          data: { builderLiveUrl: deployed.liveUrl, artifactUrl: deployed.liveUrl },
         }),
         db.deliveryActivity.create({
           data: {
             deliveryProjectId: id,
             type: "note",
             message: `Website deployed to production: ${deployed.liveUrl}`,
-            metaJson: {
-              action: "builder_site_deployed",
-              siteId: deployed.siteId,
-              liveUrl: deployed.liveUrl,
-            },
+            metaJson: { action: "builder_site_deployed", siteId: deployed.siteId, liveUrl: deployed.liveUrl },
           },
         }),
       ]);
-
-      return NextResponse.json({
-        siteId: deployed.siteId,
-        liveUrl: deployed.liveUrl,
-        status: "live",
-      });
+      return NextResponse.json({ siteId: deployed.siteId, liveUrl: deployed.liveUrl, status: "live" });
     },
   );
 }

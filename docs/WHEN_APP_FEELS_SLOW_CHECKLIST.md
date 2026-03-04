@@ -23,6 +23,7 @@ Stop at the first thing that's wrong — fix it before continuing.
 | DB connected? | Health endpoint: `checks.db.ok` | `true` | Check `DATABASE_URL`, restart DB |
 | Tables large? | `SELECT count(*) FROM "PipelineRun"; SELECT count(*) FROM "Artifact";` | Reasonable (< 100k each) | Consider archiving old runs, adding indexes |
 | Slow queries? | Check server stdout/stderr for slow Prisma logs | No queries >1s | Add indexes, optimize query in code |
+| [SLOW] logs? | Docker: `docker compose logs app 2>&1 \| grep '\[SLOW\]'` | None or rare | Optimize the named route/query (see perf.ts thresholds) |
 
 ---
 
@@ -58,7 +59,23 @@ Stop at the first thing that's wrong — fix it before continuing.
 
 ---
 
-## 6. Quick fixes (in escalation order)
+## 6. Inspect [SLOW] logs (VPS / Docker)
+
+The app logs slow operations at 500ms (API), 300ms (DB), 1000ms (page). On VPS:
+
+```bash
+# Recent slow ops
+docker compose logs app 2>&1 | grep '\[SLOW\]'
+
+# Live tail while reproducing slowness
+docker compose logs -f app 2>&1 | grep --line-buffered '\[SLOW\]'
+```
+
+Format: `[SLOW] area=<api|page|db|action> name=<route/query> ms=<n>`. Fix the named route or query.
+
+---
+
+## 7. Quick fixes (in escalation order)
 
 1. **Restart the app:** `pm2 restart all` or `systemctl restart client-engine`
 2. **Clear Next.js cache:** `rm -rf .next/cache && npm run build && npm run start`

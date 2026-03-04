@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Copy, Check, AlertCircle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-const DEPLOY_CMD = "ssh root@69.62.66.78 '/root/deploy-client-engine.sh'";
+const DEPLOY_CMD = "ssh $DEPLOY_SERVER '/root/deploy-client-engine.sh'";
 
 export function ProductionDeployCard() {
   const [health, setHealth] = useState<{ ok: boolean; checks?: Record<string, { ok?: boolean }> } | null>(null);

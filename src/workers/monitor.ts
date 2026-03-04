@@ -92,7 +92,11 @@ export async function runMonitor() {
       const sslResult = await checkSslExpiry(hostname);
       results.push(sslResult);
       console.log(`[monitor] SSL ${hostname}: ${sslResult.message}`);
-    } catch {}
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.warn(`[monitor] SSL check failed for ${url}: ${msg}`);
+      results.push({ url, status: "error", message: `SSL check error: ${msg}` });
+    }
   }
 
   const issues = results.filter((r) => r.status !== "ok");

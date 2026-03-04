@@ -1,16 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { jsonError, requireAuth } from "@/lib/api-utils";
+import { checkStateChangeRateLimit, jsonError, requireLeadAccess, withRouteTiming } from "@/lib/api-utils";
 import { db } from "@/lib/db";
-import { withRouteTiming } from "@/lib/api-utils";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   return withRouteTiming("GET /api/leads/[id]", async () => {
-    const session = await requireAuth();
-    if (!session) return jsonError("Unauthorized", 401);
-
     const { id } = await params;
-    const lead = await db.lead.findUnique({
-      where: { id },
+    const result = await requireLeadAccess(id, {
       include: {
         artifacts: { orderBy: { createdAt: "desc" } },
         project: true,
@@ -31,8 +26,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         },
       },
     });
+    if (!result.ok) return result.response;
+    const { lead } = result;
 
-    if (!lead) return NextResponse.json({ error: "Not found" }, { status: 404 });
     return NextResponse.json(lead);
   });
 }
@@ -127,10 +123,13 @@ function pickAllowedLeadPatch(body: Record<string, unknown>): Record<string, unk
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   return withRouteTiming("PATCH /api/leads/[id]", async () => {
-    const session = await requireAuth();
-    if (!session) return jsonError("Unauthorized", 401);
+    const rateErr = checkStateChangeRateLimit(req, "leads-patch");
+    if (rateErr) return rateErr;
 
     const { id } = await params;
+    const access = await requireLeadAccess(id);
+    if (!access.ok) return access.response;
+
     const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
     if (!body || typeof body !== "object") {
       return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
@@ -176,10 +175,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   return withRouteTiming("DELETE /api/leads/[id]", async () => {
-    const session = await requireAuth();
-    if (!session) return jsonError("Unauthorized", 401);
+    const rateErr = checkStateChangeRateLimit(req, "leads-delete");
+    if (rateErr) return rateErr;
 
     const { id } = await params;
+    const access = await requireLeadAccess(id);
+    if (!access.ok) return access.response;
+
     await db.lead.delete({ where: { id } });
 
     return NextResponse.json({ ok: true });

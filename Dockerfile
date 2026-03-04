@@ -16,7 +16,7 @@ RUN --mount=type=cache,target=/app/.next/cache npm run build
 FROM base AS runner
 WORKDIR /app
 ENV NODE_ENV=production
-RUN addgroup -S -g 1001 nodejs && adduser -S -u 1001 -G nodejs nextjs
+RUN apk add --no-cache wget && addgroup -S -g 1001 nodejs && adduser -S -u 1001 -G nodejs nextjs
 
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
@@ -69,11 +69,15 @@ ENV HOSTNAME="0.0.0.0"
 
 CMD ["node", "server.js"]
 
-# Worker image: same as runner but with full node_modules so BullMQ and all transitive deps resolve
-FROM runner AS worker
-USER root
+# Worker image: full node_modules for BullMQ, email, etc. Single copy from deps.
+FROM base AS worker
+WORKDIR /app
+RUN addgroup -S -g 1001 nodejs && adduser -S -u 1001 -G nodejs nextjs
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/prisma ./prisma
+RUN chown -R nextjs:nodejs /app
 USER nextjs
 CMD ["node", "dist/workers/index.js"]

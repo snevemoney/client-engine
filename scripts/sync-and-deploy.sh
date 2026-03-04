@@ -6,7 +6,7 @@
 
 set -euo pipefail
 
-SERVER="${DEPLOY_SERVER:-root@69.62.66.78}"
+SERVER="${DEPLOY_SERVER:-root@YOUR_VPS_IP}"
 REMOTE_DIR="${DEPLOY_REPO_DIR:-/root/client-engine}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 

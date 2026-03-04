@@ -88,7 +88,7 @@ describe("distribution service", () => {
       vi.mocked(db.proofRecord.findUnique).mockResolvedValue(MOCK_PROOF as never);
       vi.mocked(db.contentPost.findFirst).mockResolvedValue(null);
       let callCount = 0;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       vi.mocked(db.contentPost.create).mockImplementation((async () => {
         callCount++;
         return { id: `cp${callCount}`, platform: callCount === 1 ? "linkedin" : "twitter", status: "draft" };

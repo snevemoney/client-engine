@@ -579,7 +579,7 @@ export function LeadsTable() {
 
   useEffect(() => {
     // Intentional: fetch on mount/filter change; setState happens in async callback.
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- data fetch pattern
+     
     void fetchLeads();
   }, [fetchLeads]);
 

@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
 
     try {
       return await withSummaryCache(`founder/os/week:${key}`, async () => {
-        let week = await db.founderWeek.findUnique({
+        const week = await db.founderWeek.findUnique({
           where: { weekStart },
           include: { plan: true, review: true, quarter: true },
         });
@@ -149,7 +149,7 @@ export async function PUT(request: NextRequest) {
       const weekEnd = getWeekEnd(weekStart);
       const { startsAt, endsAt, title } = getCurrentQuarter(weekStart);
 
-      let week = await db.founderWeek.findUnique({
+        let week = await db.founderWeek.findUnique({
         where: { weekStart },
         include: { plan: true, review: true },
       });

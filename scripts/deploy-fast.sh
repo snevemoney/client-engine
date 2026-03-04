@@ -29,8 +29,8 @@ echo "==> [2/4] Restarting services..."
 docker compose up -d app worker
 
 if [[ -n "$DO_SCHEMA" ]]; then
-  echo "==> [2b/4] DB sync (--schema)..."
-  docker compose run --rm --user root app npx prisma db push --accept-data-loss
+  echo "==> [2b/4] DB migrations (prisma migrate deploy)..."
+  docker compose run --rm --user root app npx prisma migrate deploy
   docker compose run --rm --user root app node prisma/seed.mjs
   docker compose run --rm --user root app node prisma/seed-projects.mjs
 else

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { requireAuth } from "@/lib/api-utils";
 import { db } from "@/lib/db";
 import { LeadStatus } from "@prisma/client";
-import { jsonError, withRouteTiming } from "@/lib/api-utils";
+import { checkStateChangeRateLimit, jsonError, withRouteTiming } from "@/lib/api-utils";
 
 const PostLeadSchema = z.object({
   title: z.string().min(1).max(500),
@@ -71,6 +71,9 @@ export async function POST(req: NextRequest) {
   return withRouteTiming("POST /api/leads", async () => {
     const session = await requireAuth();
     if (!session) return jsonError("Unauthorized", 401);
+
+    const rateErr = checkStateChangeRateLimit(req, "leads-create", session.user?.id);
+    if (rateErr) return rateErr;
 
     const raw = await req.json().catch(() => null);
     const parsed = PostLeadSchema.safeParse(raw);

@@ -266,4 +266,17 @@ Pipeline creates placeholder artifacts; no `OPENAI_API_KEY` needed for create-le
 
 ---
 
+## Incident response
+
+| Incident | Symptoms | Actions |
+|----------|----------|---------|
+| **Worker crash** | Jobs not processing, builder deploy stuck, email ingestion stopped | `docker compose restart worker`; check `docker compose logs worker`; verify Redis reachable |
+| **Redis OOM** | BullMQ jobs fail, worker disconnects, rate limits unreliable | Check `docker stats redis`; restart Redis; consider `maxmemory` policy; scale or clear stale keys |
+| **DB exhaustion** | Slow queries, health 503, connection pool exhausted | Check `docker compose logs postgres`; run `pg_stat_activity`; kill long-running queries; scale connections or optimize |
+| **LLM outage** | Pipeline steps fail (enrich/score/position/propose), 500 on AI routes | Check OpenAI status; `PIPELINE_DRY_RUN=1` to bypass; retry later; notify operator |
+
+See `docs/VPS_DEPLOY_CHECKLIST.md` for rollback and deploy steps.
+
+---
+
 *For testing strategy overview and checklists (Night operator, Before clients, After deploy, When app feels slow), see `docs/TESTING_SIDE_PANEL.md`. For route inventory, see `docs/AUDIT_AND_TEST_FLOWS.md`.*

@@ -48,6 +48,11 @@ Extract business logic from route handlers into service modules:
 - [ ] Normalize /api/internal/ vs /api/ops/ namespaces
 - [ ] Merge duplicate summary endpoints
 
+## Dependency Tracking
+
+- **next-auth:** Currently v5 beta. Track stable release; upgrade when v5 stable. See [next-auth releases](https://github.com/nextauthjs/next-auth/releases).
+- **Prisma:** Track Prisma 7; upgrade when stable. Low priority.
+
 ## Future Ideas (Backlog)
 
 - Builder service scaffolding (directory doesn't exist yet)

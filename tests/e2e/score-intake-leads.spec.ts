@@ -64,6 +64,6 @@ test("score all unscored intake leads", async ({ page }) => {
     });
   }
 
-  // eslint-disable-next-line no-console
+   
   console.log(`Scored ${totalScored} intake lead(s).`);
 });

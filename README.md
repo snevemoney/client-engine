@@ -123,5 +123,5 @@ This pushes to GitHub, rsyncs code to the VPS, runs `deploy.sh` on the server, a
 **Manual (no sync):** To only run deploy on the server without pushing or rsync:
 
 ```bash
-ssh root@69.62.66.78 "cd /root/client-engine && bash deploy.sh"
+ssh $DEPLOY_SERVER "cd /root/client-engine && bash deploy.sh"
 ```

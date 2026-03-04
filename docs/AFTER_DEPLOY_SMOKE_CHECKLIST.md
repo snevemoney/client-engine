@@ -21,7 +21,7 @@ curl -s https://evenslouis.ca/api/health
 
 **If health fails → rollback immediately:**
 ```bash
-ssh root@69.62.66.78 'cd /root/client-engine && git reset --hard HEAD~1 && bash deploy.sh'
+ssh $DEPLOY_SERVER 'cd /root/client-engine && git reset --hard HEAD~1 && bash deploy.sh'
 ```
 
 ---
@@ -48,10 +48,10 @@ If any check fails after deploy:
 
 ```bash
 # Option A: rollback script (if set up)
-ssh root@69.62.66.78 '/root/rollback-client-engine.sh'
+ssh $DEPLOY_SERVER '/root/rollback-client-engine.sh'
 
 # Option B: manual
-ssh root@69.62.66.78 'cd /root/client-engine && git log --oneline -5 && git reset --hard HEAD~1 && bash deploy.sh && curl -fsS https://evenslouis.ca/api/health'
+ssh $DEPLOY_SERVER 'cd /root/client-engine && git log --oneline -5 && git reset --hard HEAD~1 && bash deploy.sh && curl -fsS https://evenslouis.ca/api/health'
 ```
 
 See [DEPLOY_SSH_SETUP.md](DEPLOY_SSH_SETUP.md) for full rollback details.

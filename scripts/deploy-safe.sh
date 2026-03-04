@@ -31,8 +31,8 @@ docker compose build app worker
 echo "==> Restarting..."
 docker compose up -d
 
-echo "==> DB sync..."
-docker compose run --rm --no-deps worker npx prisma db push --accept-data-loss --skip-generate
+echo "==> DB migrations (prisma migrate deploy)..."
+docker compose run --rm --no-deps worker npx prisma migrate deploy
 docker compose run --rm --user root app node prisma/seed.mjs
 docker compose run --rm --user root app node prisma/seed-projects.mjs
 docker compose run --rm --user root app node prisma/seed-integrations.mjs

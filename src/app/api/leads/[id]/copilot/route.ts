@@ -7,6 +7,7 @@ import { getLeadIntelligenceForLead } from "@/lib/pipeline/getLeadIntelligenceFo
 import { getLeadRoiEstimate } from "@/lib/revenue/roi";
 import { getClientSuccessData } from "@/lib/client-success";
 import { buildLeadCopilotPrompt } from "@/lib/copilot/buildLeadCopilotPrompt";
+import { safeParseJSON } from "@/lib/llm/safe-parse-json";
 
 const CopilotRequestSchema = z.object({
   question: z.string().min(1).max(2000),
@@ -44,7 +45,7 @@ function parseJsonFromContent(content: string): unknown {
   const fence = trimmed.match(/^```(?:json)?\s*([\s\S]*?)```\s*$/m);
   const raw = fence ? fence[1]?.trim() ?? trimmed : trimmed;
   try {
-    return JSON.parse(raw);
+    return safeParseJSON(raw);
   } catch {
     return null;
   }

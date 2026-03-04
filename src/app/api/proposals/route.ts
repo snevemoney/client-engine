@@ -7,7 +7,7 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { ProposalStatus, ProposalPriceType } from "@prisma/client";
-import { jsonError, withRouteTiming } from "@/lib/api-utils";
+import { checkStateChangeRateLimit, jsonError, withRouteTiming } from "@/lib/api-utils";
 import { parsePaginationParams, buildPaginationMeta, paginatedResponse } from "@/lib/pagination";
 
 const STATUSES = ["draft", "ready", "sent", "viewed", "accepted", "rejected", "expired"] as const;
@@ -164,6 +164,9 @@ export async function POST(req: NextRequest) {
   return withRouteTiming("POST /api/proposals", async () => {
     const session = await auth();
     if (!session?.user) return jsonError("Unauthorized", 401);
+
+    const rateErr = checkStateChangeRateLimit(req, "proposals-create", session.user?.id);
+    if (rateErr) return rateErr;
 
     const raw = await req.json().catch(() => null);
     const parsed = PostSchema.safeParse(raw);

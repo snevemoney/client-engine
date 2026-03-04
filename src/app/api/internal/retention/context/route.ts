@@ -101,7 +101,7 @@ export async function GET(request: NextRequest) {
           if (status === "retainer_open") retainerOpen++;
           else if (status === "upsell_open") upsellOpen++;
           else if (status === "closed_won") closedWon++;
-          else if (status === "closed_lost") closedLost;
+          else if (status === "closed_lost") closedLost++;
 
           const { isStale } = computeRetentionStale(p);
           if (isStale) stalePostDelivery++;

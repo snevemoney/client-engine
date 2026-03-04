@@ -7,7 +7,7 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { DeliveryProjectStatus } from "@prisma/client";
-import { jsonError, withRouteTiming } from "@/lib/api-utils";
+import { checkStateChangeRateLimit, jsonError, withRouteTiming } from "@/lib/api-utils";
 import { parsePaginationParams, buildPaginationMeta, paginatedResponse } from "@/lib/pagination";
 import { computeProjectHealth } from "@/lib/delivery/readiness";
 import { buildDefaultDeliveryChecklist, buildDefaultMilestonesFromProposal } from "@/lib/delivery/templates";
@@ -135,6 +135,9 @@ export async function POST(req: NextRequest) {
   return withRouteTiming("POST /api/delivery-projects", async () => {
     const session = await auth();
     if (!session?.user) return jsonError("Unauthorized", 401);
+
+    const rateErr = checkStateChangeRateLimit(req, "delivery-projects-create", session.user?.id);
+    if (rateErr) return rateErr;
 
     const raw = await req.json().catch(() => null);
     const parsed = PostSchema.safeParse(raw);

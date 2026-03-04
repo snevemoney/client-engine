@@ -58,10 +58,10 @@ export function computeNextActionScore(
 ): { total: number; factors: ScoreFactors } {
   const now = _testOverride?.now ?? ctx.now;
 
-  let base = PRIORITY_BASE[action.priority];
+  const base = PRIORITY_BASE[action.priority];
   const countBoost = Math.min(10, action.countBoost ?? 0);
   const recencyBoost = Math.min(10, action.recencyBoost ?? 0);
-  let urgencyBoost = Math.min(10, action.urgencyBoost ?? 0);
+  const urgencyBoost = Math.min(10, action.urgencyBoost ?? 0);
   let impactBoost = Math.min(10, action.impactBoost ?? 0);
   const frictionPenalty = Math.min(5, action.frictionPenalty ?? 0);
   const dedupePenalty = ctx.existingInScope?.includes(action.dedupeKey) ? 5 : 0;

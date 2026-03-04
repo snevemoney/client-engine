@@ -84,7 +84,7 @@ docker compose logs -f app worker   # follow
 
 **From Mac:**
 ```bash
-ssh root@69.62.66.78 "cd /root/client-engine && docker compose logs --tail=50 app worker"
+ssh $DEPLOY_SERVER "cd /root/client-engine && docker compose logs --tail=50 app worker"
 ```
 
 ---

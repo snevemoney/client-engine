@@ -5,7 +5,7 @@
 
 set -euo pipefail
 
-SERVER="${DEPLOY_SERVER:-root@69.62.66.78}"
+SERVER="${DEPLOY_SERVER:-root@YOUR_VPS_IP}"
 REPO_DIR="${DEPLOY_REPO_DIR:-/root/client-engine}"
 DEPLOY_SCRIPT="deploy-fast.sh"
 [[ "${1:-}" == "--full" ]] && DEPLOY_SCRIPT="deploy-safe.sh"

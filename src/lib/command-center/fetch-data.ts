@@ -154,8 +154,7 @@ export async function fetchCommandCenterData(): Promise<CommandCenterData> {
     integrations,
     proposalGaps,
     deliverySummary,
-    handoffOps,
-    retentionOps,
+    handoffRetentionCombined,
   ] = await Promise.all([
     db.strategyWeek.findUnique({
       where: { weekStart },
@@ -469,25 +468,6 @@ export async function fetchCommandCenterData(): Promise<CommandCenterData> {
           handoffStartedAt: true,
           handoffCompletedAt: true,
           clientConfirmedAt: true,
-        },
-      });
-      let completedNoHandoff = 0;
-      let handoffInProgress = 0;
-      let handoffDoneNoClientConfirm = 0;
-      for (const p of projects) {
-        const hasStarted = !!p.handoffStartedAt;
-        const hasCompleted = !!p.handoffCompletedAt;
-        const hasClientConfirm = !!p.clientConfirmedAt;
-        if (!hasStarted && !hasCompleted) completedNoHandoff++;
-        else if (hasStarted && !hasCompleted) handoffInProgress++;
-        else if (hasCompleted && !hasClientConfirm) handoffDoneNoClientConfirm++;
-      }
-      return { completedNoHandoff, handoffInProgress, handoffDoneNoClientConfirm };
-    })(),
-    (async () => {
-      const projects = await db.deliveryProject.findMany({
-        where: { status: { in: ["completed", "archived"] } },
-        select: {
           retentionNextFollowUpAt: true,
           retentionStatus: true,
           testimonialRequestedAt: true,
@@ -496,10 +476,12 @@ export async function fetchCommandCenterData(): Promise<CommandCenterData> {
           reviewReceivedAt: true,
           referralRequestedAt: true,
           referralReceivedAt: true,
-          handoffCompletedAt: true,
           retentionLastContactedAt: true,
         },
       });
+      let completedNoHandoff = 0;
+      let handoffInProgress = 0;
+      let handoffDoneNoClientConfirm = 0;
       let retentionOverdue = 0;
       let completedNoTestimonialRequest = 0;
       let completedNoReviewRequest = 0;
@@ -509,6 +491,12 @@ export async function fetchCommandCenterData(): Promise<CommandCenterData> {
       let retainerOpen = 0;
       let stalePostDelivery = 0;
       for (const p of projects) {
+        const hasStarted = !!p.handoffStartedAt;
+        const hasCompleted = !!p.handoffCompletedAt;
+        const hasClientConfirm = !!p.clientConfirmedAt;
+        if (!hasStarted && !hasCompleted) completedNoHandoff++;
+        else if (hasStarted && !hasCompleted) handoffInProgress++;
+        else if (hasCompleted && !hasClientConfirm) handoffDoneNoClientConfirm++;
         const bucket = classifyRetentionBucket(p.retentionNextFollowUpAt, now);
         if (bucket === "overdue") retentionOverdue++;
         if (!p.testimonialRequestedAt) completedNoTestimonialRequest++;
@@ -523,18 +511,23 @@ export async function fetchCommandCenterData(): Promise<CommandCenterData> {
         if (isStale) stalePostDelivery++;
       }
       return {
-        retentionOverdue,
-        completedNoTestimonialRequest,
-        completedNoReviewRequest,
-        completedNoReferralRequest,
-        completedNoRetentionFollowup,
-        upsellOpen,
-        retainerOpen,
-        stalePostDelivery,
+        handoffOps: { completedNoHandoff, handoffInProgress, handoffDoneNoClientConfirm },
+        retentionOps: {
+          retentionOverdue,
+          completedNoTestimonialRequest,
+          completedNoReviewRequest,
+          completedNoReferralRequest,
+          completedNoRetentionFollowup,
+          upsellOpen,
+          retainerOpen,
+          stalePostDelivery,
+        },
       };
     })(),
   ]);
 
+  const handoffOps = handoffRetentionCombined?.handoffOps;
+  const retentionOps = handoffRetentionCombined?.retentionOps;
   const priorities = prioritiesResult?.priorities ?? [];
   const [overdue, today, upcoming] = followupCounts;
   const [unscored, readyToPromote, promotedMissingNext, sentOverdue, wonMissingProof] = actionSummary;

@@ -355,7 +355,8 @@ The delivery detail page (`/dashboard/delivery/[id]`) renders the builder previe
 5. `worker` — Extends runner with full node_modules
 
 ### Workers (`src/workers/index.ts`)
-- 3 BullMQ workers: enrich, score, monitor queues
+- BullMQ workers: enrich, score, monitor, builder-deploy queues
+- builder-deploy: async deploy of builder sites (POST deploy returns 202 + jobId; poll status endpoint)
 - Email ingestion loop: every 15 minutes (IMAP → Lead records → pipeline)
 - Website monitor loop: every 1 hour (uptime + SSL check)
 

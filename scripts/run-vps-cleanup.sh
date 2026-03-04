@@ -3,7 +3,7 @@
 # Usage: ./scripts/run-vps-cleanup.sh
 set -euo pipefail
 
-SERVER="${DEPLOY_SERVER:-root@69.62.66.78}"
+SERVER="${DEPLOY_SERVER:-root@YOUR_VPS_IP}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 echo "==> Running disk cleanup on $SERVER..."

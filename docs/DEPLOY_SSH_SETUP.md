@@ -7,7 +7,7 @@ Git pull was failing on the server because the repo uses HTTPS and GitHub asks f
 ## 1) SSH into the server
 
 ```bash
-ssh root@69.62.66.78
+ssh $DEPLOY_SERVER
 ```
 
 ## 2) Switch remote to SSH
@@ -131,7 +131,7 @@ chmod +x /root/deploy-client-engine.sh
 Then from your **Mac** (or any machine with SSH to the server):
 
 ```bash
-ssh root@69.62.66.78 '/root/deploy-client-engine.sh'
+ssh $DEPLOY_SERVER '/root/deploy-client-engine.sh'
 ```
 
 ---

@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -6,7 +6,34 @@ export const runtime = "nodejs";
 
 type HealthCheck = { ok: boolean; detail?: string; data?: Record<string, unknown> };
 
-export async function GET() {
+/** Returns true if request has Bearer AGENT_CRON_SECRET or valid session. */
+async function isInternalHealthAllowed(req: NextRequest): Promise<boolean> {
+  const authHeader = req.headers.get("authorization");
+  const cronSecret = process.env.AGENT_CRON_SECRET;
+  if (cronSecret && authHeader?.startsWith("Bearer ")) {
+    const token = authHeader.slice(7);
+    if (token === cronSecret) return true;
+  }
+  const { auth } = await import("@/lib/auth");
+  const session = await auth();
+  return !!session?.user;
+}
+
+export async function GET(req: NextRequest) {
+  const allowed = await isInternalHealthAllowed(req);
+  if (!allowed) {
+    // Minimal liveness: DB ping only. No system state leakage.
+    try {
+      await db.$queryRaw`SELECT 1`;
+      return NextResponse.json({ ok: true });
+    } catch (e: unknown) {
+      return NextResponse.json(
+        { ok: false, detail: e instanceof Error ? e.message : "DB unavailable" },
+        { status: 503 }
+      );
+    }
+  }
+
   const checks: Record<string, HealthCheck> = {};
 
   // ── Core checks (required) ─────────────────────────────────────────

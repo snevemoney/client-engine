@@ -4,10 +4,9 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { ProposalPriceType } from "@prisma/client";
-import { jsonError, withRouteTiming } from "@/lib/api-utils";
+import { checkStateChangeRateLimit, jsonError, requireProposalAccess, withRouteTiming } from "@/lib/api-utils";
 import { computeProposalReadiness } from "@/lib/proposals/readiness";
 import { buildProposalSnapshot, nextProposalVersion } from "@/lib/proposals/versioning";
 
@@ -122,12 +121,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   return withRouteTiming("GET /api/proposals/[id]", async () => {
-    const session = await auth();
-    if (!session?.user) return jsonError("Unauthorized", 401);
-
     const { id } = await params;
-    const proposal = await db.proposal.findUnique({
-      where: { id },
+    const result = await requireProposalAccess(id, {
       include: {
         intakeLead: { select: { id: true, title: true, status: true } },
         pipelineLead: { select: { id: true, title: true, status: true } },
@@ -140,28 +135,28 @@ export async function GET(
         },
       },
     });
-
-    if (!proposal) return jsonError("Proposal not found", 404);
+    if (!result.ok) return result.response;
+    const proposal = result.proposal;
 
     const readiness = computeProposalReadiness(proposal);
 
     return NextResponse.json({
       ...safeProposal(proposal),
-      versions: proposal.versions.map((v) => ({
+      versions: proposal.versions.map((v: { id: string; version: number; snapshotJson: unknown; changeNote: string | null; createdAt: Date }) => ({
         id: v.id,
         version: v.version,
         snapshotJson: v.snapshotJson,
         changeNote: v.changeNote ?? null,
         createdAt: v.createdAt.toISOString(),
       })),
-      activities: proposal.activities.map((a) => ({
+      activities: proposal.activities.map((a: { id: string; type: string; message: string | null; metaJson: unknown; createdAt: Date }) => ({
         id: a.id,
         type: a.type,
         message: a.message ?? null,
         metaJson: a.metaJson ?? null,
         createdAt: a.createdAt.toISOString(),
       })),
-      deliveryProjects: (proposal as typeof proposal & { deliveryProjects?: { id: string; title: string; status: string; dueDate: Date | null; completedAt: Date | null }[] }).deliveryProjects?.map((dp) => ({
+      deliveryProjects: (proposal as typeof proposal & { deliveryProjects?: { id: string; title: string; status: string; dueDate: Date | null; completedAt: Date | null }[] }).deliveryProjects?.map((dp: { id: string; title: string; status: string; dueDate: Date | null; completedAt: Date | null }) => ({
         id: dp.id,
         title: dp.title,
         status: dp.status,
@@ -182,12 +177,12 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   return withRouteTiming("PATCH /api/proposals/[id]", async () => {
-    const session = await auth();
-    if (!session?.user) return jsonError("Unauthorized", 401);
+    const rateErr = checkStateChangeRateLimit(req, "proposals-patch");
+    if (rateErr) return rateErr;
 
     const { id } = await params;
-    const existing = await db.proposal.findUnique({ where: { id } });
-    if (!existing) return jsonError("Proposal not found", 404);
+    const access = await requireProposalAccess(id);
+    if (!access.ok) return access.response;
 
     const raw = await req.json().catch(() => null);
     const parsed = PatchSchema.safeParse(raw);

@@ -5,6 +5,7 @@
  */
 
 import { chat } from "@/lib/llm";
+import { safeParseJSON } from "@/lib/llm/safe-parse-json";
 import type {
   ImprovementSuggestionSystemArea,
   ImprovementSuggestionEffort,
@@ -72,7 +73,7 @@ Generate 1-5 suggestions. Focus on highest impact. sourceTranscriptRef must be t
   );
 
   try {
-    const parsed = JSON.parse(content.trim());
+    const parsed = safeParseJSON<unknown>(content);
     const arr = Array.isArray(parsed) ? parsed : [];
     const result: ImprovementSuggestionPayload[] = [];
     for (const item of arr) {

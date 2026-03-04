@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { checkStateChangeRateLimit } from "@/lib/api-utils";
 import { createRun, startStep, finishStep, finishRun } from "@/lib/pipeline-metrics";
 import { normalizeUsage } from "@/lib/pipeline/usage";
 import { runEnrich } from "@/lib/pipeline/enrich";
@@ -9,6 +10,9 @@ import { formatStepFailureNotes } from "@/lib/pipeline/error-classifier";
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const rateErr = checkStateChangeRateLimit(req, "enrich", session.user?.id, { windowMs: 60_000, max: 20 });
+  if (rateErr) return rateErr;
 
   const { id } = await params;
   const lead = await db.lead.findUnique({ where: { id } });

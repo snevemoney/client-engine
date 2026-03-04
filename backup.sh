@@ -8,10 +8,20 @@ TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 mkdir -p "$BACKUP_DIR"
 
 echo "==> Backing up database..."
-docker compose exec -T postgres pg_dump -U engine client_engine | gzip > "$BACKUP_DIR/db_${TIMESTAMP}.sql.gz"
+OUTPUT="$BACKUP_DIR/db_${TIMESTAMP}.sql.gz"
+docker compose exec -T postgres pg_dump -U engine client_engine | gzip > "$OUTPUT"
 
-echo "==> Backup saved: $BACKUP_DIR/db_${TIMESTAMP}.sql.gz"
-ls -lh "$BACKUP_DIR/db_${TIMESTAMP}.sql.gz"
+if ! test -s "$OUTPUT"; then
+  echo "FAIL: Backup file empty or missing"
+  exit 1
+fi
+if ! gunzip -t "$OUTPUT" 2>/dev/null; then
+  echo "FAIL: Backup file corrupted (gunzip -t failed)"
+  exit 1
+fi
+
+echo "==> Backup saved: $OUTPUT"
+ls -lh "$OUTPUT"
 
 # Keep last 10 backups
 ls -t "$BACKUP_DIR"/db_*.sql.gz | tail -n +11 | xargs -r rm --

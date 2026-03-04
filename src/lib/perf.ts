@@ -2,7 +2,9 @@
  * Performance instrumentation — consistent slow logging across the app.
  * Format: [SLOW] area=<api|page|db|action> name=<route/query> ms=<n> details=<optional>
  * Use for API routes, SSR pages, Prisma queries, and key actions.
+ * In production or LOG_FORMAT=json, also emits structured JSON for log aggregation.
  */
+import { logStructured } from "@/lib/ops-events/structured-log";
 
 const SLOW_API_MS = 500;
 const SLOW_PAGE_MS = 1000;
@@ -27,6 +29,21 @@ export function logSlow(
     ? `[SLOW] area=${area} name=${name} ms=${ms} details=${details}`
     : `[SLOW] area=${area} name=${name} ms=${ms}`;
   console.warn(msg);
+  if (process.env.LOG_FORMAT === "json" || process.env.NODE_ENV === "production") {
+    try {
+      logStructured({
+        timestamp: new Date().toISOString(),
+        level: "warn",
+        message: "slow_operation",
+        area,
+        route: name,
+        ms,
+        details,
+      });
+    } catch {
+      // Best-effort
+    }
+  }
 }
 
 /** Wrap an async fn with timing; logs if above threshold. */

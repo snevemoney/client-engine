@@ -1,6 +1,6 @@
 # API Routes
 
-> Auto-generated on 2026-03-02. 340 route files.
+> Auto-generated on 2026-03-04. 341 route files.
 
 | Path | Methods |
 |------|---------|
@@ -34,6 +34,7 @@
 | `/api/delivery-projects/[id]/activity` | POST |
 | `/api/delivery-projects/[id]/builder/create` | POST |
 | `/api/delivery-projects/[id]/builder/deploy` | POST |
+| `/api/delivery-projects/[id]/builder/deploy/status` | GET |
 | `/api/delivery-projects/[id]/builder/feedback` | GET |
 | `/api/delivery-projects/[id]/builder/regenerate` | POST |
 | `/api/delivery-projects/[id]/builder/sections` | GET, PATCH |

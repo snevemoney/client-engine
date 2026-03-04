@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import crypto from "crypto";
+import { checkStateChangeRateLimit } from "@/lib/api-utils";
 
 function computeHash(url: string | undefined, title: string, content: string | undefined): string {
   const raw = [url || "", title, (content || "").slice(0, 500)].join("|");
@@ -15,6 +16,9 @@ function timingSafeEqual(a: string, b: string): boolean {
 }
 
 export async function POST(req: NextRequest) {
+  const rateErr = checkStateChangeRateLimit(req, "capture", null, { windowMs: 60_000, max: 30 });
+  if (rateErr) return rateErr;
+
   const apiKey = req.headers.get("x-api-key");
   const expected = process.env.CAPTURE_API_KEY;
   if (!expected || !apiKey || !timingSafeEqual(apiKey, expected)) {

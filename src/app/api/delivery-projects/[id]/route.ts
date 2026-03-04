@@ -4,9 +4,8 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { jsonError, withRouteTiming } from "@/lib/api-utils";
+import { checkStateChangeRateLimit, jsonError, requireDeliveryProject, withRouteTiming } from "@/lib/api-utils";
 import { computeProjectHealth, computeDeliveryCompletionReadiness } from "@/lib/delivery/readiness";
 
 const PatchSchema = z.object({
@@ -146,12 +145,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   return withRouteTiming("GET /api/delivery-projects/[id]", async () => {
-    const session = await auth();
-    if (!session?.user) return jsonError("Unauthorized", 401);
-
     const { id } = await params;
-    const project = await db.deliveryProject.findUnique({
-      where: { id },
+    const result = await requireDeliveryProject(id, {
       include: {
         milestones: { orderBy: { sortOrder: "asc" } },
         checklistItems: { orderBy: { sortOrder: "asc" } },
@@ -160,8 +155,8 @@ export async function GET(
         intakeLead: { select: { id: true, title: true, status: true } },
       },
     });
-
-    if (!project) return jsonError("Project not found", 404);
+    if (!result.ok) return result.response;
+    const project = result.project;
 
     const readiness = computeDeliveryCompletionReadiness(
       project,
@@ -171,7 +166,7 @@ export async function GET(
 
     return NextResponse.json({
       ...safeProject(project),
-      milestones: project.milestones.map((m) => ({
+      milestones: project.milestones.map((m: { id: string; title: string; description: string | null; status: string; sortOrder: number; dueAt: Date | null; completedAt: Date | null }) => ({
         id: m.id,
         title: m.title,
         description: m.description ?? null,
@@ -180,7 +175,7 @@ export async function GET(
         dueAt: m.dueAt?.toISOString() ?? null,
         completedAt: m.completedAt?.toISOString() ?? null,
       })),
-      checklistItems: project.checklistItems.map((c) => ({
+      checklistItems: project.checklistItems.map((c: { id: string; category: string; label: string; isRequired: boolean; isDone: boolean; doneAt: Date | null; sortOrder: number }) => ({
         id: c.id,
         category: c.category,
         label: c.label,
@@ -189,7 +184,7 @@ export async function GET(
         doneAt: c.doneAt?.toISOString() ?? null,
         sortOrder: c.sortOrder,
       })),
-      activities: project.activities.map((a) => ({
+      activities: project.activities.map((a: { id: string; type: string; message: string | null; metaJson: unknown; createdAt: Date }) => ({
         id: a.id,
         type: a.type,
         message: a.message ?? null,
@@ -216,12 +211,12 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   return withRouteTiming("PATCH /api/delivery-projects/[id]", async () => {
-    const session = await auth();
-    if (!session?.user) return jsonError("Unauthorized", 401);
+    const rateErr = checkStateChangeRateLimit(req, "delivery-projects-patch");
+    if (rateErr) return rateErr;
 
     const { id } = await params;
-    const existing = await db.deliveryProject.findUnique({ where: { id } });
-    if (!existing) return jsonError("Project not found", 404);
+    const access = await requireDeliveryProject(id);
+    if (!access.ok) return access.response;
 
     const raw = await req.json().catch(() => null);
     const parsed = PatchSchema.safeParse(raw);

@@ -5,6 +5,7 @@
 
 import { db } from "@/lib/db";
 import { chat } from "@/lib/llm";
+import { safeParseJSON } from "@/lib/llm/safe-parse-json";
 import type { RoiEstimate } from "./types";
 import { ROI_ESTIMATE_ARTIFACT_TYPE } from "./types";
 
@@ -77,7 +78,7 @@ Rules:
 
   let estimate: RoiEstimate;
   try {
-    const parsed = JSON.parse(content.trim().replace(/^```json?\s*|\s*```$/g, "")) as Record<string, unknown>;
+    const parsed = safeParseJSON<Record<string, unknown>>(content);
     const numRange = (r: unknown): { min: number; max: number } | null => {
       if (r && typeof r === "object" && "min" in r && "max" in r)
         return { min: Number((r as { min: unknown }).min), max: Number((r as { max: unknown }).max) };

@@ -1,6 +1,6 @@
 # VPS Deploy Ready Checklist
 
-**Deploy from your Mac:** `./scripts/deploy-remote.sh` (fast) or `./scripts/deploy-remote.sh --full` (with DB sync). No deploy key? Use `./scripts/sync-and-deploy.sh`. See [PROD_FIRST_WORKFLOW.md](PROD_FIRST_WORKFLOW.md). Quick runbook: [PROD_OPERATOR_LOOP.md](PROD_OPERATOR_LOOP.md).
+**Deploy from your Mac:** Set `DEPLOY_SERVER=root@your-vps-ip` (or add to `.env`). Then `./scripts/deploy-remote.sh` (fast) or `./scripts/deploy-remote.sh --full` (with DB sync). No deploy key? Use `./scripts/sync-and-deploy.sh`. See [PROD_FIRST_WORKFLOW.md](PROD_FIRST_WORKFLOW.md). Quick runbook: [PROD_OPERATOR_LOOP.md](PROD_OPERATOR_LOOP.md).
 
 ## Required env vars (production)
 
@@ -80,17 +80,21 @@ These flows are simulated so you can test before adding real credentials:
 
 ## Deploy steps
 
-1. **DB**
-   ```bash
-   npx prisma db push
-   ```
+1. **DB (production uses migrations)**
+   - **Production:** `npx prisma migrate deploy` — applies committed migrations. Used by deploy-safe.sh and deploy-fast.sh --schema.
+   - **Local dev:** `npx prisma db push` — syncs schema without migrations. Use `npx prisma migrate dev` when adding schema changes, then commit the new migration before deploying.
 
-2. **Build**
+2. **Migration workflow (when schema changes)**
+   - Locally: `npx prisma migrate dev --name descriptive_name` — creates migration, applies it, updates Prisma Client.
+   - Commit the new file in `prisma/migrations/`.
+   - Deploy: `prisma migrate deploy` runs on server and applies pending migrations.
+
+3. **Build**
    ```bash
    npm run build
    ```
 
-3. **Start**
+4. **Start**
    ```bash
    npm run start
    ```
@@ -149,7 +153,7 @@ curl -fsS https://evenslouis.ca/api/health
 
 Or use the rollback script (see `docs/DEPLOY_SSH_SETUP.md`):
 ```bash
-ssh root@69.62.66.78 '/root/rollback-client-engine.sh'
+ssh $DEPLOY_SERVER '/root/rollback-client-engine.sh'
 ```
 
 **When NOT to deploy:**
