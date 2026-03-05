@@ -36,8 +36,7 @@ test.describe("Learning ingest", () => {
     await page.waitForURL(/\/(dashboard|login)/, { timeout: 20000 });
     if (page.url().includes("/login")) {
       const errText = await page.locator("p.text-red-400").textContent().catch(() => "");
-      test.skip(true, `Login failed. Error: ${errText || "none"}. Prod: ensure server has E2E_ALLOW_DEV_PASSWORD=1 and AUTH_DEV_PASSWORD=121618louis, and DB user (run reset-auth).`);
-      return;
+      throw new Error(`Login failed: ${errText || "still on login"}`);
     }
     await expect(page).toHaveURL(/\/dashboard/);
 

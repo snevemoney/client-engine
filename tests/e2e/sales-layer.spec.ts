@@ -19,11 +19,8 @@ test.describe("Sales layer E2E", () => {
     await page.getByLabel("Email").fill(email);
     await page.getByLabel("Password").fill(password);
     await page.getByRole("button", { name: /sign in/i }).click();
-    await page.waitForURL(/\/(dashboard|login)/, { timeout: 15000 });
-    if (page.url().includes("/login")) {
-      const err = await page.getByText(/invalid|required|error|exception/i).first().textContent().catch(() => "");
-      test.skip(true, `Login failed: ${err || "still on login"}`);
-    }
+    await expect(page).toHaveURL(/\/(dashboard|login)/, { timeout: 15000 });
+    expect(page.url()).not.toContain("/login");
   });
 
   test("Command Center: Follow-up discipline, Referral engine, Prospecting sources cards render", async ({ page }) => {
@@ -112,7 +109,7 @@ test.describe("Sales layer E2E", () => {
     }
     const referralId = Array.isArray(referrals) && referrals[0]?.id ? referrals[0].id : null;
     if (!referralId) {
-      test.skip(true, "No referral id");
+      throw new Error("No referral id — lead may need referral data");
       return;
     }
 

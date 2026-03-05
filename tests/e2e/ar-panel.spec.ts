@@ -5,10 +5,7 @@ test.describe("A/R Panel and Deploys", () => {
   test("Command Center shows A/R Panel with counts", async ({ page }) => {
     test.setTimeout(60000);
     const ok = await loginAndWaitForDashboard(page);
-    if (!ok) {
-      test.skip(true, "Login failed - check E2E credentials");
-      return;
-    }
+    expect(ok, "Login failed - check E2E credentials").toBe(true);
     await page.goto("/dashboard/command", { waitUntil: "load", timeout: 20000 });
     await expect(page).toHaveURL(/\/dashboard\/command/);
     // A/R Panel card (Section2 streams in via Suspense)
@@ -22,10 +19,7 @@ test.describe("A/R Panel and Deploys", () => {
   test("Deploys page has filter tabs and payment column", async ({ page }) => {
     test.setTimeout(60000);
     const ok = await loginAndWaitForDashboard(page);
-    if (!ok) {
-      test.skip(true, "Login failed - check E2E credentials");
-      return;
-    }
+    expect(ok, "Login failed - check E2E credentials").toBe(true);
     await page.goto("/dashboard/deploys", { waitUntil: "load", timeout: 20000 });
     await expect(page).toHaveURL(/\/dashboard\/deploys/);
     // Filter tabs: All, Unpaid, Invoiced, Paid (exact to avoid "Paid" matching "Unpaid")
@@ -40,10 +34,7 @@ test.describe("A/R Panel and Deploys", () => {
   test("Deploys page filter=unpaid shows unpaid filter active", async ({ page }) => {
     test.setTimeout(60000);
     const ok = await loginAndWaitForDashboard(page);
-    if (!ok) {
-      test.skip(true, "Login failed - check E2E credentials");
-      return;
-    }
+    expect(ok, "Login failed - check E2E credentials").toBe(true);
     await page.goto("/dashboard/deploys?filter=unpaid", { waitUntil: "load", timeout: 20000 });
     await expect(page).toHaveURL(/\/dashboard\/deploys\?filter=unpaid/);
     const unpaidLink = page.getByRole("link", { name: "Unpaid", exact: true });

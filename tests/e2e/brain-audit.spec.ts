@@ -21,9 +21,6 @@ async function login(page: Page) {
   await page.getByLabel("Password").fill(loginPassword);
   await page.getByRole("button", { name: /sign in/i }).click();
   await expect(page).toHaveURL(/\/dashboard/, { timeout: 15000 });
-  if (page.url().includes("/login")) {
-    test.skip(true, "Login failed — check E2E credentials in .env");
-  }
 }
 
 // ─── 1. All Pages Render ──────────────────────────────────────
@@ -351,7 +348,7 @@ test.describe("Session persistence", () => {
 
     const sessionEvent = events1.find((e) => e.type === "session_id");
     if (!sessionEvent) {
-      test.skip(true, "No session_id returned — ANTHROPIC_API_KEY may not be set");
+      throw new Error("No session_id returned — set ANTHROPIC_API_KEY for brain chat");
       return;
     }
     const sessionId = sessionEvent.sessionId;

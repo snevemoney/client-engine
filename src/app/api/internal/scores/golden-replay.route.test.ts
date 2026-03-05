@@ -69,6 +69,7 @@ describe("3.6.5 API golden replay", () => {
     await computeAndStoreScore("command_center", ENTITY, {
       _testOverride: { score: 45, band: "critical" },
     });
+    await new Promise((r) => setTimeout(r, 5)); // ensure distinct computedAt
     await computeAndStoreScore("command_center", ENTITY, {
       _testOverride: { score: 85, band: "healthy" },
     });

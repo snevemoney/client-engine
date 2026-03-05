@@ -1,6 +1,9 @@
 /**
  * Production audit: health, DB checks, every page, key flows, silent fails, render speed.
- * Run against prod: E2E_ALLOW_MUTATIONS=1 USE_EXISTING_SERVER=1 PLAYWRIGHT_BASE_URL=https://evenslouis.ca E2E_EMAIL=... E2E_PASSWORD=... npm run test:e2e tests/e2e/prod.spec.ts
+ *
+ * Run against prod: E2E_ALLOW_MUTATIONS=1 USE_EXISTING_SERVER=1 PLAYWRIGHT_BASE_URL=https://evenslouis.ca E2E_EMAIL=... E2E_PASSWORD=... AGENT_CRON_SECRET=<prod-secret> npm run test:e2e tests/e2e/prod.spec.ts
+ *
+ * Local (existing server): Add AGENT_CRON_SECRET or RESEARCH_CRON_SECRET to .env (see .env.example) and restart dev server.
  */
 import { test, expect } from "@playwright/test";
 import { requireSafeE2EBaseUrl } from "./helpers/safety";
@@ -41,11 +44,16 @@ test.describe("Production: health and database", () => {
   test("GET /api/health returns 200, ok true, all checks (db, pipelineTables, authSecret, nextAuthUrl)", async ({
     request,
   }) => {
-    const res = await request.get(`${baseURL.replace(/\/$/, "")}/api/health`);
+    const cronSecret = process.env.AGENT_CRON_SECRET || process.env.RESEARCH_CRON_SECRET;
+    const headers: Record<string, string> = cronSecret ? { Authorization: `Bearer ${cronSecret}` } : {};
+    const res = await request.get(`${baseURL.replace(/\/$/, "")}/api/health`, { headers });
     const body = await res.json();
     expect(res.status()).toBe(200);
     expect(body.ok).toBe(true);
-    expect(body.checks).toBeDefined();
+    expect(
+      body.checks,
+      "Health returned minimal { ok } without checks. Set AGENT_CRON_SECRET or RESEARCH_CRON_SECRET in .env (see .env.example) for local; for prod use prod's AGENT_CRON_SECRET.",
+    ).toBeDefined();
     expect(body.checks.db).toBeDefined();
     expect(body.checks.pipelineTables).toBeDefined();
     expect(body.checks.authSecret).toBeDefined();
@@ -76,10 +84,7 @@ test.describe("Production: every page + silent fails + speed (with login)", () =
     await page.getByLabel("Password").fill(password);
     await page.getByRole("button", { name: /sign in/i }).click();
     await expect(page).toHaveURL(/\/(dashboard|command)/, { timeout: 15000 });
-    if (page.url().includes("/login")) {
-      test.skip(true, "Login failed — set E2E_EMAIL and E2E_PASSWORD for prod");
-      return;
-    }
+    expect(page.url()).not.toContain("/login");
 
     // Silent-fail: protected APIs return 200 with expected shape (not 200 + empty/error body)
     const leadsRes = await page.request.get(`${baseURL.replace(/\/$/, "")}/api/leads`);
@@ -126,10 +131,7 @@ test.describe("Production: key flow (create lead → metrics)", () => {
     await page.getByLabel("Password").fill(password);
     await page.getByRole("button", { name: /sign in/i }).click();
     await expect(page).toHaveURL(/\/(dashboard|command)/, { timeout: 15000 });
-    if (page.url().includes("/login")) {
-      test.skip(true, "Login failed");
-      return;
-    }
+    expect(page.url()).not.toContain("/login");
 
     await page.goto(`${baseURL}/dashboard/metrics`);
     await expect(page).toHaveURL(/\/dashboard\/metrics/);

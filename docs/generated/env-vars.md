@@ -1,6 +1,6 @@
 # Environment Variables
 
-> Auto-generated from .env.example on 2026-03-04. 19 variables.
+> Auto-generated from .env.example on 2026-03-05. 20 variables.
 
 | Variable | Description |
 |----------|-------------|
@@ -12,6 +12,7 @@
 | `AUTH_SECRET` | Auth (required for login/session; NextAuth) |
 | `NEXTAUTH_URL` | Production: must match your public URL (stops redirect loops) |
 | `PIPELINE_DRY_RUN` | For real lead scores, set to 0 and ensure ANTHROPIC_API_KEY or OPENAI_API_KEY is set. |
+| `AGENT_CRON_SECRET` | E2E + local: use e2e-cron-secret-for-playwright so health and Bearer tests run. Prod: set strong random secrets. |
 | `RESEARCH_CRON_SECRET` | E2E + local: use this so Bearer auth tests run. Prod: set a strong random secret. |
 | `IMAP_HOST` | Email ingestion (worker) — Hostinger IMAP; set IMAP_USER and IMAP_PASS to connect inbox |
 | `IMAP_PORT` | — |

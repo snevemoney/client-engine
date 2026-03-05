@@ -12,10 +12,7 @@ test.describe("Builder deploy flow", () => {
 
   test("POST deploy with auth, invalid project returns 404", async ({ page, request }) => {
     const ok = await loginAndWaitForDashboard(page);
-    if (!ok) {
-      test.skip(true, "Login failed - check E2E credentials");
-      return;
-    }
+    expect(ok, "Login failed - check E2E credentials").toBe(true);
     const cookies = await page.context().cookies();
     const res = await request.post(
       `${baseURL}/api/delivery-projects/nonexistent-id-12345/builder/deploy`,
@@ -34,10 +31,7 @@ test.describe("Builder deploy flow", () => {
     request,
   }) => {
     const ok = await loginAndWaitForDashboard(page);
-    if (!ok) {
-      test.skip(true, "Login failed - check E2E credentials");
-      return;
-    }
+    expect(ok, "Login failed - check E2E credentials").toBe(true);
     // Create a delivery project via API (no builder site)
     const createRes = await request.post(`${baseURL}/api/delivery-projects`, {
       data: { title: "E2E Deploy Test" },
@@ -48,7 +42,7 @@ test.describe("Builder deploy flow", () => {
       },
     });
     if (createRes.status() !== 200 && createRes.status() !== 201) {
-      test.skip(true, "Could not create delivery project for test");
+      throw new Error("Could not create delivery project for test");
       return;
     }
     const { id } = await createRes.json();

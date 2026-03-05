@@ -12,10 +12,7 @@ test.describe("All pages", () => {
     await page.getByLabel("Password").fill(loginPassword);
     await page.getByRole("button", { name: /sign in/i }).click();
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 10000 });
-    if (page.url().includes("/login")) {
-      test.skip(true, "Login failed - check ADMIN_EMAIL/E2E_EMAIL and ADMIN_PASSWORD/E2E_PASSWORD in .env");
-      return;
-    }
+    expect(page.url()).not.toContain("/login");
 
     const pages: { url: string; name: string }[] = [
       { url: "/dashboard", name: "Dashboard" },
@@ -57,20 +54,19 @@ test.describe("All pages", () => {
   });
 
   test("visit lead detail and proposal console when ids provided", async ({ page }) => {
-    const leadId = process.env.E2E_LEAD_ID;
-    const proposalId = process.env.E2E_PROPOSAL_ARTIFACT_ID;
-    if (!leadId && !proposalId) {
-      test.skip(true, "E2E_LEAD_ID or E2E_PROPOSAL_ARTIFACT_ID not set");
-      return;
-    }
     await page.goto(`${baseURL}/login`);
     await page.getByLabel("Email").fill(loginEmail);
     await page.getByLabel("Password").fill(loginPassword);
     await page.getByRole("button", { name: /sign in/i }).click();
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 10000 });
-    if (page.url().includes("/login")) {
-      test.skip(true, "Login failed");
-      return;
+    expect(page.url()).not.toContain("/login");
+
+    let leadId = process.env.E2E_LEAD_ID;
+    const proposalId = process.env.E2E_PROPOSAL_ARTIFACT_ID;
+    if (!leadId) {
+      const leadsRes = await page.request.get(`${baseURL.replace(/\/$/, "")}/api/leads`);
+      const leads = await leadsRes.json();
+      leadId = Array.isArray(leads) && leads.length > 0 ? leads[0].id : null;
     }
     if (leadId) {
       await page.goto(`${baseURL}/dashboard/leads/${leadId}`);
@@ -80,6 +76,11 @@ test.describe("All pages", () => {
     if (proposalId) {
       await page.goto(`${baseURL}/dashboard/proposals/${proposalId}`);
       await expect(page).toHaveURL(new RegExp(`/dashboard/proposals/${proposalId}`));
+      await expect(page.locator("body")).toBeVisible();
+    }
+    if (!leadId && !proposalId) {
+      await page.goto(`${baseURL}/dashboard/leads`);
+      await expect(page).toHaveURL(/\/dashboard\/leads/);
       await expect(page.locator("body")).toBeVisible();
     }
   });

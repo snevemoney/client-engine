@@ -13,17 +13,12 @@ test.describe("Internal QA pages", () => {
 
   test.beforeEach(async ({ page }) => {
     const ok = await loginAndWaitForDashboard(page);
-    if (!ok) {
-      test.skip(true, "Login failed - set E2E_EMAIL/E2E_PASSWORD or ADMIN_EMAIL/ADMIN_PASSWORD");
-    }
+    expect(ok, "Login failed - set E2E_EMAIL/E2E_PASSWORD or AUTH_DEV_PASSWORD").toBe(true);
   });
 
   test("Notifications QA page loads and shows checklist", async ({ page }) => {
     await page.goto(`${baseURL}/dashboard/internal/qa/notifications`, { waitUntil: "load", timeout: 15000 });
-    if (page.url().includes("/login")) {
-      test.skip(true, "Redirected to login - session may have expired");
-      return;
-    }
+    expect(page.url()).not.toContain("/login");
     await expect(page).toHaveURL(/\/dashboard\/internal\/qa\/notifications/);
     await expect(page.locator("h1")).toContainText(/Notifications QA/i, { timeout: 5000 });
     await expect(page.getByRole("heading", { name: "Checklist", exact: true })).toBeVisible({ timeout: 5000 });
@@ -54,10 +49,7 @@ test.describe("Internal QA pages", () => {
 
   test("Risk QA page loads and shows checklist", async ({ page }) => {
     await page.goto(`${baseURL}/dashboard/internal/qa/risk`, { waitUntil: "load", timeout: 15000 });
-    if (page.url().includes("/login")) {
-      test.skip(true, "Redirected to login");
-      return;
-    }
+    expect(page.url()).not.toContain("/login");
     await expect(page).toHaveURL(/\/dashboard\/internal\/qa\/risk/);
     await expect(page.locator("h1")).toContainText(/Risk QA/i, { timeout: 5000 });
     await expect(page.getByRole("heading", { name: "Checklist", exact: true })).toBeVisible({ timeout: 5000 });
@@ -66,10 +58,7 @@ test.describe("Internal QA pages", () => {
 
   test("Next Actions QA page loads and shows checklist", async ({ page }) => {
     await page.goto(`${baseURL}/dashboard/internal/qa/next-actions`, { waitUntil: "load", timeout: 15000 });
-    if (page.url().includes("/login")) {
-      test.skip(true, "Redirected to login");
-      return;
-    }
+    expect(page.url()).not.toContain("/login");
     await expect(page).toHaveURL(/\/dashboard\/internal\/qa\/next-actions/);
     await expect(page.locator("h1")).toContainText(/Next Actions QA/i, { timeout: 5000 });
     await expect(page.getByRole("heading", { name: "Checklist", exact: true })).toBeVisible({ timeout: 5000 });

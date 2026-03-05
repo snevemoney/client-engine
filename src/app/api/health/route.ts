@@ -6,13 +6,13 @@ export const runtime = "nodejs";
 
 type HealthCheck = { ok: boolean; detail?: string; data?: Record<string, unknown> };
 
-/** Returns true if request has Bearer AGENT_CRON_SECRET or valid session. */
+/** Returns true if request has Bearer AGENT_CRON_SECRET, RESEARCH_CRON_SECRET, or valid session. */
 async function isInternalHealthAllowed(req: NextRequest): Promise<boolean> {
   const authHeader = req.headers.get("authorization");
-  const cronSecret = process.env.AGENT_CRON_SECRET;
-  if (cronSecret && authHeader?.startsWith("Bearer ")) {
+  if (authHeader?.startsWith("Bearer ")) {
     const token = authHeader.slice(7);
-    if (token === cronSecret) return true;
+    if (process.env.AGENT_CRON_SECRET && token === process.env.AGENT_CRON_SECRET) return true;
+    if (process.env.RESEARCH_CRON_SECRET && token === process.env.RESEARCH_CRON_SECRET) return true;
   }
   const { auth } = await import("@/lib/auth");
   const session = await auth();

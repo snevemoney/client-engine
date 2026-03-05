@@ -223,11 +223,7 @@ test.describe("API Bearer auth (cron simulation)", () => {
     const res = await request.post(`${url}/api/ops/workday-run`, {
       headers: { Authorization: `Bearer ${secret}` },
     });
-    if (res.status() === 401) {
-      test.skip(true, "Server returned 401 — add RESEARCH_CRON_SECRET to .env and restart when using existing server");
-      return;
-    }
-    expect(res.status()).not.toBe(401);
+    expect(res.status(), "Add RESEARCH_CRON_SECRET to .env and restart server").not.toBe(401);
   });
 
   test("POST /api/research/run with Bearer RESEARCH_CRON_SECRET returns 200 or 500 (not 401)", async ({
@@ -237,11 +233,7 @@ test.describe("API Bearer auth (cron simulation)", () => {
     const res = await request.post(`${url}/api/research/run?limit=1`, {
       headers: { Authorization: `Bearer ${secret}` },
     });
-    if (res.status() === 401) {
-      test.skip(true, "Server returned 401 — add RESEARCH_CRON_SECRET to .env and restart when using existing server");
-      return;
-    }
-    expect(res.status()).not.toBe(401);
+    expect(res.status(), "Add RESEARCH_CRON_SECRET to .env and restart server").not.toBe(401);
   });
 });
 

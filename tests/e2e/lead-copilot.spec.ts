@@ -23,10 +23,7 @@ test.describe("Lead Copilot", () => {
     await page.getByLabel("Password").fill(password);
     await page.getByRole("button", { name: /sign in/i }).click();
     await expect(page).toHaveURL(/\/(dashboard|login)/, { timeout: 10000 });
-    if (page.url().includes("/login")) {
-      test.skip(true, "Login failed (wrong credentials or env)");
-      return;
-    }
+    expect(page.url()).not.toContain("/login");
 
     await page.goto("/dashboard/leads");
     await expect(page).toHaveURL(/\/dashboard\/leads/);
@@ -45,10 +42,7 @@ test.describe("Lead Copilot", () => {
     await page.getByLabel("Password").fill(password);
     await page.getByRole("button", { name: /sign in/i }).click();
     await expect(page).toHaveURL(/\/(dashboard|login)/, { timeout: 10000 });
-    if (page.url().includes("/login")) {
-      test.skip(true, "Login failed");
-      return;
-    }
+    expect(page.url()).not.toContain("/login");
 
     await page.goto("/dashboard/leads");
     await expect(page).toHaveURL(/\/dashboard\/leads/);

@@ -29,11 +29,7 @@ test.describe("Client-acquisition E2E", () => {
     await page.getByLabel("Email").fill(email);
     await page.getByLabel("Password").fill(password);
     await page.getByRole("button", { name: /sign in/i }).click();
-    await page.waitForURL(/\/dashboard/, { timeout: 15000 });
-    if (page.url().includes("/login")) {
-      const err = await page.getByText(/invalid|required|error|exception/i).first().textContent().catch(() => "");
-      test.skip(true, `Login failed: ${err || "still on login"}`);
-    }
+    await expect(page).toHaveURL(/\/dashboard/, { timeout: 15000 });
   });
 
   test("Command Center: Channel ROI, Channel role, Owned audience, Networking event cards visible", async ({

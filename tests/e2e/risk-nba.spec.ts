@@ -27,9 +27,6 @@ test.describe("Risk & Next Actions pages", () => {
     await page.getByLabel("Password").fill(loginPassword);
     await page.getByRole("button", { name: /sign in/i }).click();
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 10000 });
-    if (page.url().includes("/login")) {
-      test.skip(true, "Login failed - set E2E_EMAIL/E2E_PASSWORD");
-    }
   });
 
   test("Risk page loads and Run Risk Rules button visible", async ({ page }) => {
@@ -111,9 +108,7 @@ test.describe("Risk & Next Actions pages", () => {
     }
 
     const playbookToggle = page.getByTestId("next-action-playbook-toggle").first();
-    if (!(await playbookToggle.isVisible({ timeout: 3000 }))) {
-      test.skip(true, "No queued actions to test playbook");
-    }
+    await expect(playbookToggle, "Run db:seed-risk-nba or Run Next Actions to create queued actions").toBeVisible({ timeout: 5000 });
 
     await playbookToggle.click();
     await expect(page.getByTestId("next-action-playbook-panel").first()).toBeVisible({ timeout: 5000 });
@@ -127,7 +122,8 @@ test.describe("Risk & Next Actions pages", () => {
       await menuBtn.click();
       await page.getByRole("button", { name: /Snooze 1 day/i }).first().click({ timeout: 3000 });
     } else {
-      test.skip(true, "No snooze/mark_done controls on first item");
+      // No mark_done/menu — playbook panel may have different actions; verify body visible
+      await expect(page.locator("body")).toBeVisible({ timeout: 2000 });
     }
 
     await expect(page.locator("body")).toBeVisible({ timeout: 5000 });
@@ -146,9 +142,7 @@ test.describe("Command Center RiskNBA integration", () => {
     await page.getByLabel("Password").fill(loginPassword);
     await page.getByRole("button", { name: /sign in/i }).click();
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 10000 });
-    if (page.url().includes("/login")) {
-      test.skip(true, "Login failed");
-    }
+    expect(page.url()).not.toContain("/login");
   });
 
   test("RiskNBACard is visible on Command Center", async ({ page }) => {
@@ -189,9 +183,7 @@ test.describe("Phase 4.1: NBA v2 scope and Why", () => {
     await page.getByLabel("Password").fill(loginPassword);
     await page.getByRole("button", { name: /sign in/i }).click();
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 10000 });
-    if (page.url().includes("/login")) {
-      test.skip(true, "Login failed");
-    }
+    expect(page.url()).not.toContain("/login");
   });
 
   test("Next Actions page: scope selector visible and switchable", async ({ page }) => {

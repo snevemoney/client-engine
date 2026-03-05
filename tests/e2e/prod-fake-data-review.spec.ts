@@ -4,7 +4,7 @@
  */
 import { test } from "@playwright/test";
 
-const baseURL = (process.env.PLAYWRIGHT_BASE_URL || "https://evenslouis.ca").replace(/\/$/, "");
+const baseURL = (process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3000").replace(/\/$/, "");
 const loginEmail = process.env.E2E_EMAIL || process.env.ADMIN_EMAIL || "admin@evenslouis.ca";
 const loginPassword = process.env.E2E_PASSWORD || process.env.ADMIN_PASSWORD || "changeme";
 
@@ -17,8 +17,7 @@ const FAKE_PATTERNS = [
   /Patch Test/i,
   /Test NBA/i,
   /Test Patch Action/i,
-  /FLYWHEEL SIMULATION/i,
-  // "Learning Engine Runs" and "Research Engine Runs" are legitimate system leads (not fake)
+  // "Flywheel simulation" is a legitimate UI card label; "Learning Engine Runs" and "Research Engine Runs" are system leads
 ];
 
 function findFakeInText(text: string): string[] {

@@ -36,10 +36,15 @@ export default function ConversionPage() {
 
   useEffect(() => {
     if (loading || !data) return;
-    const c = data.counts;
-    const r = data.rates;
+    const c = data.counts ?? {};
+    const r = data.rates ?? {};
+    const total = c.total ?? 0;
+    const won = c.won ?? 0;
+    const proposalSent = c.proposalSent ?? 0;
+    const buildCompleted = c.buildCompleted ?? 0;
+    const winRate = (r.winRate ?? 0) * 100;
     setPageData(
-      `Conversion: ${c.total} leads, ${c.won} won (${(r.winRate * 100).toFixed(0)}% win rate), ${c.proposalSent} proposals sent, ${c.buildCompleted} builds completed.`
+      `Conversion: ${total} leads, ${won} won (${winRate.toFixed(0)}% win rate), ${proposalSent} proposals sent, ${buildCompleted} builds completed.`
     );
   }, [data, loading, setPageData]);
 

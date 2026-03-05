@@ -10,9 +10,6 @@ test("debug login", async ({ page }) => {
   await page.getByRole("button", { name: /sign in/i }).click();
   await page.waitForTimeout(5000);
   const url = page.url();
-  if (url.includes("/login")) {
-    test.skip(true, "Login failed (credentials not configured for this env)");
-    return;
-  }
+  expect(url).not.toContain("/login");
   expect(url).toContain("dashboard");
 });

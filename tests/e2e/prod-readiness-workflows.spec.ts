@@ -153,10 +153,7 @@ test.describe("Prod readiness QA page (if present)", () => {
       waitUntil: "load",
       timeout: 15000,
     });
-    if (page.url().includes("/login")) {
-      test.skip(true, "Redirected to login");
-      return;
-    }
+    expect(page.url()).not.toContain("/login");
     await expect(page).toHaveURL(/\/dashboard\/internal\/qa\/prod-readiness/);
     await expect(page.getByRole("heading", { name: /Prod readiness/i })).toBeVisible({ timeout: 5000 });
     await expect(page.getByTestId("prod-readiness-link-notifications-qa")).toBeVisible();

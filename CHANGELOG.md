@@ -6,6 +6,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Fixed
+- Conversion page crash "Cannot read properties of undefined (reading 'winRate')" — API now returns page-expected shape (counts.total/won/lost, rates.winRate, medianMs); fetchConversionInput adds won/lost from Lead.dealOutcome; route maps to counts/rates/medianMs; page useEffect uses defensive guards
+- prod.spec health test — full assertions (db, pipelineTables, authSecret, nextAuthUrl); health route accepts Bearer AGENT_CRON_SECRET or RESEARCH_CRON_SECRET; .env.example documents both for E2E; clear error when server returns minimal (add secret to .env and restart)
+- E2E and unit tests: zero errors, zero skips — Playwright globalSetup seeds DB and cleans fake leads; webServer env: AUTH_DEV_PASSWORD, AGENT_CRON_SECRET, OAUTH_SIMULATION; health readiness probe; prod.spec health uses Bearer for full checks; prod-fake-data-review uses localhost, removed FLYWHEEL SIMULATION from fake patterns (legitimate UI label); removed 50+ login-failure test.skip() calls; unit tests: test DB schema sync via `npm run test:prepare` (scripts/test-prepare.mjs); golden-replay timing fix (5ms delay between computes); vitest loads .env.test for client_engine_test DB
+- Delivery page 500 — added migration `20260308_delivery_project_portal_fields` for missing `clientToken`, `builderHealthScore`, `builderHealthLabel`, `builderHealthCheckedAt` on DeliveryProject (Sprint 6 schema was ahead of migrations)
+- P3005 migration baseline — baselined 12 existing migrations on production (`prisma migrate resolve --applied`), applied `20260307_add_sprint_5_9_schema` (Sprint 5–9: payment, proof, campaigns, cadence, outcome); dashboard, /proof, /campaigns now load correctly
 - Prisma browser error on Leads detail page — extracted `ENRICHMENT_ARTIFACT_TYPE` and `ENRICHMENT_ARTIFACT_TITLE` into `src/lib/pipeline/enrich-constants.ts` so client components can import them without pulling Prisma into the browser bundle
 - E2E brain-audit: sidebar test updated for 6 groups (Capture, Convert, Build, Prove, Optimize, System), Full mode toggle, search placeholder "Find a page..."
 - E2E ar-panel: strict-mode selectors (`.first()` for unpaid|invoiced, `exact: true` for Paid/Unpaid filter links), DeploysTable always renders filter tabs and table (empty state in tbody when no projects)

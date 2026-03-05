@@ -19,9 +19,6 @@ test.describe("Score Alerts Preferences", () => {
     await page.getByLabel("Password").fill(loginPassword);
     await page.getByRole("button", { name: /sign in/i }).click();
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 10000 });
-    if (page.url().includes("/login")) {
-      test.skip(true, "Login failed - set E2E_EMAIL/E2E_PASSWORD or ADMIN_EMAIL/ADMIN_PASSWORD");
-    }
   });
 
   test("open alerts preferences from scoreboard", async ({ page }) => {

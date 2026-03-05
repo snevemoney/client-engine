@@ -131,10 +131,7 @@ test.describe("API routes audit (with auth)", () => {
 
   test("all API endpoints return non-500 when authenticated", async ({ page }) => {
     test.setTimeout(300_000); // 5 min for 500+ requests
-    if (page.url().includes("/login")) {
-      test.skip(true, "Login failed — set E2E_EMAIL and E2E_PASSWORD for auth audit");
-      return;
-    }
+    expect(page.url()).not.toContain("/login");
     const results: { path: string; method: string; status: number }[] = [];
     const failures: string[] = [];
 

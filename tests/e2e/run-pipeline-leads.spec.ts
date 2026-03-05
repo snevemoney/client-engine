@@ -17,10 +17,7 @@ test("run pipeline on leads, verify success and SCORED status", async ({ page })
   test.setTimeout(120_000); // 2 min for pipeline + wait
 
   const loggedIn = await loginAndWaitForDashboard(page);
-  if (!loggedIn) {
-    test.skip(true, "Login failed - set E2E_EMAIL/E2E_PASSWORD or ADMIN_EMAIL/ADMIN_PASSWORD");
-    return;
-  }
+  expect(loggedIn, "Login failed - set E2E_EMAIL/E2E_PASSWORD or AUTH_DEV_PASSWORD").toBe(true);
 
   await page.goto(`${baseURL}/dashboard/leads`, { waitUntil: "networkidle", timeout: 15000 });
 

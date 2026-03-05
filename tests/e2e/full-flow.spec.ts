@@ -17,10 +17,6 @@ test.describe("Full E2E flow", () => {
     await page.getByLabel("Password").fill(password);
     await page.getByRole("button", { name: /sign in/i }).click();
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 10000 });
-    if (page.url().includes("/login")) {
-      test.skip(true, "Login failed - set ADMIN_EMAIL/ADMIN_PASSWORD or E2E_EMAIL/E2E_PASSWORD in .env");
-      return;
-    }
 
     // 2) Dashboard
     await page.goto("/dashboard");

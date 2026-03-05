@@ -24,6 +24,8 @@ export async function fetchConversionInput(range: MetricsRange) {
     deliveryStartedCount,
     deliveryCompletedCount,
     proofCreatedCount,
+    wonCount,
+    lostCount,
   ] = await Promise.all([
     db.intakeLead.count({ where: createdAtFilter }),
     db.lead.count({
@@ -68,6 +70,22 @@ export async function fetchConversionInput(range: MetricsRange) {
         ? { createdAt: { gte: bounds.start, lte: bounds.end } }
         : {},
     }),
+    db.lead.count({
+      where: {
+        dealOutcome: "won",
+        ...(bounds.start && bounds.end
+          ? { updatedAt: { gte: bounds.start, lte: bounds.end } }
+          : {}),
+      },
+    }),
+    db.lead.count({
+      where: {
+        dealOutcome: "lost",
+        ...(bounds.start && bounds.end
+          ? { updatedAt: { gte: bounds.start, lte: bounds.end } }
+          : {}),
+      },
+    }),
   ]);
 
   const intakeCount = (intakeLeadCount ?? 0) + (pipelineLeadCount ?? 0);
@@ -82,6 +100,8 @@ export async function fetchConversionInput(range: MetricsRange) {
     deliveryStartedCount: deliveryStartedCount ?? 0,
     deliveryCompletedCount: deliveryCompletedCount ?? 0,
     proofCreatedCount: proofCreatedCount ?? 0,
+    wonCount: wonCount ?? 0,
+    lostCount: lostCount ?? 0,
   };
 }
 

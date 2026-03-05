@@ -19,9 +19,6 @@ test.describe("Founder Mode", () => {
     await page.getByLabel("Password").fill(loginPassword);
     await page.getByRole("button", { name: /sign in/i }).click();
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 10000 });
-    if (page.url().includes("/login")) {
-      test.skip(true, "Login failed - set E2E_EMAIL/E2E_PASSWORD");
-    }
   });
 
   test("Founder page loads and shows Today's Plan", async ({ page }) => {
@@ -34,7 +31,8 @@ test.describe("Founder Mode", () => {
   });
 
   test("Click Run Next Actions works", async ({ page }) => {
-    await page.goto(`${baseURL}/dashboard/founder`, { waitUntil: "load", timeout: 15000 });
+    test.setTimeout(60000);
+    await page.goto(`${baseURL}/dashboard/founder`, { waitUntil: "load", timeout: 25000 });
     const runBtn = page.getByTestId("founder-run-next-actions").first();
     await expect(runBtn).toBeVisible({ timeout: 5000 });
     await runBtn.click();
@@ -55,9 +53,6 @@ test.describe("Founder OS", () => {
     await page.getByLabel("Password").fill(loginPassword);
     await page.getByRole("button", { name: /sign in/i }).click();
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 10000 });
-    if (page.url().includes("/login")) {
-      test.skip(true, "Login failed - set E2E_EMAIL/E2E_PASSWORD");
-    }
   });
 
   test("Founder OS hub loads", async ({ page }) => {

@@ -16,10 +16,7 @@ test.beforeEach(() => {
 
 test("score all unscored intake leads", async ({ page }) => {
   const loggedIn = await loginAndWaitForDashboard(page);
-  if (!loggedIn) {
-    test.skip(true, "Login failed - set E2E_EMAIL/E2E_PASSWORD or ADMIN_EMAIL/ADMIN_PASSWORD");
-    return;
-  }
+  expect(loggedIn, "Login failed - set E2E_EMAIL/E2E_PASSWORD or AUTH_DEV_PASSWORD").toBe(true);
 
   let totalScored = 0;
   const maxIterations = 200; // Safety cap

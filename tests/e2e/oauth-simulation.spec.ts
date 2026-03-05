@@ -15,7 +15,7 @@ test.describe("OAuth simulation", () => {
     const res = await request.get(`${baseURL.replace(/\/$/, "")}/api/auth/providers`);
     const body = await res.json();
     if (!body["google-simulation"]) {
-      test.skip(true, "OAUTH_SIMULATION=1 not set — add to .env to run OAuth simulation tests");
+      throw new Error("OAUTH_SIMULATION=1 not set — add to .env or use Playwright webServer (sets it automatically)");
       return;
     }
     expect(body["google-simulation"].name).toContain("Simulate");
@@ -27,7 +27,7 @@ test.describe("OAuth simulation", () => {
     const simForm = page.getByTestId("oauth-simulation-form");
 
     if (!(await simButton.isVisible())) {
-      test.skip(true, "OAUTH_SIMULATION=1 not set — Simulate Google button not visible");
+      throw new Error("OAUTH_SIMULATION=1 not set — Simulate Google button not visible");
       return;
     }
 

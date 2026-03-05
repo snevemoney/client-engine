@@ -67,10 +67,10 @@ test.describe("Sales Flywheel: full client lifecycle", () => {
     page,
     request,
   }) => {
-    test.skip(!leadId, "Stage 1 did not produce a leadId");
+    expect(leadId, "Stage 1: POST /api/site/leads must return leadId").toBeTruthy();
 
     const loggedIn = await loginAndWaitForDashboard(page);
-    test.skip(!loggedIn, "Login failed — set E2E_EMAIL / E2E_PASSWORD");
+    expect(loggedIn, "Login failed — set E2E_EMAIL/E2E_PASSWORD or AUTH_DEV_PASSWORD").toBe(true);
 
     cookies = await page.context().cookies();
     const ch = cookieHeader(cookies);
@@ -137,11 +137,12 @@ test.describe("Sales Flywheel: full client lifecycle", () => {
   test("3 → Present: operator verifies the proposal draft", async ({
     page,
   }) => {
-    test.skip(!leadId, "Stage 1 did not produce a leadId");
-    test.skip(!cookies, "Stage 2 did not authenticate");
+    expect(leadId, "Stage 1: POST /api/site/leads must return leadId").toBeTruthy();
+    expect(cookies, "Stage 2: login must produce cookies").toBeDefined();
+    expect(cookies!.length).toBeGreaterThan(0);
 
     const loggedIn = await loginAndWaitForDashboard(page);
-    test.skip(!loggedIn, "Login failed");
+    expect(loggedIn, "Login failed").toBe(true);
 
     await page.goto(`${baseURL}/dashboard/leads/${leadId}`);
     await expect(
@@ -160,11 +161,12 @@ test.describe("Sales Flywheel: full client lifecycle", () => {
     page,
     request,
   }) => {
-    test.skip(!leadId, "Stage 1 did not produce a leadId");
-    test.skip(!cookies, "Stage 2 did not authenticate");
+    expect(leadId, "Stage 1: POST /api/site/leads must return leadId").toBeTruthy();
+    expect(cookies, "Stage 2: login must produce cookies").toBeDefined();
+    expect(cookies!.length).toBeGreaterThan(0);
 
     const loggedIn = await loginAndWaitForDashboard(page);
-    test.skip(!loggedIn, "Login failed");
+    expect(loggedIn, "Login failed").toBe(true);
     const ch = cookieHeader(await page.context().cookies());
 
     // Update the lead with follow-up tracking info
@@ -211,11 +213,12 @@ test.describe("Sales Flywheel: full client lifecycle", () => {
     page,
     request,
   }) => {
-    test.skip(!leadId, "Stage 1 did not produce a leadId");
-    test.skip(!cookies, "Stage 2 did not authenticate");
+    expect(leadId, "Stage 1: POST /api/site/leads must return leadId").toBeTruthy();
+    expect(cookies, "Stage 2: login must produce cookies").toBeDefined();
+    expect(cookies!.length).toBeGreaterThan(0);
 
     const loggedIn = await loginAndWaitForDashboard(page);
-    test.skip(!loggedIn, "Login failed");
+    expect(loggedIn, "Login failed").toBe(true);
     const ch = cookieHeader(await page.context().cookies());
 
     // Mark the deal as WON
@@ -274,11 +277,12 @@ test.describe("Sales Flywheel: full client lifecycle", () => {
     page,
     request,
   }) => {
-    test.skip(!leadId, "Stage 1 did not produce a leadId");
-    test.skip(!cookies, "Stage 2 did not authenticate");
+    expect(leadId, "Stage 1: POST /api/site/leads must return leadId").toBeTruthy();
+    expect(cookies, "Stage 2: login must produce cookies").toBeDefined();
+    expect(cookies!.length).toBeGreaterThan(0);
 
     const loggedIn = await loginAndWaitForDashboard(page);
-    test.skip(!loggedIn, "Login failed");
+    expect(loggedIn, "Login failed").toBe(true);
     const ch = cookieHeader(await page.context().cookies());
 
     // Create a delivery project linked to this lead

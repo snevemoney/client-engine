@@ -4,13 +4,20 @@ import { config } from "dotenv";
 
 config({ path: path.resolve(__dirname, ".env") });
 
-// E2E Bearer auth tests: ensure RESEARCH_CRON_SECRET is set so workday-run/research/run tests run.
-if (!process.env.RESEARCH_CRON_SECRET) {
-  process.env.RESEARCH_CRON_SECRET = "e2e-cron-secret-for-playwright";
-}
+const e2eCronSecret = "e2e-cron-secret-for-playwright";
+if (!process.env.RESEARCH_CRON_SECRET) process.env.RESEARCH_CRON_SECRET = e2eCronSecret;
+if (!process.env.AGENT_CRON_SECRET) process.env.AGENT_CRON_SECRET = e2eCronSecret;
 
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3000";
 const projectRoot = path.resolve(__dirname);
+
+const webServerEnv: Record<string, string> = {
+  ...Object.fromEntries(Object.entries(process.env).filter(([, v]) => v !== undefined)) as Record<string, string>,
+  AUTH_DEV_PASSWORD: process.env.AUTH_DEV_PASSWORD || "changeme",
+  AGENT_CRON_SECRET: process.env.AGENT_CRON_SECRET || e2eCronSecret,
+  RESEARCH_CRON_SECRET: process.env.RESEARCH_CRON_SECRET || e2eCronSecret,
+  OAUTH_SIMULATION: process.env.OAUTH_SIMULATION || "1",
+};
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -19,6 +26,7 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: 1,
   reporter: "list",
+  globalSetup: path.resolve(__dirname, "tests/e2e/global-setup.ts"),
   use: {
     baseURL,
     trace: "on-first-retry",
@@ -30,13 +38,11 @@ export default defineConfig({
     baseURL.startsWith("http://localhost") && !process.env.USE_EXISTING_SERVER
       ? {
           command: "npm run dev",
-          url: baseURL,
+          url: `${baseURL.replace(/\/$/, "")}/api/health`,
           reuseExistingServer: !process.env.CI,
           timeout: 90_000,
           cwd: projectRoot,
-          env: Object.fromEntries(
-            Object.entries(process.env).filter(([, v]) => v !== undefined)
-          ) as Record<string, string>,
+          env: webServerEnv,
         }
       : undefined,
 });

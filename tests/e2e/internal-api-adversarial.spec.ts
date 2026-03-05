@@ -38,9 +38,7 @@ test.describe("Internal API adversarial (with auth)", () => {
 
   test.beforeEach(async ({ page }) => {
     const ok = await loginAndWaitForDashboard(page);
-    if (!ok) {
-      test.skip(true, "Login failed - set E2E_EMAIL/E2E_PASSWORD or ADMIN_EMAIL/ADMIN_PASSWORD");
-    }
+    expect(ok, "Login failed - set E2E_EMAIL/E2E_PASSWORD or AUTH_DEV_PASSWORD").toBe(true);
   });
 
   // --- Scores: compute ---
@@ -363,9 +361,7 @@ test.describe("Internal API adversarial (with auth)", () => {
 test.describe("Ops / system routes (observability assertions)", () => {
   test.beforeEach(async ({ page }) => {
     const ok = await loginAndWaitForDashboard(page);
-    if (!ok) {
-      test.skip(true, "Login failed - set E2E_EMAIL/E2E_PASSWORD or ADMIN_EMAIL/ADMIN_PASSWORD");
-    }
+    expect(ok, "Login failed - set E2E_EMAIL/E2E_PASSWORD or AUTH_DEV_PASSWORD").toBe(true);
   });
 
   test("GET /api/internal/ops/metrics-summary returns expected shape for 24h", async ({ page }) => {
