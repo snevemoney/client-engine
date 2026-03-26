@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/auth";
+import { auth } from "@/lib/auth";
 
 /**
  * RULE 1.5: Queue Monitor
@@ -91,7 +91,7 @@ function checkThresholds(metrics: any): Array<{
   value: number;
   threshold: number;
 }> {
-  const alerts = [];
+  const alerts: Array<{ severity: "info" | "warning" | "critical"; metric: string; value: number; threshold: number }> = [];
 
   // Queue depth threshold
   if (metrics.queueDepth > 100) {

@@ -70,7 +70,7 @@
     "next-auth": "^5.0.0-beta.30",
     "nodemailer": "^7.0.13",
     "posthog-js": "^1.356.0",
-    "posthog-node": "^5.21.2",
+    "posthog-node": "^5.28.5",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-markdown": "^10.1.0",
@@ -99,6 +99,6 @@
     "tailwindcss": "^4",
     "tsc-alias": "^1.8.16",
     "typescript": "^5",
-    "vitest": "^4.0.18"
+    "vitest": "^4.1.1"
   }
 }

@@ -8,7 +8,7 @@
 
 import { db } from "@/lib/db";
 
-// ── Types ──────────────────────────────────────────────────────────────
+// -- Types --------------------------------------------------------------
 
 export type RevenueSignal = {
   entityType: "lead" | "proposal" | "delivery_project";
@@ -27,7 +27,7 @@ export type ConversionRates = {
   overall: { total: number; won: number; rate: number };
 };
 
-// ── Baseline / Conversion Rates ────────────────────────────────────────
+// -- Baseline / Conversion Rates ----------------------------------------
 
 /**
  * Compute historical conversion rates from Lead → Won, grouped by source.
@@ -88,7 +88,7 @@ export async function getBaselineDealValue(): Promise<{ median: number; currency
   return { median, currency };
 }
 
-// ── Entity Revenue Signals ─────────────────────────────────────────────
+// -- Entity Revenue Signals ---------------------------------------------
 
 /** Revenue signal for a Lead based on linked proposal price × conversion probability. */
 export async function getLeadRevenue(
@@ -214,7 +214,7 @@ export async function getDeliveryRevenue(projectId: string): Promise<RevenueSign
   };
 }
 
-// ── Batch Computation (for NBA/Risk enrichment) ────────────────────────
+// -- Batch Computation (for NBA/Risk enrichment) ------------------------
 
 /**
  * Compute revenue signal for any entity reference.

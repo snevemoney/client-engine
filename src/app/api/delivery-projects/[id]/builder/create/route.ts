@@ -86,14 +86,26 @@ export async function POST(
       const { industry, scope, brandColors, contentHints } = parsed.data;
 
       // 1. Create site in builder service
-      const site = await createSite({
-        clientName: project.clientName ?? project.title,
-        industry: industry as BuilderIndustryPreset,
-        scope,
-        brandColors,
-        contentHints,
-        deliveryProjectId: id,
-      });
+      // NOTE: builder service may be unavailable — wrap in try/catch so the
+      // route returns a useful 503 instead of an unhandled 500.
+      let site: Awaited<ReturnType<typeof createSite>>;
+      try {
+        site = await createSite({
+          clientName: project.clientName ?? project.title,
+          industry: industry as BuilderIndustryPreset,
+          scope,
+          brandColors,
+          contentHints,
+          deliveryProjectId: id,
+        });
+      } catch (builderErr) {
+        console.error("[builder/create] Builder service unavailable:", builderErr);
+        return jsonError(
+          "Website builder service is currently unavailable. Please try again later.",
+          503,
+          "BUILDER_UNAVAILABLE",
+        );
+      }
 
       // 2. Store builder references on the delivery project
       await db.$transaction([

@@ -37,7 +37,18 @@ export async function POST(
         return jsonError("No builder site linked to this project", 400, "NO_SITE");
       }
 
-      const site = await getSiteStatus(project.builderSiteId);
+      // Guard against builder service being unreachable
+      let site: Awaited<ReturnType<typeof getSiteStatus>>;
+      try {
+        site = await getSiteStatus(project.builderSiteId);
+      } catch (builderErr) {
+        console.error("[builder/deploy] Could not reach builder service:", builderErr);
+        return jsonError(
+          "Website builder service is currently unavailable. Please try again later.",
+          503,
+          "BUILDER_UNAVAILABLE",
+        );
+      }
       if (DEPLOY_BLOCKED_STATUSES.includes(site.status)) {
         return jsonError(
           `Cannot deploy while site is "${site.status}". Wait for content generation to finish.`,
@@ -68,7 +79,17 @@ export async function POST(
       }
 
       // Fallback: sync deploy (dev without Redis)
-      const deployed = await deploySite(project.builderSiteId, domain);
+      let deployed: Awaited<ReturnType<typeof deploySite>>;
+      try {
+        deployed = await deploySite(project.builderSiteId, domain);
+      } catch (builderErr) {
+        console.error("[builder/deploy] Sync deploy failed:", builderErr);
+        return jsonError(
+          "Website builder service is currently unavailable. Please try again later.",
+          503,
+          "BUILDER_UNAVAILABLE",
+        );
+      }
       await db.$transaction([
         db.deliveryProject.update({
           where: { id },

@@ -7,7 +7,7 @@
 
 import { db } from "@/lib/db";
 
-// ── Types ──────────────────────────────────────────────────────────────
+// -- Types --------------------------------------------------------------
 
 export type ClientRoi = {
   clientName: string;
@@ -61,7 +61,7 @@ export type PortfolioHealth = {
   activeProjectCount: number;
 };
 
-// ── Client ROI Ranking ────────────────────────────────────────────────
+// -- Client ROI Ranking ------------------------------------------------
 
 async function computeClientRanking(): Promise<ClientRoi[]> {
   // Get all delivery projects with their linked proposals
@@ -124,7 +124,7 @@ async function computeClientRanking(): Promise<ClientRoi[]> {
   return ranking.sort((a, b) => b.revenuePerHour - a.revenuePerHour);
 }
 
-// ── Concentration Risk ────────────────────────────────────────────────
+// -- Concentration Risk ------------------------------------------------
 
 function computeConcentration(ranking: ClientRoi[]): ConcentrationRisk {
   const totalRevenue = ranking.reduce((sum, c) => sum + c.revenue, 0);
@@ -147,7 +147,7 @@ function computeConcentration(ranking: ClientRoi[]): ConcentrationRisk {
   };
 }
 
-// ── Pipeline Velocity ─────────────────────────────────────────────────
+// -- Pipeline Velocity -------------------------------------------------
 
 async function computePipelineVelocity(): Promise<PipelineVelocity> {
   const wonLeads = await db.lead.findMany({
@@ -182,7 +182,7 @@ async function computePipelineVelocity(): Promise<PipelineVelocity> {
   return { avgDaysToWin: avg, medianDaysToWin: median, sampleSize: wonLeads.length, recentTrendDays };
 }
 
-// ── Main Entry Point ──────────────────────────────────────────────────
+// -- Main Entry Point --------------------------------------------------
 
 export async function computePortfolioHealth(): Promise<PortfolioHealth> {
   const [ranking, velocity, activePipeline, activeProjects] = await Promise.all([

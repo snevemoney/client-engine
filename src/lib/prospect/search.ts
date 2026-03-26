@@ -25,7 +25,7 @@ import { searchLinkedInCompanies } from "@/lib/integrations/clients/linkedin";
 
 import type { ProspectCriteria, ProspectResult, ProspectRunReport } from "./types";
 
-// ── Helpers ──
+// -- Helpers --
 
 function makeId(): string {
   return `pr-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -53,7 +53,7 @@ function mergeConfig(
   };
 }
 
-// ── Source relevance scoring ──
+// -- Source relevance scoring --
 
 function scoreSourceRelevance(
   capability: ProspectingCapability,
@@ -94,7 +94,7 @@ function scoreSourceRelevance(
   return score;
 }
 
-// ── Source searchers (only prospecting-capable providers) ──
+// -- Source searchers (only prospecting-capable providers) --
 
 type SourceSearcher = {
   name: string;
@@ -321,7 +321,7 @@ const SOURCE_SEARCHERS: Record<string, SourceSearcher> = {
   },
 };
 
-// ── Types for the routing report ──
+// -- Types for the routing report --
 
 export type SourceSelection = {
   provider: string;
@@ -331,7 +331,7 @@ export type SourceSelection = {
   selected: boolean;
 };
 
-// ── Main search function ──
+// -- Main search function --
 
 export async function runProspectSearch(criteria: ProspectCriteria): Promise<ProspectRunReport> {
   const report: ProspectRunReport = {

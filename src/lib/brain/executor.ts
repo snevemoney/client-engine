@@ -3,6 +3,21 @@
  * Dispatches tool calls to existing internal functions.
  * Read tools call library functions directly. Write tools go through
  * existing action paths to preserve side-effects (memory, attribution, ops events).
+ *
+ * ⚠️  CIRCULAR DEPENDENCY WARNING — DO NOT REFACTOR WITHOUT CARE
+ * ---------------------------------------------------------------
+ * This module and `src/lib/agents/runner.ts` form a circular dependency:
+ *
+ *   runner.ts  ──(static import)──▶  executor.ts   (executeTool, ToolContext)
+ *   executor.ts ──(dynamic import)──▶ runner.ts    (runAgent, used in executeDelegateToAgent)
+ *
+ * The cycle is intentionally broken by using a dynamic `await import()` in
+ * `executeDelegateToAgent()` (line ~723) instead of a static top-level import.
+ * This prevents Node.js from resolving both modules simultaneously at startup.
+ *
+ * Do NOT convert the dynamic import to a static one — that will cause a
+ * circular-import crash at runtime (both modules export `undefined` until
+ * the other finishes initialising).
  */
 import {
   getScoreContext,

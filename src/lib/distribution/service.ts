@@ -84,7 +84,7 @@ export async function executePost(
   return { id: post.id, status: post.status };
 }
 
-// ─── Template rendering ───────────────────────────────────────
+// --- Template rendering ---------------------------------------
 
 type ProofData = {
   title: string;

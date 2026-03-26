@@ -10,7 +10,7 @@ const LLM_OPTS = { model: "gpt-4o-mini", temperature: 0.2, max_tokens: 1000 } as
 const QUALIFY_LLM_OPTS = { model: "gpt-4o-mini", temperature: 0.3, max_tokens: 4000 } as const;
 const BRIEF_LLM_OPTS = { model: "gpt-4o-mini", temperature: 0.3, max_tokens: 4000 } as const;
 
-// ── Types ──
+// -- Types --
 
 const PLATFORMS = [
   "facebook", "x", "linkedin", "instagram",
@@ -67,7 +67,7 @@ export type AiProspectReport = {
   errors: string[];
 };
 
-// ── Site-specific search prefixes per platform ──
+// -- Site-specific search prefixes per platform --
 
 const SITE_PREFIX: Record<Platform, string> = {
   facebook: "site:facebook.com",
@@ -80,7 +80,7 @@ const SITE_PREFIX: Record<Platform, string> = {
   yelp: "yelp.com",
 };
 
-// ── NL Query Parser ──
+// -- NL Query Parser --
 
 export async function parseProspectQuery(query: string): Promise<ParsedProspectQuery> {
   const { content: raw } = await chat(
@@ -121,7 +121,7 @@ Rules:
   return ParsedQuerySchema.parse(safeParseJSON(raw));
 }
 
-// ── Site-specific search ──
+// -- Site-specific search --
 
 function makeId(): string {
   return `ai-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -163,7 +163,7 @@ async function searchPlatform(
   }));
 }
 
-// ── Page scraping with bio-link following ──
+// -- Page scraping with bio-link following --
 
 const SCRAPE_CONCURRENCY = 3;
 
@@ -285,7 +285,7 @@ async function scrapeProspectPages(
   return { profilePages, bioLinkPages };
 }
 
-// ── LLM prospect qualification ──
+// -- LLM prospect qualification --
 
 async function qualifyProspects(
   results: ProspectResult[],
@@ -428,7 +428,7 @@ Rules:
   return qualMap;
 }
 
-// ── Brief compilation ──
+// -- Brief compilation --
 
 async function compileBrief(
   query: string,
@@ -480,7 +480,7 @@ Format rules:
   return brief;
 }
 
-// ── Follow-up suggestions ──
+// -- Follow-up suggestions --
 
 async function suggestFollowUps(
   query: string,
@@ -533,7 +533,7 @@ Rules:
   }
 }
 
-// ── Main orchestrator ──
+// -- Main orchestrator --
 
 export async function runAiProspectSearch(query: string): Promise<AiProspectReport> {
   const start = Date.now();
