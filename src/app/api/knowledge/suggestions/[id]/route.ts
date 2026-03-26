@@ -6,7 +6,7 @@ import { KNOWLEDGE_ARTIFACT_TYPES } from "@/lib/knowledge/types";
 
 const ALLOWED_STATUSES = new Set(["queued", "reviewed", "applied", "dismissed"]);
 
-export const PRODUCED_TAGS = [
+const PRODUCED_TAGS = [
   "knowledge_only",
   "proposal_template",
   "playbook_update",
