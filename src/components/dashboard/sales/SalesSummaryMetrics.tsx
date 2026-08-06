@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect } from "react";
 
@@ -12,8 +13,8 @@ export function SalesSummaryMetrics() {
 
   useEffect(() => {
     Promise.allSettled([
-      fetch("/api/intake-leads/summary", { cache: "no-store" }).then((r) => r.ok ? r.json() : null),
-      fetch("/api/proposals/summary", { cache: "no-store" }).then((r) => r.ok ? r.json() : null),
+      fetch(apiPath("/api/intake-leads/summary"), { cache: "no-store" }).then((r) => r.ok ? r.json() : null),
+      fetch(apiPath("/api/proposals/summary"), { cache: "no-store" }).then((r) => r.ok ? r.json() : null),
     ]).then(([intake, proposals]) => {
       setMetrics({
         intake: intake.status === "fulfilled" ? intake.value : null,

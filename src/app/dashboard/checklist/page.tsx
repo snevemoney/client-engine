@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
@@ -23,7 +24,7 @@ export default function ChecklistPage() {
 
   const fetchChecklists = useCallback(async () => {
     try {
-      const res = await fetch("/api/checklist");
+      const res = await fetch(apiPath("/api/checklist"));
       if (res.ok) {
         const data = await res.json();
         setChecklists(data);
@@ -45,7 +46,7 @@ export default function ChecklistPage() {
         .trim()
         .split(/[\s,]+/)
         .filter(Boolean);
-      const res = await fetch("/api/checklist/generate", {
+      const res = await fetch(apiPath("/api/checklist/generate"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

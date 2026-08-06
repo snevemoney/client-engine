@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState } from "react";
 
@@ -34,7 +35,7 @@ export function DeliveryChecklist({
       )
     );
     try {
-      const res = await fetch(`/api/delivery-projects/${projectId}/checklist/toggle`, {
+      const res = await fetch(apiPath(`/api/delivery-projects/${projectId}/checklist/toggle`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

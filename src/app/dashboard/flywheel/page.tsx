@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
@@ -145,7 +146,7 @@ function BatchRunDialog({
   const loadPreview = useCallback(async () => {
     setLoadingPreview(true);
     try {
-      const res = await fetch("/api/flywheel/batch", {
+      const res = await fetch(apiPath("/api/flywheel/batch"), {
         credentials: "include",
         cache: "no-store",
       });

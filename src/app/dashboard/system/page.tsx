@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
@@ -75,8 +76,8 @@ export default function SystemPage() {
     setError(null);
     try {
       const [metricsRes, healthRes] = await Promise.all([
-        fetch("/api/internal/execution/metrics?days=7", { signal: controller.signal }),
-        fetch("/api/health", { signal: controller.signal }),
+        fetch(apiPath("/api/internal/execution/metrics?days=7"), { signal: controller.signal }),
+        fetch(apiPath("/api/health"), { signal: controller.signal }),
       ]);
       if (!metricsRes.ok) throw new Error(`Metrics: ${metricsRes.status}`);
       if (!healthRes.ok) throw new Error(`Health: ${healthRes.status}`);

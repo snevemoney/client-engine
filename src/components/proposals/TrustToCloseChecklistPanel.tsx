@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect } from "react";
 import {
@@ -33,7 +34,7 @@ export function TrustToCloseChecklistPanel({
     setChecklist(next);
     setSaving(true);
     try {
-      const res = await fetch(`/api/artifacts/${artifactId}`, {
+      const res = await fetch(apiPath(`/api/artifacts/${artifactId}`), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

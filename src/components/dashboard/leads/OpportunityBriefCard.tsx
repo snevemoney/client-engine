@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect } from "react";
 import type { OpportunityBrief } from "@/lib/ops/types";
@@ -9,7 +10,7 @@ export function OpportunityBriefCard({ leadId }: { leadId: string }) {
 
   useEffect(() => {
     let cancelled = false;
-    fetch(`/api/leads/${leadId}/opportunity-brief`)
+    fetch(apiPath(`/api/leads/${leadId}/opportunity-brief`))
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (!cancelled) setBrief(data);

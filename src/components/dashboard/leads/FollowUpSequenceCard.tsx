@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
@@ -33,7 +34,7 @@ export function FollowUpSequenceCard({
 
   function fetchSequence() {
     if (!showCard) return;
-    fetch(`/api/followup/${leadId}`)
+    fetch(apiPath(`/api/followup/${leadId}`))
       .then((r) => r.ok ? r.json() : null)
       .then((data) => {
         if (data?.touches?.length) {
@@ -56,7 +57,7 @@ export function FollowUpSequenceCard({
   async function generateSequence() {
     setGenerating(true);
     try {
-      const res = await fetch(`/api/followup/${leadId}`, { method: "POST" });
+      const res = await fetch(apiPath(`/api/followup/${leadId}`), { method: "POST" });
       if (res.ok) {
         const data = await res.json();
         setTouches(data.touches ?? []);
@@ -77,7 +78,7 @@ export function FollowUpSequenceCard({
   async function markTouchSent(touchIndex: number) {
     setLoggingTouch(touchIndex);
     try {
-      const res = await fetch(`/api/followup/${leadId}`, {
+      const res = await fetch(apiPath(`/api/followup/${leadId}`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "logTouch", touchIndex }),

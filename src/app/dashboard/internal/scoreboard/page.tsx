@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 /**
  * Phase 3.2 + 3.3: Operational Score Visibility — scoreboard, trends, factor drilldown.
@@ -155,7 +156,7 @@ export default function InternalScoreboardPage() {
     setError(null);
     setSuccess(null);
     try {
-      const res = await fetch("/api/internal/scores/compute", {
+      const res = await fetch(apiPath("/api/internal/scores/compute"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

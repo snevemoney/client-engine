@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
@@ -46,7 +47,7 @@ export function SignalsDashboard() {
   const [syncing, setSyncing] = useState<string | null>(null);
 
   const loadSources = () =>
-    fetch("/api/signals/sources")
+    fetch(apiPath("/api/signals/sources"))
       .then((r) => r.json())
       .then((d) => setSources(d.items ?? []));
 
@@ -55,7 +56,7 @@ export function SignalsDashboard() {
     if (filterSource) params.set("sourceId", filterSource);
     if (filterStatus) params.set("status", filterStatus);
     if (filterMinScore) params.set("minScore", filterMinScore);
-    return fetch(`/api/signals/items?${params}`)
+    return fetch(apiPath(`/api/signals/items?${params}`))
       .then((r) => r.json())
       .then((d) => setItems(d.items ?? []));
   };
@@ -82,7 +83,7 @@ export function SignalsDashboard() {
   async function handleAddSource() {
     if (!addName.trim() || !addUrl.trim()) return;
     try {
-      const res = await fetch("/api/signals/sources", {
+      const res = await fetch(apiPath("/api/signals/sources"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: addName.trim(), url: addUrl.trim(), mode: "live" }),
@@ -104,7 +105,7 @@ export function SignalsDashboard() {
   async function handleSync(id: string) {
     setSyncing(id);
     try {
-      const res = await fetch(`/api/signals/sources/${id}/sync`, { method: "POST" });
+      const res = await fetch(apiPath(`/api/signals/sources/${id}/sync`), { method: "POST" });
       const data = await res.json();
       if (data.ok) {
         await loadSources();
@@ -120,7 +121,7 @@ export function SignalsDashboard() {
 
   async function updateItemStatus(itemId: string, status: string) {
     try {
-      const res = await fetch(`/api/signals/items/${itemId}`, {
+      const res = await fetch(apiPath(`/api/signals/items/${itemId}`), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status }),
@@ -159,7 +160,7 @@ export function SignalsDashboard() {
                 value={s.mode}
                 onChange={async (e) => {
                   const mode = e.target.value as "off" | "mock" | "manual" | "live";
-                  const res = await fetch(`/api/signals/sources/${s.id}`, {
+                  const res = await fetch(apiPath(`/api/signals/sources/${s.id}`), {
                     method: "PATCH",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ mode }),

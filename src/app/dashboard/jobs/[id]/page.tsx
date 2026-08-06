@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
@@ -66,7 +67,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
 
   useEffect(() => {
     if (!id) return;
-    fetch(`/api/jobs/${id}`, { credentials: "include", cache: "no-store" })
+    fetch(apiPath(`/api/jobs/${id}`), { credentials: "include", cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => setJob(d && typeof d === "object" ? d : null))
       .catch(() => {
@@ -82,7 +83,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
     if (!ok) return;
     setRetrying(true);
     try {
-      const res = await fetch(`/api/jobs/${id}/retry`, { method: "POST" });
+      const res = await fetch(apiPath(`/api/jobs/${id}/retry`), { method: "POST" });
       if (res.ok) {
         const d = await res.json();
         setJob((prev) => (prev ? { ...prev, status: d.status ?? "queued" } : null));

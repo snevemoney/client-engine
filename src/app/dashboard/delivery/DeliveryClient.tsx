@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
@@ -115,8 +116,8 @@ export function DeliveryClient({ initialData }: { initialData: DeliveryInitialDa
       params.set("page", String(page));
       params.set("pageSize", String(pageSize));
       const [listRes, contextRes] = await Promise.all([
-        fetch(`/api/delivery-projects?${params}`, { credentials: "include", signal: controller.signal, cache: "no-store" }),
-        fetch("/api/internal/delivery/context", { credentials: "include", signal: controller.signal, cache: "no-store" }),
+        fetch(apiPath(`/api/delivery-projects?${params}`), { credentials: "include", signal: controller.signal, cache: "no-store" }),
+        fetch(apiPath("/api/internal/delivery/context"), { credentials: "include", signal: controller.signal, cache: "no-store" }),
       ]);
       if (!listRes.ok) {
         const errData = await listRes.json().catch(() => null);

@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { use, useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
@@ -72,12 +73,12 @@ export default function ProposalDetailPage({ params }: { params: Promise<{ id: s
     setLoading(true);
     setError(null);
     try {
-      const r = await fetch(`/api/proposals/${id}`, { cache: "no-store", signal: controller.signal });
+      const r = await fetch(apiPath(`/api/proposals/${id}`), { cache: "no-store", signal: controller.signal });
       if (r.ok) {
         const d = await r.json();
         if (d?.id) { setPageData({ type: "proposal", data: d }); setLoading(false); return; }
       }
-      const artRes = await fetch(`/api/artifacts/${id}`, { cache: "no-store", signal: controller.signal });
+      const artRes = await fetch(apiPath(`/api/artifacts/${id}`), { cache: "no-store", signal: controller.signal });
       if (artRes.ok) {
         const art = await artRes.json();
         if (art?.id && art.type === "proposal") { setPageData({ type: "artifact", data: art }); setLoading(false); return; }

@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
@@ -46,8 +47,8 @@ export function FollowUpQueueCard() {
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/followups?bucket=all", { cache: "no-store" }).then((r) => r.json()),
-      fetch("/api/followups/summary", { cache: "no-store" }).then((r) => r.json()),
+      fetch(apiPath("/api/followups?bucket=all"), { cache: "no-store" }).then((r) => r.json()),
+      fetch(apiPath("/api/followups/summary"), { cache: "no-store" }).then((r) => r.json()),
     ]).then(([queueRes, summaryRes]) => {
       const items_ = queueRes?.items ?? [];
       setItems(items_.map((i: { id: string; itemType: string; title: string; driverType?: string | null; score?: number | null; nextAction?: string | null; nextActionDueAt?: string | null; followUpDueAt?: string | null }) => ({

@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
@@ -144,15 +145,15 @@ export default function YouTubeIngestClient({
 
   async function refreshData() {
     const [jobsRes, transRes, propRes] = await Promise.all([
-      fetch("/api/youtube/jobs?limit=30"),
-      fetch("/api/youtube/transcripts?limit=30"),
-      fetch("/api/youtube/learning?limit=30"),
+      fetch(apiPath("/api/youtube/jobs?limit=30")),
+      fetch(apiPath("/api/youtube/transcripts?limit=30")),
+      fetch(apiPath("/api/youtube/learning?limit=30")),
     ]);
     if (jobsRes.ok) { const d = await jobsRes.json(); setJobs(d.jobs ?? []); }
     if (transRes.ok) { const d = await transRes.json(); setTranscripts(d.transcripts ?? []); }
     if (propRes.ok) { const d = await propRes.json(); setProposals(d.proposals ?? []); }
 
-    const failRes = await fetch("/api/youtube/transcripts?status=FAILED_TRANSCRIPT&limit=20");
+    const failRes = await fetch(apiPath("/api/youtube/transcripts?status=FAILED_TRANSCRIPT&limit=20"));
     if (failRes.ok) { const d = await failRes.json(); setFailed(d.transcripts ?? []); }
   }
 
@@ -196,7 +197,7 @@ export default function YouTubeIngestClient({
   async function handleRetry(videoId: string, sourceUrl: string) {
     setLoading(true);
     try {
-      const res = await fetch("/api/youtube/ingest/video", {
+      const res = await fetch(apiPath("/api/youtube/ingest/video"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: sourceUrl }),
@@ -215,7 +216,7 @@ export default function YouTubeIngestClient({
     if (!confirm("Delete this transcript and all associated data?")) return;
     setDeletingId(id);
     try {
-      const res = await fetch(`/api/youtube/transcripts/${id}`, { method: "DELETE" });
+      const res = await fetch(apiPath(`/api/youtube/transcripts/${id}`), { method: "DELETE" });
       if (res.ok) {
         toast.success("Transcript deleted");
         await refreshData();
@@ -239,7 +240,7 @@ export default function YouTubeIngestClient({
     setReviewModal(null);
     try {
       if (action === "promote") {
-        const res = await fetch(`/api/youtube/learning/${id}/promote`, {
+        const res = await fetch(apiPath(`/api/youtube/learning/${id}/promote`), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ reviewerNotes: reviewNotes || undefined }),
@@ -247,7 +248,7 @@ export default function YouTubeIngestClient({
         if (res.ok) await refreshData();
         else toast.error("Promote failed");
       } else {
-        const res = await fetch(`/api/youtube/learning/${id}/reject`, {
+        const res = await fetch(apiPath(`/api/youtube/learning/${id}/reject`), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ reviewerNotes: reviewNotes || undefined, knowledgeOnly: action === "knowledge_only" }),

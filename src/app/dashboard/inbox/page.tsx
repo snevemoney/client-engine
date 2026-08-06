@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
@@ -68,8 +69,8 @@ export default function InboxPage() {
     params.set("pageSize", String(pageSize));
     try {
       const [data, sum] = await Promise.all([
-        fetch(`/api/in-app-notifications?${params}`, { credentials: "include", cache: "no-store" }).then((r) => (r.ok ? r.json() : null)),
-        fetch("/api/notifications/summary", { credentials: "include", cache: "no-store" }).then((r) => (r.ok ? r.json() : null)),
+        fetch(apiPath(`/api/in-app-notifications?${params}`), { credentials: "include", cache: "no-store" }).then((r) => (r.ok ? r.json() : null)),
+        fetch(apiPath("/api/notifications/summary"), { credentials: "include", cache: "no-store" }).then((r) => (r.ok ? r.json() : null)),
       ]);
       setItems(data?.items ?? []);
       setPagination(normalizePagination(data?.pagination, data?.items?.length ?? 0));
@@ -99,7 +100,7 @@ export default function InboxPage() {
     setActioningId(id);
     setItems((list) => list.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
     try {
-      const res = await fetch(`/api/in-app-notifications/${id}/read`, { method: "POST" });
+      const res = await fetch(apiPath(`/api/in-app-notifications/${id}/read`), { method: "POST" });
       if (res.ok) void fetchData();
       else {
         setItems((list) => list.map((n) => (n.id === id ? { ...n, isRead: false } : n)));
@@ -124,7 +125,7 @@ export default function InboxPage() {
     if (!ok) return;
     setActioningId("all");
     try {
-      const res = await fetch("/api/in-app-notifications/read-all", { method: "POST" });
+      const res = await fetch(apiPath("/api/in-app-notifications/read-all"), { method: "POST" });
       if (res.ok) void fetchData();
       else {
         const d = await res.json().catch(() => null);

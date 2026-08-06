@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect, useCallback, use, useRef } from "react";
 import { toast } from "sonner";
@@ -143,7 +144,7 @@ export default function FounderOSWeekPage({ searchParams }: { searchParams: Prom
 
   const fetchMemorySummary = useCallback(async (signal?: AbortSignal) => {
     try {
-      const res = await fetch("/api/internal/memory/summary?range=7d", { credentials: "include", cache: "no-store", signal });
+      const res = await fetch(apiPath("/api/internal/memory/summary?range=7d"), { credentials: "include", cache: "no-store", signal });
       if (signal?.aborted) return;
       const d = await res.json();
       if (
@@ -182,7 +183,7 @@ export default function FounderOSWeekPage({ searchParams }: { searchParams: Prom
   useEffect(() => {
     if (params.generate !== "1") return;
     const controller = new AbortController();
-    fetch("/api/internal/founder/os/week/suggest", { method: "POST", credentials: "include", signal: controller.signal })
+    fetch(apiPath("/api/internal/founder/os/week/suggest"), { method: "POST", credentials: "include", signal: controller.signal })
       .then((r) => r.json())
       .then((d) => {
         if (d.topOutcomes?.length || d.milestones?.length) setPreview(d);

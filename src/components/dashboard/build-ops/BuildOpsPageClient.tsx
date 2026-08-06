@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
@@ -70,7 +71,7 @@ export function BuildOpsPageClient({
     if (!addTitle.trim()) return;
     setSaving(true);
     try {
-      const res = await fetch("/api/build-tasks", {
+      const res = await fetch(apiPath("/api/build-tasks"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -105,7 +106,7 @@ export function BuildOpsPageClient({
   ) {
     setUpdatingId(id);
     try {
-      const res = await fetch(`/api/build-tasks/${id}`, {
+      const res = await fetch(apiPath(`/api/build-tasks/${id}`), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updates),

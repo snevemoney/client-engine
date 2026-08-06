@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
@@ -16,11 +17,11 @@ export function ExecutionAssistWeeklyStats() {
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/reminders/summary").then((r) => (r.ok ? r.json() : null)).catch(() => null),
-      fetch("/api/automation-suggestions/summary").then((r) => (r.ok ? r.json() : null)).catch(() => null),
-      fetch("/api/reminders?status=done&limit=50").then((r) => (r.ok ? r.json() : null)).catch(() => null),
-      fetch("/api/reminders?status=open&limit=50").then((r) => (r.ok ? r.json() : null)).catch(() => null),
-      fetch("/api/automation-suggestions?status=applied&limit=50").then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch(apiPath("/api/reminders/summary")).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch(apiPath("/api/automation-suggestions/summary")).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch(apiPath("/api/reminders?status=done&limit=50")).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch(apiPath("/api/reminders?status=open&limit=50")).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch(apiPath("/api/automation-suggestions?status=applied&limit=50")).then((r) => (r.ok ? r.json() : null)).catch(() => null),
     ])
       .then(([remSummary, autoSummary, doneReminders, openReminders, appliedSuggestions]) => {
         const kindCounts: Record<string, number> = {};

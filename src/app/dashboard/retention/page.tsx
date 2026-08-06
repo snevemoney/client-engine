@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
@@ -106,8 +107,8 @@ export default function RetentionPage() {
       if (statusFilter !== "all") params.set("status", statusFilter);
       if (bucketFilter !== "all") params.set("bucket", bucketFilter);
       const [res, contextRes] = await Promise.all([
-        fetch(`/api/delivery-projects/retention-queue?${params}`, { credentials: "include", signal: controller.signal, cache: "no-store" }),
-        fetch("/api/internal/retention/context", { credentials: "include", signal: controller.signal, cache: "no-store" }),
+        fetch(apiPath(`/api/delivery-projects/retention-queue?${params}`), { credentials: "include", signal: controller.signal, cache: "no-store" }),
+        fetch(apiPath("/api/internal/retention/context"), { credentials: "include", signal: controller.signal, cache: "no-store" }),
       ]);
       if (controller.signal.aborted || runId !== runIdRef.current) return;
       if (!res.ok) {
@@ -149,7 +150,7 @@ export default function RetentionPage() {
   const runAction = async (id: string, action: string, endpoint: string) => {
     setActionLoading(`${id}:${action}`);
     try {
-      const res = await fetch(`/api/delivery-projects/${id}${endpoint}`, { method: "POST" });
+      const res = await fetch(apiPath(`/api/delivery-projects/${id}${endpoint}`), { method: "POST" });
       if (res.ok) {
         toast.success(`${action} done`);
         void fetchData();

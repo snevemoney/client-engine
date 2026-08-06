@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
@@ -39,7 +40,7 @@ export function CadencesSection({ leadId, onUpdate }: { leadId: string; onUpdate
   const [acting, setActing] = useState<string | null>(null);
 
   function fetchCadences() {
-    fetch(`/api/cadence?sourceType=lead&sourceId=${leadId}`)
+    fetch(apiPath(`/api/cadence?sourceType=lead&sourceId=${leadId}`))
       .then((r) => (r.ok ? r.json() : []))
       .then((data) => setCadences(Array.isArray(data) ? data : []))
       .catch(() => setCadences([]))
@@ -55,7 +56,7 @@ export function CadencesSection({ leadId, onUpdate }: { leadId: string; onUpdate
     try {
       const until = new Date();
       until.setDate(until.getDate() + 1);
-      const res = await fetch(`/api/cadence/${id}`, {
+      const res = await fetch(apiPath(`/api/cadence/${id}`), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ snoozedUntil: until.toISOString() }),
@@ -74,7 +75,7 @@ export function CadencesSection({ leadId, onUpdate }: { leadId: string; onUpdate
   async function resume(id: string) {
     setActing(id);
     try {
-      const res = await fetch(`/api/cadence/${id}`, {
+      const res = await fetch(apiPath(`/api/cadence/${id}`), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ snoozedUntil: null }),
@@ -93,7 +94,7 @@ export function CadencesSection({ leadId, onUpdate }: { leadId: string; onUpdate
   async function complete(id: string) {
     setActing(id);
     try {
-      const res = await fetch(`/api/cadence/${id}`, {
+      const res = await fetch(apiPath(`/api/cadence/${id}`), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ completedAt: true }),

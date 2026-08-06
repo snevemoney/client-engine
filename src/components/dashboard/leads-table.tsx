@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useBrainPanel } from "@/contexts/BrainPanelContext";
@@ -183,8 +184,8 @@ function FlywheelBatchDialog({
     setLoadingPreview(true);
     try {
       const [batchRes, schedRes] = await Promise.all([
-        fetch("/api/flywheel/batch", { credentials: "include", cache: "no-store" }),
-        fetch("/api/job-schedules", { credentials: "include", cache: "no-store" }),
+        fetch(apiPath("/api/flywheel/batch"), { credentials: "include", cache: "no-store" }),
+        fetch(apiPath("/api/job-schedules"), { credentials: "include", cache: "no-store" }),
       ]);
       if (batchRes.ok) {
         const data = await batchRes.json();
@@ -551,7 +552,7 @@ export function LeadsTable() {
       if (statusFilter !== "ALL") params.set("status", statusFilter);
       if (sourceFilter !== "ALL") params.set("source", sourceFilter);
       if (verdictFilter !== "ALL") params.set("verdict", verdictFilter);
-      const res = await fetch(`/api/leads?${params}`, {
+      const res = await fetch(apiPath(`/api/leads?${params}`), {
         credentials: "include",
         signal: controller.signal,
         cache: "no-store",
@@ -595,7 +596,7 @@ export function LeadsTable() {
       toast.info("Pipeline still running. This may take 1–2 min per lead. Don't close the page.");
     }, 20_000);
     try {
-      const res = await fetch("/api/leads/bulk-pipeline-run", {
+      const res = await fetch(apiPath("/api/leads/bulk-pipeline-run"), {
         method: "POST",
         credentials: "include",
         signal: controller.signal,

@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect } from "react";
 import type { NetworkingEventWithScore } from "@/lib/ops/networkingEvents";
@@ -24,7 +25,7 @@ export function NetworkingEventsCard() {
 
   async function fetchEvents() {
     try {
-      const res = await fetch("/api/networking-events?limit=5");
+      const res = await fetch(apiPath("/api/networking-events?limit=5"));
       if (res.ok) {
         const data = await res.json();
         setEvents(data);
@@ -44,7 +45,7 @@ export function NetworkingEventsCard() {
     if (!name.trim()) return;
     setSaving(true);
     try {
-      const res = await fetch("/api/networking-events", {
+      const res = await fetch(apiPath("/api/networking-events"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

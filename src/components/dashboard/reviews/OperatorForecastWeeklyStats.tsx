@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
@@ -18,8 +19,8 @@ export function OperatorForecastWeeklyStats() {
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/operator-score/current").then((r) => (r.ok ? r.json() : null)).catch(() => null),
-      fetch("/api/forecast/current").then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch(apiPath("/api/operator-score/current")).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch(apiPath("/api/forecast/current")).then((r) => (r.ok ? r.json() : null)).catch(() => null),
     ])
       .then(([opScore, forecast]) => {
         if (opScore && typeof opScore === "object") {

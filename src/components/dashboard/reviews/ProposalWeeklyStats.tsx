@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
@@ -21,9 +22,9 @@ export function ProposalWeeklyStats() {
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/proposals/summary").then((r) => (r.ok ? r.json() : null)).catch(() => null),
-      fetch("/api/proposals/gaps-summary").then((r) => (r.ok ? r.json() : null)).catch(() => null),
-      fetch("/api/proposals/followup-summary").then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch(apiPath("/api/proposals/summary")).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch(apiPath("/api/proposals/gaps-summary")).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch(apiPath("/api/proposals/followup-summary")).then((r) => (r.ok ? r.json() : null)).catch(() => null),
     ])
       .then(([sum, gaps, followup]) => {
         const s = {

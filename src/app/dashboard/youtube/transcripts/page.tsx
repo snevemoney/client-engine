@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
@@ -28,7 +29,7 @@ export default function TranscriptsPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/youtube/transcripts", { cache: "no-store" });
+      const res = await fetch(apiPath("/api/youtube/transcripts"), { cache: "no-store" });
       if (!res.ok) throw new Error("Failed to load");
       const data = await res.json();
       setTranscripts(data.transcripts ?? data ?? []);

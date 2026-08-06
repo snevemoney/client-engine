@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState } from "react";
 import Link from "next/link";
@@ -27,7 +28,7 @@ export function DecisionQueue({ pending }: { pending: DecisionLead[] }) {
     setLoading(leadId);
     setError((e) => ({ ...e, [leadId]: "" }));
     try {
-      const res = await fetch(`/api/leads/${leadId}/approve`, { method: "POST" });
+      const res = await fetch(apiPath(`/api/leads/${leadId}/approve`), { method: "POST" });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setError((e) => ({ ...e, [leadId]: data.error ?? "Failed to approve" }));
@@ -45,14 +46,14 @@ export function DecisionQueue({ pending }: { pending: DecisionLead[] }) {
     setLoading(leadId);
     setError((e) => ({ ...e, [leadId]: "" }));
     try {
-      const approveRes = await fetch(`/api/leads/${leadId}/approve`, { method: "POST" });
+      const approveRes = await fetch(apiPath(`/api/leads/${leadId}/approve`), { method: "POST" });
       const approveData = await approveRes.json().catch(() => ({}));
       if (!approveRes.ok) {
         setError((e) => ({ ...e, [leadId]: approveData.error ?? "Failed to approve" }));
         setLoading(null);
         return;
       }
-      const buildRes = await fetch(`/api/build/${leadId}`, { method: "POST" });
+      const buildRes = await fetch(apiPath(`/api/build/${leadId}`), { method: "POST" });
       const buildData = await buildRes.json().catch(() => ({}));
       if (!buildRes.ok) {
         setError((e) => ({

@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
@@ -9,7 +10,7 @@ export function InboxBadge({ className }: { className?: string }) {
   const [unread, setUnread] = useState<number | null>(null);
 
   useEffect(() => {
-    fetch("/api/notifications/summary", { cache: "no-store" })
+    fetch(apiPath("/api/notifications/summary"), { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => setUnread(d?.unreadInApp ?? 0))
       .catch(() => setUnread(null));

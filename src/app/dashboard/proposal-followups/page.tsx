@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
@@ -137,8 +138,8 @@ export default function ProposalFollowupsPage() {
       if (debouncedSearch.trim()) params.set("search", debouncedSearch.trim());
       if (debouncedBucket !== "all") params.set("bucket", debouncedBucket);
       const [res, sumRes] = await Promise.all([
-        fetch(`/api/proposals/followups?${params}`, { credentials: "include", signal: controller.signal, cache: "no-store" }),
-        fetch("/api/proposals/followup-summary", { credentials: "include", signal: controller.signal, cache: "no-store" }),
+        fetch(apiPath(`/api/proposals/followups?${params}`), { credentials: "include", signal: controller.signal, cache: "no-store" }),
+        fetch(apiPath("/api/proposals/followup-summary"), { credentials: "include", signal: controller.signal, cache: "no-store" }),
       ]);
       const json = await res.json().catch(() => null);
       const sumJson = await sumRes.json().catch(() => null);
@@ -199,7 +200,7 @@ export default function ProposalFollowupsPage() {
   const handleSnoozeSubmit = () => {
     if (!snoozeItem) return;
     runAction(snoozeItem.id, () =>
-      fetch(`/api/proposals/${snoozeItem.id}/followup-snooze`, {
+      fetch(apiPath(`/api/proposals/${snoozeItem.id}/followup-snooze`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ preset: snoozePreset }),
@@ -210,17 +211,17 @@ export default function ProposalFollowupsPage() {
 
   const handleLogEmail = (item: ProposalItem) => {
     runAction(item.id, () =>
-      fetch(`/api/proposals/${item.id}/followup-log-email`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" })
+      fetch(apiPath(`/api/proposals/${item.id}/followup-log-email`), { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" })
     );
   };
   const handleLogCall = (item: ProposalItem) => {
     runAction(item.id, () =>
-      fetch(`/api/proposals/${item.id}/followup-log-call`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" })
+      fetch(apiPath(`/api/proposals/${item.id}/followup-log-call`), { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" })
     );
   };
   const handleComplete = (item: ProposalItem) => {
     runAction(item.id, () =>
-      fetch(`/api/proposals/${item.id}/followup-complete`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" })
+      fetch(apiPath(`/api/proposals/${item.id}/followup-complete`), { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" })
     );
   };
 
@@ -256,7 +257,7 @@ export default function ProposalFollowupsPage() {
 
   const bulkSnooze = (preset: string) =>
     runBulkAction("Bulk snooze", (id) =>
-      fetch(`/api/proposals/${id}/followup-snooze`, {
+      fetch(apiPath(`/api/proposals/${id}/followup-snooze`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ preset }),
@@ -265,7 +266,7 @@ export default function ProposalFollowupsPage() {
 
   const bulkLogEmail = () =>
     runBulkAction("Bulk log email", (id) =>
-      fetch(`/api/proposals/${id}/followup-log-email`, {
+      fetch(apiPath(`/api/proposals/${id}/followup-log-email`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: "{}",

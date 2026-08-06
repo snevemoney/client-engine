@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useBrainPanel } from "@/contexts/BrainPanelContext";
@@ -141,13 +142,13 @@ export function NextActionsClient({ initialData }: { initialData: NextActionsIni
     params.set("pageSize", String(pageSize));
     try {
       const [data, sum, prefs] = await Promise.all([
-        fetch(`/api/next-actions?${params}`, { credentials: "include", signal: controller.signal, cache: "no-store" }).then(
+        fetch(apiPath(`/api/next-actions?${params}`), { credentials: "include", signal: controller.signal, cache: "no-store" }).then(
           (r) => (r.ok ? r.json() : null)
         ),
-        fetch(`/api/next-actions/summary?entityType=${entityType}&entityId=${entityId}`, { credentials: "include", signal: controller.signal, cache: "no-store" }).then(
+        fetch(apiPath(`/api/next-actions/summary?entityType=${entityType}&entityId=${entityId}`), { credentials: "include", signal: controller.signal, cache: "no-store" }).then(
           (r) => (r.ok ? r.json() : null)
         ),
-        fetch(`/api/next-actions/preferences?entityType=${entityType}&entityId=${entityId}`, { credentials: "include", signal: controller.signal, cache: "no-store" }).then(
+        fetch(apiPath(`/api/next-actions/preferences?entityType=${entityType}&entityId=${entityId}`), { credentials: "include", signal: controller.signal, cache: "no-store" }).then(
           (r) => (r.ok ? r.json() : { items: [] })
         ),
       ]);
@@ -185,7 +186,7 @@ export function NextActionsClient({ initialData }: { initialData: NextActionsIni
   const handleRun = async () => {
     setRunLoading(true);
     try {
-      const res = await fetch(`/api/next-actions/run?entityType=${entityType}&entityId=${entityId}`, { method: "POST" });
+      const res = await fetch(apiPath(`/api/next-actions/run?entityType=${entityType}&entityId=${entityId}`), { method: "POST" });
       if (res.ok) void fetchData();
       else {
         const d = await res.json().catch(() => null);
@@ -204,7 +205,7 @@ export function NextActionsClient({ initialData }: { initialData: NextActionsIni
     fetchedTemplateIdsRef.current.add(id);
     setTemplateLoadingId(id);
     try {
-      const res = await fetch(`/api/next-actions/${id}/template`, { credentials: "include", cache: "no-store" });
+      const res = await fetch(apiPath(`/api/next-actions/${id}/template`), { credentials: "include", cache: "no-store" });
       const data = res.ok ? await res.json() : null;
       setTemplateCache((prev) => ({ ...prev, [id]: data?.template ?? null }));
     } catch {
@@ -225,7 +226,7 @@ export function NextActionsClient({ initialData }: { initialData: NextActionsIni
     setMenuOpenId(null);
     setActioningId(id);
     try {
-      const res = await fetch(`/api/next-actions/${id}/execute`, {
+      const res = await fetch(apiPath(`/api/next-actions/${id}/execute`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ actionKey }),
@@ -244,7 +245,7 @@ export function NextActionsClient({ initialData }: { initialData: NextActionsIni
 
   const handleReEnable = async (prefId: string) => {
     try {
-      const res = await fetch(`/api/next-actions/preferences/${prefId}`, {
+      const res = await fetch(apiPath(`/api/next-actions/preferences/${prefId}`), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "suppressed" }),

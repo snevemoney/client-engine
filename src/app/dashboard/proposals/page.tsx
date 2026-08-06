@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useBrainPanel } from "@/contexts/BrainPanelContext";
@@ -123,7 +124,7 @@ export default function ProposalsPage() {
       if (sourceFilter !== "all") params.set("source", sourceFilter);
       params.set("page", String(page));
       params.set("pageSize", String(pageSize));
-      const res = await fetch(`/api/proposals?${params}`, {
+      const res = await fetch(apiPath(`/api/proposals?${params}`), {
         credentials: "include",
         signal: controller.signal,
         cache: "no-store",

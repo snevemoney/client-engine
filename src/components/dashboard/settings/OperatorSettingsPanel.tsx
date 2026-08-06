@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
@@ -245,7 +246,7 @@ export function OperatorSettingsPanel({
     setSaving(true);
     setMessage(null);
     try {
-      const res = await fetch("/api/ops/settings", {
+      const res = await fetch(apiPath("/api/ops/settings"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(buildPayload()),
@@ -269,7 +270,7 @@ export function OperatorSettingsPanel({
     setRecsLoading(true);
     setRecsError(null);
     try {
-      const res = await fetch("/api/ops/settings/recommend", { method: "POST" });
+      const res = await fetch(apiPath("/api/ops/settings/recommend"), { method: "POST" });
       if (!res.ok) {
         const d = await res.json().catch(() => null);
         setRecsError(d?.error ?? "Failed to generate recommendations");

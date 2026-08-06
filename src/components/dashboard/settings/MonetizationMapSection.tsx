@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect, useRef } from "react";
 
@@ -34,7 +35,7 @@ export function MonetizationMapSection({
     setSaving(true);
     setMessage(null);
     try {
-      const res = await fetch("/api/ops/monetization", {
+      const res = await fetch(apiPath("/api/ops/monetization"), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ projectRoles: map }),

@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState } from "react";
 import Link from "next/link";
@@ -23,7 +24,7 @@ export function FlywheelSimCard() {
     setRunning(true);
     setResult(null);
     try {
-      const res = await fetch("/api/flywheel/simulate", {
+      const res = await fetch(apiPath("/api/flywheel/simulate"), {
         method: "POST",
         credentials: "include",
       });

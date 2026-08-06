@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
@@ -15,7 +16,7 @@ export function PipelineHygieneWeeklyStats() {
   const [summary, setSummary] = useState<Summary>(null);
 
   useEffect(() => {
-    fetch("/api/intake-leads/action-summary")
+    fetch(apiPath("/api/intake-leads/action-summary"))
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => setSummary(d && typeof d === "object" ? d : null))
       .catch(() => setSummary(null));

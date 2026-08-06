@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
@@ -80,8 +81,8 @@ export default function RemindersPage() {
     params.set("pageSize", String(pageSize));
     try {
       const [data, sum] = await Promise.all([
-        fetch(`/api/reminders?${params}`, { credentials: "include", signal: controller.signal, cache: "no-store" }).then((r) => (r.ok ? r.json() : null)),
-        fetch("/api/reminders/summary", { credentials: "include", signal: controller.signal, cache: "no-store" }).then((r) => (r.ok ? r.json() : null)),
+        fetch(apiPath(`/api/reminders?${params}`), { credentials: "include", signal: controller.signal, cache: "no-store" }).then((r) => (r.ok ? r.json() : null)),
+        fetch(apiPath("/api/reminders/summary"), { credentials: "include", signal: controller.signal, cache: "no-store" }).then((r) => (r.ok ? r.json() : null)),
       ]);
       if (controller.signal.aborted || runId !== runIdRef.current) return;
       const items = data?.items ?? data?.reminders ?? [];
@@ -140,7 +141,7 @@ export default function RemindersPage() {
       )
     );
     try {
-      const res = await fetch(`/api/reminders/${id}/complete`, { method: "POST" });
+      const res = await fetch(apiPath(`/api/reminders/${id}/complete`), { method: "POST" });
       if (res.ok) void fetchData();
       else {
         setReminders((list) =>
@@ -173,7 +174,7 @@ export default function RemindersPage() {
       )
     );
     try {
-      const res = await fetch(`/api/reminders/${id}`, {
+      const res = await fetch(apiPath(`/api/reminders/${id}`), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ snoozePreset: preset }),
@@ -209,7 +210,7 @@ export default function RemindersPage() {
       )
     );
     try {
-      const res = await fetch(`/api/reminders/${id}`, {
+      const res = await fetch(apiPath(`/api/reminders/${id}`), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "dismissed" }),

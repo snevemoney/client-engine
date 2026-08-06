@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
@@ -14,7 +15,7 @@ export function NotificationsWeeklyStats() {
   const [stats, setStats] = useState<NotifStats | null>(null);
 
   useEffect(() => {
-    fetch("/api/notifications/summary")
+    fetch(apiPath("/api/notifications/summary"))
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (d && typeof d === "object") {

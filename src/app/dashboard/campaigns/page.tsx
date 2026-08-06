@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
@@ -38,7 +39,7 @@ export default function CampaignsPage() {
   const [ctaUrl, setCtaUrl] = useState("");
 
   const fetchCampaigns = useCallback(async () => {
-    const res = await fetch("/api/campaigns", { credentials: "include" });
+    const res = await fetch(apiPath("/api/campaigns"), { credentials: "include" });
     const data = await res.json().catch(() => []);
     setCampaigns(Array.isArray(data) ? data : []);
   }, []);
@@ -55,7 +56,7 @@ export default function CampaignsPage() {
     }
     setCreating(true);
     try {
-      const res = await fetch("/api/campaigns", {
+      const res = await fetch(apiPath("/api/campaigns"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -84,7 +85,7 @@ export default function CampaignsPage() {
   }
 
   async function togglePublish(c: Campaign) {
-    const res = await fetch(`/api/campaigns/${c.id}`, {
+    const res = await fetch(apiPath(`/api/campaigns/${c.id}`), {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
@@ -101,7 +102,7 @@ export default function CampaignsPage() {
 
   async function handleDelete(c: Campaign) {
     if (!confirm(`Delete campaign "${c.title}"?`)) return;
-    const res = await fetch(`/api/campaigns/${c.id}`, {
+    const res = await fetch(apiPath(`/api/campaigns/${c.id}`), {
       method: "DELETE",
       credentials: "include",
     });

@@ -5,11 +5,14 @@ import { compare, hash } from "bcryptjs";
 import { db } from "./db";
 import { trackSecurityEvent } from "./security/tracker";
 import { emitSecurityEvent } from "./security/events";
+import { getBasePath } from "./base-path";
 
 const authSecret = process.env.AUTH_SECRET || (process.env.NODE_ENV === "production" ? undefined : "dev-secret-change-in-production");
 if (!authSecret && process.env.NODE_ENV === "production") {
   console.warn("[auth] AUTH_SECRET is not set in production");
 }
+
+const authBasePath = `${getBasePath()}/api/auth`;
 
 const googleClientId = process.env.GOOGLE_CLIENT_ID || process.env.AUTH_GOOGLE_ID;
 const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET || process.env.AUTH_GOOGLE_SECRET;
@@ -99,8 +102,12 @@ function buildAuthorizeCredentials() {
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   secret: authSecret,
+  // Include Next.js basePath so Auth.js public URLs stay under /pro.
+  // Do not also set a path on AUTH_URL/NEXTAUTH_URL (causes UnknownAction).
+  basePath: authBasePath,
   pages: {
-    signIn: "/login",
+    // Full public path for Auth.js HTTP redirects (not next/navigation).
+    signIn: getBasePath() ? `${getBasePath()}/login` : "/login",
   },
   session: { strategy: "jwt" },
   trustHost: true,

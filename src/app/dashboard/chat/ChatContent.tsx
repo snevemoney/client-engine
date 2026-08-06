@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
@@ -62,7 +63,7 @@ export default function ChatContent() {
     setMessages((m) => [...m, { role: "user", content: text }]);
     setLoading(true);
     try {
-      const res = await fetch("/api/ops/chat", {
+      const res = await fetch(apiPath("/api/ops/chat"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: text }),
@@ -96,7 +97,7 @@ export default function ChatContent() {
     if (!ok) return;
     setExecutingAction(action);
     try {
-      const res = await fetch("/api/ops/chat/execute", {
+      const res = await fetch(apiPath("/api/ops/chat/execute"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action, payload: {} }),

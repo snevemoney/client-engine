@@ -1,4 +1,5 @@
 "use client";
+import { apiPath, stripBasePath } from "@/lib/base-path";
 
 import { Suspense, useEffect, useState } from "react";
 import { signIn } from "next-auth/react";
@@ -13,15 +14,21 @@ function safeCallbackUrl(raw: string | null): string {
   if (!raw || typeof raw !== "string") return fallback;
   const trimmed = raw.trim();
   if (!trimmed) return fallback;
-  if (trimmed.startsWith("/") && !trimmed.startsWith("//")) return trimmed;
-  try {
-    if (typeof window === "undefined") return fallback;
-    const parsed = new URL(trimmed, window.location.origin);
-    if (parsed.origin === window.location.origin) return parsed.pathname + parsed.search;
-  } catch {
-    /* invalid URL */
+  let path = trimmed;
+  if (!(path.startsWith("/") && !path.startsWith("//"))) {
+    try {
+      if (typeof window === "undefined") return fallback;
+      const parsed = new URL(trimmed, window.location.origin);
+      if (parsed.origin !== window.location.origin) return fallback;
+      path = parsed.pathname + parsed.search;
+    } catch {
+      return fallback;
+    }
   }
-  return fallback;
+  // router.push already applies Next.js basePath — strip it if present.
+  const appRelative = stripBasePath(path.split("?")[0] || "/");
+  const search = path.includes("?") ? path.slice(path.indexOf("?")) : "";
+  return `${appRelative}${search}` || fallback;
 }
 
 function LoginForm() {
@@ -35,7 +42,7 @@ function LoginForm() {
   const [showSimulationForm, setShowSimulationForm] = useState(false);
 
   useEffect(() => {
-    fetch("/api/auth/providers")
+    fetch(apiPath("/api/auth/providers"))
       .then((r) => r.json())
       .then(setProviders)
       .catch(() => setProviders({}));

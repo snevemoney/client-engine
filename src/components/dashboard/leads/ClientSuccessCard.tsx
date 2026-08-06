@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
@@ -113,7 +114,7 @@ export function ClientSuccessCard({
   const [assetUsedIn, setAssetUsedIn] = useState("");
 
   function fetchData() {
-    fetch(`/api/leads/${leadId}/client-success`)
+    fetch(apiPath(`/api/leads/${leadId}/client-success`))
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         setData(d ?? null);
@@ -134,7 +135,7 @@ export function ClientSuccessCard({
   async function post(type: string, payload: Record<string, unknown>) {
     setSaving(true);
     try {
-      const res = await fetch(`/api/leads/${leadId}/client-success`, {
+      const res = await fetch(apiPath(`/api/leads/${leadId}/client-success`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ type, payload }),
@@ -201,7 +202,7 @@ export function ClientSuccessCard({
   async function resolveRisk(riskId: string) {
     setSaving(true);
     try {
-      const res = await fetch(`/api/leads/${leadId}/client-success`, {
+      const res = await fetch(apiPath(`/api/leads/${leadId}/client-success`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ type: "resolve_risk", riskId }),
@@ -233,7 +234,7 @@ export function ClientSuccessCard({
   async function generateProof() {
     setProofGenerating(true);
     try {
-      const res = await fetch("/api/proof/generate", {
+      const res = await fetch(apiPath("/api/proof/generate"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ leadId }),

@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
@@ -53,7 +54,7 @@ export default function GrowthPage() {
     setError(null);
     try {
       const [contextRes, dealsRes] = await Promise.all([
-        fetch("/api/internal/growth/context", { credentials: "include", cache: "no-store", signal: controller.signal }),
+        fetch(apiPath("/api/internal/growth/context"), { credentials: "include", cache: "no-store", signal: controller.signal }),
         fetch(
           `/api/internal/growth/deals?${new URLSearchParams({
             ...(debouncedStage && { stage: debouncedStage }),

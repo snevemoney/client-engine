@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 /**
  * Phase 3.4: Score alerts preferences panel — enable/disable per event type.
@@ -23,7 +24,7 @@ export function AlertsPreferencesPanel({ compact = false }: Props) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/internal/scores/alerts/preferences", {
+      const res = await fetch(apiPath("/api/internal/scores/alerts/preferences"), {
         credentials: "include",
         cache: "no-store",
       });
@@ -56,7 +57,7 @@ export function AlertsPreferencesPanel({ compact = false }: Props) {
     setError(null);
     setSuccess(null);
     try {
-      const res = await fetch("/api/internal/scores/alerts/preferences", {
+      const res = await fetch(apiPath("/api/internal/scores/alerts/preferences"), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

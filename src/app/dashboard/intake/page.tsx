@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
@@ -98,7 +99,7 @@ export default function IntakePage() {
       if (sourceFilter !== "all") params.set("source", sourceFilter);
       params.set("page", String(page));
       params.set("pageSize", String(pageSize));
-      const res = await fetch(`/api/intake-leads?${params}`, {
+      const res = await fetch(apiPath(`/api/intake-leads?${params}`), {
         credentials: "include",
         signal: controller.signal,
         cache: "no-store",

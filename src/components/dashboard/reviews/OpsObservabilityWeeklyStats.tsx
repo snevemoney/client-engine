@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
@@ -27,8 +28,8 @@ export function OpsObservabilityWeeklyStats() {
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/ops-events/summary").then((r) => (r.ok ? r.json() : null)).catch(() => null),
-      fetch("/api/audit-actions/summary").then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch(apiPath("/api/ops-events/summary")).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch(apiPath("/api/audit-actions/summary")).then((r) => (r.ok ? r.json() : null)).catch(() => null),
     ])
       .then(([ops, audit]) => {
         setOpsStats(ops && typeof ops === "object" ? ops : null);

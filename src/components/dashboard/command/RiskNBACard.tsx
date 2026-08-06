@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
@@ -29,11 +30,11 @@ export function RiskNBACard() {
   useEffect(() => {
     const load = async () => {
       const [riskData, riskList, nba] = await Promise.all([
-        fetch("/api/risk/summary", { credentials: "include", cache: "no-store" }).then((r) => (r.ok ? r.json() : null)),
-        fetch("/api/risk?status=open&pageSize=3&page=1", { credentials: "include", cache: "no-store" }).then((r) =>
+        fetch(apiPath("/api/risk/summary"), { credentials: "include", cache: "no-store" }).then((r) => (r.ok ? r.json() : null)),
+        fetch(apiPath("/api/risk?status=open&pageSize=3&page=1"), { credentials: "include", cache: "no-store" }).then((r) =>
           r.ok ? r.json() : { items: [] }
         ),
-        fetch("/api/next-actions/summary?entityType=command_center&entityId=command_center", { credentials: "include", cache: "no-store" }).then((r) => (r.ok ? r.json() : null)),
+        fetch(apiPath("/api/next-actions/summary?entityType=command_center&entityId=command_center"), { credentials: "include", cache: "no-store" }).then((r) => (r.ok ? r.json() : null)),
       ]);
       setRiskSummary(riskData);
       setRiskItems(riskList?.items ?? []);
@@ -45,11 +46,11 @@ export function RiskNBACard() {
   const handleRunRisk = async () => {
     setRunRiskLoading(true);
     try {
-      const res = await fetch("/api/risk/run-rules", { method: "POST" });
+      const res = await fetch(apiPath("/api/risk/run-rules"), { method: "POST" });
       if (res.ok) {
         const [sum, list] = await Promise.all([
-          fetch("/api/risk/summary", { credentials: "include", cache: "no-store" }).then((r) => (r.ok ? r.json() : null)),
-          fetch("/api/risk?status=open&pageSize=3&page=1", { credentials: "include", cache: "no-store" }).then((r) =>
+          fetch(apiPath("/api/risk/summary"), { credentials: "include", cache: "no-store" }).then((r) => (r.ok ? r.json() : null)),
+          fetch(apiPath("/api/risk?status=open&pageSize=3&page=1"), { credentials: "include", cache: "no-store" }).then((r) =>
             r.ok ? r.json() : { items: [] }
           ),
         ]);
@@ -64,9 +65,9 @@ export function RiskNBACard() {
   const handleRunNBA = async () => {
     setRunNBALoading(true);
     try {
-      const res = await fetch("/api/next-actions/run?entityType=command_center&entityId=command_center", { method: "POST" });
+      const res = await fetch(apiPath("/api/next-actions/run?entityType=command_center&entityId=command_center"), { method: "POST" });
       if (res.ok) {
-        const r = await fetch("/api/next-actions/summary?entityType=command_center&entityId=command_center", { credentials: "include", cache: "no-store" });
+        const r = await fetch(apiPath("/api/next-actions/summary?entityType=command_center&entityId=command_center"), { credentials: "include", cache: "no-store" });
         if (r.ok) setNBASummary(await r.json());
       }
     } finally {

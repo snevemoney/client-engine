@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { RefreshCw, Zap, Play, Filter } from "lucide-react";
@@ -63,7 +64,7 @@ export function MetaAdsRecommendationsPanel({ onRefresh, onData }: { onRefresh?:
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/meta-ads/recommendations");
+      const res = await fetch(apiPath("/api/meta-ads/recommendations"));
       const json = await res.json();
       setRecs(json.recommendations ?? []);
       setCounts(json.counts ?? {});
@@ -87,7 +88,7 @@ export function MetaAdsRecommendationsPanel({ onRefresh, onData }: { onRefresh?:
     setGenLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/meta-ads/recommendations/generate", { method: "POST" });
+      const res = await fetch(apiPath("/api/meta-ads/recommendations/generate"), { method: "POST" });
       const json = await res.json();
       if (json.ok) {
         await fetchRecs();
@@ -107,7 +108,7 @@ export function MetaAdsRecommendationsPanel({ onRefresh, onData }: { onRefresh?:
   async function patchRec(id: string, action: "approve" | "dismiss" | "false_positive" | "reset") {
     setActionId(id);
     try {
-      const res = await fetch(`/api/meta-ads/recommendations/${id}`, {
+      const res = await fetch(apiPath(`/api/meta-ads/recommendations/${id}`), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action }),
@@ -137,7 +138,7 @@ export function MetaAdsRecommendationsPanel({ onRefresh, onData }: { onRefresh?:
   async function apply(id: string) {
     setActionId(id);
     try {
-      const res = await fetch(`/api/meta-ads/recommendations/${id}/apply`, {
+      const res = await fetch(apiPath(`/api/meta-ads/recommendations/${id}/apply`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),

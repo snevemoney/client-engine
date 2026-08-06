@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect } from "react";
 
@@ -13,9 +14,9 @@ export function UpcomingDeadlines() {
 
   useEffect(() => {
     Promise.allSettled([
-      fetch("/api/followups/summary", { cache: "no-store" }).then((r) => r.ok ? r.json() : null),
-      fetch("/api/delivery-projects/summary", { cache: "no-store" }).then((r) => r.ok ? r.json() : null),
-      fetch("/api/proposals/followup-summary", { cache: "no-store" }).then((r) => r.ok ? r.json() : null),
+      fetch(apiPath("/api/followups/summary"), { cache: "no-store" }).then((r) => r.ok ? r.json() : null),
+      fetch(apiPath("/api/delivery-projects/summary"), { cache: "no-store" }).then((r) => r.ok ? r.json() : null),
+      fetch(apiPath("/api/proposals/followup-summary"), { cache: "no-store" }).then((r) => r.ok ? r.json() : null),
     ]).then(([fu, del, pfu]) => {
       setFollowups(fu.status === "fulfilled" ? fu.value : null);
       setDelivery(del.status === "fulfilled" ? del.value : null);

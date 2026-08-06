@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState } from "react";
 import { Bell, Loader2 } from "lucide-react";
@@ -12,7 +13,7 @@ export function CadenceDueCard({ data }: { data: CadenceDueSummary }) {
   async function handleProcess() {
     setProcessing(true);
     try {
-      const res = await fetch("/api/cadence/process", { method: "POST" });
+      const res = await fetch(apiPath("/api/cadence/process"), { method: "POST" });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "Failed");
       toast.success(`Processed ${json.processed ?? 0} cadence(s)`);

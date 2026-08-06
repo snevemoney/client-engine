@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 /**
  * Phase 3.4: Compact chip showing score alerts status.
@@ -15,7 +16,7 @@ export function AlertsSummaryChip() {
   } | null>(null);
 
   useEffect(() => {
-    fetch("/api/internal/scores/alerts/preferences", {
+    fetch(apiPath("/api/internal/scores/alerts/preferences"), {
       credentials: "include",
       cache: "no-store",
     })

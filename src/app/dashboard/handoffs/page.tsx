@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
@@ -94,8 +95,8 @@ export default function HandoffsPage() {
       if (statusFilter !== "all") params.set("status", statusFilter);
       if (debouncedOwner.trim()) params.set("owner", debouncedOwner.trim());
       const [res, sumRes] = await Promise.all([
-        fetch(`/api/delivery-projects/handoff-queue?${params}`, { credentials: "include", signal: controller.signal, cache: "no-store" }),
-        fetch("/api/delivery-projects/handoff-summary", { credentials: "include", signal: controller.signal, cache: "no-store" }),
+        fetch(apiPath(`/api/delivery-projects/handoff-queue?${params}`), { credentials: "include", signal: controller.signal, cache: "no-store" }),
+        fetch(apiPath("/api/delivery-projects/handoff-summary"), { credentials: "include", signal: controller.signal, cache: "no-store" }),
       ]);
       if (!res.ok) {
         const errData = await res.json().catch(() => null);
@@ -152,7 +153,7 @@ export default function HandoffsPage() {
 
   const startHandoff = (id: string) =>
     runAction(id, () =>
-      fetch(`/api/delivery-projects/${id}/handoff/start`, {
+      fetch(apiPath(`/api/delivery-projects/${id}/handoff/start`), {
         method: "POST",
         credentials: "include",
       })
@@ -160,7 +161,7 @@ export default function HandoffsPage() {
 
   const completeHandoff = (id: string) =>
     runAction(id, () =>
-      fetch(`/api/delivery-projects/${id}/handoff/complete`, {
+      fetch(apiPath(`/api/delivery-projects/${id}/handoff/complete`), {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -170,7 +171,7 @@ export default function HandoffsPage() {
 
   const confirmClient = (id: string) =>
     runAction(id, () =>
-      fetch(`/api/delivery-projects/${id}/client-confirm`, {
+      fetch(apiPath(`/api/delivery-projects/${id}/client-confirm`), {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },

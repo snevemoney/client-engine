@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
@@ -55,7 +56,7 @@ export default function FollowupsPage() {
       if (bucketFilter !== "all") params.set("bucket", bucketFilter);
       if (sourceFilter !== "all") params.set("source", sourceFilter);
       if (statusFilter !== "all") params.set("status", statusFilter);
-      const res = await fetch(`/api/followups?${params}`, {
+      const res = await fetch(apiPath(`/api/followups?${params}`), {
         credentials: "include",
         signal: controller.signal,
         cache: "no-store",
@@ -126,7 +127,7 @@ export default function FollowupsPage() {
     const isPipeline = completeItem.itemType === "pipeline";
     if (isPipeline) {
       await runAction(completeItem.id, () =>
-        fetch(`/api/leads/${completeItem.id}`, {
+        fetch(apiPath(`/api/leads/${completeItem.id}`), {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
@@ -138,7 +139,7 @@ export default function FollowupsPage() {
       );
     } else {
       await runAction(completeItem.id, () =>
-        fetch(`/api/intake-leads/${completeItem.id}/followup-complete`, {
+        fetch(apiPath(`/api/intake-leads/${completeItem.id}/followup-complete`), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
@@ -172,7 +173,7 @@ export default function FollowupsPage() {
         return;
       }
       await runAction(snoozeItem.id, () =>
-        fetch(`/api/leads/${snoozeItem.id}`, {
+        fetch(apiPath(`/api/leads/${snoozeItem.id}`), {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
@@ -183,7 +184,7 @@ export default function FollowupsPage() {
       );
     } else {
       await runAction(snoozeItem.id, () =>
-        fetch(`/api/intake-leads/${snoozeItem.id}/followup-snooze`, {
+        fetch(apiPath(`/api/intake-leads/${snoozeItem.id}/followup-snooze`), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",

@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect } from "react";
 import type { OwnedAudienceHealth } from "@/lib/ops/ownedAudience";
@@ -19,7 +20,7 @@ export function OwnedAudienceCard() {
 
   async function fetchHealth() {
     try {
-      const res = await fetch("/api/owned-audience?mode=health");
+      const res = await fetch(apiPath("/api/owned-audience?mode=health"));
       if (res.ok) {
         const data = await res.json();
         setHealth(data);
@@ -35,7 +36,7 @@ export function OwnedAudienceCard() {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch("/api/owned-audience?mode=health");
+        const res = await fetch(apiPath("/api/owned-audience?mode=health"));
         if (cancelled) return;
         if (res.ok) {
           const data = await res.json();
@@ -53,7 +54,7 @@ export function OwnedAudienceCard() {
   async function submitSnapshot() {
     setSaving(true);
     try {
-      const res = await fetch("/api/owned-audience", {
+      const res = await fetch(apiPath("/api/owned-audience"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

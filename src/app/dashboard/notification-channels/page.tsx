@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
@@ -34,7 +35,7 @@ export default function NotificationChannelsPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/notification-channels", { credentials: "include", cache: "no-store" });
+      const res = await fetch(apiPath("/api/notification-channels"), { credentials: "include", cache: "no-store" });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error ?? "Failed to load");
       setChannels(data?.items ?? []);
@@ -56,7 +57,7 @@ export default function NotificationChannelsPage() {
     // Optimistic update
     setChannels((prev) => prev.map((ch) => (ch.id === id ? { ...ch, isEnabled: !isEnabled } : ch)));
     try {
-      const res = await fetch(`/api/notification-channels/${id}`, {
+      const res = await fetch(apiPath(`/api/notification-channels/${id}`), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isEnabled: !isEnabled }),
@@ -81,7 +82,7 @@ export default function NotificationChannelsPage() {
     if (actioningId) return;
     setActioningId(id);
     try {
-      const res = await fetch(`/api/notification-channels/${id}/test`, { method: "POST" });
+      const res = await fetch(apiPath(`/api/notification-channels/${id}/test`), { method: "POST" });
       const data = await res.json();
       if (res.ok) {
         if (data.ok) toast.success("Test sent successfully");

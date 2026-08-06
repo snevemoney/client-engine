@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect } from "react";
 
@@ -10,7 +11,7 @@ export function FeedbackCard({ initialNotes }: { initialNotes: Note[] }) {
   const [saving, setSaving] = useState(false);
 
   async function loadNotes() {
-    const res = await fetch("/api/ops/feedback");
+    const res = await fetch(apiPath("/api/ops/feedback"));
     if (res.ok) {
       const data = await res.json();
       setNotes(data.notes ?? []);
@@ -22,7 +23,7 @@ export function FeedbackCard({ initialNotes }: { initialNotes: Note[] }) {
     if (!text || saving) return;
     setSaving(true);
     try {
-      const res = await fetch("/api/ops/feedback", {
+      const res = await fetch(apiPath("/api/ops/feedback"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content: text }),

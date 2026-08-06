@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
@@ -13,7 +14,7 @@ export function ProductionDeployCard() {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    fetch("/api/health")
+    fetch(apiPath("/api/health"))
       .then((r) => r.json())
       .then((d) => {
         setHealth(d);

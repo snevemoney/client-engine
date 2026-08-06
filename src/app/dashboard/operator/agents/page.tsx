@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
@@ -303,11 +304,11 @@ export default function AgentsPage() {
     setLoading(true);
     try {
       const [approvalsRes, runsRes] = await Promise.allSettled([
-        fetch("/api/agents/approvals", {
+        fetch(apiPath("/api/agents/approvals"), {
           credentials: "include",
           cache: "no-store",
         }).then((r) => (r.ok ? r.json() : { items: [] })),
-        fetch("/api/agents/runs?limit=30", {
+        fetch(apiPath("/api/agents/runs?limit=30"), {
           credentials: "include",
           cache: "no-store",
         }).then((r) => (r.ok ? r.json() : { items: [] })),
@@ -342,7 +343,7 @@ export default function AgentsPage() {
   const handleRunAgent = async (agentId: string) => {
     setRunningAgentId(agentId);
     try {
-      const res = await fetch("/api/agents/run", {
+      const res = await fetch(apiPath("/api/agents/run"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -369,7 +370,7 @@ export default function AgentsPage() {
   const handleApproval = async (approvalId: string, approved: boolean) => {
     setProcessingIds((prev) => new Set(prev).add(approvalId));
     try {
-      const res = await fetch("/api/agents/approvals", {
+      const res = await fetch(apiPath("/api/agents/approvals"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
@@ -80,7 +81,7 @@ export default function ProofCandidatesPage() {
       if (statusFilter !== "all") params.set("status", statusFilter);
       if (triggerFilter !== "all") params.set("triggerType", triggerFilter);
       if (debouncedSearch.trim()) params.set("search", debouncedSearch.trim());
-      const res = await fetch(`/api/proof-candidates?${params}`, { credentials: "include", signal: controller.signal, cache: "no-store" });
+      const res = await fetch(apiPath(`/api/proof-candidates?${params}`), { credentials: "include", signal: controller.signal, cache: "no-store" });
       const data = await res.json().catch(() => null);
       if (controller.signal.aborted || runId !== runIdRef.current) return;
       setList(Array.isArray(data?.items) ? data.items : []);
@@ -256,7 +257,7 @@ export default function ProofCandidatesPage() {
                                 disabled={loading}
                                 onClick={() =>
                                   runAction(c.id, () =>
-                                    fetch(`/api/proof-candidates/${c.id}/mark-ready`, { method: "POST", credentials: "include" })
+                                    fetch(apiPath(`/api/proof-candidates/${c.id}/mark-ready`), { method: "POST", credentials: "include" })
                                   )
                                 }
                               >
@@ -268,7 +269,7 @@ export default function ProofCandidatesPage() {
                                 disabled={loading}
                                 onClick={() =>
                                   runWithConfirm(c.id, "Promote candidate?", `Promote "${c.title || "this candidate"}" to a proof record.`, "default", () =>
-                                    fetch(`/api/proof-candidates/${c.id}/promote`, { method: "POST", credentials: "include" })
+                                    fetch(apiPath(`/api/proof-candidates/${c.id}/promote`), { method: "POST", credentials: "include" })
                                   )
                                 }
                               >
@@ -281,7 +282,7 @@ export default function ProofCandidatesPage() {
                                 disabled={loading}
                                 onClick={() =>
                                   runWithConfirm(c.id, "Reject candidate?", `Reject "${c.title || "this candidate"}". This cannot be undone.`, "destructive", () =>
-                                    fetch(`/api/proof-candidates/${c.id}/reject`, {
+                                    fetch(apiPath(`/api/proof-candidates/${c.id}/reject`), {
                                       method: "POST",
                                       headers: { "Content-Type": "application/json" },
                                       credentials: "include",

@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect } from "react";
 
@@ -27,8 +28,8 @@ export function StrategyPipelineContext() {
 
   useEffect(() => {
     Promise.allSettled([
-      fetch("/api/metrics/conversion?range=last_4_weeks", { cache: "no-store" }).then((r) => r.ok ? r.json() : null),
-      fetch("/api/intake-leads/summary", { cache: "no-store" }).then((r) => r.ok ? r.json() : null),
+      fetch(apiPath("/api/metrics/conversion?range=last_4_weeks"), { cache: "no-store" }).then((r) => r.ok ? r.json() : null),
+      fetch(apiPath("/api/intake-leads/summary"), { cache: "no-store" }).then((r) => r.ok ? r.json() : null),
     ]).then(([conv, intakeRes]) => {
       setConversion(conv.status === "fulfilled" ? conv.value : null);
       setIntake(intakeRes.status === "fulfilled" ? intakeRes.value : null);

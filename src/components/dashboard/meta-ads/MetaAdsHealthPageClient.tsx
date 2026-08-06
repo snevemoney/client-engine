@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useEffect, useState } from "react";
 import { Heart, CheckCircle2, AlertTriangle, XCircle, ArrowLeft } from "lucide-react";
@@ -11,7 +12,7 @@ export function MetaAdsHealthPageClient() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/meta-ads/asset-health")
+    fetch(apiPath("/api/meta-ads/asset-health"))
       .then((res) => res.json())
       .then((json) => {
         setData(json);

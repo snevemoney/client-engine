@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState } from "react";
 
@@ -17,7 +18,7 @@ export function LeadCaptureForm({ className = "" }: { className?: string }) {
     if (!email.trim()) return;
     setStatus("sending");
     try {
-      const res = await fetch("/api/site/leads", {
+      const res = await fetch(apiPath("/api/site/leads"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

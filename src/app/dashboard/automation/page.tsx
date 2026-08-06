@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
@@ -84,12 +85,12 @@ export default function AutomationPage() {
     try {
       const statusParam = filter === "all" ? "" : `status=${filter}`;
       const [data, sum] = await Promise.all([
-        fetch(`/api/automation-suggestions?${statusParam}&pageSize=50`, {
+        fetch(apiPath(`/api/automation-suggestions?${statusParam}&pageSize=50`), {
           credentials: "include",
           signal: controller.signal,
           cache: "no-store",
         }).then((r) => (r.ok ? r.json() : null)),
-        fetch("/api/automation-suggestions/summary", {
+        fetch(apiPath("/api/automation-suggestions/summary"), {
           credentials: "include",
           signal: controller.signal,
           cache: "no-store",
@@ -129,7 +130,7 @@ export default function AutomationPage() {
   const handleGenerate = async () => {
     setGenerateLoading(true);
     try {
-      const res = await fetch("/api/automation-suggestions/generate", { method: "POST" });
+      const res = await fetch(apiPath("/api/automation-suggestions/generate"), { method: "POST" });
       if (res.ok) {
         toast.success("Suggestions generated");
         fetchData();
@@ -147,7 +148,7 @@ export default function AutomationPage() {
   const handleApply = async (id: string) => {
     setMutatingId(id);
     try {
-      const res = await fetch(`/api/automation-suggestions/${id}/apply`, { method: "POST" });
+      const res = await fetch(apiPath(`/api/automation-suggestions/${id}/apply`), { method: "POST" });
       const data = await res.json();
       if (res.ok && data.success) {
         toast.success(data.action ?? "Applied");
@@ -163,7 +164,7 @@ export default function AutomationPage() {
   const handleReject = async (id: string) => {
     setMutatingId(id);
     try {
-      const res = await fetch(`/api/automation-suggestions/${id}`, {
+      const res = await fetch(apiPath(`/api/automation-suggestions/${id}`), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "rejected" }),

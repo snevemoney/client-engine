@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
@@ -176,7 +177,7 @@ export default function ScoresQAPage() {
     setComputing(true);
     setComputeError(null);
     try {
-      const res = await fetch("/api/internal/scores/compute", {
+      const res = await fetch(apiPath("/api/internal/scores/compute"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

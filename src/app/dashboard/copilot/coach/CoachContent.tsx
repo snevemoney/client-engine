@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
@@ -103,13 +104,13 @@ export default function CoachContent() {
     setContextLoading(true);
     try {
       const [scoreRes, riskRes, nbaRes] = await Promise.all([
-        fetch("/api/internal/scores/summary?entityType=command_center&entityId=command_center", {
+        fetch(apiPath("/api/internal/scores/summary?entityType=command_center&entityId=command_center"), {
           credentials: "include",
           cache: "no-store",
           signal: controller.signal,
         }),
-        fetch("/api/risk/summary", { credentials: "include", cache: "no-store", signal: controller.signal }),
-        fetch("/api/next-actions/summary?entityType=command_center&entityId=command_center", {
+        fetch(apiPath("/api/risk/summary"), { credentials: "include", cache: "no-store", signal: controller.signal }),
+        fetch(apiPath("/api/next-actions/summary?entityType=command_center&entityId=command_center"), {
           credentials: "include",
           cache: "no-store",
           signal: controller.signal,
@@ -165,7 +166,7 @@ export default function CoachContent() {
     setMessages((m) => [...m, { role: "user", content: text }]);
     setLoading(true);
     try {
-      const res = await fetch("/api/internal/copilot/coach", {
+      const res = await fetch(apiPath("/api/internal/copilot/coach"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -220,7 +221,7 @@ export default function CoachContent() {
       if (cta.payload?.nextActionId) body.nextActionId = cta.payload.nextActionId;
       if (cta.payload?.nbaActionKey) body.nbaActionKey = cta.payload.nbaActionKey;
 
-      const res = await fetch("/api/internal/copilot/coach/action", {
+      const res = await fetch(apiPath("/api/internal/copilot/coach/action"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -263,7 +264,7 @@ export default function CoachContent() {
       if (preview.cta.payload?.nextActionId) body.nextActionId = preview.cta.payload.nextActionId;
       if (preview.cta.payload?.nbaActionKey) body.nbaActionKey = preview.cta.payload.nbaActionKey;
 
-      const res = await fetch("/api/internal/copilot/coach/action", {
+      const res = await fetch(apiPath("/api/internal/copilot/coach/action"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

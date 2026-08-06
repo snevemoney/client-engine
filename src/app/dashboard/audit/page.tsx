@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
@@ -74,8 +75,8 @@ export default function AuditPage() {
       params.set("limit", "50");
 
       const [sumRes, listRes] = await Promise.all([
-        fetch("/api/audit-actions/summary", { credentials: "include", signal: controller.signal }),
-        fetch(`/api/audit-actions?${params}`, { credentials: "include", signal: controller.signal }),
+        fetch(apiPath("/api/audit-actions/summary"), { credentials: "include", signal: controller.signal }),
+        fetch(apiPath(`/api/audit-actions?${params}`), { credentials: "include", signal: controller.signal }),
       ]);
 
       if (controller.signal.aborted || runId !== runIdRef.current) return;
