@@ -31,10 +31,12 @@ bash deploy.sh
 1. **Env (VPS or `.env`):** Must include:
    - `DATABASE_URL`
    - `AUTH_SECRET`
-   - `NEXTAUTH_URL` (e.g. `https://evenslouis.ca`)
-   - `OPENAI_API_KEY`
+   - `NEXTAUTH_URL` (origin only, e.g. `https://evenslouis.ca` — **do not** append `/pro`)
+   - `AUTH_TRUST_HOST=true` (required for the `/pro` Compose service)
+   - `ANTHROPIC_API_KEY` and/or `OPENAI_API_KEY`
 2. **Database:** `deploy.sh` runs `prisma db push`. If you deploy without it, run `npx prisma db push` on the server once.
-3. **Health:** After deploy, confirm `GET /api/health` returns **200** with `ok: true` and all checks true (db, pipelineTables, authSecret, nextAuthUrl).
+3. **Health:** After deploy, confirm root `GET /api/health` and operator `GET /pro/api/health` both return **200** with `ok: true`.
+4. **Architecture:** Root app `:3200` (public) + isolated `pro` service `:3204` with `NEXT_PUBLIC_BASE_PATH=/pro`. See [ADR 007](docs/decisions/007-pro-base-path-deployment.md).
 
 ## Operations
 
@@ -50,15 +52,18 @@ bash logs.sh postgres   # Tail DB logs
 
 **One-command deploy from your machine:** Use `./scripts/sync-and-deploy.sh` to keep dev and prod in sync (push, rsync, deploy). If the server has an SSH deploy key, you can use `./scripts/deploy-remote.sh` instead. See [docs/DEPLOY_SSH_SETUP.md](docs/DEPLOY_SSH_SETUP.md).
 
-**Post-deploy smoke test:** `./scripts/smoke-test.sh` (or `./scripts/smoke-test.sh https://evenslouis.ca`) — checks homepage, login, dashboard, `/api/health`, `/api/ops/command`, SSL. Exit 0 = all pass.
+**Post-deploy smoke test:** `./scripts/smoke-test.sh` — checks public site + `/pro` operator health/login/dashboard. Exit 0 = all pass.
 
 **VPS out of disk (ENOSPC / rsync or deploy fails):** Run `./scripts/run-vps-cleanup.sh` from your Mac to prune Docker and free space on the server, then run `./scripts/sync-and-deploy.sh` again. See [docs/VPS_DEPLOY_CHECKLIST.md](docs/VPS_DEPLOY_CHECKLIST.md) § Disk space maintenance.
 
 ## URLs
 
-- **https://evenslouis.ca** — Public site
-- **https://evenslouis.ca/dashboard** — Private dashboard (login required)
-- **https://evenslouis.pro** — Redirects to dashboard
+- **https://evenslouis.ca** — Public site (root app `:3200`)
+- **https://evenslouis.ca/pro/dashboard** — Operator OS (isolated `pro` app `:3204`, `basePath=/pro`)
+- **https://evenslouis.ca/pro/login** — Operator login
+- **https://evenslouis.pro** — Legacy host; redirect to `/pro` only after operator smoke is green (see ADR 007)
+
+Public marketing/proof/campaign/portal pages stay on the root host unless product intent moves them.
 
 ## Local development
 
@@ -99,7 +104,7 @@ To run without an OpenAI key (pipeline uses placeholder artifacts):
 PIPELINE_DRY_RUN=1 npm run test:e2e
 ```
 
-**Production:** Use `PLAYWRIGHT_BASE_URL=https://evenslouis.ca` only after fixing redirect loops (set `NEXTAUTH_URL` and `AUTH_SECRET` on the server).
+**Production operator E2E:** `PLAYWRIGHT_BASE_URL=https://evenslouis.ca/pro` (set `NEXTAUTH_URL` to the origin without `/pro`, plus `AUTH_SECRET` / `AUTH_TRUST_HOST`).
 
 **Testing strategy:** [docs/TESTING_SIDE_PANEL.md](docs/TESTING_SIDE_PANEL.md) — two-tier approach (Playwright automated + manual production checks), page-by-page test matrix, and embedded browser notes.
 

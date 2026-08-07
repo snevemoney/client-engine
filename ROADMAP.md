@@ -1,12 +1,21 @@
 # Roadmap — Client Engine
 
-## Current State (March 2026)
+## Current State (August 2026)
 
 Phase 9+ complete. Full business OS operational with AI Brain, 10 agents, memory pipeline, NBA system, risk engine, scoring, notifications, growth engine, signal engine, builder integration, Outcome Ledger + Scorecard (Sprint 9), and 92 dashboard pages.
 
+**Canonical operator home:** `https://evenslouis.ca/pro/dashboard` (isolated Compose `pro` service on `:3204`, ADR 007). Public site remains `https://evenslouis.ca` (`:3200`).
+
 ## Active Work
 
-### Performance Refactor (Phase 1 — Done, pending production deploy)
+### `/pro` cutover (current)
+- [x] Isolated `/pro` basePath deploy on main (PR #10 / ADR 007)
+- [x] VPS: `pro` healthy on `127.0.0.1:3204`; Caddy `/pro*`; login → `/pro/dashboard`; `/pro/api/health`
+- [ ] Finish Sprint 1–9 checklist smoke at `/pro/...` URLs ([DEPLOY_CHECKLIST_SPRINTS_1_9.md](docs/DEPLOY_CHECKLIST_SPRINTS_1_9.md) §5)
+- [ ] Redirect `evenslouis.pro` → `https://evenslouis.ca/pro` after smoke
+- [ ] Keep docs/smoke/E2E pointed at `/pro` for operator paths
+
+### Performance Refactor (Phase 1 — Done)
 - [x] Add 6 composite database indexes
 - [x] Fix unbounded queries in metrics
 - [x] Parallelize sequential queries (3 files)
@@ -15,7 +24,7 @@ Phase 9+ complete. Full business OS operational with AI Brain, 10 agents, memory
 - [x] Add cache to fetchBottlenecks
 - [x] Fix LIKE pattern full scan
 - [x] Playwright review: all pages pass, zero console errors
-- [ ] Apply indexes to production (`prisma db push` on VPS)
+- [x] Apply indexes to production (`db4c0de`)
 
 ### Documentation System — Done
 - [x] CLAUDE.md, ARCHITECTURE.md, CONTRIBUTING.md, CHANGELOG.md, ROADMAP.md

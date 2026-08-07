@@ -13,6 +13,8 @@ ACCEPT → PROPOSE → BUILD. Nothing ships unless explicitly allowed.
 
 **Baseline:** main = deployable truth (auth, schema, API hardening, health, retry, dry-run, error classifier, E2E scaffold).
 
+**Canonical operator home (2026-08):** `https://evenslouis.ca/pro/dashboard` via isolated Compose `pro` service (`NEXT_PUBLIC_BASE_PATH=/pro` on `:3204`). Public site stays at `https://evenslouis.ca` (`:3200`). See ADR 007. Do not start Architecture Phase 2–4 until `/pro` cut + smoke are closed.
+
 ---
 
 ## 1. What ships now (client-engine-1 — “Money Path Machine”)
