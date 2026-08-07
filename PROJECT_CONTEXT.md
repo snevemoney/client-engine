@@ -227,9 +227,3 @@ Before deploy to production, ensure:
 ---
 
 **Cursor:** Read this file first in new chats. Treat it as the single source of truth for what ships now, what’s next, and what’s out of scope.
-
----
-
-## Hive pack (added)
-
-Also see  and . Hub canon: snevemoney/n8n-cursor .
