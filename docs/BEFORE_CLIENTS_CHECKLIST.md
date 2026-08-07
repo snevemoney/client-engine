@@ -9,8 +9,8 @@ Run before any client call, demo, screenshare, or proposal send.
 
 | # | Check | How | Pass | Fail → do this |
 |---|-------|-----|------|-----------------|
-| 1 | **Health** | `curl -s https://evenslouis.ca/api/health` | 200, `ok: true`, all checks green | Do not demo. Fix health first (see [VPS_DEPLOY_CHECKLIST.md](VPS_DEPLOY_CHECKLIST.md)) |
-| 2 | **Command Center** | Open `/dashboard/command` | Scorecard, Failures, Constraint all render with current data | If cards are blank → check last workday run, restart app |
+| 1 | **Health** | `curl -s https://evenslouis.ca/pro/api/health` (and root `/api/health`) | 200, `ok: true`, all checks green | Do not demo. Fix health first (see [VPS_DEPLOY_CHECKLIST.md](VPS_DEPLOY_CHECKLIST.md)) |
+| 2 | **Command Center** | Open `/pro/dashboard/command` (or founder home) | Scorecard, Failures, Constraint all render with current data | If cards are blank → check last workday run, restart app |
 | 3 | **Target lead** | Open the lead(s) you'll reference | Artifacts present, proposal content correct, no stale data | If missing → run pipeline or check for errors |
 | 4 | **Proposal console** | Open the relevant proposal at `/dashboard/proposals/[id]` | Sections render, snippet correct, ready/sent toggles work | If stale → revise proposal before the call |
 | 5 | **No visible errors** | Open browser DevTools Console on pages you'll show | No red errors | Fix or note before screensharing |

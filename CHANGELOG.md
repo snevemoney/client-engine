@@ -7,6 +7,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ### Added
 - Path-aware `/pro` production build: environment-driven Next.js base path, prefixed browser API/navigation helpers, and an isolated Docker Compose service on `127.0.0.1:3204` while preserving the root `:3200` app.
+- Operator/docs cutover for canonical home `https://evenslouis.ca/pro`: smoke-test covers public + `/pro`, deploy checklists and README/ROADMAP point operator paths at `/pro`, Auth.js origin-only `NEXTAUTH_URL` + `AUTH_TRUST_HOST` documented.
+
+## [2026-08-07] — /pro on main
+
+### Added
+- Merged isolated `/pro` basePath deployment onto `main` (PR #10 / ADR 007).
+- Session notes: `docs/sessions/2026-08-06-pro-domain-migration.md`, `docs/sessions/2026-08-07-pro-cutover-main.md`.
 
 ### Fixed
 - Conversion page crash "Cannot read properties of undefined (reading 'winRate')" — API now returns page-expected shape (counts.total/won/lost, rates.winRate, medianMs); fetchConversionInput adds won/lost from Lead.dealOutcome; route maps to counts/rates/medianMs; page useEffect uses defensive guards

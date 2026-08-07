@@ -8,7 +8,8 @@
 |----------|----------|--------|
 | `DATABASE_URL` | Yes | PostgreSQL connection string |
 | `AUTH_SECRET` | Yes | NextAuth secret; generate with `openssl rand -base64 32` |
-| `NEXTAUTH_URL` | Yes | Full app URL e.g. `https://evenslouis.ca` |
+| `NEXTAUTH_URL` | Yes | Origin only e.g. `https://evenslouis.ca` (**no** `/pro` path) |
+| `AUTH_TRUST_HOST` | Yes (for `/pro`) | `true` — required by Compose `pro` service |
 | `ADMIN_EMAIL` | For login | Used by seed/reset-auth to create the single admin user (default `admin@evenslouis.ca`) |
 | `ADMIN_PASSWORD` | For login | Used by seed/reset-auth; use the same value when you run reset-auth and when you log in (default `changeme`) |
 | `OPENAI_API_KEY` | For pipeline | Omit or use dry-run for no LLM calls |
@@ -107,23 +108,25 @@ Run immediately after every production deploy. Do not skip.
 ### Automated (fast, 30 seconds)
 
 ```bash
-# Curl-based smoke test
-./scripts/smoke-test.sh https://evenslouis.ca
+# Curl-based smoke test (public site + /pro operator)
+./scripts/smoke-test.sh https://evenslouis.ca https://evenslouis.ca/pro
 
 # Health only
 curl -s https://evenslouis.ca/api/health
+curl -s https://evenslouis.ca/pro/api/health
 ```
 
 Both must pass. If health check fails, **rollback immediately** (see below).
 
 ### Manual production checks (MCP browser or real browser, 3-5 min)
 
-- [ ] **Login:** Open `https://evenslouis.ca/login`, log in → dashboard loads
+- [ ] **Operator login:** Open `https://evenslouis.ca/pro/login`, log in → `/pro/dashboard` loads
+- [ ] **Pro health:** `curl -s https://evenslouis.ca/pro/api/health` → 200
 - [ ] **Command Center:** Scorecard renders, Failures card renders, data is current
 - [ ] **One lead detail:** Open any lead → artifacts load, pipeline actions visible
 - [ ] **Proposals:** List loads, at least one proposal visible (if any exist)
 - [ ] **Metrics:** Page loads, recent runs visible
-- [ ] **API auth gate:** `curl -s https://evenslouis.ca/api/leads` → 401 (confirms auth is working)
+- [ ] **API auth gate:** `curl -s https://evenslouis.ca/pro/api/leads` → 401 (confirms auth is working)
 - [ ] **SSL:** Certificate valid (smoke-test.sh checks this for HTTPS)
 
 If any check fails after deploy, rollback first, investigate second. See `docs/DEPLOY_SSH_SETUP.md` for rollback commands.

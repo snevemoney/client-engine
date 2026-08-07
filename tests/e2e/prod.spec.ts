@@ -1,7 +1,9 @@
 /**
  * Production audit: health, DB checks, every page, key flows, silent fails, render speed.
  *
- * Run against prod: E2E_ALLOW_MUTATIONS=1 USE_EXISTING_SERVER=1 PLAYWRIGHT_BASE_URL=https://evenslouis.ca E2E_EMAIL=... E2E_PASSWORD=... AGENT_CRON_SECRET=<prod-secret> npm run test:e2e tests/e2e/prod.spec.ts
+ * Run against prod operator OS:
+ * E2E_ALLOW_MUTATIONS=1 USE_EXISTING_SERVER=1 PLAYWRIGHT_BASE_URL=https://evenslouis.ca/pro E2E_EMAIL=... E2E_PASSWORD=... AGENT_CRON_SECRET=<prod-secret> npm run test:e2e tests/e2e/prod.spec.ts
+ * (NEXTAUTH_URL on server must be origin-only — https://evenslouis.ca — never with /pro)
  *
  * Local (existing server): Add AGENT_CRON_SECRET or RESEARCH_CRON_SECRET to .env (see .env.example) and restart dev server.
  */

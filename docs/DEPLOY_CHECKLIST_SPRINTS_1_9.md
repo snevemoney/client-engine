@@ -84,8 +84,10 @@ Deploy scripts run `prisma migrate deploy` automatically. If deploying manually:
 
 ## 5. Smoke Test Production (do these manually)
 
+**Use operator URLs under `https://evenslouis.ca/pro/...`** (isolated `pro` service). Public proof/campaign/portal pages remain on the root host unless product intent moves them.
+
 ### Critical path — must all work
-- [ ] **Login** — dashboard loads, no blank screens
+- [ ] **Login** — `https://evenslouis.ca/pro/login` → `/pro/dashboard` loads, no blank screens
 - [ ] **Sidebar** — shows all 6 groups: Capture, Convert, Build, Prove, Optimize, System
 - [ ] **Create a lead** — fill form, submit, verify it appears in pipeline
 - [ ] **Pipeline view** — leads visible with correct status badges
