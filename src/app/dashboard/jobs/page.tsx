@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
@@ -96,8 +97,8 @@ export default function JobsPage() {
     params.set("pageSize", String(pageSize));
     try {
       const [listRes, summaryRes] = await Promise.all([
-        fetch(`/api/jobs?${params}`, { credentials: "include", signal: controller.signal, cache: "no-store" }),
-        fetch("/api/jobs/summary", { credentials: "include", signal: controller.signal, cache: "no-store" }),
+        fetch(apiPath(`/api/jobs?${params}`), { credentials: "include", signal: controller.signal, cache: "no-store" }),
+        fetch(apiPath("/api/jobs/summary"), { credentials: "include", signal: controller.signal, cache: "no-store" }),
       ]);
       if (controller.signal.aborted || runId !== runIdRef.current) return;
       const listData = listRes.ok ? await listRes.json() : null;
@@ -137,7 +138,7 @@ export default function JobsPage() {
   const handleRun = async () => {
     setRunLoading(true);
     try {
-      const res = await fetch("/api/jobs/run", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ limit: 10 }) });
+      const res = await fetch(apiPath("/api/jobs/run"), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ limit: 10 }) });
       const data = await res.json();
       if (res.ok) void fetchData();
       else toast.error(data?.error ?? "Run failed");
@@ -152,7 +153,7 @@ export default function JobsPage() {
     if (actioningId) return;
     setActioningId(id);
     try {
-      const res = await fetch(`/api/jobs/${id}/retry`, { method: "POST" });
+      const res = await fetch(apiPath(`/api/jobs/${id}/retry`), { method: "POST" });
       if (res.ok) void fetchData();
       else {
         const d = await res.json().catch(() => null);
@@ -171,7 +172,7 @@ export default function JobsPage() {
     if (actioningId) return;
     setActioningId(id);
     try {
-      const res = await fetch(`/api/jobs/${id}/cancel`, { method: "POST" });
+      const res = await fetch(apiPath(`/api/jobs/${id}/cancel`), { method: "POST" });
       if (res.ok) void fetchData();
       else {
         const d = await res.json().catch(() => null);
@@ -229,7 +230,7 @@ export default function JobsPage() {
           onClick={async () => {
             setTickLoading(true);
             try {
-              const res = await fetch("/api/jobs/tick", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) });
+              const res = await fetch(apiPath("/api/jobs/tick"), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) });
               if (res.ok) void fetchData();
               else { const d = await res.json().catch(() => null); toast.error(d?.error ?? "Tick failed"); }
             } catch (e) {
@@ -261,7 +262,7 @@ export default function JobsPage() {
             onClick={async () => {
               setRetryAllLoading(true);
               try {
-                const res = await fetch("/api/jobs/retry-failed", { method: "POST" });
+                const res = await fetch(apiPath("/api/jobs/retry-failed"), { method: "POST" });
                 const data = await res.json();
                 if (res.ok) {
                   toast.success(`Retried ${data.retried} failed job(s)`);

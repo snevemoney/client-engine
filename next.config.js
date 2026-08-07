@@ -1,7 +1,8 @@
 /** @type {import('next').NextConfig} */
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
 const nextConfig = {
-  // Disable static optimization for API routes
+  basePath,
+  output: "standalone",
   staticPageGenerationTimeout: 300,
 };
-
 module.exports = nextConfig;

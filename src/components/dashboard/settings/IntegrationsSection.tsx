@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
@@ -141,7 +142,7 @@ export function IntegrationsSection() {
   const [testResult, setTestResult] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/integrations")
+    fetch(apiPath("/api/integrations"))
       .then((r) => r.json())
       .then((data) => setItems(data?.items ?? []))
       .finally(() => setLoading(false));
@@ -204,7 +205,7 @@ export function IntegrationsSection() {
           qpEntries.length > 0 ? Object.fromEntries(qpEntries) : undefined;
       }
       const hasCredentials = fields.some((f) => (configValues[f.key] ?? "").trim().length > 0);
-      const res = await fetch(`/api/integrations/${configOpen.key}`, {
+      const res = await fetch(apiPath(`/api/integrations/${configOpen.key}`), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -268,7 +269,7 @@ export function IntegrationsSection() {
   async function testConnection(item: Item) {
     setTestResult(null);
     try {
-      const res = await fetch(`/api/integrations/${item.key}/test`, { method: "POST" });
+      const res = await fetch(apiPath(`/api/integrations/${item.key}/test`), { method: "POST" });
       const data = await res.json();
       const msg = data.message ?? (data.ok ? "OK" : "Failed");
       if (data.ok) {
@@ -277,7 +278,7 @@ export function IntegrationsSection() {
         setTestResult(`✗ ${msg}`);
       }
       if (res.ok && data.ok) {
-        const listRes = await fetch("/api/integrations");
+        const listRes = await fetch(apiPath("/api/integrations"));
         const listData = await listRes.json();
         setItems(listData?.items ?? items);
       }
@@ -290,7 +291,7 @@ export function IntegrationsSection() {
     const label = item.connection.displayName ?? item.name ?? item.key;
     if (!confirm(`Disconnect ${label}?`)) return;
     try {
-      const res = await fetch(`/api/integrations/${item.key}/disconnect`, { method: "POST" });
+      const res = await fetch(apiPath(`/api/integrations/${item.key}/disconnect`), { method: "POST" });
       if (res.ok) {
         setItems((prev) =>
           prev.map((i) =>

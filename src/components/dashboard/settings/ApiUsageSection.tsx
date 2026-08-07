@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useEffect, useState, useCallback } from "react";
 
@@ -34,7 +35,7 @@ export function ApiUsageSection() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/integrations/usage?period=${period}`);
+      const res = await fetch(apiPath(`/api/integrations/usage?period=${period}`));
       if (res.ok) setData(await res.json());
     } finally {
       setLoading(false);

@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useBrainPanel } from "@/contexts/BrainPanelContext";
@@ -106,10 +107,10 @@ export function RiskClient({ initialData }: { initialData: RiskInitialData }) {
     params.set("pageSize", String(pageSize));
     try {
       const [data, sum] = await Promise.all([
-        fetch(`/api/risk?${params}`, { credentials: "include", signal: controller.signal, cache: "no-store" }).then(
+        fetch(apiPath(`/api/risk?${params}`), { credentials: "include", signal: controller.signal, cache: "no-store" }).then(
           (r) => (r.ok ? r.json() : null)
         ),
-        fetch("/api/risk/summary", { credentials: "include", signal: controller.signal, cache: "no-store" }).then(
+        fetch(apiPath("/api/risk/summary"), { credentials: "include", signal: controller.signal, cache: "no-store" }).then(
           (r) => (r.ok ? r.json() : null)
         ),
       ]);

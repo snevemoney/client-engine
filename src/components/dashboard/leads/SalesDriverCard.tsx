@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState } from "react";
 import { toast } from "sonner";
@@ -69,7 +70,7 @@ export function SalesDriverCard({ leadId, lead, onUpdate, updateField }: SalesDr
   const handleSaveDriver = async () => {
     setSaving(true);
     try {
-      const res = await fetch(`/api/leads/${leadId}/driver`, {
+      const res = await fetch(apiPath(`/api/leads/${leadId}/driver`), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -96,7 +97,7 @@ export function SalesDriverCard({ leadId, lead, onUpdate, updateField }: SalesDr
   const handleAiFill = async () => {
     setAiFilling(true);
     try {
-      const res = await fetch(`/api/leads/${leadId}/driver/ai-fill`, { method: "POST" });
+      const res = await fetch(apiPath(`/api/leads/${leadId}/driver/ai-fill`), { method: "POST" });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
         toast.error(data?.error ?? "AI fill failed");
@@ -137,7 +138,7 @@ export function SalesDriverCard({ leadId, lead, onUpdate, updateField }: SalesDr
   const handleSaveQualification = async () => {
     setSavingQual(true);
     try {
-      const res = await fetch(`/api/leads/${leadId}/qualification`, {
+      const res = await fetch(apiPath(`/api/leads/${leadId}/qualification`), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(scores),

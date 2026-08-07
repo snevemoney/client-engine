@@ -1,3 +1,4 @@
+import { apiPath } from "@/lib/base-path";
 /**
  * Client helpers for the proposal console: fetch and patch proposal artifacts.
  * Uses GET/PATCH /api/artifacts/[id] with content and proposalConsole shape.
@@ -33,7 +34,7 @@ export type ProposalConsoleArtifact = {
 };
 
 export async function fetchProposalArtifact(id: string): Promise<ProposalConsoleArtifact> {
-  const res = await fetch(`/api/artifacts/${id}`, { cache: "no-store" });
+  const res = await fetch(apiPath(`/api/artifacts/${id}`), { cache: "no-store" });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error((err as { error?: string }).error ?? "Failed to load proposal artifact");
@@ -53,7 +54,7 @@ export async function patchProposalArtifact(
     meta?: Record<string, unknown>;
   }
 ): Promise<{ artifact: ProposalConsoleArtifact }> {
-  const res = await fetch(`/api/artifacts/${id}`, {
+  const res = await fetch(apiPath(`/api/artifacts/${id}`), {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),

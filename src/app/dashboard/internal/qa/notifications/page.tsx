@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
@@ -66,8 +67,8 @@ export default function NotificationsQAPage() {
   const fetchSystemData = useCallback(async () => {
     try {
       const [check, metricsRes] = await Promise.all([
-        fetch("/api/internal/system/check", { credentials: "include", cache: "no-store" }).then((r) => (r.ok ? r.json() : null)),
-        fetch("/api/internal/ops/metrics-summary?period=24h", { credentials: "include", cache: "no-store" }).then((r) => (r.ok ? r.json() : null)),
+        fetch(apiPath("/api/internal/system/check"), { credentials: "include", cache: "no-store" }).then((r) => (r.ok ? r.json() : null)),
+        fetch(apiPath("/api/internal/ops/metrics-summary?period=24h"), { credentials: "include", cache: "no-store" }).then((r) => (r.ok ? r.json() : null)),
       ]);
       setSystemCheck(check);
       setMetrics(metricsRes);

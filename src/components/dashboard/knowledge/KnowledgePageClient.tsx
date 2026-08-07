@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useCallback, useEffect } from "react";
 import { toast } from "sonner";
@@ -149,7 +150,7 @@ export function KnowledgePageClient({
 
   async function refreshKnowledge() {
     try {
-      const res = await fetch("/api/knowledge?limit=30");
+      const res = await fetch(apiPath("/api/knowledge?limit=30"));
       if (res.ok) {
         const list = await res.json();
         setRuns(list.runs ?? []);
@@ -163,7 +164,7 @@ export function KnowledgePageClient({
 
   async function loadProposals() {
     try {
-      const res = await fetch("/api/youtube/learning?limit=30");
+      const res = await fetch(apiPath("/api/youtube/learning?limit=30"));
       if (res.ok) {
         const d = await res.json();
         setProposals(d.proposals ?? []);
@@ -246,7 +247,7 @@ function SearchTab() {
     setLoading(true);
     setSearched(true);
     try {
-      const res = await fetch(`/api/knowledge/search?q=${encodeURIComponent(q)}&topK=15`);
+      const res = await fetch(apiPath(`/api/knowledge/search?q=${encodeURIComponent(q)}&topK=15`));
       if (res.ok) {
         const data = await res.json();
         setResults(data.results ?? []);
@@ -350,7 +351,7 @@ function IngestTab({ onRefresh }: { onRefresh: () => void }) {
     setLoading(true);
     setResult(null);
     try {
-      const res = await fetch("/api/knowledge/ingest", {
+      const res = await fetch(apiPath("/api/knowledge/ingest"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ videoUrl: url }),
@@ -373,7 +374,7 @@ function IngestTab({ onRefresh }: { onRefresh: () => void }) {
     setLoading(true);
     setResult(null);
     try {
-      const res = await fetch("/api/knowledge/ingest", {
+      const res = await fetch(apiPath("/api/knowledge/ingest"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ channelUrl: url, maxVideos }),
@@ -395,7 +396,7 @@ function IngestTab({ onRefresh }: { onRefresh: () => void }) {
     if (!url) return;
     setQueueMessage(null);
     try {
-      const res = await fetch("/api/knowledge/queue", {
+      const res = await fetch(apiPath("/api/knowledge/queue"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url, type: queueType, maxVideos: queueType === "channel" ? 5 : undefined }),
@@ -705,7 +706,7 @@ function SuggestionRow({
   async function patch(updates: { status?: string; produced?: string }) {
     setUpdating(true);
     try {
-      const res = await fetch(`/api/knowledge/suggestions/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(updates) });
+      const res = await fetch(apiPath(`/api/knowledge/suggestions/${id}`), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(updates) });
       if (res.ok) onUpdate();
       else toast.error("Failed to update suggestion");
     } catch { toast.error("Failed to update suggestion"); }

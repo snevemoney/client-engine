@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
@@ -19,7 +20,7 @@ export function RevenueIntelligenceWeeklyStats() {
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/metrics/summary").then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch(apiPath("/api/metrics/summary")).then((r) => (r.ok ? r.json() : null)).catch(() => null),
     ])
       .then(([summary]) => {
         if (summary && typeof summary === "object") {

@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -98,12 +99,12 @@ export function DeliveryHandoffRetention({
 
   const handleStartHandoff = () =>
     run("handoff-start", () =>
-      fetch(`/api/delivery-projects/${project.id}/handoff/start`, { method: "POST" })
+      fetch(apiPath(`/api/delivery-projects/${project.id}/handoff/start`), { method: "POST" })
     );
 
   const handleCompleteHandoff = () =>
     run("handoff-complete", () =>
-      fetch(`/api/delivery-projects/${project.id}/handoff/complete`, {
+      fetch(apiPath(`/api/delivery-projects/${project.id}/handoff/complete`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ handoffSummary: handoffSummary || null, handoffOwner: handoffOwner || null }),
@@ -112,7 +113,7 @@ export function DeliveryHandoffRetention({
 
   const handleClientConfirm = () =>
     run("client-confirm", () =>
-      fetch(`/api/delivery-projects/${project.id}/client-confirm`, {
+      fetch(apiPath(`/api/delivery-projects/${project.id}/client-confirm`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ note: clientConfirmNote || null }),
@@ -121,12 +122,12 @@ export function DeliveryHandoffRetention({
 
   const handleTestimonialRequest = () =>
     run("testimonial-request", () =>
-      fetch(`/api/delivery-projects/${project.id}/testimonial/request`, { method: "POST" })
+      fetch(apiPath(`/api/delivery-projects/${project.id}/testimonial/request`), { method: "POST" })
     );
 
   const handleTestimonialReceive = () =>
     run("testimonial-receive", () =>
-      fetch(`/api/delivery-projects/${project.id}/testimonial/receive`, {
+      fetch(apiPath(`/api/delivery-projects/${project.id}/testimonial/receive`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ quote: testimonialQuote || null, sourceUrl: testimonialSourceUrl || null }),
@@ -135,12 +136,12 @@ export function DeliveryHandoffRetention({
 
   const handleTestimonialDecline = () =>
     run("testimonial-decline", () =>
-      fetch(`/api/delivery-projects/${project.id}/testimonial/decline`, { method: "POST" })
+      fetch(apiPath(`/api/delivery-projects/${project.id}/testimonial/decline`), { method: "POST" })
     );
 
   const handleReviewRequest = () =>
     run("review-request", () =>
-      fetch(`/api/delivery-projects/${project.id}/review/request`, {
+      fetch(apiPath(`/api/delivery-projects/${project.id}/review/request`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ platform: reviewPlatform || null }),
@@ -149,7 +150,7 @@ export function DeliveryHandoffRetention({
 
   const handleReviewReceive = () =>
     run("review-receive", () =>
-      fetch(`/api/delivery-projects/${project.id}/review/receive`, {
+      fetch(apiPath(`/api/delivery-projects/${project.id}/review/receive`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ platform: reviewPlatform || null, reviewUrl: reviewUrl || null }),
@@ -158,12 +159,12 @@ export function DeliveryHandoffRetention({
 
   const handleReferralRequest = () =>
     run("referral-request", () =>
-      fetch(`/api/delivery-projects/${project.id}/referral/request`, { method: "POST" })
+      fetch(apiPath(`/api/delivery-projects/${project.id}/referral/request`), { method: "POST" })
     );
 
   const handleReferralReceive = () =>
     run("referral-receive", () =>
-      fetch(`/api/delivery-projects/${project.id}/referral/receive`, {
+      fetch(apiPath(`/api/delivery-projects/${project.id}/referral/receive`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ notes: referralNotes || null }),
@@ -172,12 +173,12 @@ export function DeliveryHandoffRetention({
 
   const handleReferralDecline = () =>
     run("referral-decline", () =>
-      fetch(`/api/delivery-projects/${project.id}/referral/decline`, { method: "POST" })
+      fetch(apiPath(`/api/delivery-projects/${project.id}/referral/decline`), { method: "POST" })
     );
 
   const handleRetentionSchedule = () =>
     run("retention-schedule", () =>
-      fetch(`/api/delivery-projects/${project.id}/retention/schedule`, {
+      fetch(apiPath(`/api/delivery-projects/${project.id}/retention/schedule`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ nextFollowUpAt: new Date(scheduleDate).toISOString() }),
@@ -186,7 +187,7 @@ export function DeliveryHandoffRetention({
 
   const handleRetentionSnooze = () =>
     run("retention-snooze", () =>
-      fetch(`/api/delivery-projects/${project.id}/retention/snooze`, {
+      fetch(apiPath(`/api/delivery-projects/${project.id}/retention/snooze`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -198,7 +199,7 @@ export function DeliveryHandoffRetention({
 
   const handleLogEmail = () =>
     run("log-email", () =>
-      fetch(`/api/delivery-projects/${project.id}/retention/log-email`, {
+      fetch(apiPath(`/api/delivery-projects/${project.id}/retention/log-email`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
@@ -207,7 +208,7 @@ export function DeliveryHandoffRetention({
 
   const handleLogCall = () =>
     run("log-call", () =>
-      fetch(`/api/delivery-projects/${project.id}/retention/log-call`, {
+      fetch(apiPath(`/api/delivery-projects/${project.id}/retention/log-call`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
@@ -216,7 +217,7 @@ export function DeliveryHandoffRetention({
 
   const handleRetentionComplete = () =>
     run("retention-complete", () =>
-      fetch(`/api/delivery-projects/${project.id}/retention/complete`, {
+      fetch(apiPath(`/api/delivery-projects/${project.id}/retention/complete`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -230,7 +231,7 @@ export function DeliveryHandoffRetention({
 
   const handleRetentionStatus = () =>
     run("retention-status", () =>
-      fetch(`/api/delivery-projects/${project.id}/retention/status`, {
+      fetch(apiPath(`/api/delivery-projects/${project.id}/retention/status`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ retentionStatus: retentionStatus }),
@@ -239,7 +240,7 @@ export function DeliveryHandoffRetention({
 
   const handleUpsell = () =>
     run("upsell", () =>
-      fetch(`/api/delivery-projects/${project.id}/upsell`, {
+      fetch(apiPath(`/api/delivery-projects/${project.id}/upsell`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

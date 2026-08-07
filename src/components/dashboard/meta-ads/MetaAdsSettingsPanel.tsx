@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useEffect, useState, useCallback } from "react";
 import { Save, RotateCcw, Play } from "lucide-react";
@@ -48,7 +49,7 @@ export default function MetaAdsSettingsPanel() {
   const [autoApproveRuleKeysInput, setAutoApproveRuleKeysInput] = useState("");
 
   const fetchSettings = useCallback(() => {
-    fetch("/api/meta-ads/settings")
+    fetch(apiPath("/api/meta-ads/settings"))
       .then((res) => res.json())
       .then((json) => {
         const s = json.settings;
@@ -108,7 +109,7 @@ export default function MetaAdsSettingsPanel() {
         .map((s) => s.trim())
         .filter(Boolean);
       const ruleKeys = autoApproveRuleKeysInput.split(/[\s,]+/).map((s) => s.trim()).filter(Boolean);
-      const res = await fetch("/api/meta-ads/settings", {
+      const res = await fetch(apiPath("/api/meta-ads/settings"), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -160,7 +161,7 @@ export default function MetaAdsSettingsPanel() {
     setRunLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/meta-ads/scheduler/run", { method: "POST" });
+      const res = await fetch(apiPath("/api/meta-ads/scheduler/run"), { method: "POST" });
       const json = await res.json();
       if (json.ok !== false && json.status !== "skipped") {
         fetchSettings();

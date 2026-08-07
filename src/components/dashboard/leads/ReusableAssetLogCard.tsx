@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect } from "react";
 import { Package, Plus } from "lucide-react";
@@ -44,7 +45,7 @@ export function ReusableAssetLogCard({ leadId }: { leadId: string }) {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    fetch(`/api/leads/${leadId}/reusable-assets`)
+    fetch(apiPath(`/api/leads/${leadId}/reusable-assets`))
       .then((r) => (r.ok ? r.json() : []))
       .then((data) => {
         setLogs(Array.isArray(data) ? data : []);
@@ -55,7 +56,7 @@ export function ReusableAssetLogCard({ leadId }: { leadId: string }) {
   async function submitLog() {
     setSaving(true);
     try {
-      const res = await fetch(`/api/leads/${leadId}/reusable-assets`, {
+      const res = await fetch(apiPath(`/api/leads/${leadId}/reusable-assets`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

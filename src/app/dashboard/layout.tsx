@@ -1,3 +1,4 @@
+import { getBasePath } from "@/lib/base-path";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { SessionProvider } from "next-auth/react";
@@ -14,11 +15,14 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const session = await auth();
 
   if (!session?.user) {
+    // next/navigation redirect() already applies basePath.
     redirect("/login");
   }
 
+  const authBasePath = `${getBasePath()}/api/auth`;
+
   return (
-    <SessionProvider session={session}>
+    <SessionProvider session={session} basePath={authBasePath}>
       <BrainPanelProvider>
         <div className="flex min-h-screen flex-col md:flex-row">
           <Sidebar />

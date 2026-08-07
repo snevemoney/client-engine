@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
@@ -33,7 +34,7 @@ export function OutcomeEditor({
 
   useEffect(() => {
     let cancelled = false;
-    fetch(`/api/projects/${projectId}/outcome`)
+    fetch(apiPath(`/api/projects/${projectId}/outcome`))
       .then((r) => (r.ok ? r.json() : null))
       .then((data: OutcomeData | null) => {
         if (cancelled) return;
@@ -76,7 +77,7 @@ export function OutcomeEditor({
             : null,
         lessonsLearned: lessonsLearned.trim() || null,
       };
-      const res = await fetch(`/api/projects/${projectId}/outcome`, {
+      const res = await fetch(apiPath(`/api/projects/${projectId}/outcome`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),

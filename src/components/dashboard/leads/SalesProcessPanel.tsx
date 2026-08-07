@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -100,7 +101,7 @@ export function SalesProcessPanel({
     if (!touchSummary.trim()) return;
     setSavingTouch(true);
     try {
-      const res = await fetch(`/api/leads/${leadId}/touches`, {
+      const res = await fetch(apiPath(`/api/leads/${leadId}/touches`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -133,7 +134,7 @@ export function SalesProcessPanel({
     if (!refName.trim()) return;
     setSavingRef(true);
     try {
-      const res = await fetch(`/api/leads/${leadId}/referrals`, {
+      const res = await fetch(apiPath(`/api/leads/${leadId}/referrals`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

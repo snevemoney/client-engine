@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
@@ -119,7 +120,7 @@ function PaymentBadge({
     const v = e.target.value as "unpaid" | "invoiced" | "partial" | "paid";
     setSaving(true);
     try {
-      const res = await fetch(`/api/projects/${project.id}`, {
+      const res = await fetch(apiPath(`/api/projects/${project.id}`), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ paymentStatus: v }),
@@ -220,7 +221,7 @@ function DeployRow({
     setSaving(true);
     setSaved(false);
     try {
-      const res = await fetch(`/api/projects/${project.id}`, {
+      const res = await fetch(apiPath(`/api/projects/${project.id}`), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ demoUrl: demoUrl.trim() || null }),

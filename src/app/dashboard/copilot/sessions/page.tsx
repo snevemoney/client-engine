@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
@@ -50,7 +51,7 @@ export default function SessionsPage() {
   useEffect(() => {
     const controller = new AbortController();
     listAbortRef.current = controller;
-    fetch("/api/internal/copilot/sessions", { credentials: "include", signal: controller.signal })
+    fetch(apiPath("/api/internal/copilot/sessions"), { credentials: "include", signal: controller.signal })
       .then((r) => r.json())
       .then((d) => {
         if (!controller.signal.aborted) setSessions(d.sessions ?? []);
@@ -72,7 +73,7 @@ export default function SessionsPage() {
     if (detailAbortRef.current) detailAbortRef.current.abort();
     const controller = new AbortController();
     detailAbortRef.current = controller;
-    fetch(`/api/internal/copilot/sessions/${selectedId}`, { credentials: "include", signal: controller.signal })
+    fetch(apiPath(`/api/internal/copilot/sessions/${selectedId}`), { credentials: "include", signal: controller.signal })
       .then((r) => r.json())
       .then((d) => {
         if (!controller.signal.aborted) setSelected(d);

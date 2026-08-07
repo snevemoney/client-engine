@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect } from "react";
 import { BookMarked, Package } from "lucide-react";
@@ -75,7 +76,7 @@ export function LearningPageClient({
 
   async function updateProposalMeta(artifactId: string, updates: ProposalMetaUpdate) {
     try {
-      const res = await fetch(`/api/learning/proposal/${artifactId}`, {
+      const res = await fetch(apiPath(`/api/learning/proposal/${artifactId}`), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updates),
@@ -84,7 +85,7 @@ export function LearningPageClient({
         toast.error("Failed to update proposal");
         return;
       }
-      const listRes = await fetch("/api/learning?limit=30");
+      const listRes = await fetch(apiPath("/api/learning?limit=30"));
       if (listRes.ok) {
         const list = await listRes.json();
         setProposals(list.proposals ?? []);
@@ -104,7 +105,7 @@ export function LearningPageClient({
         urlType === "channel"
           ? { channelUrl: trimmed, maxVideos: 10 }
           : { videoUrl: trimmed };
-      const res = await fetch("/api/learning/ingest", {
+      const res = await fetch(apiPath("/api/learning/ingest"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -121,7 +122,7 @@ export function LearningPageClient({
           : (data.errors ?? []).join("; "),
       });
       setUrl("");
-      const listRes = await fetch("/api/learning?limit=30");
+      const listRes = await fetch(apiPath("/api/learning?limit=30"));
       if (listRes.ok) {
         const list = await listRes.json();
         setRuns(list.runs ?? []);

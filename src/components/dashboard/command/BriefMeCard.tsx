@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState } from "react";
 import { ClipboardList } from "lucide-react";
@@ -29,7 +30,7 @@ export function BriefMeCard({ initialBrief }: { initialBrief: Brief | null }) {
   async function handleBrief() {
     setLoading(true);
     try {
-      const res = await fetch("/api/ops/brief", { method: "POST" });
+      const res = await fetch(apiPath("/api/ops/brief"), { method: "POST" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Brief failed");
       setBrief(data.brief);

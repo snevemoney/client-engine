@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { toast } from "sonner";
@@ -51,9 +52,9 @@ export default function OperatorPage() {
     setError(null);
     try {
       const [current, histW, histM] = await Promise.all([
-        fetch("/api/operator-score/current", { credentials: "include", signal: controller.signal, cache: "no-store" }).then((r) => (r.ok ? r.json() : Promise.reject(new Error("Failed to load operator score")))),
-        fetch("/api/operator-score/history?periodType=weekly&limit=8", { credentials: "include", signal: controller.signal, cache: "no-store" }).then((r) => (r.ok ? r.json() : null)),
-        fetch("/api/operator-score/history?periodType=monthly&limit=6", { credentials: "include", signal: controller.signal, cache: "no-store" }).then((r) => (r.ok ? r.json() : null)),
+        fetch(apiPath("/api/operator-score/current"), { credentials: "include", signal: controller.signal, cache: "no-store" }).then((r) => (r.ok ? r.json() : Promise.reject(new Error("Failed to load operator score")))),
+        fetch(apiPath("/api/operator-score/history?periodType=weekly&limit=8"), { credentials: "include", signal: controller.signal, cache: "no-store" }).then((r) => (r.ok ? r.json() : null)),
+        fetch(apiPath("/api/operator-score/history?periodType=monthly&limit=6"), { credentials: "include", signal: controller.signal, cache: "no-store" }).then((r) => (r.ok ? r.json() : null)),
       ]);
       if (controller.signal.aborted) return;
       setData(current && typeof current === "object" ? current : null);

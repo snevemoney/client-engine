@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -33,7 +34,7 @@ export function ProofEditor({
   async function save() {
     setSaving(true);
     try {
-      const res = await fetch(`/api/projects/${project.id}`, {
+      const res = await fetch(apiPath(`/api/projects/${project.id}`), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -52,7 +53,7 @@ export function ProofEditor({
   async function togglePublish() {
     setPublishing(true);
     try {
-      const res = await fetch(`/api/projects/${project.id}`, {
+      const res = await fetch(apiPath(`/api/projects/${project.id}`), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

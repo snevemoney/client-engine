@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
@@ -23,7 +24,7 @@ export function RoiEstimateCard({ leadId, onRoiGenerated }: { leadId: string; on
   const [generating, setGenerating] = useState(false);
 
   function fetchRoi() {
-    fetch(`/api/leads/${leadId}/roi`)
+    fetch(apiPath(`/api/leads/${leadId}/roi`))
       .then((r) => r.ok ? r.json() : null)
       .then((data) => {
         if (data?.estimate) {
@@ -45,7 +46,7 @@ export function RoiEstimateCard({ leadId, onRoiGenerated }: { leadId: string; on
   async function generateRoi() {
     setGenerating(true);
     try {
-      const res = await fetch(`/api/leads/${leadId}/roi`, { method: "POST" });
+      const res = await fetch(apiPath(`/api/leads/${leadId}/roi`), { method: "POST" });
       if (res.ok) {
         const data = await res.json();
         setEstimate(data.estimate);

@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
@@ -42,7 +43,7 @@ export function ClientJourneyTimeline({ leadId }: { leadId: string }) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/leads/${leadId}/timeline`, { cache: "no-store" });
+      const res = await fetch(apiPath(`/api/leads/${leadId}/timeline`), { cache: "no-store" });
       if (!res.ok) throw new Error("Failed to load timeline");
       const data = await res.json();
       setEntries(data.entries ?? []);

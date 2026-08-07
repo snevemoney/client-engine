@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -50,7 +51,7 @@ export function ProposalResponseFollowup({ proposal, onAction, actionLoading }: 
 
   const run = (key: string, body: object) =>
     onAction(key, () =>
-      fetch(`/api/proposals/${proposal.id}/${key}`, {
+      fetch(apiPath(`/api/proposals/${proposal.id}/${key}`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),

@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
@@ -68,9 +69,9 @@ export default function ObservabilityPage() {
       params.set("limit", "50");
 
       const [sumRes, listRes, slowRes] = await Promise.all([
-        fetch("/api/ops-events/summary", { credentials: "include", signal: controller.signal }),
-        fetch(`/api/ops-events?${params}`, { credentials: "include", signal: controller.signal }),
-        fetch("/api/ops-events/slow?threshold=1500", { credentials: "include", signal: controller.signal }),
+        fetch(apiPath("/api/ops-events/summary"), { credentials: "include", signal: controller.signal }),
+        fetch(apiPath(`/api/ops-events?${params}`), { credentials: "include", signal: controller.signal }),
+        fetch(apiPath("/api/ops-events/slow?threshold=1500"), { credentials: "include", signal: controller.signal }),
       ]);
 
       if (controller.signal.aborted || runId !== runIdRef.current) return;

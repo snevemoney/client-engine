@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect, use, useCallback } from "react";
 import Link from "next/link";
@@ -174,17 +175,17 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   }, []);
 
   async function enrichLead() {
-    const res = await fetch(`/api/enrich/${id}`, { method: "POST" });
+    const res = await fetch(apiPath(`/api/enrich/${id}`), { method: "POST" });
     if (!res.ok) {
       const err = await res.json().catch(() => null);
       throw new Error(err?.error ?? "Enrichment failed");
     }
-    const full = await fetch(`/api/leads/${id}`);
+    const full = await fetch(apiPath(`/api/leads/${id}`));
     if (full.ok) setLead(await full.json());
   }
 
   async function scoreLead() {
-    const res = await fetch(`/api/score/${id}`, { method: "POST" });
+    const res = await fetch(apiPath(`/api/score/${id}`), { method: "POST" });
     if (!res.ok) {
       const err = await res.json().catch(() => null);
       throw new Error(err?.error ?? "Scoring failed");
@@ -194,22 +195,22 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   }
 
   async function startBuild() {
-    const res = await fetch(`/api/build/${id}`, { method: "POST" });
+    const res = await fetch(apiPath(`/api/build/${id}`), { method: "POST" });
     if (!res.ok) {
       const err = await res.json().catch(() => null);
       throw new Error(err?.error ?? "Build failed");
     }
-    const full = await fetch(`/api/leads/${id}`);
+    const full = await fetch(apiPath(`/api/leads/${id}`));
     if (full.ok) setLead(await full.json());
   }
 
   async function generateProposal() {
-    const res = await fetch(`/api/propose/${id}`, { method: "POST" });
+    const res = await fetch(apiPath(`/api/propose/${id}`), { method: "POST" });
     if (!res.ok) {
       const err = await res.json().catch(() => null);
       throw new Error(err?.error ?? "Proposal generation failed");
     }
-    const full = await fetch(`/api/leads/${id}`);
+    const full = await fetch(apiPath(`/api/leads/${id}`));
     if (full.ok) setLead(await full.json());
   }
 
@@ -220,7 +221,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
     async () => {
       if (!canApprove) return;
       await fetchJsonThrow(`/api/leads/${id}/approve`, { method: "POST" });
-      const full = await fetch(`/api/leads/${id}`);
+      const full = await fetch(apiPath(`/api/leads/${id}`));
       if (full.ok) setLead(await full.json());
     },
     {
@@ -240,7 +241,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
         method: "POST",
         body: JSON.stringify({ instruction: reviseInstruction.trim() }),
       });
-      const full = await fetch(`/api/leads/${id}`);
+      const full = await fetch(apiPath(`/api/leads/${id}`));
       if (full.ok) setLead(await full.json());
       setReviseInstruction("");
     },
@@ -260,7 +261,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
         method: "POST",
         body: JSON.stringify({ note: rejectNote.trim() || undefined }),
       });
-      const full = await fetch(`/api/leads/${id}`);
+      const full = await fetch(apiPath(`/api/leads/${id}`));
       if (full.ok) setLead(await full.json());
       setShowRejectInput(false);
       setRejectNote("");
@@ -271,7 +272,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   const { execute: markProposalSent, pending: markSentPending } = useAsyncAction(
     async () => {
       await fetchJsonThrow(`/api/leads/${id}/proposal-sent`, { method: "POST" });
-      const full = await fetch(`/api/leads/${id}`);
+      const full = await fetch(apiPath(`/api/leads/${id}`));
       if (full.ok) setLead(await full.json());
     },
     {
@@ -299,7 +300,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
         method: "POST",
         body: JSON.stringify({ outcome }),
       });
-      const full = await fetch(`/api/leads/${id}`);
+      const full = await fetch(apiPath(`/api/leads/${id}`));
       if (full.ok) setLead(await full.json());
       if (outcome === "won") {
         toast.success("Deal won!", {
@@ -314,7 +315,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
 
   useEffect(() => {
     const controller = new AbortController();
-    fetch(`/api/leads/${id}`, { signal: controller.signal })
+    fetch(apiPath(`/api/leads/${id}`), { signal: controller.signal })
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (controller.signal.aborted) return;
@@ -382,7 +383,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   }
 
   function refetchLead() {
-    fetch(`/api/leads/${id}`)
+    fetch(apiPath(`/api/leads/${id}`))
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => d && setLead(d));
   }
@@ -527,7 +528,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
               if (res.ok) toast.success("Full pipeline completed");
               else toast.error("Pipeline completed with errors");
               // Refresh lead data
-              const updated = await fetch(`/api/leads/${id}`).then((r) => r.ok ? r.json() : null);
+              const updated = await fetch(apiPath(`/api/leads/${id}`)).then((r) => r.ok ? r.json() : null);
               if (updated) setLead(updated);
             } catch (err) {
               toast.error(err instanceof Error ? err.message : "Pipeline failed");
@@ -813,7 +814,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
             leadId={id}
             proposalSentAt={lead.proposalSentAt}
             dealOutcome={lead.dealOutcome}
-            onSequenceGenerated={() => fetch(`/api/leads/${id}`).then((r) => r.ok && r.json()).then((d) => d && setLead(d))}
+            onSequenceGenerated={() => fetch(apiPath(`/api/leads/${id}`)).then((r) => r.ok && r.json()).then((d) => d && setLead(d))}
           />
 
           <CadencesSection leadId={id} onUpdate={refetchLead} />
@@ -1032,14 +1033,14 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
           <OpportunityBriefCard leadId={id} />
           <RoiEstimateCard
             leadId={id}
-            onRoiGenerated={() => fetch(`/api/leads/${id}`).then((r) => r.ok && r.json()).then((d) => d && setLead(d))}
+            onRoiGenerated={() => fetch(apiPath(`/api/leads/${id}`)).then((r) => r.ok && r.json()).then((d) => d && setLead(d))}
           />
 
           {(lead.status === "APPROVED" || lead.status === "BUILDING" || lead.status === "SHIPPED") && (
             <div id="client-success">
               <ClientSuccessCard
                 leadId={id}
-                onProofGenerated={() => fetch(`/api/leads/${id}`).then((r) => r.ok && r.json()).then((d) => d && setLead(d))}
+                onProofGenerated={() => fetch(apiPath(`/api/leads/${id}`)).then((r) => r.ok && r.json()).then((d) => d && setLead(d))}
               />
             </div>
           )}

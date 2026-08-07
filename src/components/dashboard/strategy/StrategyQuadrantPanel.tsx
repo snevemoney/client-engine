@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
@@ -136,8 +137,8 @@ export default function StrategyQuadrantPanel() {
     setError(null);
     try {
       const [weekRes, historyRes] = await Promise.all([
-        fetch("/api/ops/strategy-week", { credentials: "include", signal: controller.signal, cache: "no-store" }).then((r) => (r.ok ? r.json() : null)),
-        fetch("/api/ops/strategy-week/history?weeks=8", { credentials: "include", signal: controller.signal, cache: "no-store" }).then((r) => (r.ok ? r.json() : null)),
+        fetch(apiPath("/api/ops/strategy-week"), { credentials: "include", signal: controller.signal, cache: "no-store" }).then((r) => (r.ok ? r.json() : null)),
+        fetch(apiPath("/api/ops/strategy-week/history?weeks=8"), { credentials: "include", signal: controller.signal, cache: "no-store" }).then((r) => (r.ok ? r.json() : null)),
       ]);
       if (controller.signal.aborted) return;
       const week = weekRes?.id ? weekRes : null;

@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
@@ -17,7 +18,7 @@ export function ClientResultsGlance({ leadId }: { leadId: string }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`/api/leads/${leadId}/client-success`)
+    fetch(apiPath(`/api/leads/${leadId}/client-success`))
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         setData(d ?? null);

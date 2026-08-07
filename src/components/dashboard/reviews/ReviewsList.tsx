@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { toast } from "sonner";
@@ -50,7 +51,7 @@ export function ReviewsList() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/ops/strategy-week/history?weeks=12", { credentials: "include", signal: controller.signal, cache: "no-store" });
+      const res = await fetch(apiPath("/api/ops/strategy-week/history?weeks=12"), { credentials: "include", signal: controller.signal, cache: "no-store" });
       if (controller.signal.aborted) return;
       if (!res.ok) { setError("Failed to load reviews"); return; }
       const data = await res.json();

@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
@@ -61,7 +62,7 @@ export default function JobSchedulesPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/job-schedules", { credentials: "include", cache: "no-store" });
+      const res = await fetch(apiPath("/api/job-schedules"), { credentials: "include", cache: "no-store" });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error ?? "Failed to load");
       setSchedules(data?.items ?? []);
@@ -81,7 +82,7 @@ export default function JobSchedulesPage() {
     if (actioningId) return;
     setActioningId(id);
     try {
-      const res = await fetch(`/api/job-schedules/${id}`, {
+      const res = await fetch(apiPath(`/api/job-schedules/${id}`), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isEnabled: !isEnabled }),
@@ -99,7 +100,7 @@ export default function JobSchedulesPage() {
     if (actioningId) return;
     setActioningId(id);
     try {
-      const res = await fetch(`/api/job-schedules/${id}/run-now`, {
+      const res = await fetch(apiPath(`/api/job-schedules/${id}/run-now`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),

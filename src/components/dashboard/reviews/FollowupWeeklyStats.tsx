@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
@@ -14,7 +15,7 @@ export function FollowupWeeklyStats() {
   const [summary, setSummary] = useState<Summary | null>(null);
 
   useEffect(() => {
-    fetch("/api/followups/summary")
+    fetch(apiPath("/api/followups/summary"))
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => setSummary(d && typeof d === "object" ? d : null))
       .catch(() => setSummary(null));

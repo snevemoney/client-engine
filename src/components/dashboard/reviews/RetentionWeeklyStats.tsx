@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
@@ -20,7 +21,7 @@ export function RetentionWeeklyStats() {
   const [stats, setStats] = useState<RetentionWeeklyStats | null>(null);
 
   useEffect(() => {
-    fetch("/api/delivery-projects/retention-weekly")
+    fetch(apiPath("/api/delivery-projects/retention-weekly"))
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => setStats(d && typeof d === "object" ? d : null))
       .catch(() => setStats(null));

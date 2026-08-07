@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
@@ -57,7 +58,7 @@ export default function RiskQAPage() {
 
   const fetchData = useCallback(async () => {
     try {
-      const res = await fetch("/api/risk/summary", { credentials: "include", cache: "no-store" });
+      const res = await fetch(apiPath("/api/risk/summary"), { credentials: "include", cache: "no-store" });
       setSummary(res.ok ? await res.json() : null);
     } catch {
       setSummary(null);

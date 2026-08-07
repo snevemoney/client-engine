@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import * as React from "react";
 import Link from "next/link";
@@ -191,7 +192,7 @@ function NavContent({ onLinkClick }: { onLinkClick?: () => void }) {
 
   React.useEffect(() => {
     let cancelled = false;
-    fetch("/api/internal/sidebar-counts", { credentials: "include" })
+    fetch(apiPath("/api/internal/sidebar-counts"), { credentials: "include" })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => { if (!cancelled && d) setCounts(d); })
       .catch(() => {});

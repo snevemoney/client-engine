@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useEffect, useState, useCallback } from "react";
 import { RefreshCw } from "lucide-react";
@@ -22,7 +23,7 @@ export function MetaAdsSchedulerRunsPanel({ className = "", refreshKey = 0 }: { 
   const fetchRuns = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/meta-ads/scheduler/runs?limit=20");
+      const res = await fetch(apiPath("/api/meta-ads/scheduler/runs?limit=20"));
       const json = await res.json();
       setRuns(json.runs ?? []);
     } finally {

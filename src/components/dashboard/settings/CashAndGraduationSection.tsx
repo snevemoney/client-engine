@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
@@ -30,7 +31,7 @@ export function CashAndGraduationSection({
     const cash = cashCollected.trim() ? parseInt(cashCollected.replace(/\D/g, ""), 10) : undefined;
     const target = targetWins.trim() ? parseInt(targetWins.replace(/\D/g, ""), 10) : undefined;
     try {
-      const res = await fetch("/api/ops/settings", {
+      const res = await fetch(apiPath("/api/ops/settings"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

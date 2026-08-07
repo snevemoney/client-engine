@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState } from "react";
 import { Pause, Play } from "lucide-react";
@@ -26,7 +27,7 @@ export function MetaAdsStatusActions({ level, id, name, effectiveStatus, onSucce
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/meta-ads/actions/status", {
+      const res = await fetch(apiPath("/api/meta-ads/actions/status"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ level, id, action }),

@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -20,7 +21,7 @@ export function LeverageTrendCard({ history }: { history: Snapshot[] }) {
   async function handleSave() {
     setSaving(true);
     try {
-      const res = await fetch("/api/ops/weekly-snapshot", { method: "POST" });
+      const res = await fetch(apiPath("/api/ops/weekly-snapshot"), { method: "POST" });
       if (res.ok) router.refresh();
     } finally {
       setSaving(false);

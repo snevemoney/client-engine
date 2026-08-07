@@ -25,6 +25,41 @@ services:
       start_period: 15s
     restart: unless-stopped
 
+  # Isolated path-aware build for the legacy evenslouis.pro product.
+  # The original app on :3200 remains unchanged.
+  pro:
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    build:
+      context: .
+      target: runner
+      args:
+        NEXT_PUBLIC_BASE_PATH: /pro
+    ports:
+      - "127.0.0.1:3204:3000"
+    env_file: .env
+    environment:
+      NEXT_PUBLIC_BASE_PATH: /pro
+      # Do not set AUTH_URL/NEXTAUTH_URL with a path when using Next.js basePath —
+      # Auth.js then mis-parses /api/auth/* actions (UnknownAction). trustHost +
+      # NextAuth basePath + request rewrite handle the public /pro prefix.
+      AUTH_TRUST_HOST: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:3000/pro/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped
+
   worker:
     logging:
       driver: json-file

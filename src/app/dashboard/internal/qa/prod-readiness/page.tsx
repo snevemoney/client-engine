@@ -8,6 +8,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Check, X, Circle, ExternalLink } from "lucide-react";
+import { apiPath } from "@/lib/base-path";
 
 type CheckStatus = "not_run" | "passed" | "failed";
 
@@ -143,13 +144,13 @@ export default function ProdReadinessPage() {
             <ExternalLink className="w-3 h-3 ml-1" />
           </Button>
         </Link>
-        <a href="/api/internal/system/check" target="_blank" rel="noreferrer">
+        <a href={apiPath("/api/internal/system/check")} target="_blank" rel="noreferrer">
           <Button variant="outline" size="sm">
             System Check (API)
             <ExternalLink className="w-3 h-3 ml-1" />
           </Button>
         </a>
-        <a href="/api/internal/ops/metrics-summary?period=24h" target="_blank" rel="noreferrer">
+        <a href={apiPath("/api/internal/ops/metrics-summary?period=24h")} target="_blank" rel="noreferrer">
           <Button variant="outline" size="sm">
             Metrics (API)
             <ExternalLink className="w-3 h-3 ml-1" />

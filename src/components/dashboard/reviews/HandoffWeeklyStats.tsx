@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
@@ -14,7 +15,7 @@ export function HandoffWeeklyStats() {
   const [stats, setStats] = useState<HandoffWeeklyStats | null>(null);
 
   useEffect(() => {
-    fetch("/api/delivery-projects/handoff-weekly")
+    fetch(apiPath("/api/delivery-projects/handoff-weekly"))
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => setStats(d && typeof d === "object" ? d : null))
       .catch(() => setStats(null));

@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
@@ -85,7 +86,7 @@ export function MetaAdsPageClient() {
   const { setPageData } = useBrainPanel();
 
   useEffect(() => {
-    fetch("/api/meta-ads/mode")
+    fetch(apiPath("/api/meta-ads/mode"))
       .then((r) => r.json())
       .then((j) => {
         setMetaMode(j.mode ?? null);
@@ -100,7 +101,7 @@ export function MetaAdsPageClient() {
     setLastFetchWasFresh(false);
     try {
       const skipCache = opts?.skipCache ? "&skipCache=1" : "";
-      const res = await fetch(`/api/meta-ads/dashboard?range=${range}${skipCache}`);
+      const res = await fetch(apiPath(`/api/meta-ads/dashboard?range=${range}${skipCache}`));
       const json = (await res.json()) as MetaAdsDashboardData | MetaAdsDashboardError;
       if (!json.ok) {
         const err = json as MetaAdsDashboardError;
@@ -140,7 +141,7 @@ export function MetaAdsPageClient() {
 
   useEffect(() => {
     if (tab === "recommendations" || tab === "settings") {
-      fetch("/api/meta-ads/settings")
+      fetch(apiPath("/api/meta-ads/settings"))
         .then((r) => r.json())
         .then((j) => {
           const s = j.settings;

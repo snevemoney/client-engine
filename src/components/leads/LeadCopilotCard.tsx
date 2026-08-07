@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState } from "react";
 import { MessageSquare } from "lucide-react";
@@ -38,7 +39,7 @@ export function LeadCopilotCard({ leadId }: { leadId: string }) {
     setError(null);
     setResult(null);
     try {
-      const res = await fetch(`/api/leads/${leadId}/copilot`, {
+      const res = await fetch(apiPath(`/api/leads/${leadId}/copilot`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question }),

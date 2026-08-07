@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
@@ -64,7 +65,7 @@ export default function ContentPostsPage() {
       const params = new URLSearchParams();
       if (statusFilter !== "all") params.set("status", statusFilter);
       if (platformFilter !== "all") params.set("platform", platformFilter);
-      const res = await fetch(`/api/content-posts?${params}`, {
+      const res = await fetch(apiPath(`/api/content-posts?${params}`), {
         credentials: "include",
         signal: controller.signal,
         cache: "no-store",
@@ -212,7 +213,7 @@ export default function ContentPostsPage() {
                                 disabled={actionLoading === p.id}
                                 onClick={() =>
                                   runAction(p.id, () =>
-                                    fetch(`/api/content-posts/${p.id}`, {
+                                    fetch(apiPath(`/api/content-posts/${p.id}`), {
                                       method: "PATCH",
                                       headers: { "Content-Type": "application/json" },
                                       credentials: "include",
@@ -234,7 +235,7 @@ export default function ContentPostsPage() {
                                 disabled={actionLoading === p.id}
                                 onClick={() =>
                                   runAction(p.id, () =>
-                                    fetch(`/api/content-posts/${p.id}`, {
+                                    fetch(apiPath(`/api/content-posts/${p.id}`), {
                                       method: "PATCH",
                                       headers: { "Content-Type": "application/json" },
                                       credentials: "include",
@@ -255,7 +256,7 @@ export default function ContentPostsPage() {
                               disabled={actionLoading === p.id}
                               onClick={() =>
                                 runAction(p.id, () =>
-                                  fetch(`/api/content-posts/${p.id}`, {
+                                  fetch(apiPath(`/api/content-posts/${p.id}`), {
                                     method: "PATCH",
                                     headers: { "Content-Type": "application/json" },
                                     credentials: "include",

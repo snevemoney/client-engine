@@ -5,6 +5,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+### Added
+- Path-aware `/pro` production build: environment-driven Next.js base path, prefixed browser API/navigation helpers, and an isolated Docker Compose service on `127.0.0.1:3204` while preserving the root `:3200` app.
+
 ### Fixed
 - Conversion page crash "Cannot read properties of undefined (reading 'winRate')" — API now returns page-expected shape (counts.total/won/lost, rates.winRate, medianMs); fetchConversionInput adds won/lost from Lead.dealOutcome; route maps to counts/rates/medianMs; page useEffect uses defensive guards
 - prod.spec health test — full assertions (db, pipelineTables, authSecret, nextAuthUrl); health route accepts Bearer AGENT_CRON_SECRET or RESEARCH_CRON_SECRET; .env.example documents both for E2E; clear error when server returns minimal (add secret to .env and restart)

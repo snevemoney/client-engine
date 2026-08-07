@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useEffect, useState, useCallback } from "react";
 
@@ -21,7 +22,7 @@ export function MetaAdsActionHistoryPanel() {
   const fetchActions = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/meta-ads/actions?limit=30");
+      const res = await fetch(apiPath("/api/meta-ads/actions?limit=30"));
       const json = await res.json();
       setActions(json.actions ?? []);
     } finally {

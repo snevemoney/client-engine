@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
@@ -190,7 +191,7 @@ export default function ScoreboardView() {
         .catch(() => null);
 
     Promise.all([
-      fetch("/api/ops/scoreboard", { signal: s, credentials: "include", cache: "no-store" }).then((r) => {
+      fetch(apiPath("/api/ops/scoreboard"), { signal: s, credentials: "include", cache: "no-store" }).then((r) => {
         if (!r.ok) throw new Error(`Scoreboard failed (${r.status})`);
         return r.json();
       }),

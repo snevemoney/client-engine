@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect, useCallback, use } from "react";
 import Link from "next/link";
@@ -108,7 +109,7 @@ export default function IntakeLeadDetailPage({ params }: { params: Promise<{ id:
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/intake-leads/${id}`, { credentials: "include", cache: "no-store" });
+      const res = await fetch(apiPath(`/api/intake-leads/${id}`), { credentials: "include", cache: "no-store" });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
         setError(typeof data?.error === "string" ? data.error : "Failed to load lead");
@@ -156,7 +157,7 @@ export default function IntakeLeadDetailPage({ params }: { params: Promise<{ id:
 
   const handleScore = () =>
     runAction("score", () =>
-      fetch(`/api/intake-leads/${id}/score`, { method: "POST", credentials: "include" }),
+      fetch(apiPath(`/api/intake-leads/${id}/score`), { method: "POST", credentials: "include" }),
       (data) => {
         const score = (data as { score?: number })?.score;
         const msg = score != null ? `Lead scored (${score}/100)` : "Lead scored";
@@ -170,14 +171,14 @@ export default function IntakeLeadDetailPage({ params }: { params: Promise<{ id:
 
   const handleDraft = () =>
     runAction("draft", () =>
-      fetch(`/api/intake-leads/${id}/draft`, { method: "POST", credentials: "include" }),
+      fetch(apiPath(`/api/intake-leads/${id}/draft`), { method: "POST", credentials: "include" }),
       () => toast.success("Draft generated"),
     );
 
   const handleAddNote = async () => {
     if (!noteContent.trim()) return;
     await runAction("note", () =>
-      fetch(`/api/intake-leads/${id}/activity`, {
+      fetch(apiPath(`/api/intake-leads/${id}/activity`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -193,7 +194,7 @@ export default function IntakeLeadDetailPage({ params }: { params: Promise<{ id:
       return;
     }
     await runAction("status", () =>
-      fetch(`/api/intake-leads/${id}`, {
+      fetch(apiPath(`/api/intake-leads/${id}`), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -205,7 +206,7 @@ export default function IntakeLeadDetailPage({ params }: { params: Promise<{ id:
 
   const handleNextActionChange = async () => {
     await runAction("nextAction", () =>
-      fetch(`/api/intake-leads/${id}`, {
+      fetch(apiPath(`/api/intake-leads/${id}`), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -220,7 +221,7 @@ export default function IntakeLeadDetailPage({ params }: { params: Promise<{ id:
 
   const handlePromote = (force?: boolean) =>
     runAction("promote", () =>
-      fetch(`/api/intake-leads/${id}/promote`, {
+      fetch(apiPath(`/api/intake-leads/${id}/promote`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -238,13 +239,13 @@ export default function IntakeLeadDetailPage({ params }: { params: Promise<{ id:
 
   const handleSyncPipeline = () =>
     runAction("sync", () =>
-      fetch(`/api/intake-leads/${id}/sync-pipeline`, { method: "POST", credentials: "include" }),
+      fetch(apiPath(`/api/intake-leads/${id}/sync-pipeline`), { method: "POST", credentials: "include" }),
       () => toast.success("Synced to pipeline"),
     );
 
   const handleMarkSent = () =>
     runAction("markSent", () =>
-      fetch(`/api/intake-leads/${id}/mark-sent`, { method: "POST", credentials: "include" }),
+      fetch(apiPath(`/api/intake-leads/${id}/mark-sent`), { method: "POST", credentials: "include" }),
       () => toast.success("Marked as sent", {
         action: { label: "Go to Follow-ups →", onClick: () => router.push("/dashboard/followups") },
       }),
@@ -252,7 +253,7 @@ export default function IntakeLeadDetailPage({ params }: { params: Promise<{ id:
 
   const handleSetFollowup = async () => {
     await runAction("setFollowup", () =>
-      fetch(`/api/intake-leads/${id}/set-followup`, {
+      fetch(apiPath(`/api/intake-leads/${id}/set-followup`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -270,7 +271,7 @@ export default function IntakeLeadDetailPage({ params }: { params: Promise<{ id:
 
   const handleMarkWon = () =>
     runAction("markWon", () =>
-      fetch(`/api/intake-leads/${id}/mark-won`, {
+      fetch(apiPath(`/api/intake-leads/${id}/mark-won`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -290,7 +291,7 @@ export default function IntakeLeadDetailPage({ params }: { params: Promise<{ id:
     });
     if (!confirmed) return;
     runAction("markLost", () =>
-      fetch(`/api/intake-leads/${id}/mark-lost`, {
+      fetch(apiPath(`/api/intake-leads/${id}/mark-lost`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -326,7 +327,7 @@ export default function IntakeLeadDetailPage({ params }: { params: Promise<{ id:
     nextActionDueAt?: string;
   }) => {
     await runAction("complete", () =>
-      fetch(`/api/intake-leads/${id}/followup-complete`, {
+      fetch(apiPath(`/api/intake-leads/${id}/followup-complete`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -343,7 +344,7 @@ export default function IntakeLeadDetailPage({ params }: { params: Promise<{ id:
     reason?: string;
   }) => {
     await runAction("snooze", () =>
-      fetch(`/api/intake-leads/${id}/followup-snooze`, {
+      fetch(apiPath(`/api/intake-leads/${id}/followup-snooze`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -387,7 +388,7 @@ export default function IntakeLeadDetailPage({ params }: { params: Promise<{ id:
 
   const handleSaveDelivery = async () => {
     await runAction("delivery", () =>
-      fetch(`/api/intake-leads/${id}/delivery`, {
+      fetch(apiPath(`/api/intake-leads/${id}/delivery`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -406,7 +407,7 @@ export default function IntakeLeadDetailPage({ params }: { params: Promise<{ id:
 
   const handleCreateProofCandidate = async () => {
     await runAction("proofCandidate", () =>
-      fetch(`/api/intake-leads/${id}/proof-candidate`, {
+      fetch(apiPath(`/api/intake-leads/${id}/proof-candidate`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -746,7 +747,7 @@ export default function IntakeLeadDetailPage({ params }: { params: Promise<{ id:
                       const d = new Date();
                       d.setDate(d.getDate() + 2);
                       await runAction("setFollowup", () =>
-                        fetch(`/api/intake-leads/${id}/followup-snooze`, {
+                        fetch(apiPath(`/api/intake-leads/${id}/followup-snooze`), {
                           method: "POST",
                           headers: { "Content-Type": "application/json" },
                           credentials: "include",
@@ -763,7 +764,7 @@ export default function IntakeLeadDetailPage({ params }: { params: Promise<{ id:
                     type="button"
                     onClick={async () => {
                       await runAction("setFollowup", () =>
-                        fetch(`/api/intake-leads/${id}/followup-snooze`, {
+                        fetch(apiPath(`/api/intake-leads/${id}/followup-snooze`), {
                           method: "POST",
                           headers: { "Content-Type": "application/json" },
                           credentials: "include",
@@ -780,7 +781,7 @@ export default function IntakeLeadDetailPage({ params }: { params: Promise<{ id:
                     type="button"
                     onClick={async () => {
                       await runAction("setFollowup", () =>
-                        fetch(`/api/intake-leads/${id}/followup-snooze`, {
+                        fetch(apiPath(`/api/intake-leads/${id}/followup-snooze`), {
                           method: "POST",
                           headers: { "Content-Type": "application/json" },
                           credentials: "include",

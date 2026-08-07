@@ -1,3 +1,4 @@
+import { apiPath } from "@/lib/base-path";
 /**
  * React hook for streaming AI Brain chat via SSE.
  * Hydrates from DB on mount (loads most recent open session).
@@ -102,7 +103,7 @@ export function useBrainChat(options?: { skipHydration?: boolean }) {
   // Load session list
   const loadSessions = useCallback(async () => {
     try {
-      const res = await fetch("/api/internal/copilot/sessions", {
+      const res = await fetch(apiPath("/api/internal/copilot/sessions"), {
         credentials: "include",
         cache: "no-store",
       });
@@ -117,7 +118,7 @@ export function useBrainChat(options?: { skipHydration?: boolean }) {
   // Load a specific session's messages
   const loadSession = useCallback(async (id: string) => {
     try {
-      const res = await fetch(`/api/internal/copilot/sessions/${id}`, {
+      const res = await fetch(apiPath(`/api/internal/copilot/sessions/${id}`), {
         credentials: "include",
         cache: "no-store",
       });
@@ -158,7 +159,7 @@ export function useBrainChat(options?: { skipHydration?: boolean }) {
           await loadSession(savedId);
         } else {
           // Load the most recent open session
-          const res = await fetch("/api/internal/copilot/sessions", {
+          const res = await fetch(apiPath("/api/internal/copilot/sessions"), {
             credentials: "include",
             cache: "no-store",
           });
@@ -227,7 +228,7 @@ export function useBrainChat(options?: { skipHydration?: boolean }) {
       abortRef.current = controller;
 
       try {
-        const res = await fetch("/api/brain/chat", {
+        const res = await fetch(apiPath("/api/brain/chat"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ message: text, sessionId, pageContext: options?.pageContext, pageData: options?.pageData }),

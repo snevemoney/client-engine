@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -19,7 +20,7 @@ export function WorkdayRunCard({ lastRunAt }: { lastRunAt: string | null }) {
     setLoading(true);
     setResult(null);
     try {
-      const res = await fetch("/api/ops/workday-run", { method: "POST" });
+      const res = await fetch(apiPath("/api/ops/workday-run"), { method: "POST" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Run failed");
       setResult(data);

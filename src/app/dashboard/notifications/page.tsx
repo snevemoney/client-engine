@@ -1,4 +1,5 @@
 "use client";
+import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
@@ -72,7 +73,7 @@ export default function NotificationsPage() {
     params.set("page", String(page));
     params.set("pageSize", String(pageSize));
     try {
-      const res = await fetch(`/api/notifications?${params}`, { credentials: "include", cache: "no-store" });
+      const res = await fetch(apiPath(`/api/notifications?${params}`), { credentials: "include", cache: "no-store" });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error ?? "Failed to load");
       setItems(data?.items ?? []);
@@ -95,7 +96,7 @@ export default function NotificationsPage() {
     if (!ok) return;
     setRunEscLoading(true);
     try {
-      const res = await fetch("/api/notifications/run-escalations", { method: "POST" });
+      const res = await fetch(apiPath("/api/notifications/run-escalations"), { method: "POST" });
       const data = await res.json();
       if (res.ok) {
         if (data.created > 0 || data.queued > 0) void fetchData();
@@ -112,7 +113,7 @@ export default function NotificationsPage() {
     if (!ok) return;
     setDispatchLoading(true);
     try {
-      const res = await fetch("/api/notifications/dispatch", { method: "POST" });
+      const res = await fetch(apiPath("/api/notifications/dispatch"), { method: "POST" });
       const data = await res.json();
       if (res.ok) void fetchData();
       else toast.error(data?.error ?? "Failed");
@@ -127,7 +128,7 @@ export default function NotificationsPage() {
     if (actioningId) return;
     setActioningId(id);
     try {
-      const res = await fetch(`/api/notifications/${id}/retry-failed`, { method: "POST" });
+      const res = await fetch(apiPath(`/api/notifications/${id}/retry-failed`), { method: "POST" });
       if (res.ok) void fetchData();
       else {
         const d = await res.json().catch(() => null);
