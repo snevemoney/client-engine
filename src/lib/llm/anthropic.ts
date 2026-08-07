@@ -1,6 +1,11 @@
 /**
  * Anthropic Claude SDK wrapper for the AI Brain.
  * Provides both non-streaming and streaming message creation with tool_use support.
+ *
+ * Claude Sonnet 5 notes:
+ * - Model ID is `claude-sonnet-5` (no date suffix).
+ * - Sampling params (temperature / top_p / top_k) are rejected with HTTP 400.
+ * - Adaptive thinking is on by default; do not send manual thinking budgets.
  */
 import Anthropic from "@anthropic-ai/sdk";
 import { MessageStream } from "@anthropic-ai/sdk/lib/MessageStream";
@@ -25,13 +30,17 @@ export type BrainContentBlock = Anthropic.Messages.ContentBlock;
 export type BrainToolUseBlock = Anthropic.Messages.ToolUseBlock;
 export type BrainToolResultBlock = Anthropic.Messages.ToolResultBlockParam;
 
-const DEFAULT_MODEL = "claude-sonnet-4-20250514";
+/** Default Brain/Agents model — Claude Sonnet 5. */
+export const DEFAULT_BRAIN_MODEL = "claude-sonnet-5";
+
+const DEFAULT_MODEL = process.env.ANTHROPIC_BRAIN_MODEL?.trim() || DEFAULT_BRAIN_MODEL;
 
 export async function createBrainMessage(params: {
   system: string;
   messages: BrainMessage[];
   tools: BrainToolDefinition[];
   maxTokens?: number;
+  /** @deprecated Ignored for Claude Sonnet 5+ (sampling params return 400). */
   temperature?: number;
   model?: string;
 }): Promise<Anthropic.Messages.Message> {
@@ -42,7 +51,6 @@ export async function createBrainMessage(params: {
     messages: params.messages,
     tools: params.tools,
     max_tokens: params.maxTokens ?? 16384,
-    temperature: params.temperature ?? 0.3,
   });
 }
 
@@ -51,6 +59,7 @@ export function streamBrainMessage(params: {
   messages: BrainMessage[];
   tools: BrainToolDefinition[];
   maxTokens?: number;
+  /** @deprecated Ignored for Claude Sonnet 5+ (sampling params return 400). */
   temperature?: number;
   model?: string;
 }): MessageStream {
@@ -61,6 +70,5 @@ export function streamBrainMessage(params: {
     messages: params.messages,
     tools: params.tools,
     max_tokens: params.maxTokens ?? 16384,
-    temperature: params.temperature ?? 0.3,
   });
 }

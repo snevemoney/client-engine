@@ -107,8 +107,17 @@ export async function ingestVideo(url: string): Promise<VideoIngestResult> {
       },
     });
 
-    // Store a failed transcript record for visibility
-    if (!existing) {
+    // Store / update failed transcript record for visibility + retry tracking
+    if (existing) {
+      await db.youTubeTranscript.update({
+        where: { videoId },
+        data: {
+          providerUsed: resolved.providersTried.join(","),
+          transcriptStatus: TRANSCRIPT_STATUS.FAILED_TRANSCRIPT,
+          failureReason: errorSummary,
+        },
+      });
+    } else {
       await db.youTubeTranscript.create({
         data: {
           videoId,
