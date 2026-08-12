@@ -6,6 +6,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+- /work portfolio data: new project cards "AI Partner / Outer Heaven OS" and "Cinematic AI Partner"
+- `scripts/work-portfolio-upsert.mjs` — idempotent one-shot script for prod DB portfolio updates
+
+### Changed
+- Archived "Emmanuelle Vandepitterie" project in seed (was a lead, never built)
+- `prisma/seed-projects.mjs` now includes all current portfolio state
+
+### Added (prior)
 - Path-aware `/pro` production build: environment-driven Next.js base path, prefixed browser API/navigation helpers, and an isolated Docker Compose service on `127.0.0.1:3204` while preserving the root `:3200` app.
 - Operator/docs cutover for canonical home `https://evenslouis.ca/pro`: smoke-test covers public + `/pro`, deploy checklists and README/ROADMAP point operator paths at `/pro`, Auth.js origin-only `NEXTAUTH_URL` + `AUTH_TRUST_HOST` documented.
 
