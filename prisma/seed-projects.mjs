@@ -13,7 +13,43 @@ function isDevOrExplicit() {
   return env === "development" || explicit;
 }
 
+// ── Archived slugs ──────────────────────────────────────────────────
+// These were past leads, never real website builds.
+// They must NOT be re-seeded as public projects.
+//   - "emmanuelle-vandepitterie-*" (archived via apply-work-portfolio-update.mjs)
+
 const projects = [
+  {
+    slug: "ai-partner-os",
+    name: "AI Partner OS",
+    description:
+      "Multi-agent Grok Bot operator OS with 17 specialists for acquire/grow/cut outcomes. Morning brief, human-in-the-loop approvals, audits that become agents that become retainers.",
+    repoUrl: null,
+    techStack: ["Grok Bot", "Cursor", "n8n", "TypeScript", "Telegram"],
+    status: "live",
+    screenshots: [],
+  },
+  {
+    slug: "cinematic-ai-partner",
+    name: "Cinematic AI Partner",
+    description:
+      "Marketing and proof site for AI Partner positioning on evenslouis.ca. Cinematic landing page, work proofs gallery, and workflow audit CTA.",
+    repoUrl: null,
+    demoUrl: "https://evenslouis.ca",
+    techStack: ["Next.js", "TypeScript", "Tailwind CSS"],
+    status: "live",
+    screenshots: [],
+  },
+  {
+    slug: "report-creator",
+    name: "Report Creator",
+    description:
+      "Self-contained HTML client and ops reports published at evenslouis.ca/reports/<slug> for instant sharing. Part of the Publishing Engine lane.",
+    repoUrl: null,
+    techStack: ["HTML", "Next.js", "TypeScript"],
+    status: "live",
+    screenshots: [],
+  },
   {
     slug: "quickmarket",
     name: "QuickMarket",
