@@ -3,6 +3,8 @@
  * Stub/mock for dev; plug real YouTube transcript API later.
  */
 
+import { YoutubeTranscript } from "youtube-transcript";
+import { YoutubeTranscript as YoutubeTranscriptAlt } from "@danielxceron/youtube-transcript";
 import type { VideoMetadata, TranscriptSegment } from "./types";
 
 export type FetchTranscriptResult =
@@ -345,7 +347,6 @@ async function fetchTranscriptInternalFallback(videoId: string): Promise<FetchTr
 async function realFetchTranscript(videoId: string, videoUrl: string): Promise<FetchTranscriptResult> {
   let primaryError: string | null = null;
   try {
-    const { YoutubeTranscript } = await import("youtube-transcript");
     const list = await YoutubeTranscript.fetchTranscript(videoId);
     const segments = list.map((item) => ({
       text: item.text,
@@ -372,7 +373,6 @@ async function realFetchTranscript(videoId: string, videoUrl: string): Promise<F
   if (fallback.ok) return fallback;
 
   try {
-    const { YoutubeTranscript: YoutubeTranscriptAlt } = await import("@danielxceron/youtube-transcript");
     const list = await YoutubeTranscriptAlt.fetchTranscript(videoId);
     const segments = list.map((item: { text: string; offset: number; duration: number }) => ({
       text: item.text,

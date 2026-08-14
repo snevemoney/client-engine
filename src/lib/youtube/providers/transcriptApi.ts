@@ -1,8 +1,15 @@
 /**
  * Primary provider: youtube-transcript npm packages.
  * Tries `youtube-transcript` first, then `@danielxceron/youtube-transcript` as a variant.
+ *
+ * IMPORTANT: use static imports so Next.js standalone file-tracing includes these
+ * packages in the runner image. Dynamic `import()` was failing in production with
+ * "Cannot find package 'youtube-transcript'" because the Dockerfile only copies
+ * selectively into the slim runner.
  */
 
+import { YoutubeTranscript } from "youtube-transcript";
+import { YoutubeTranscript as AltYoutubeTranscript } from "@danielxceron/youtube-transcript";
 import type { TranscriptProvider, ProviderResult, TranscriptSegment, VideoMeta } from "../types";
 import { ytLog } from "../types";
 
@@ -20,7 +27,6 @@ export const transcriptApiProvider: TranscriptProvider = {
 
     // Attempt 1: youtube-transcript
     try {
-      const { YoutubeTranscript } = await import("youtube-transcript");
       const list = await YoutubeTranscript.fetchTranscript(videoId);
       const segments: TranscriptSegment[] = list.map((item) => ({
         text: item.text,
@@ -40,8 +46,7 @@ export const transcriptApiProvider: TranscriptProvider = {
 
     // Attempt 2: @danielxceron/youtube-transcript (fork with sometimes different behavior)
     try {
-      const { YoutubeTranscript: AltTranscript } = await import("@danielxceron/youtube-transcript");
-      const list = await AltTranscript.fetchTranscript(videoId);
+      const list = await AltYoutubeTranscript.fetchTranscript(videoId);
       const segments: TranscriptSegment[] = list.map(
         (item: { text: string; offset: number; duration: number }) => ({
           text: item.text,

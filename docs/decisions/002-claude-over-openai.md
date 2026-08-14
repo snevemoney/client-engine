@@ -8,7 +8,7 @@ The system has two distinct AI needs:
 2. **Pipeline steps:** Batch processing (enrich, score, position, propose) on lead data.
 
 ## Decision
-Use Claude (Anthropic, `claude-sonnet-4-20250514`) for Brain and multi-agent system. Keep OpenAI GPT-4o-mini for pipeline steps.
+Use Claude (Anthropic, `claude-sonnet-5`) for Brain and multi-agent system. Keep OpenAI GPT-4o-mini for pipeline steps.
 
 Reasons:
 - **Tool calling quality:** Claude's tool-use is more reliable for the 25-tool Brain and 10-agent system, with better adherence to system prompts.

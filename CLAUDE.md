@@ -23,7 +23,7 @@ Do NOT wait to be asked. Do NOT skip this. See [docs/ai-rules/session-journal.md
 | Language | TypeScript strict, `@/*` alias |
 | Database | PostgreSQL 16 + Prisma 6 (`prisma db push`, no migrations) |
 | Auth | NextAuth v5 (JWT, Credentials + Google OAuth) |
-| AI Brain/Agents | Claude `claude-sonnet-4-20250514` via `@anthropic-ai/sdk` |
+| AI Brain/Agents | Claude `claude-sonnet-5` via `@anthropic-ai/sdk` |
 | AI Pipeline | OpenAI GPT-4o-mini (enrich/score/position/propose) |
 | Queue | Postgres-backed (JobRun model) |
 | Deploy | Docker Compose (5 services) + Caddy on Hostinger VPS |

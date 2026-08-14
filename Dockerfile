@@ -63,6 +63,9 @@ COPY --from=deps /app/node_modules/@zone-eu ./node_modules/@zone-eu
 COPY --from=deps /app/node_modules/tlds ./node_modules/tlds
 COPY --from=builder /app/prisma/seed.mjs ./prisma/seed.mjs
 COPY --from=deps /app/node_modules/bcryptjs ./node_modules/bcryptjs
+# YouTube transcript providers (dynamic/static imports from API routes; must exist at runtime)
+COPY --from=deps /app/node_modules/youtube-transcript ./node_modules/youtube-transcript
+COPY --from=deps /app/node_modules/@danielxceron ./node_modules/@danielxceron
 
 RUN mkdir -p /app/.next/cache && chown -R nextjs:nodejs /app/.next
 

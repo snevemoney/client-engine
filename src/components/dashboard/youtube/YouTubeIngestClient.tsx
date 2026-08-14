@@ -212,6 +212,32 @@ export default function YouTubeIngestClient({
     }
   }
 
+  async function handleRetryAllFailed() {
+    if (failed.length === 0) return;
+    setLoading(true);
+    try {
+      const res = await fetch("/api/youtube/transcripts/retry", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ limit: 25 }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setResult({ ok: false, message: data.error ?? "Batch retry failed" });
+      } else {
+        setResult({
+          ok: (data.succeeded ?? 0) > 0,
+          message: `Retry all: ${data.succeeded ?? 0} succeeded, ${data.failed ?? 0} still failing (${data.retried ?? 0} tried)`,
+        });
+      }
+      await refreshData();
+    } catch (e) {
+      setResult({ ok: false, message: e instanceof Error ? e.message : "Batch retry failed" });
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function handleDelete(id: string) {
     if (!confirm("Delete this transcript and all associated data?")) return;
     setDeletingId(id);
@@ -461,10 +487,19 @@ export default function YouTubeIngestClient({
             <p className="text-xs text-neutral-500">No failed transcripts.</p>
           ) : (
             <div className="rounded-lg border border-amber-900/40 bg-amber-950/20 p-4">
-              <h3 className="text-sm font-medium text-amber-200/90 mb-3 flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-amber-500" />
-                Failed transcripts ({failed.length})
-              </h3>
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <h3 className="text-sm font-medium text-amber-200/90 flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-amber-500" />
+                  Failed transcripts ({failed.length})
+                </h3>
+                <button
+                  onClick={handleRetryAllFailed}
+                  disabled={loading}
+                  className="shrink-0 inline-flex items-center gap-1 rounded border border-amber-700/60 px-2 py-1 text-xs text-amber-200 hover:bg-amber-900/40 disabled:opacity-50"
+                >
+                  <RefreshCw className="w-3 h-3" /> Retry all
+                </button>
+              </div>
               <ul className="space-y-2">
                 {failed.map((t) => (
                   <li key={t.id} className="flex items-start justify-between gap-2 text-sm">
