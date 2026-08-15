@@ -1,6 +1,7 @@
-import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { SiteFooter } from "./SiteFooter";
+import { SiteHeader } from "./SiteHeader";
+import { SiteLink } from "./SiteLink";
 
 type LegalPageProps = {
   title: string;
@@ -12,29 +13,15 @@ type LegalPageProps = {
 export function LegalPage({ title, description, lastUpdated, children }: LegalPageProps) {
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-100">
-      <header className="border-b border-neutral-800/50 backdrop-blur-sm sticky top-0 z-50 bg-neutral-950/80">
-        <div className="mx-auto max-w-6xl flex items-center justify-between px-6 py-4">
-          <Link href="/" className="text-lg font-semibold tracking-tight">
-            evenslouis
-          </Link>
-          <nav className="flex items-center gap-6 text-sm text-neutral-400">
-            <Link href="/work" className="hover:text-neutral-100 transition-colors">
-              Work
-            </Link>
-            <Link href="/#contact" className="hover:text-neutral-100 transition-colors">
-              Contact
-            </Link>
-          </nav>
-        </div>
-      </header>
+      <SiteHeader />
 
       <main className="mx-auto max-w-3xl px-6 py-12">
-        <Link
+        <SiteLink
           href="/"
           className="inline-flex items-center gap-1.5 text-sm text-neutral-400 hover:text-neutral-200 mb-8 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" /> Home
-        </Link>
+        </SiteLink>
         <h1 className="text-3xl font-light tracking-tight mb-4">{title}</h1>
         <p className="text-neutral-400 leading-relaxed mb-2">{description}</p>
         {lastUpdated && (

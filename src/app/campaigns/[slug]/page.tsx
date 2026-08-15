@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { notFound } from "next/navigation";
-import Link from "next/link";
 import type { Metadata } from "next";
+import { SiteLink } from "@/components/site/SiteLink";
 
 export const revalidate = 60;
 
@@ -50,7 +50,7 @@ export default async function CampaignPage({ params }: Props) {
         ) : (
           <div className="grid gap-6 sm:grid-cols-2">
             {projects.map((p) => (
-              <Link
+              <SiteLink
                 key={p.id}
                 href={`/proof/${p.slug}`}
                 className="block rounded-lg border border-neutral-800 p-4 hover:border-neutral-600 transition-colors"
@@ -73,7 +73,7 @@ export default async function CampaignPage({ params }: Props) {
                 {p.proofSummary && (
                   <p className="text-sm text-neutral-500 line-clamp-2">{p.proofSummary}</p>
                 )}
-              </Link>
+              </SiteLink>
             ))}
           </div>
         )}
@@ -90,12 +90,12 @@ export default async function CampaignPage({ params }: Props) {
         )}
 
         <footer className="mt-12 pt-8 border-t border-neutral-800">
-          <Link
+          <a
             href="/work"
             className="text-sm text-neutral-500 hover:text-neutral-300"
           >
             View portfolio
-          </Link>
+          </a>
         </footer>
       </div>
     </div>

@@ -1,8 +1,14 @@
-import Link from "next/link";
-import { ArrowRight, Zap, Code2, Rocket, Shield, Monitor, Bot } from "lucide-react";
+import { ArrowRight } from "lucide-react";
+import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { LeadCaptureForm } from "@/components/site/LeadCaptureForm";
+import { ServicesGrid } from "@/components/site/ServicesGrid";
 import { SiteFooter } from "@/components/site/SiteFooter";
+import { SiteHeader } from "@/components/site/SiteHeader";
+import { SiteLink } from "@/components/site/SiteLink";
+import { getBasePath } from "@/lib/base-path";
+import { resolveCaseCopy } from "@/lib/site/case-copy";
+import { catalogProjectSelect } from "@/lib/site/project-select";
 
 export const revalidate = 60;
 
@@ -12,44 +18,12 @@ async function getFeaturedProjects() {
       where: { status: { not: "archived" } },
       orderBy: { createdAt: "desc" },
       take: 3,
+      select: catalogProjectSelect,
     });
   } catch {
     return [];
   }
 }
-
-const services = [
-  {
-    icon: Code2,
-    title: "Full-Stack Development",
-    description: "Next.js, React, Node.js, PostgreSQL — modern stacks built for performance and scale.",
-  },
-  {
-    icon: Bot,
-    title: "AI Integrations",
-    description: "OpenAI, LangChain, custom agents — turn AI into a real feature, not a gimmick.",
-  },
-  {
-    icon: Zap,
-    title: "Automation Systems",
-    description: "Workflows that eliminate repetitive tasks. Data pipelines, notifications, scheduling.",
-  },
-  {
-    icon: Rocket,
-    title: "MVP & Rapid Prototyping",
-    description: "From idea to deployed demo in days, not months. Validated before you invest further.",
-  },
-  {
-    icon: Monitor,
-    title: "Dashboards & Internal Tools",
-    description: "Admin panels, analytics dashboards, CRMs — tools your team actually uses.",
-  },
-  {
-    icon: Shield,
-    title: "DevOps & Deployment",
-    description: "Docker, VPS, CI/CD — your app runs on infrastructure you own, not a platform you rent.",
-  },
-];
 
 const processSteps = [
   { step: "01", title: "Discovery", description: "We define scope, timeline, and success criteria in a focused call." },
@@ -58,21 +32,17 @@ const processSteps = [
 ];
 
 export default async function HomePage() {
+  // /pro deploy must not render marketing. Absolute URL so next/navigation
+  // does not prefix this to /pro. Login already lives at /pro/login.
+  if (getBasePath()) {
+    redirect("https://evenslouis.ca/");
+  }
+
   const projects = await getFeaturedProjects();
 
   return (
     <div className="min-h-screen flex flex-col bg-neutral-950 text-neutral-100">
-      {/* Nav */}
-      <header className="border-b border-neutral-800/50 backdrop-blur-sm sticky top-0 z-50 bg-neutral-950/80">
-        <div className="mx-auto max-w-6xl flex items-center justify-between px-6 py-4">
-          <Link href="/" className="text-lg font-semibold tracking-tight">evenslouis</Link>
-          <nav className="flex items-center gap-6 text-sm text-neutral-400">
-            <a href="#services" className="hover:text-neutral-100 transition-colors">Services</a>
-            <Link href="/work" className="hover:text-neutral-100 transition-colors">Work</Link>
-            <a href="#contact" className="hover:text-neutral-100 transition-colors">Contact</a>
-          </nav>
-        </div>
-      </header>
+      <SiteHeader />
 
       {/* Hero */}
       <section className="flex-shrink-0 flex items-center justify-center px-6 pt-24 pb-32">
@@ -89,18 +59,18 @@ export default async function HomePage() {
             Full-stack development, automation, and AI — shipped fast on infrastructure you own.
           </p>
           <div className="flex items-center justify-center gap-4 flex-wrap">
-            <Link
+            <a
               href="/work"
               className="inline-flex items-center gap-2 bg-white text-neutral-900 px-7 py-3 rounded-lg text-sm font-medium hover:bg-neutral-200 transition-colors"
             >
               View my work <ArrowRight className="w-4 h-4" />
-            </Link>
-            <a
-              href="#contact"
+            </a>
+            <SiteLink
+              href="/contact"
               className="inline-flex items-center gap-2 border border-neutral-700 px-7 py-3 rounded-lg text-sm text-neutral-300 hover:bg-neutral-800 transition-colors"
             >
               Start a project
-            </a>
+            </SiteLink>
           </div>
         </div>
       </section>
@@ -114,15 +84,7 @@ export default async function HomePage() {
               End-to-end development, <span className="text-white font-normal">your way.</span>
             </h2>
           </div>
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {services.map((s) => (
-              <div key={s.title} className="border border-neutral-800/50 rounded-xl p-6 hover:border-neutral-700/50 transition-colors group">
-                <s.icon className="w-5 h-5 text-neutral-500 group-hover:text-neutral-300 transition-colors mb-4" />
-                <h3 className="font-medium mb-2">{s.title}</h3>
-                <p className="text-sm text-neutral-400 leading-relaxed">{s.description}</p>
-              </div>
-            ))}
-          </div>
+          <ServicesGrid />
         </div>
       </section>
 
@@ -135,24 +97,34 @@ export default async function HomePage() {
                 <p className="text-sm text-neutral-500 uppercase tracking-widest mb-3">Recent work</p>
                 <h2 className="text-3xl font-light tracking-tight">Selected projects</h2>
               </div>
-              <Link href="/work" className="text-sm text-neutral-400 hover:text-neutral-200 transition-colors inline-flex items-center gap-1">
+              <SiteLink href="/work" className="text-sm text-neutral-400 hover:text-neutral-200 transition-colors inline-flex items-center gap-1">
                 View all <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
+              </SiteLink>
             </div>
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {projects.map((p) => (
-                <Link
+              {projects.map((p) => {
+                const copy = resolveCaseCopy(p);
+                return (
+                <SiteLink
                   key={p.id}
                   href={`/work/${p.slug}`}
                   className="border border-neutral-800/50 rounded-xl p-6 hover:border-neutral-700/50 transition-colors group"
                 >
-                  <h3 className="font-medium mb-2 group-hover:text-white transition-colors">{p.name}</h3>
-                  <p className="text-sm text-neutral-400 line-clamp-2">{p.description}</p>
+                  <div className="flex items-center gap-2 mb-2">
+                    <h3 className="font-medium group-hover:text-white transition-colors">{p.name}</h3>
+                    {copy.proofOnly && (
+                      <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded bg-neutral-800 border border-neutral-700 text-neutral-400">
+                        Proof
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm text-neutral-400 line-clamp-2">{copy.description}</p>
                   {p.demoUrl && (
                     <span className="inline-block mt-3 text-xs text-emerald-400">Live demo available</span>
                   )}
-                </Link>
-              ))}
+                </SiteLink>
+                );
+              })}
             </div>
           </div>
         </section>
