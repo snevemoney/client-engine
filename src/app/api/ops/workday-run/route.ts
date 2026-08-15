@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { runWorkdayRun } from "@/lib/ops/workdayRun";
 
-const CRON_SECRET = process.env.RESEARCH_CRON_SECRET;
+const CRON_SECRET =
+  process.env.RESEARCH_CRON_SECRET ?? process.env.AGENT_CRON_SECRET;
 
 export const maxDuration = 300;
 

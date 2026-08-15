@@ -3,6 +3,8 @@
  * JSON parsing, AbortController, error normalization.
  */
 
+import { apiPath } from "@/lib/base-path";
+
 export type FetchJsonOptions = {
   signal?: AbortSignal;
   timeoutMs?: number;
@@ -36,7 +38,7 @@ export async function fetchJson<T = unknown>(
   })();
 
   try {
-    const res = await fetch(url, {
+    const res = await fetch(apiPath(url), {
       ...init,
       signal: combinedSignal,
       headers: {

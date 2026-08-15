@@ -41,6 +41,9 @@ type Phase2Proposal = {
   responseStatus?: string;
   responseSummary?: string | null;
   bookingUrlUsed?: string | null;
+  contactPhone?: string | null;
+  voiceConsentAt?: string | null;
+  voiceOptedOutAt?: string | null;
 };
 
 type ProposalArtifact = {
@@ -126,8 +129,21 @@ export default function ProposalDetailPage({ params }: { params: Promise<{ id: s
     async () => { await fetchJsonThrow(`/api/proposals/${id}/duplicate`, { method: "POST" }); void fetchData(); },
     { toast: toastFn, successMessage: "Duplicated" }
   );
+  const consentAction = useAsyncAction(
+    async () => { await fetchJsonThrow("/api/voice/consent", { method: "POST", body: JSON.stringify({ proposalId: id }) }); void fetchData(); },
+    { toast: toastFn, successMessage: "Voice consent recorded" }
+  );
+  const optOutAction = useAsyncAction(
+    async () => {
+      const ok = await confirm({ title: "Opt out of voice follow-ups?", variant: "destructive" });
+      if (!ok) return;
+      await fetchJsonThrow("/api/voice/opt-out", { method: "POST", body: JSON.stringify({ proposalId: id }) });
+      void fetchData();
+    },
+    { toast: toastFn, successMessage: "Opted out" }
+  );
 
-  const anyPending = markReady.pending || markSent.pending || markViewed.pending || acceptAction.pending || rejectAction.pending || duplicateAction.pending;
+  const anyPending = markReady.pending || markSent.pending || markViewed.pending || acceptAction.pending || rejectAction.pending || duplicateAction.pending || consentAction.pending || optOutAction.pending;
 
   const legacyRunAction = async (key: string, fn: () => Promise<Response>) => {
     try {
@@ -209,6 +225,31 @@ export default function ProposalDetailPage({ params }: { params: Promise<{ id: s
 
               {["sent", "viewed"].includes(proposal.status) && (
                 <ProposalResponseFollowup proposal={proposal} onAction={legacyRunAction} actionLoading={anyPending ? "action" : null} />
+              )}
+
+              {["sent", "viewed"].includes(proposal.status) && (proposal.contactPhone || proposal.voiceConsentAt || proposal.voiceOptedOutAt) && (
+                <div className="rounded-lg border border-neutral-800 p-4">
+                  <h3 className="text-sm font-medium text-neutral-400 mb-2">Voice follow-up</h3>
+                  {proposal.contactPhone && <p className="text-sm text-neutral-300 mb-2">Phone: {proposal.contactPhone}</p>}
+                  <div className="flex gap-2">
+                    {!proposal.voiceOptedOutAt && !proposal.voiceConsentAt && (
+                      <Button size="sm" variant="outline" onClick={() => void consentAction.execute()} disabled={!proposal.contactPhone || anyPending}>
+                        {consentAction.pending ? "…" : "Record consent"}
+                      </Button>
+                    )}
+                    {proposal.voiceConsentAt && (
+                      <span className="text-xs text-emerald-400">Consent recorded</span>
+                    )}
+                    {!proposal.voiceOptedOutAt && proposal.voiceConsentAt && (
+                      <Button size="sm" variant="ghost" className="text-red-400" onClick={() => void optOutAction.execute()} disabled={anyPending}>
+                        {optOutAction.pending ? "…" : "Opt out"}
+                      </Button>
+                    )}
+                    {proposal.voiceOptedOutAt && (
+                      <span className="text-xs text-neutral-500">Opted out</span>
+                    )}
+                  </div>
+                </div>
               )}
 
               {proposal.readiness && (

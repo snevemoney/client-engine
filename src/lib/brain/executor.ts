@@ -26,8 +26,8 @@ import {
   runRecomputeScore,
   runRiskRules as coachRunRiskRules,
   runNextActions as coachRunNextActions,
-  type CoachFetchOptions,
 } from "@/lib/copilot/coach-tools";
+import { listForAgent, getById as leadGetById, update as leadUpdate } from "@/lib/services/lead-service";
 import { WRITE_TOOLS } from "./tools";
 
 export type ToolContext = {
@@ -43,10 +43,6 @@ export type ToolResult = {
   error?: string;
 };
 
-function fetchOpts(ctx: ToolContext): CoachFetchOptions {
-  return { baseUrl: ctx.baseUrl, cookie: ctx.cookie };
-}
-
 export function isWriteTool(toolName: string): boolean {
   return WRITE_TOOLS.has(toolName);
 }
@@ -59,12 +55,11 @@ async function executeGetBusinessSnapshot(
 ): Promise<ToolResult> {
   const entityType = (input.entityType as string) || ctx.entityType;
   const entityId = (input.entityId as string) || ctx.entityId;
-  const opts = fetchOpts(ctx);
 
   const [score, risk, nba] = await Promise.all([
-    getScoreContext(entityType, entityId, opts),
-    getRiskContext(entityType, entityId, opts),
-    getNBAContext(entityType, entityId, opts),
+    getScoreContext(entityType, entityId),
+    getRiskContext(),
+    getNBAContext(entityType, entityId),
   ]);
 
   return {
@@ -192,7 +187,7 @@ async function executeGetOpsHealth(): Promise<ToolResult> {
 // ─── Write Tools ───────────────────────────────────────────────
 
 async function executeRunRiskRules(ctx: ToolContext): Promise<ToolResult> {
-  const result = await coachRunRiskRules(fetchOpts(ctx));
+  const result = await coachRunRiskRules(ctx.userId);
   return result.ok
     ? { result: result.data }
     : { result: null, error: result.error };
@@ -204,7 +199,7 @@ async function executeRunNextActions(
 ): Promise<ToolResult> {
   const entityType = (input.entityType as string) || ctx.entityType;
   const entityId = (input.entityId as string) || ctx.entityId;
-  const result = await coachRunNextActions(entityType, entityId, fetchOpts(ctx));
+  const result = await coachRunNextActions(entityType, entityId, ctx.userId);
   return result.ok
     ? { result: result.data }
     : { result: null, error: result.error };
@@ -216,7 +211,7 @@ async function executeRecomputeScore(
 ): Promise<ToolResult> {
   const entityType = (input.entityType as string) || ctx.entityType;
   const entityId = (input.entityId as string) || ctx.entityId;
-  const result = await runRecomputeScore(entityType, entityId, fetchOpts(ctx));
+  const result = await runRecomputeScore(entityType, entityId);
   return result.ok
     ? { result: result.data }
     : { result: null, error: result.error };
@@ -279,31 +274,13 @@ async function executeDraftOutreach(
 
 // ─── CRUD Tools (Phase 9: Multi-Agent) ────────────────────────
 
-async function executeListLeads(
-  input: Record<string, unknown>
-): Promise<ToolResult> {
+async function executeListLeads(input: Record<string, unknown>): Promise<ToolResult> {
   try {
-    const { db } = await import("@/lib/db");
-    const status = input.status as string | undefined;
-    const limit = Math.min((input.limit as number) || 20, 50);
-    const where: Record<string, unknown> = {};
-    if (status) where.status = status;
-    const leads = await db.lead.findMany({
-      where,
-      select: {
-        id: true,
-        title: true,
-        status: true,
-        source: true,
-        contactName: true,
-        contactEmail: true,
-        score: true,
-        createdAt: true,
-      },
-      orderBy: { createdAt: "desc" },
-      take: limit,
+    const result = await listForAgent({
+      status: input.status as string | undefined,
+      limit: input.limit as number | undefined,
     });
-    return { result: { count: leads.length, leads } };
+    return { result };
   } catch (e) {
     return { result: null, error: e instanceof Error ? e.message : "Failed to list leads" };
   }
@@ -314,11 +291,10 @@ async function executeUpdateLead(
   ctx: ToolContext
 ): Promise<ToolResult> {
   try {
-    const { db } = await import("@/lib/db");
     const leadId = input.leadId as string;
     if (!leadId) return { result: null, error: "leadId is required" };
 
-    const before = await db.lead.findUnique({ where: { id: leadId }, select: { id: true, status: true, score: true } });
+    const before = await leadGetById(leadId);
     if (!before) return { result: null, error: "Lead not found" };
 
     const data: Record<string, unknown> = {};
@@ -329,7 +305,7 @@ async function executeUpdateLead(
 
     if (Object.keys(data).length === 0) return { result: null, error: "No fields to update" };
 
-    const after = await db.lead.update({ where: { id: leadId }, data, select: { id: true, status: true, score: true, title: true } });
+    const after = await leadUpdate(leadId, data);
 
     const { logOpsEventSafe } = await import("@/lib/ops-events/log");
     const { sanitizeMeta } = await import("@/lib/ops-events/sanitize");
@@ -338,10 +314,19 @@ async function executeUpdateLead(
       eventKey: "agent.update_lead",
       actorType: "ai",
       actorId: ctx.userId,
-      meta: sanitizeMeta({ leadId, before, after }),
+      meta: sanitizeMeta({
+        leadId,
+        before: { id: before.id, status: before.status, score: before.score },
+        after: { id: after.id, status: after.status, score: after.score, title: after.title },
+      }),
     });
 
-    return { result: { before, after } };
+    return {
+      result: {
+        before: { id: before.id, status: before.status, score: before.score },
+        after: { id: after.id, status: after.status, score: after.score, title: after.title },
+      },
+    };
   } catch (e) {
     return { result: null, error: e instanceof Error ? e.message : "Failed to update lead" };
   }
@@ -774,6 +759,77 @@ async function executeDelegateToAgent(
   }
 }
 
+// ─── Site Build Pipeline ───────────────────────────────────────
+
+async function executeGetSiteBuildPlan(
+  input: Record<string, unknown>
+): Promise<ToolResult> {
+  try {
+    const { db } = await import("@/lib/db");
+    const deliveryProjectId = input.deliveryProjectId as string;
+    if (!deliveryProjectId) return { result: null, error: "deliveryProjectId is required" };
+
+    const plan = await db.siteBuildPlan.findUnique({
+      where: { deliveryProjectId },
+      include: {
+        phases: {
+          orderBy: { phaseNum: "asc" },
+          include: { outputArtifact: { select: { id: true, type: true, title: true, createdAt: true } } },
+        },
+      },
+    });
+
+    if (!plan) return { result: null, error: "No site build plan for this project. Call POST /api/site-builder/[id]/start first." };
+
+    return { result: plan };
+  } catch (e) {
+    return {
+      result: null,
+      error: e instanceof Error ? e.message : "Failed to fetch site build plan",
+    };
+  }
+}
+
+async function executeRunSitePhase(
+  input: Record<string, unknown>
+): Promise<ToolResult> {
+  try {
+    const { db } = await import("@/lib/db");
+    const { runSitePhase } = await import("@/lib/site-builder/orchestrator");
+
+    const deliveryProjectId = input.deliveryProjectId as string;
+    const phase = input.phase as number;
+    if (!deliveryProjectId || !phase) {
+      return { result: null, error: "deliveryProjectId and phase (1-9) are required" };
+    }
+    if (!Number.isInteger(phase) || phase < 1 || phase > 9) {
+      return { result: null, error: "phase must be 1-9" };
+    }
+
+    const plan = await db.siteBuildPlan.findUnique({
+      where: { deliveryProjectId },
+    });
+    if (!plan) return { result: null, error: "No site build plan. Call start first." };
+
+    const runResult = await runSitePhase(plan.id, phase);
+    if (!runResult.ok) return { result: null, error: runResult.error };
+
+    return {
+      result: {
+        ok: true,
+        phaseNum: phase,
+        artifactId: runResult.artifactId,
+        output: runResult.output,
+      },
+    };
+  } catch (e) {
+    return {
+      result: null,
+      error: e instanceof Error ? e.message : "Failed to run site phase",
+    };
+  }
+}
+
 // ─── Dispatcher ────────────────────────────────────────────────
 
 export async function executeTool(
@@ -833,6 +889,10 @@ export async function executeTool(
         return executeMatchSignalOpportunities(input);
       case "delegate_to_agent":
         return executeDelegateToAgent(input, ctx);
+      case "get_site_build_plan":
+        return executeGetSiteBuildPlan(input);
+      case "run_site_phase":
+        return executeRunSitePhase(input);
       default:
         return { result: null, error: `Unknown tool: ${toolName}` };
     }

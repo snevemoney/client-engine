@@ -1,16 +1,13 @@
 /**
  * POST /api/internal/scores/compute — Trigger score computation (auth required).
- * Phase 3.1: Score Engine.
+ * Phase 3.1: Score Engine. Phase 2: Uses score-service.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { jsonError, requireAuth, withRouteTiming } from "@/lib/api-utils";
 import { sanitizeErrorMessage } from "@/lib/ops-events/sanitize";
-import { computeAndStoreScore } from "@/lib/scoring/compute-and-store";
-import type { ScoreEntityType } from "@/lib/scoring/compute-and-store";
+import { compute } from "@/lib/services/score-service";
 
 export const dynamic = "force-dynamic";
-
-const VALID_ENTITY_TYPES: ScoreEntityType[] = ["review_stream", "command_center"];
 
 export async function POST(request: NextRequest) {
   return withRouteTiming("POST /api/internal/scores/compute", async () => {
@@ -34,22 +31,9 @@ export async function POST(request: NextRequest) {
       return jsonError("entityType and entityId must be strings", 400);
     }
 
-    if (!VALID_ENTITY_TYPES.includes(entityType as ScoreEntityType)) {
-      return jsonError(`entityType must be one of: ${VALID_ENTITY_TYPES.join(", ")}`, 400);
-    }
-
     try {
-      const result = await computeAndStoreScore(
-        entityType as ScoreEntityType,
-        String(entityId)
-      );
-      return NextResponse.json({
-        snapshotId: result.snapshotId,
-        score: result.score,
-        band: result.band,
-        delta: result.delta,
-        eventsCreated: result.eventsCreated,
-      });
+      const result = await compute(entityType, entityId);
+      return NextResponse.json(result);
     } catch (err) {
       const msg = sanitizeErrorMessage(err);
       return jsonError(msg, 500);

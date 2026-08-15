@@ -13,6 +13,7 @@ export const JOB_TYPES = [
   "score.compute",
   "retry_failed_deliveries",
   "content.dispatch_scheduled",
+  "site_builder.phase_run",
 ] as const;
 
 export type JobType = (typeof JOB_TYPES)[number];
@@ -28,6 +29,7 @@ export type JobPayloadMap = {
   "score.compute": { entityType: string; entityId: string };
   retry_failed_deliveries: { nextActionId: string };
   "content.dispatch_scheduled": { limit?: number };
+  "site_builder.phase_run": { planId: string; phaseNum: number; operatorNotes?: string };
 };
 
 export type JobPayload = JobPayloadMap[JobType];

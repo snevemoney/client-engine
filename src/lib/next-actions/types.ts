@@ -70,4 +70,14 @@ export type NextActionContext = {
   interactionsWithoutNextActionCount: number;
   /** Phase 9.2: Active clients with no interaction in 7+ days */
   clientInteractionGapCount: number;
+  /** Sprint 6: Site Builder — active projects with no plan */
+  siteBuilderNoPlanCount?: number;
+  siteBuilderNoPlanProjectId?: string | null;
+  /** Sprint 6: Phases complete >24h awaiting approval */
+  siteBuilderPhaseAwaitingApprovalCount?: number;
+  siteBuilderPhaseAwaitingApprovalProjectId?: string | null;
+  siteBuilderPhaseAwaitingApprovalPhaseNum?: number | null;
+  /** Sprint 6: All 9 phases approved, ready to deploy */
+  siteBuilderReadyToDeployCount?: number;
+  siteBuilderReadyToDeployProjectId?: string | null;
 };

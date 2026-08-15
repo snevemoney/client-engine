@@ -69,6 +69,9 @@ export function computeNextActionScore(
   let learnedBoost = 0;
   if (ctx.learnedWeights) {
     const ruleWeight = ctx.learnedWeights.ruleWeights.get(action.createdByRule) ?? 0;
+    // mark_done is the universal primary action across all NBA templates — it acts as a
+    // global signal for operator engagement with the NBA system. Per-rule personalization
+    // is handled by ruleWeight above; this captures "does the operator act on NBAs at all."
     const actionWeight = ctx.learnedWeights.actionWeights.get("mark_done") ?? 0;
     learnedBoost += ruleWeight * 2;
     learnedBoost += actionWeight * 1;

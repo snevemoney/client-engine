@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import { DegradedBanner } from "@/components/ui/DegradedBanner";
 
 export type AsyncStateProps = {
   loading?: boolean;
@@ -12,6 +13,8 @@ export type AsyncStateProps = {
   children: React.ReactNode;
   className?: string;
   loadingClassName?: string;
+  /** Use DegradedBanner for error state (Phase 8 degraded mode pattern) */
+  useDegradedBanner?: boolean;
 };
 
 /**
@@ -26,6 +29,7 @@ export function AsyncState({
   children,
   className,
   loadingClassName,
+  useDegradedBanner = false,
 }: AsyncStateProps) {
   if (loading) {
     return (
@@ -36,6 +40,13 @@ export function AsyncState({
   }
 
   if (error) {
+    if (useDegradedBanner) {
+      return (
+        <div className={cn("py-6", className)}>
+          <DegradedBanner reason={error} onRetry={onRetry} />
+        </div>
+      );
+    }
     return (
       <div className={cn("flex flex-col items-center justify-center gap-3 py-12 text-center", className)}>
         <p className="text-sm text-red-400">{error}</p>

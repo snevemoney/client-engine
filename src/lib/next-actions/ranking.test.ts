@@ -95,6 +95,19 @@ describe("NBA ranking", () => {
     expect(total - base).toBeLessThanOrEqual(6);
   });
 
+  it("action weight uses mark_done as global proxy for all candidates", () => {
+    const cand1 = baseCandidate({ createdByRule: "flywheel_stage_stall", dedupeKey: "nba:a:cmd" });
+    const cand2 = baseCandidate({ createdByRule: "score_in_critical_band", dedupeKey: "nba:b:cmd" });
+    const actionWeights = new Map<string, number>([["mark_done", 2]]);
+    const weights = { ruleWeights: new Map<string, number>(), actionWeights };
+    const { total: t1 } = computeNextActionScore(cand1, { now, learnedWeights: weights });
+    const { total: t2 } = computeNextActionScore(cand2, { now, learnedWeights: weights });
+    const { total: base1 } = computeNextActionScore(cand1, { now });
+    const { total: base2 } = computeNextActionScore(cand2, { now });
+    expect(t1 - base1).toBe(2);
+    expect(t2 - base2).toBe(2);
+  });
+
   it("applies learned weights: ruleWeight <= -3 adds penalty", () => {
     const cand = baseCandidate({ createdByRule: "overdue_reminders", dedupeKey: "nba:overdue:cmd" });
     const ruleWeights = new Map<string, number>([["overdue_reminders", -4]]);

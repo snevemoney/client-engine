@@ -12,7 +12,6 @@ import {
   getScoreContext,
   getRiskContext,
   getNBAContext,
-  type CoachFetchOptions,
 } from "@/lib/copilot/coach-tools";
 import { deriveCoachResponse } from "@/lib/copilot/coach-engine";
 import { CoachResponseSchema } from "@/lib/copilot/coach-schema";
@@ -69,9 +68,6 @@ export async function POST(request: NextRequest) {
     }
 
     const { entityType, entityId, sessionId: bodySessionId } = body;
-    const baseUrl = request.nextUrl.origin;
-    const cookie = request.headers.get("cookie") ?? undefined;
-    const opts: CoachFetchOptions = { baseUrl, cookie };
 
     try {
       let sessionId = bodySessionId;
@@ -86,9 +82,9 @@ export async function POST(request: NextRequest) {
       }
 
       const [score, risk, nba] = await Promise.all([
-        getScoreContext(entityType, entityId, opts),
-        getRiskContext(entityType, entityId, opts),
-        getNBAContext(entityType, entityId, opts),
+        getScoreContext(entityType, entityId),
+        getRiskContext(),
+        getNBAContext(entityType, entityId),
       ]);
 
       logOpsEventSafe({

@@ -1,33 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { checkStateChangeRateLimit, jsonError, requireLeadAccess, withRouteTiming } from "@/lib/api-utils";
-import { db } from "@/lib/db";
+import { checkStateChangeRateLimit, jsonError, requireAuth, withRouteTiming } from "@/lib/api-utils";
+import { getById, update, deleteLead } from "@/lib/services/lead-service";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   return withRouteTiming("GET /api/leads/[id]", async () => {
+    const session = await requireAuth();
+    if (!session) return jsonError("Unauthorized", 401);
+
     const { id } = await params;
-    const result = await requireLeadAccess(id, {
-      include: {
-        artifacts: { orderBy: { createdAt: "desc" } },
-        project: true,
-        touches: { orderBy: { createdAt: "desc" } },
-        referralsReceived: { orderBy: { createdAt: "desc" } },
-        promotedFromIntake: {
-          select: { id: true, title: true, source: true, status: true, score: true, createdAt: true },
-        },
-        proposals: {
-          select: { id: true, title: true, status: true, sentAt: true, createdAt: true },
-          orderBy: { createdAt: "desc" },
-          take: 10,
-        },
-        deliveryProjects: {
-          select: { id: true, title: true, status: true, dueDate: true, completedAt: true },
-          orderBy: { createdAt: "desc" },
-          take: 10,
-        },
-      },
-    });
-    if (!result.ok) return result.response;
-    const { lead } = result;
+    const lead = await getById(id);
+    if (!lead) return jsonError("Lead not found", 404);
 
     return NextResponse.json(lead);
   });
@@ -126,9 +108,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const rateErr = checkStateChangeRateLimit(req, "leads-patch");
     if (rateErr) return rateErr;
 
+    const session = await requireAuth();
+    if (!session) return jsonError("Unauthorized", 401);
+
     const { id } = await params;
-    const access = await requireLeadAccess(id);
-    if (!access.ok) return access.response;
+    const existing = await getById(id);
+    if (!existing) return jsonError("Lead not found", 404);
 
     const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
     if (!body || typeof body !== "object") {
@@ -155,14 +140,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       }
 
       if (Object.keys(data).length === 0) {
-        const lead = await db.lead.findUnique({ where: { id } });
-        return NextResponse.json(lead);
+        return NextResponse.json(existing);
       }
 
-      const lead = await db.lead.update({
-        where: { id },
-        data: data as Record<string, unknown>,
-      });
+      const lead = await update(id, data);
 
       return NextResponse.json(lead);
     } catch (err: unknown) {
@@ -178,11 +159,14 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     const rateErr = checkStateChangeRateLimit(req, "leads-delete");
     if (rateErr) return rateErr;
 
-    const { id } = await params;
-    const access = await requireLeadAccess(id);
-    if (!access.ok) return access.response;
+    const session = await requireAuth();
+    if (!session) return jsonError("Unauthorized", 401);
 
-    await db.lead.delete({ where: { id } });
+    const { id } = await params;
+    const existing = await getById(id);
+    if (!existing) return jsonError("Lead not found", 404);
+
+    await deleteLead(id);
 
     return NextResponse.json({ ok: true });
   });

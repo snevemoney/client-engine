@@ -1,6 +1,6 @@
 # Brain Tools
 
-> Auto-generated on 2026-03-05. 25 tools (12 write).
+> Auto-generated on 2026-03-10. 27 tools (13 write).
 
 ## All Tools
 
@@ -30,6 +30,8 @@
 | `schedule_content_post` | write | Generate and optionally schedule a content post from a proof record. Creates a draft post for the given platform. If sch |
 | `list_signals` | read | List signal items with optional filters. Returns id, title, score, tags, sourceUrl, status, createdAt. Use to find oppor |
 | `match_signal_opportunities` | read | Match a signal item to existing prospects/deals by niche, platform, and keywords. Returns ranked matches with relevance  |
+| `get_site_build_plan` | read | Get the Site Build Plan for a delivery project: all 9 phases with status, completion, and approval state. Use when the o |
+| `run_site_phase` | write | Trigger a phase run (1-9) of the Site Build Pipeline. Phase 1 = Architecture, 2 = Design System, 3 = Content, etc. Requi |
 | `delegate_to_agent` | write | Delegate a complex task to a specialized worker. Workers: commander (orchestration/self-healing), signal_scout (RSS/oppo |
 
 ## Write Tools (require approval in agent mode)
@@ -45,4 +47,5 @@
 - `manage_deal`
 - `send_operator_alert`
 - `schedule_content_post`
+- `run_site_phase`
 - `delegate_to_agent`

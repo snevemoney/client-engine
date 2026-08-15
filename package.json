@@ -30,7 +30,7 @@
     "test": "npm run test:prepare && vitest run --no-file-parallelism",
     "test:prepare": "node scripts/test-prepare.mjs",
     "test:jobs": "vitest run --no-file-parallelism src/lib/jobs/",
-    "test:e2e": "playwright test",
+    "test:e2e": "bash scripts/e2e-preflight.sh && playwright test",
     "test:e2e:dry": "PIPELINE_DRY_RUN=1 playwright test",
     "smoke": "PIPELINE_DRY_RUN=1 playwright test tests/e2e/smoke.spec.ts tests/e2e/full-flow.spec.ts tests/e2e/proof-api.spec.ts",
     "script:research-lead": "node scripts/create-research-lead.mjs",
@@ -79,6 +79,7 @@
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.5.0",
     "youtube-transcript": "^1.2.1",
+    "youtube-transcript-plus": "^1.2.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {

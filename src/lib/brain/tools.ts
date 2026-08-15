@@ -412,12 +412,53 @@ export const BRAIN_TOOLS: BrainToolDefinition[] = [
     },
   },
 
+  // ─── Site Build Pipeline ──────────────────────────────────────
+
+  {
+    name: "get_site_build_plan",
+    description:
+      "Get the Site Build Plan for a delivery project: all 9 phases with status, completion, and approval state. Use when the operator asks about site build progress or phase status.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        deliveryProjectId: {
+          type: "string",
+          description: "The delivery project ID.",
+        },
+      },
+      required: ["deliveryProjectId"],
+    },
+  },
+  {
+    name: "run_site_phase",
+    description:
+      "Trigger a phase run (1-9) of the Site Build Pipeline. Phase 1 = Architecture, 2 = Design System, 3 = Content, etc. Requires prior phases to be approved. Use when the operator wants to run or re-run a phase.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        deliveryProjectId: {
+          type: "string",
+          description: "The delivery project ID.",
+        },
+        phase: {
+          type: "number",
+          description: "Phase number 1-9.",
+        },
+        notes: {
+          type: "string",
+          description: "Optional notes for regeneration context.",
+        },
+      },
+      required: ["deliveryProjectId", "phase"],
+    },
+  },
+
   // ─── Agent Delegation ─────────────────────────────────────────
 
   {
     name: "delegate_to_agent",
     description:
-      "Delegate a complex task to a specialized worker. Workers: commander (orchestration/self-healing), signal_scout (RSS/opportunity detection), outreach_writer (template personalization/drip), distribution_ops (proof-to-post scheduling), conversion_analyst (funnel analysis), followup_enforcer (stale lead/proposal escalation), proposal_architect (pricing/presentation), scope_risk_ctrl (deadline/quality gates), proof_producer (testimonial/review requests), qa_sentinel (content quality audits). Use when the task involves multiple steps within one domain.",
+      "Delegate a complex task to a specialized worker. Workers: commander (orchestration/self-healing), signal_scout (RSS/opportunity detection), outreach_writer (template personalization/drip), distribution_ops (proof-to-post scheduling), conversion_analyst (funnel analysis), followup_enforcer (stale lead/proposal escalation), proposal_architect (pricing/presentation), scope_risk_ctrl (deadline/quality gates), proof_producer (testimonial/review requests), qa_sentinel (content quality audits), site_builder (9-phase site build pipeline). Use when the task involves multiple steps within one domain.",
     input_schema: {
       type: "object" as const,
       properties: {
@@ -462,6 +503,8 @@ export const TOOL_DISPLAY_NAMES: Record<string, string> = {
   schedule_content_post: "Scheduling content post",
   list_signals: "Listing signals",
   match_signal_opportunities: "Matching signal opportunities",
+  get_site_build_plan: "Fetching site build plan",
+  run_site_phase: "Running site build phase",
   delegate_to_agent: "Delegating to worker",
 };
 
@@ -478,5 +521,6 @@ export const WRITE_TOOLS = new Set([
   "manage_deal",
   "send_operator_alert",
   "schedule_content_post",
+  "run_site_phase",
   "delegate_to_agent",
 ]);

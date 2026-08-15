@@ -1,6 +1,6 @@
 # Dashboard Pages
 
-> Auto-generated on 2026-03-05. 86 pages.
+> Auto-generated on 2026-03-10. 87 pages.
 
 - `/dashboard/audit`
 - `/dashboard/automation`
@@ -86,5 +86,6 @@
 - `/dashboard/strategy`
 - `/dashboard/system`
 - `/dashboard/team`
+- `/dashboard/voice/calls`
 - `/dashboard/youtube`
 - `/dashboard/youtube/transcripts`

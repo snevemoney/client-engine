@@ -1,5 +1,5 @@
 /**
- * GET /api/proposals/followups — Proposal follow-up queue (overdue, today, upcoming, stale).
+ * GET /api/proposals/followups — Proposal follow-up queue (overdue, today, upcoming, stale, voice_eligible).
  */
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
@@ -8,6 +8,7 @@ import { jsonError, withRouteTiming } from "@/lib/api-utils";
 import { parsePaginationParams, buildPaginationMeta, paginatedResponse } from "@/lib/pagination";
 import { getStartOfDay, getEndOfDay } from "@/lib/followup/dates";
 import { classifyProposalFollowupBucket, computeProposalStaleState } from "@/lib/proposals/followup";
+import { getEligibleProposals } from "@/lib/voice";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +24,8 @@ type ProposalFollowupItem = {
   lastContactedAt: string | null;
   followUpCount: number;
   intakeLeadId: string | null;
+  voiceConsentAt?: string | null;
+  contactPhone?: string | null;
 };
 
 function toItem(p: {
@@ -41,6 +44,8 @@ function toItem(p: {
   rejectedAt: Date | null;
   staleAfterDays: number | null;
   intakeLeadId: string | null;
+  voiceConsentAt?: Date | null;
+  contactPhone?: string | null;
 }): ProposalFollowupItem {
   return {
     id: p.id,
@@ -54,6 +59,8 @@ function toItem(p: {
     lastContactedAt: p.lastContactedAt?.toISOString() ?? null,
     followUpCount: p.followUpCount ?? 0,
     intakeLeadId: p.intakeLeadId ?? null,
+    voiceConsentAt: p.voiceConsentAt?.toISOString() ?? null,
+    contactPhone: p.contactPhone ?? null,
   };
 }
 
@@ -106,6 +113,8 @@ export async function GET(req: NextRequest) {
         rejectedAt: true,
         staleAfterDays: true,
         intakeLeadId: true,
+        voiceConsentAt: true,
+        contactPhone: true,
       },
       orderBy: [{ nextFollowUpAt: "asc" }, { sentAt: "asc" }],
     });
@@ -132,32 +141,54 @@ export async function GET(req: NextRequest) {
       if (isStale && !seenIds.has(p.id)) stale.push(item);
     }
 
-    const filterBucket = bucket && ["overdue", "today", "upcoming", "stale", "no_followup"].includes(bucket) ? bucket : "all";
+    const filterBucket = bucket && ["overdue", "today", "upcoming", "stale", "no_followup", "voice_eligible"].includes(bucket) ? bucket : "all";
+
+    let voiceEligible: ProposalFollowupItem[] = [];
+    if (filterBucket === "voice_eligible" || filterBucket === "all") {
+      const eligible = await getEligibleProposals(50);
+      voiceEligible = eligible.map((p) => ({
+        id: p.id,
+        title: p.title,
+        company: p.company,
+        clientName: p.clientName,
+        status: "sent",
+        responseStatus: "none",
+        sentAt: p.sentAt.toISOString(),
+        nextFollowUpAt: null,
+        lastContactedAt: null,
+        followUpCount: 0,
+        intakeLeadId: p.intakeLeadId,
+        voiceConsentAt: p.voiceConsentAt?.toISOString() ?? null,
+        contactPhone: p.contactPhone ?? null,
+      }));
+    }
 
     const combined =
-      filterBucket === "overdue"
-        ? overdue
-        : filterBucket === "today"
-          ? today
-          : filterBucket === "upcoming"
-            ? upcoming
-            : filterBucket === "stale"
-              ? stale
-              : filterBucket === "no_followup"
-                ? noFollowup
-                : (() => {
-                    const seen = new Set<string>();
-                    const out: ProposalFollowupItem[] = [];
-                    for (const arr of [overdue, today, upcoming, stale, noFollowup]) {
-                      for (const item of arr) {
-                        if (!seen.has(item.id)) {
-                          seen.add(item.id);
-                          out.push(item);
+      filterBucket === "voice_eligible"
+        ? voiceEligible
+        : filterBucket === "overdue"
+          ? overdue
+          : filterBucket === "today"
+            ? today
+            : filterBucket === "upcoming"
+              ? upcoming
+              : filterBucket === "stale"
+                ? stale
+                : filterBucket === "no_followup"
+                  ? noFollowup
+                  : (() => {
+                      const seen = new Set<string>();
+                      const out: ProposalFollowupItem[] = [];
+                      for (const arr of [overdue, today, upcoming, stale, noFollowup]) {
+                        for (const item of arr) {
+                          if (!seen.has(item.id)) {
+                            seen.add(item.id);
+                            out.push(item);
+                          }
                         }
                       }
-                    }
-                    return out;
-                  })();
+                      return out;
+                    })();
 
     const total = combined.length;
     const pageItems = combined.slice(pagination.skip, pagination.skip + pagination.pageSize);
@@ -170,12 +201,14 @@ export async function GET(req: NextRequest) {
       upcoming: filterBucket === "all" || filterBucket === "upcoming" ? upcoming : [],
       stale: filterBucket === "all" || filterBucket === "stale" ? stale : [],
       noFollowup: filterBucket === "all" || filterBucket === "no_followup" ? noFollowup : [],
+      voiceEligible: filterBucket === "all" || filterBucket === "voice_eligible" ? voiceEligible : [],
       totals: {
         overdue: overdue.length,
         today: today.length,
         upcoming: upcoming.length,
         stale: stale.length,
         noFollowup: noFollowup.length,
+        voiceEligible: voiceEligible.length,
       },
     });
   });

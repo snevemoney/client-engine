@@ -1,14 +1,12 @@
 /**
  * POST /api/risk/run-rules — Evaluate risk rules and upsert flags.
- * Phase 4.0. Rate limit 10/min.
+ * Phase 4.0. Rate limit 10/min. Phase 2: Uses risk-service.
  */
 import { NextResponse } from "next/server";
 import { jsonError, requireAuth, withRouteTiming } from "@/lib/api-utils";
 import { sanitizeErrorMessage } from "@/lib/ops-events/sanitize";
 import { getRequestClientKey, rateLimitByKey } from "@/lib/http/rate-limit";
-import { fetchRiskRuleContext } from "@/lib/risk/fetch-context";
-import { evaluateRiskRules } from "@/lib/risk/rules";
-import { upsertRiskFlags } from "@/lib/risk/service";
+import { runRules } from "@/lib/services/risk-service";
 
 export const dynamic = "force-dynamic";
 
@@ -28,17 +26,8 @@ export async function POST(request: Request) {
     }
 
     try {
-      const ownerUserId = session.user?.id ?? undefined;
-      const ctx = await fetchRiskRuleContext({ ownerUserId });
-      const candidates = evaluateRiskRules(ctx);
-      const result = await upsertRiskFlags(candidates);
-
-      return NextResponse.json({
-        created: result.created,
-        updated: result.updated,
-        criticalNotified: result.criticalNotified,
-        lastRunAt: new Date().toISOString(),
-      });
+      const result = await runRules(session.user?.id);
+      return NextResponse.json(result);
     } catch (err) {
       console.error("[risk/run-rules]", err);
       return jsonError(sanitizeErrorMessage(err) || "Failed to run risk rules", 500);

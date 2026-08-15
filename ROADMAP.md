@@ -1,21 +1,11 @@
 # Roadmap — Client Engine
 
-## Current State (August 2026)
+## Current State (March 2026)
 
-Phase 9+ complete. Full business OS operational with AI Brain, 10 agents, memory pipeline, NBA system, risk engine, scoring, notifications, growth engine, signal engine, builder integration, Outcome Ledger + Scorecard (Sprint 9), and 92 dashboard pages.
+Phase 9+ complete. Full business OS operational with AI Brain, 11 agents (including site_builder), memory pipeline, NBA system, risk engine, scoring, notifications, growth engine, signal engine, builder integration, Site Builder 9-Phase SBP, Outcome Ledger + Scorecard (Sprint 9), and 92 dashboard pages.
 
-**Canonical operator home:** `https://evenslouis.ca/pro/dashboard` (isolated Compose `pro` service on `:3204`, ADR 007). Public site remains `https://evenslouis.ca` (`:3200`).
+## Phase 1 — Deploy Performance Indexes
 
-## Active Work
-
-### `/pro` cutover (current)
-- [x] Isolated `/pro` basePath deploy on main (PR #10 / ADR 007)
-- [x] VPS: `pro` healthy on `127.0.0.1:3204`; Caddy `/pro*`; login → `/pro/dashboard`; `/pro/api/health`
-- [ ] Finish Sprint 1–9 checklist smoke at `/pro/...` URLs ([DEPLOY_CHECKLIST_SPRINTS_1_9.md](docs/DEPLOY_CHECKLIST_SPRINTS_1_9.md) §5)
-- [ ] Redirect `evenslouis.pro` → `https://evenslouis.ca/pro` after smoke
-- [ ] Keep docs/smoke/E2E pointed at `/pro` for operator paths
-
-### Performance Refactor (Phase 1 — Done)
 - [x] Add 6 composite database indexes
 - [x] Fix unbounded queries in metrics
 - [x] Parallelize sequential queries (3 files)
@@ -24,26 +14,32 @@ Phase 9+ complete. Full business OS operational with AI Brain, 10 agents, memory
 - [x] Add cache to fetchBottlenecks
 - [x] Fix LIKE pattern full scan
 - [x] Playwright review: all pages pass, zero console errors
-- [x] Apply indexes to production (`db4c0de`)
+- [ ] Apply indexes to production (`prisma migrate deploy` on VPS via `./scripts/deploy-remote.sh`)
 
-### Documentation System — Done
-- [x] CLAUDE.md, ARCHITECTURE.md, CONTRIBUTING.md, CHANGELOG.md, ROADMAP.md
-- [x] Architecture Decision Records (6 initial ADRs)
-- [x] AI rules: coding-patterns, domain-knowledge, common-tasks, infrastructure
-- [x] Session journal system (docs/sessions/ + docs/ai-rules/session-journal.md)
-- [x] Auto-generated docs script (scripts/generate-docs.ts)
-- [x] npm scripts (docs:generate, docs:check)
+## 9-Phase Enrichment
 
-## Next Up
+- [x] Enrich-context API in Client Engine
+- [x] Site-builder enrichment module (9 phases, skills)
+- [x] Phase 2 schema extensions (font, radius, shadow)
+- [x] Design spec parsers + font loading + component usage
+- [x] Set ENRICH_CONTEXT_SECRET in both apps for local dev
+- [x] Update builder/create to use enrichment path (deliveryProjectId + enrichContextUrl)
 
-### Architecture Refactor (Phase 2)
+## Phase 2 — Architecture Refactor
+
+Implementation plan: [docs/decisions/007-phase-2-architecture-refactor-impl.md](docs/decisions/007-phase-2-architecture-refactor-impl.md)
+
 Extract business logic from route handlers into service modules:
-- [ ] Extract Brain executor CRUD into domain services (leads, proposals, delivery, proof, signals)
+- [x] Lead service (list, create, getById, update, delete; list_leads, update_lead)
+- [ ] Extract Brain executor CRUD for proposals, delivery, proof, signals
 - [ ] Extract heavy route logic into services (promote, mark-won, complete, capture, simulate, founder-summary)
 - [ ] Break brain/executor ↔ agents/runner circular dependency
-- [ ] Fix coach-tools HTTP self-calls → direct service calls
+- [x] Fix coach-tools HTTP self-calls → direct service calls (score, risk, nba services + coach-tools refactor)
 
-### Code Quality (Phase 3)
+## Phase 3 — Code Quality
+
+Implementation plan: [docs/decisions/008-phase-3-code-quality-impl.md](docs/decisions/008-phase-3-code-quality-impl.md)
+
 - [ ] Create shared follow-up service (deduplicate intake/proposal/delivery patterns)
 - [ ] Centralize env var access (META_AD_ACCOUNT_ID, OPENAI_API_KEY)
 - [ ] Extract agent prompts from registry into separate .md files
@@ -52,7 +48,10 @@ Extract business logic from route handlers into service modules:
 - [ ] Clean up magic numbers into constants
 - [ ] Consolidate cron auth pattern
 
-### Route Consolidation (Phase 4)
+## Phase 4 — Route Consolidation
+
+Implementation plan: [docs/decisions/009-phase-4-route-consolidation-impl.md](docs/decisions/009-phase-4-route-consolidation-impl.md)
+
 - [ ] Extract delivery project route handlers into service layer (34+ routes)
 - [ ] Normalize /api/internal/ vs /api/ops/ namespaces
 - [ ] Merge duplicate summary endpoints
@@ -62,15 +61,15 @@ Extract business logic from route handlers into service modules:
 - **next-auth:** Currently v5 beta. Track stable release; upgrade when v5 stable. See [next-auth releases](https://github.com/nextauthjs/next-auth/releases).
 - **Prisma:** Track Prisma 7; upgrade when stable. Low priority.
 
-## Future Ideas (Backlog)
+## Backlog
 
-- Builder service scaffolding (directory doesn't exist yet)
+- **Voice assistant** — Retell/Vapi outbound when API key set; contract tests; cron schedule.
+- **Client portal** — Visibility into delivery projects for clients.
+- **Prisma migrations** — Prod uses `migrate deploy`; local uses `db push` per dev convention.
 - OAuth flows for integrations (currently placeholder)
 - Per-route Zod error messages
 - Artifact provenance (promptVersion, model, pipelineRunId)
-- Prisma migration history (currently using db push)
 - Real content post dispatch (currently stub)
-- Client portal for delivery project visibility
 
 ## Completed Phases
 

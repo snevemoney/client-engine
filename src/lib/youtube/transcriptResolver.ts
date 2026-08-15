@@ -2,16 +2,18 @@
  * Transcript Resolver — tries providers in priority order with retries and backoff.
  *
  * Provider order:
- *   1. TranscriptAPI (youtube-transcript packages)
- *   2. YouTube Captions (direct page scrape)
- *   3. yt-dlp (if available + enabled)
- *   4. Whisper (if available + enabled)
+ *   1. TranscriptAPI.com (paid SaaS, when TRANSCRIPTAPI_API_KEY set)
+ *   2. TranscriptAPI (youtube-transcript packages)
+ *   3. YouTube Captions (direct page scrape)
+ *   4. yt-dlp (if available + enabled)
+ *   5. Whisper (if available + enabled)
  *
  * If all fail, returns FAILED_TRANSCRIPT with aggregated error info.
  */
 
 import type { ProviderResult, ProviderSuccess, TranscriptProvider } from "./types";
 import { ytLog } from "./types";
+import { transcriptapiComProvider } from "./providers/transcriptapiCom";
 import { transcriptApiProvider } from "./providers/transcriptApi";
 import { youtubeCaptionsProvider } from "./providers/youtubeCaptions";
 import { ytDlpProvider } from "./providers/ytDlp";
@@ -38,6 +40,7 @@ function sleep(ms: number): Promise<void> {
 }
 
 const ALL_PROVIDERS: TranscriptProvider[] = [
+  transcriptapiComProvider,
   transcriptApiProvider,
   youtubeCaptionsProvider,
   ytDlpProvider,

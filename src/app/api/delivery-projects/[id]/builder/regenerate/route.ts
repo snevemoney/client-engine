@@ -1,8 +1,9 @@
 /**
  * POST /api/delivery-projects/[id]/builder/regenerate — regenerate site content
  *
- * Pulls enrichment + positioning artifacts from the linked lead so generated
- * copy reflects the client's actual business, not generic placeholders.
+ * Pulls enrichment + positioning artifacts from the linked lead, runs 9-phase
+ * enrichSiteBrief, and passes full clientInfo + brandColors so generated copy
+ * reflects the client's actual business with design spec from 9 skills.
  * Optional body: { context: string } — client feedback notes to incorporate.
  */
 import { NextRequest, NextResponse } from "next/server";
@@ -10,7 +11,10 @@ import { z } from "zod";
 import { jsonError, requireDeliveryProject, withRouteTiming } from "@/lib/api-utils";
 import { generateContent, getSiteWithSections } from "@/lib/builder/client";
 import { db } from "@/lib/db";
+import { getFallbackBrandColors } from "@/lib/builder/fallback-colors";
 import { ENRICHMENT_ARTIFACT_TYPE, ENRICHMENT_ARTIFACT_TITLE } from "@/lib/pipeline/enrich";
+
+export const maxDuration = 300;
 
 const PostSchema = z.object({
   context: z.string().max(5000).optional(),
@@ -51,7 +55,14 @@ export async function POST(
       const contextFromBody = parsed.success ? parsed.data.context : undefined;
 
       // Get current site data to know which sections to regenerate
-      const site = await getSiteWithSections(project.builderSiteId);
+      let site;
+      try {
+        site = await getSiteWithSections(project.builderSiteId);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Builder unavailable";
+        console.error("[builder/regenerate] Failed to fetch site:", msg);
+        return jsonError(msg, 502, "BUILDER_ERROR");
+      }
 
       // Pull enrichment + positioning artifacts from the linked lead
       const leadId = project.pipelineLeadId ?? project.intakeLeadId;
@@ -77,6 +88,16 @@ export async function POST(
       const enrichData = (enrichArtifact?.meta as Record<string, unknown> | null)?.leadIntelligence as Record<string, unknown> | undefined;
       const lead = project.pipelineLead as { title?: string; contactName?: string; description?: string; scoreVerdict?: string; scoreReason?: string } | null;
 
+      // Run 9-phase enrichment for design spec + content
+      const { enrichSiteBrief, packContentHintsForBuilder } = await import("@/lib/builder/enrich-site-brief");
+      const enrichment = await enrichSiteBrief(id);
+
+      // Use short business summary for bio — NOT full proposal/enrichment artifact (avoids proposal text as section content)
+      const shortSummary = (lead?.description ?? project.summary)?.slice(0, 400) ?? "";
+      const contentHints = enrichment
+        ? packContentHintsForBuilder(shortSummary, enrichment.clientInfo)
+        : (shortSummary || (lead?.description ?? project.summary ?? "").slice(0, 800)) ?? "";
+
       // Client feedback: from body or latest client_note activities
       let clientFeedback = contextFromBody?.trim();
       if (!clientFeedback) {
@@ -88,43 +109,89 @@ export async function POST(
         clientFeedback = clientNotes.map((n) => n.message).filter(Boolean).join("\n\n").trim() || undefined;
       }
 
-      const baseBio = enrichArtifact?.content?.slice(0, 1500) ?? lead?.description ?? project.summary ?? undefined;
       const bioWithFeedback = clientFeedback
-        ? `${baseBio ?? ""}\n\n[Client feedback to incorporate]\n${clientFeedback}`.trim()
-        : baseBio;
+        ? `${contentHints}\n\n[Client feedback to incorporate]\n${clientFeedback}`.trim()
+        : contentHints;
 
-      await generateContent(project.builderSiteId, {
+      // Always use varied fallback on regenerate — enrichment.brandColors is often same each run
+      const brandColors = getFallbackBrandColors(
+        project.clientName ?? project.title,
+        id,
+        (project.builderPreset ?? "custom") as import("@/lib/builder/client").BuilderIndustryPreset,
+        Date.now().toString(), // vary so each regenerate gets a fresh palette
+      );
+
+      const clientInfo = {
+        name: project.clientName ?? lead?.contactName ?? project.title,
+        niche: site.contentHints ?? (posData?.feltProblem as string | undefined),
+        bio: bioWithFeedback,
+        services: posData?.packaging ? [String(posData.packaging)] : undefined,
+        tone: enrichment?.clientInfo?.tone ?? "professional, warm, approachable",
+        feltProblem: posData?.feltProblem as string | undefined,
+        reframedOffer: posData?.reframedOffer as string | undefined,
+        blueOceanAngle: posData?.blueOceanAngle as string | undefined,
+        languageMap: posData?.languageMap as string | undefined,
+        scoreVerdict: lead?.scoreVerdict ?? undefined,
+        scoreReason: lead?.scoreReason ?? undefined,
+        enrichmentSummary: enrichArtifact?.content?.slice(0, 800),
+        trustSensitivity: enrichData?.trustSensitivity as string | undefined,
+        safeStartingPoint: enrichData?.safeStartingPoint as string | undefined,
+        // 9-phase fields from enrichment
+        heroHeadline: enrichment?.clientInfo?.heroHeadline,
+        heroSubhead: enrichment?.clientInfo?.heroSubhead,
+        ctaPrimary: enrichment?.clientInfo?.ctaPrimary,
+        features: enrichment?.clientInfo?.features,
+        testimonials: enrichment?.clientInfo?.testimonials,
+        faq: enrichment?.clientInfo?.faq,
+        footerTagline: enrichment?.clientInfo?.footerTagline,
+        siteMap: enrichment?.siteMap,
+        userFlows: enrichment?.userFlows,
+        designSystem: enrichment?.designSystem,
+        componentLogic: enrichment?.componentLogic,
+        figmaMakeDesignIntent: enrichment?.figmaMakePrompts?.[0],
+        animationSpecs: enrichment?.animationSpecs,
+        responsiveSpecs: enrichment?.responsiveSpecs,
+        dataIntegration: enrichment?.dataIntegration,
+        qaChecklist: enrichment?.qaChecklist,
+      };
+
+      const genInput = {
         sections: site.sections.map((s) => s.type),
-        clientInfo: {
-          name: project.clientName ?? lead?.contactName ?? project.title,
-          niche: site.contentHints ?? (posData?.feltProblem as string | undefined),
-          bio: bioWithFeedback,
-          services: posData?.packaging ? [String(posData.packaging)] : undefined,
-          tone: "professional, warm, approachable",
-          feltProblem: posData?.feltProblem as string | undefined,
-          reframedOffer: posData?.reframedOffer as string | undefined,
-          blueOceanAngle: posData?.blueOceanAngle as string | undefined,
-          languageMap: posData?.languageMap as string | undefined,
-          scoreVerdict: lead?.scoreVerdict ?? undefined,
-          scoreReason: lead?.scoreReason ?? undefined,
-          enrichmentSummary: enrichArtifact?.content?.slice(0, 800),
-          trustSensitivity: enrichData?.trustSensitivity as string | undefined,
-          safeStartingPoint: enrichData?.safeStartingPoint as string | undefined,
-        },
-      });
+        brandColors,
+        clientInfo,
+      };
 
-      // Quality check in background (fire-and-forget)
+      console.log(
+        "[builder/regenerate] genInput:",
+        "sections=" + genInput.sections.length,
+        "brandColors=" + brandColors.slice(0, 2).join(", ") + "...",
+        "clientInfo.bio.length=" + (clientInfo.bio?.length ?? 0),
+      );
+
+      try {
+        await generateContent(project.builderSiteId, genInput);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Content generation failed";
+        console.error("[builder/regenerate] Generate failed:", msg);
+        return jsonError(msg, 502, "BUILDER_ERROR");
+      }
+
+      // Quality check in background (fire-and-forget) — pass full genInput so auto-regenerate uses rich context
       import("@/lib/builder/quality-check")
         .then(({ checkAndReactToQuality }) =>
-          checkAndReactToQuality(project.builderSiteId!, id, {
-            sections: site.sections.map((s) => s.type),
-            clientInfo: { name: project.clientName ?? project.title },
-          }),
+          checkAndReactToQuality(project.builderSiteId!, id, genInput),
         )
         .catch((err) => console.error("[builder/regenerate] Quality check failed:", err));
 
       // Re-fetch to get the updated sections
-      const refreshed = await getSiteWithSections(project.builderSiteId);
+      let refreshed;
+      try {
+        refreshed = await getSiteWithSections(project.builderSiteId);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Builder unavailable";
+        console.error("[builder/regenerate] Failed to re-fetch site:", msg);
+        return jsonError(msg, 502, "BUILDER_ERROR");
+      }
       return NextResponse.json({ sections: refreshed.sections, status: refreshed.status });
     },
   );

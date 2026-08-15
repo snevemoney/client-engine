@@ -44,6 +44,7 @@ import { NetworkingEventsCard } from "@/components/dashboard/command/NetworkingE
 import { PatTomWeeklyScorecardCard } from "@/components/dashboard/command/PatTomWeeklyScorecardCard";
 import { NotificationsCard } from "@/components/dashboard/command/NotificationsCard";
 import { FollowUpQueueCard } from "@/components/dashboard/command/FollowUpQueueCard";
+import { VoiceFollowupsCard } from "@/components/dashboard/command/VoiceFollowupsCard";
 import { ARPanelCard } from "@/components/dashboard/command/ARPanelCard";
 import { CadenceDueCard } from "@/components/dashboard/command/CadenceDueCard";
 import { logSlow, PERF } from "@/lib/perf";
@@ -124,6 +125,7 @@ export default async function CommandSection2() {
         <FollowUpDisciplineCard data={followUpDiscipline} />
         <ReferralEngineCard data={referralEngine} />
       </div>
+      <VoiceFollowupsCard />
       <NotificationsCard data={notificationSummary} />
       <ProspectingSourcesCard data={prospectingSources} />
       <ChannelRoleCard data={channelRoleCritique} />

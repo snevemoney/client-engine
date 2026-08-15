@@ -19,9 +19,9 @@ Do this in Cursor in **this order**. Use terminal for API/scripts. Use localhost
 2. DB tables exist:
    - `npx prisma db push`
    - `npx prisma db seed`
-3. Start app:
-   - `npm run dev` (from repo root so all paths resolve)
-4. Health check (automated):
+3. Run E2E: `npm run test:e2e` — preflight frees port 3000, then Playwright starts Client Engine. Do not use `USE_EXISTING_SERVER=1` unless you have Client Engine running on 3000.
+4. For manual testing, start app: `npm run dev` (from repo root).
+5. Health check (automated):
    ```bash
    curl -s http://localhost:3000/api/health
    ```

@@ -1,6 +1,6 @@
 # Environment Variables
 
-> Auto-generated from .env.example on 2026-03-05. 20 variables.
+> Auto-generated from .env.example on 2026-03-10. 20 variables.
 
 | Variable | Description |
 |----------|-------------|

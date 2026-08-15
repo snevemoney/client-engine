@@ -1,4 +1,4 @@
-import { getRecentJobs, getTranscripts, getLearningProposals, getFailedTranscripts } from "@/lib/youtube/queries";
+import { getRecentJobs, getTranscripts, getLearningProposals, getUnifiedFailures } from "@/lib/youtube/queries";
 import dynamicImport from "next/dynamic";
 
 const YouTubeIngestClient = dynamicImport(
@@ -9,11 +9,11 @@ const YouTubeIngestClient = dynamicImport(
 export const dynamic = "force-dynamic";
 
 export default async function YouTubeIngestPage() {
-  const [jobs, transcripts, proposals, failedTranscripts] = await Promise.all([
+  const [jobs, transcripts, proposals, failures] = await Promise.all([
     getRecentJobs({ limit: 30 }),
     getTranscripts({ limit: 30 }),
     getLearningProposals({ limit: 30 }),
-    getFailedTranscripts(20),
+    getUnifiedFailures(30),
   ]);
 
   return (
@@ -53,9 +53,9 @@ export default async function YouTubeIngestPage() {
           createdAt: p.createdAt.toISOString(),
           transcript: p.transcript,
         }))}
-        initialFailedTranscripts={failedTranscripts.map((t) => ({
-          ...t,
-          createdAt: t.createdAt.toISOString(),
+        initialFailures={failures.map((f) => ({
+          ...f,
+          createdAt: f.createdAt.toISOString(),
         }))}
       />
     </div>

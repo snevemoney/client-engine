@@ -8,7 +8,7 @@ import { sanitizeMeta, sanitizeErrorMessage, safeFingerprint } from "./sanitize"
 
 export type OpsEventInput = {
   level?: "info" | "warn" | "error";
-  category: "ui_action" | "api_action" | "page_view" | "system" | "audit" | "automation" | "integration" | "data_quality";
+  category: "ui_action" | "api_action" | "page_view" | "system" | "audit" | "automation" | "integration" | "data_quality" | "voice";
   status?: "started" | "success" | "failure" | "skipped";
   eventKey: string;
   eventLabel?: string;

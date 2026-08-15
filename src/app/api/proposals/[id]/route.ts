@@ -105,6 +105,9 @@ function safeProposal(p: {
     lastEditedAt: p.lastEditedAt?.toISOString() ?? null,
     intakeLeadId: p.intakeLeadId ?? null,
     pipelineLeadId: p.pipelineLeadId ?? null,
+    contactPhone: (p as { contactPhone?: string | null }).contactPhone ?? null,
+    voiceConsentAt: (p as { voiceConsentAt?: Date | null }).voiceConsentAt?.toISOString() ?? null,
+    voiceOptedOutAt: (p as { voiceOptedOutAt?: Date | null }).voiceOptedOutAt?.toISOString() ?? null,
     intakeLead: p.intakeLead
       ? { id: p.intakeLead.id, title: p.intakeLead.title, status: p.intakeLead.status }
       : null,

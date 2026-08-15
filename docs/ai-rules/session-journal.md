@@ -72,6 +72,10 @@ If the session involved choosing between approaches (e.g., "should we use X or Y
 
 Update Claude Code's persistent memory with stable patterns confirmed during the session.
 
+### 6. `.learnings/` (Self-Learning Skill)
+
+When errors, corrections, or feature requests occur, log them per [docs/SELF_LEARNING_SKILL_DOCTRINE.md](../SELF_LEARNING_SKILL_DOCTRINE.md). Use stable Pattern-Keys for recurrence detection. Promotion follows the ladder (raw → repeated → doctrine).
+
 ## When to Journal
 
 **Always journal when:**

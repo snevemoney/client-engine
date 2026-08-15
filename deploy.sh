@@ -34,8 +34,8 @@ docker compose build app worker
 echo "==> Starting services..."
 docker compose up -d
 
-echo "==> Running database sync..."
-docker compose run --rm --user root app npx prisma@6.19.2 db push --accept-data-loss
+echo "==> Running database migrations..."
+docker compose run --rm --user root app npx prisma@6.19.2 migrate deploy
 
 echo "==> Seeding admin user (if needed)..."
 docker compose run --rm --user root app node prisma/seed.mjs

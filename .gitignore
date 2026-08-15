@@ -56,3 +56,8 @@ dist/
 prisma/dev.db
 dump.rdb
 playwright-report/
+
+# Nested builder scaffold (do not commit install/build artifacts)
+/builder/node_modules/
+/builder/.next/
+/builder/prisma/dev.db

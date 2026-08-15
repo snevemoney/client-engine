@@ -12,7 +12,9 @@
 | `AUTH_TRUST_HOST` | Yes (for `/pro`) | `true` — required by Compose `pro` service |
 | `ADMIN_EMAIL` | For login | Used by seed/reset-auth to create the single admin user (default `admin@evenslouis.ca`) |
 | `ADMIN_PASSWORD` | For login | Used by seed/reset-auth; use the same value when you run reset-auth and when you log in (default `changeme`) |
-| `OPENAI_API_KEY` | For pipeline | Omit or use dry-run for no LLM calls |
+| `ANTHROPIC_API_KEY` | For Brain + pipeline | Preferred LLM; uses Claude claude-sonnet-4-20250514. Required for Brain chat, agents, pipeline. |
+| `OPENAI_API_KEY` | Pipeline fallback | Fallback LLM (gpt-4o-mini) when Anthropic unavailable. Omit or use dry-run for no LLM calls |
+| `AGENT_CRON_SECRET` | For cron + health | Bearer token for `/api/health`, `/api/agents/cron`, `/api/cadence/process`. Generate with `openssl rand -base64 32` |
 | `IMAP_HOST` | For email ingestion (worker) | e.g. `imap.hostinger.com` |
 | `IMAP_PORT` | Optional | Default `993` (SSL) |
 | `IMAP_USER` | For email ingestion | Full mailbox address |

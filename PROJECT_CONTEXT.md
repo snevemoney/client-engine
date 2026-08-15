@@ -163,7 +163,7 @@ Do not implement in client-engine-1 unless explicitly requested for this sprint:
 Before deploy to production, ensure:
 
 - VPS env has: **DATABASE_URL**, **AUTH_SECRET**, **NEXTAUTH_URL**, plus any worker vars you use.
-- **prisma db push** (or migrations) applied on VPS.
+- **prisma migrate deploy** applied on VPS (deploy.sh runs this automatically).
 - **GET /api/health** returns `ok: true`.
 - Auto trigger paths run on server (lead_created, email_ingested; research_ingested when Research pipeline is added).
 - Build gate verified: APPROVED + proposal artifact required; no build without both.
@@ -185,7 +185,7 @@ Before deploy to production, ensure:
 - **Skip A — Positioning meta validation:** No Zod schema for POSITIONING_BRIEF yet; LLM output stored as-is.
 - **Skip B — Rate limiting:** Auth only; no per-route throttling.
 - **Skip C — Artifact provenance:** No promptVersion, model, pipelineRunId, stepName on artifacts yet.
-- **Skip E — Migrations:** Using db push; no prisma/migrations history yet.
+- **~~Skip E — Migrations:~~** Resolved. Production uses `prisma migrate deploy`; 14 migrations committed. Local dev uses `db push`.
 
 ### Phase we’re in now: Phase 5 — Research → Lead Factory + production readiness
 
@@ -221,7 +221,7 @@ Before deploy to production, ensure:
 
 ## Known issues / Env
 
-- **DB:** When DB is up, use `npx prisma migrate dev` or `prisma db push` as appropriate.
+- **DB:** Local dev: `npx prisma db push` (quick sync) or `npx prisma migrate dev` (when adding schema changes). Production: `prisma migrate deploy` only (run by deploy.sh).
 - **Env keys:** OPENAI_API_KEY in server `.env`; CAPTURE_API_KEY for URL capture if used.
 
 ---

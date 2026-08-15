@@ -155,14 +155,15 @@ enum TouchType {
 }
 
 model Artifact {
-  id        String   @id @default(cuid())
-  leadId    String
-  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
-  type      String
-  title     String
-  content   String   @db.Text
-  meta      Json?
-  createdAt DateTime @default(now())
+  id               String          @id @default(cuid())
+  leadId           String
+  lead             Lead            @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  type             String
+  title            String
+  content          String          @db.Text
+  meta             Json?
+  createdAt        DateTime        @default(now())
+  siteBuildPhase   SiteBuildPhase?
 
   @@index([leadId])
   @@index([leadId, createdAt])
@@ -175,6 +176,8 @@ model Project {
   slug               String    @unique
   name               String
   description        String?   @db.Text
+  problem            String?   @db.Text
+  result             String?   @db.Text
   demoUrl            String?
   repoUrl            String?
   repoPath           String?
@@ -1208,6 +1211,14 @@ enum ProposalResponseStatus {
   rejected
 }
 
+enum VoiceCallOutcome {
+  booked_callback
+  requested_manual_followup
+  not_interested
+  no_answer
+  opted_out
+}
+
 model Proposal {
   id               String            @id @default(cuid())
   intakeLeadId     String?
@@ -1251,11 +1262,16 @@ model Proposal {
   bookingUrlUsed     String?
   staleAfterDays     Int?
   finalValue         Int?            // Phase 2.3: accepted/deal value for revenue metrics
+  // Voice Phase 1: proposal follow-up
+  contactPhone       String?
+  voiceConsentAt     DateTime?
+  voiceOptedOutAt    DateTime?
   versions        ProposalVersion[]
   activities      ProposalActivity[]
   intakeLeadsAsLatest IntakeLead[]   @relation("LatestProposal")
   deliveryProjects DeliveryProject[]
   interactions     ClientInteraction[]
+  voiceCallLogs     VoiceCallLog[]
 
   @@index([status])
   @@index([intakeLeadId])
@@ -1276,6 +1292,25 @@ model ProposalVersion {
 
   @@unique([proposalId, version])
   @@index([proposalId])
+}
+
+/** Voice call log: proposal follow-up outcomes from Retell/Vapi webhook. */
+model VoiceCallLog {
+  id              String           @id @default(cuid())
+  proposalId      String
+  proposal        Proposal         @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  pipelineLeadId  String?
+  contactPhone    String
+  outcome         VoiceCallOutcome
+  calledAt        DateTime        @default(now())
+  durationSeconds Int?
+  externalCallId  String?          @unique // Retell/Vapi call ID for idempotency
+  meta            Json?           // transcript snippet, notes
+  createdAt       DateTime        @default(now())
+
+  @@index([proposalId])
+  @@index([calledAt])
+  @@index([externalCallId])
 }
 
 model ProposalActivity {
@@ -1445,6 +1480,7 @@ model DeliveryProject {
   builderHealthLabel     String?            // "great" | "needs_work" | "poor"
   builderHealthCheckedAt DateTime?          // when quality was last checked
   clientToken            String?            @unique  // CUID for public portal; generated on first share
+  siteBuildPlan          SiteBuildPlan?
 
   @@index([status])
   @@index([dueDate])
@@ -1499,6 +1535,52 @@ model DeliveryActivity {
 
   @@index([deliveryProjectId])
   @@index([deliveryProjectId, createdAt(sort: Desc)])
+}
+
+// ----- Site Build Pipeline (9-phase approval-gated spec) -----
+
+model SiteBuildPlan {
+  id                String          @id @default(cuid())
+  deliveryProjectId String          @unique
+  deliveryProject   DeliveryProject @relation(fields: [deliveryProjectId], references: [id], onDelete: Cascade)
+  status            String          // draft | speccing | spec_approved | building | built | launched
+  currentPhase      Int?
+  phasesCompleted   Int[]           @default([])
+  siteType          String?
+  sitePersonality   String?
+  primaryGoal       String?
+  techStack         String?
+  launchedUrl       String?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  phases            SiteBuildPhase[]
+
+  @@index([deliveryProjectId])
+}
+
+model SiteBuildPhase {
+  id                   String        @id @default(cuid())
+  siteBuildPlanId      String
+  siteBuildPlan        SiteBuildPlan @relation(fields: [siteBuildPlanId], references: [id], onDelete: Cascade)
+  phaseNum             Int           // 1-9
+  phaseName            String
+  status               String        // pending | running | complete | approved | rejected | failed
+  inputContextSnapshot Json?
+  outputArtifactId     String?       @unique
+  outputArtifact       Artifact?     @relation(fields: [outputArtifactId], references: [id], onDelete: SetNull)
+  durationMs           Int?
+  modelUsed            String?
+  error                String?       @db.Text
+  retryCount           Int           @default(0)
+  approvedAt           DateTime?
+  approvedBy           String?
+  operatorNotes        String?       @db.Text
+  runAt                DateTime?
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+
+  @@index([siteBuildPlanId])
+  @@index([outputArtifactId])
 }
 
 // ----- Phase 2.3: Revenue Intelligence -----
@@ -1624,6 +1706,7 @@ enum OpsEventCategory {
   automation
   integration
   data_quality
+  voice
 }
 
 enum OpsEventStatus {
@@ -2158,6 +2241,7 @@ enum OperatorMemorySourceType {
   founder_review
   growth
   agent_run
+  site_builder
 }
 
 enum OperatorMemoryOutcome {

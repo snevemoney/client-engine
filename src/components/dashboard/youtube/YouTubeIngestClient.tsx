@@ -1,5 +1,4 @@
 "use client";
-import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
@@ -72,6 +71,17 @@ type Proposal = {
   };
 };
 
+type UnifiedFailure = {
+  id: string;
+  videoId: string;
+  sourceUrl: string;
+  error: string;
+  type: "FAILED_TRANSCRIPT" | "PROPOSAL_FAILED";
+  providerUsed: string;
+  title: string | null;
+  createdAt: string;
+};
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -84,6 +94,7 @@ function statusBadge(status: string) {
     REJECTED: { color: "text-red-400 bg-red-900/30", Icon: XCircle },
     KNOWLEDGE_ONLY: { color: "text-neutral-400 bg-neutral-800", Icon: Archive },
     FAILED_TRANSCRIPT: { color: "text-amber-400 bg-amber-900/30", Icon: AlertTriangle },
+    PROPOSAL_FAILED: { color: "text-amber-400 bg-amber-900/30", Icon: AlertTriangle },
     FETCHING: { color: "text-yellow-400 bg-yellow-900/30", Icon: RefreshCw },
     PENDING: { color: "text-neutral-400 bg-neutral-800", Icon: Clock },
     ALREADY_INGESTED: { color: "text-neutral-400 bg-neutral-800", Icon: CheckCircle2 },
@@ -117,12 +128,12 @@ export default function YouTubeIngestClient({
   initialJobs,
   initialTranscripts,
   initialProposals,
-  initialFailedTranscripts,
+  initialFailures,
 }: {
   initialJobs: Job[];
   initialTranscripts: TranscriptRow[];
   initialProposals: Proposal[];
-  initialFailedTranscripts: TranscriptRow[];
+  initialFailures: UnifiedFailure[];
 }) {
   const [url, setUrl] = useState("");
   const [urlType, setUrlType] = useState<"video" | "channel" | "playlist">("video");
@@ -133,28 +144,27 @@ export default function YouTubeIngestClient({
   const [jobs, setJobs] = useState(initialJobs);
   const [transcripts, setTranscripts] = useState(initialTranscripts);
   const [proposals, setProposals] = useState(initialProposals);
-  const [failed, setFailed] = useState(initialFailedTranscripts);
+  const [failures, setFailures] = useState(initialFailures);
   const [activeTab, setActiveTab] = useState<"proposals" | "jobs" | "transcripts" | "failures">("proposals");
   const { setPageData } = useBrainPanel();
 
   useEffect(() => {
     setPageData(
-      `YouTube Ingest: ${proposals.length} proposals, ${transcripts.length} transcripts, ${jobs.length} jobs, ${failed.length} failed.`
+      `YouTube Ingest: ${proposals.length} proposals, ${transcripts.length} transcripts, ${jobs.length} jobs, ${failures.length} failed.`
     );
-  }, [proposals.length, transcripts.length, jobs.length, failed.length, setPageData]);
+  }, [proposals.length, transcripts.length, jobs.length, failures.length, setPageData]);
 
   async function refreshData() {
-    const [jobsRes, transRes, propRes] = await Promise.all([
-      fetch(apiPath("/api/youtube/jobs?limit=30")),
-      fetch(apiPath("/api/youtube/transcripts?limit=30")),
-      fetch(apiPath("/api/youtube/learning?limit=30")),
+    const [jobsRes, transRes, propRes, failRes] = await Promise.all([
+      fetch("/api/youtube/jobs?limit=30"),
+      fetch("/api/youtube/transcripts?limit=30"),
+      fetch("/api/youtube/learning?limit=30"),
+      fetch("/api/youtube/failures?limit=30"),
     ]);
     if (jobsRes.ok) { const d = await jobsRes.json(); setJobs(d.jobs ?? []); }
     if (transRes.ok) { const d = await transRes.json(); setTranscripts(d.transcripts ?? []); }
     if (propRes.ok) { const d = await propRes.json(); setProposals(d.proposals ?? []); }
-
-    const failRes = await fetch(apiPath("/api/youtube/transcripts?status=FAILED_TRANSCRIPT&limit=20"));
-    if (failRes.ok) { const d = await failRes.json(); setFailed(d.transcripts ?? []); }
+    if (failRes.ok) { const d = await failRes.json(); setFailures(d.failures ?? []); }
   }
 
   async function handleIngest() {
@@ -181,7 +191,8 @@ export default function YouTubeIngestClient({
         const msg = urlType === "channel" || urlType === "playlist"
           ? `${urlType === "playlist" ? "Playlist" : "Channel"}: ${data.summary?.transcribed ?? 0} transcribed, ${data.summary?.failed ?? 0} failed, ${data.summary?.alreadyIngested ?? 0} already ingested`
           : `Video ${data.videoId}: ${data.status}`;
-        setResult({ ok: true, message: msg });
+        const isFailure = data.status === "PROPOSAL_FAILED" || data.status === "FAILED_TRANSCRIPT";
+        setResult({ ok: !isFailure, message: msg });
         setUrl("");
       } else {
         setResult({ ok: false, message: data.error ?? data.errors?.join("; ") ?? "Ingest failed" });
@@ -197,13 +208,17 @@ export default function YouTubeIngestClient({
   async function handleRetry(videoId: string, sourceUrl: string) {
     setLoading(true);
     try {
-      const res = await fetch(apiPath("/api/youtube/ingest/video"), {
+      const res = await fetch("/api/youtube/ingest/video", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: sourceUrl }),
       });
       const data = await res.json();
-      setResult({ ok: data.ok, message: data.ok ? `Retried ${videoId}: ${data.status}` : (data.error ?? "Retry failed") });
+      const isFailure = data.status === "PROPOSAL_FAILED" || data.status === "FAILED_TRANSCRIPT";
+      setResult({
+        ok: data.ok && !isFailure,
+        message: data.ok ? `Retried ${videoId}: ${data.status}` : (data.error ?? "Retry failed"),
+      });
       await refreshData();
     } catch (e) {
       setResult({ ok: false, message: e instanceof Error ? e.message : "Retry failed" });
@@ -216,7 +231,7 @@ export default function YouTubeIngestClient({
     if (!confirm("Delete this transcript and all associated data?")) return;
     setDeletingId(id);
     try {
-      const res = await fetch(apiPath(`/api/youtube/transcripts/${id}`), { method: "DELETE" });
+      const res = await fetch(`/api/youtube/transcripts/${id}`, { method: "DELETE" });
       if (res.ok) {
         toast.success("Transcript deleted");
         await refreshData();
@@ -240,7 +255,7 @@ export default function YouTubeIngestClient({
     setReviewModal(null);
     try {
       if (action === "promote") {
-        const res = await fetch(apiPath(`/api/youtube/learning/${id}/promote`), {
+        const res = await fetch(`/api/youtube/learning/${id}/promote`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ reviewerNotes: reviewNotes || undefined }),
@@ -248,7 +263,7 @@ export default function YouTubeIngestClient({
         if (res.ok) await refreshData();
         else toast.error("Promote failed");
       } else {
-        const res = await fetch(apiPath(`/api/youtube/learning/${id}/reject`), {
+        const res = await fetch(`/api/youtube/learning/${id}/reject`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ reviewerNotes: reviewNotes || undefined, knowledgeOnly: action === "knowledge_only" }),
@@ -338,7 +353,7 @@ export default function YouTubeIngestClient({
           Learning Review ({proposals.filter((p) => p.status === "READY_FOR_REVIEW").length})
         </button>
         <button className={tabClass("failures")} onClick={() => setActiveTab("failures")}>
-          Failures ({failed.length})
+          Failures ({failures.length})
         </button>
         <button className={tabClass("jobs")} onClick={() => setActiveTab("jobs")}>
           Jobs ({jobs.length})
@@ -457,25 +472,32 @@ export default function YouTubeIngestClient({
       {/* Failures & Interventions */}
       {activeTab === "failures" && (
         <section className="space-y-3">
-          {failed.length === 0 ? (
-            <p className="text-xs text-neutral-500">No failed transcripts.</p>
+          {failures.length === 0 ? (
+            <p className="text-xs text-neutral-500">No failures.</p>
           ) : (
             <div className="rounded-lg border border-amber-900/40 bg-amber-950/20 p-4">
               <h3 className="text-sm font-medium text-amber-200/90 mb-3 flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 text-amber-500" />
-                Failed transcripts ({failed.length})
+                Failures ({failures.length})
               </h3>
               <ul className="space-y-2">
-                {failed.map((t) => (
-                  <li key={t.id} className="flex items-start justify-between gap-2 text-sm">
+                {failures.map((f) => (
+                  <li key={f.id} className="flex items-start justify-between gap-2 text-sm">
                     <div className="min-w-0">
-                      <span className="text-amber-200/90 font-mono text-xs">{t.videoId}</span>
-                      {t.title && <span className="text-neutral-400 ml-2">{t.title}</span>}
-                      <p className="text-xs text-neutral-500 mt-0.5">{t.failureReason?.slice(0, 200)}</p>
-                      <span className="text-xs text-neutral-600">Provider: {t.providerUsed} · {fmtDate(t.createdAt)}</span>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-amber-200/90 font-mono text-xs">{f.videoId}</span>
+                        <span className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium ${
+                          f.type === "PROPOSAL_FAILED" ? "bg-amber-800/50 text-amber-200" : "bg-neutral-700 text-neutral-300"
+                        }`}>
+                          {f.type === "PROPOSAL_FAILED" ? "Proposal failed" : "Transcript failed"}
+                        </span>
+                      </div>
+                      {f.title && <span className="text-neutral-400 ml-0 block mt-0.5">{f.title}</span>}
+                      <p className="text-xs text-neutral-500 mt-0.5">{f.error?.slice(0, 200)}</p>
+                      <span className="text-xs text-neutral-600">Provider: {f.providerUsed} · {fmtDate(f.createdAt)}</span>
                     </div>
                     <button
-                      onClick={() => handleRetry(t.videoId, t.sourceUrl)}
+                      onClick={() => handleRetry(f.videoId, f.sourceUrl)}
                       disabled={loading}
                       className="shrink-0 inline-flex items-center gap-1 rounded border border-neutral-600 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800 disabled:opacity-50"
                     >

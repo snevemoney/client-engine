@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
+import { apiPath } from "@/lib/base-path";
 
 const RETRY_DELAYS = [300, 800];
 
@@ -49,7 +50,7 @@ export function useRetryableFetch<T>(
       if (attempt > 0) await new Promise((r) => setTimeout(r, delay));
 
       try {
-        const res = await fetch(url, {
+        const res = await fetch(apiPath(url), {
           credentials: "include",
           signal: effectiveSignal,
           cache: "no-store",

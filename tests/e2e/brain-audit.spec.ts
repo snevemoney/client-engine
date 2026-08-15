@@ -71,28 +71,35 @@ test.describe("All pages render without crash", () => {
     const failures: string[] = [];
 
     for (const url of pages) {
-      try {
-        const res = await page.goto(`${baseURL}${url}`, {
-          timeout: 30000,
-          waitUntil: "load",
-        });
-        const status = res?.status() ?? 0;
-        if (status >= 500) {
-          failures.push(`${url} → HTTP ${status}`);
-          continue;
+      let ok = false;
+      for (let attempt = 0; attempt < 2 && !ok; attempt++) {
+        try {
+          if (attempt > 0) await page.waitForTimeout(2000);
+          const res = await page.goto(`${baseURL}${url}`, {
+            timeout: 30000,
+            waitUntil: "domcontentloaded",
+          });
+          const status = res?.status() ?? 0;
+          if (status >= 500) {
+            failures.push(`${url} → HTTP ${status}`);
+            break;
+          }
+          await expect(page.locator("body")).toBeVisible({ timeout: 5000 });
+          const errorBoundary = page.locator('text="Something went wrong"');
+          const hasError = await errorBoundary.isVisible().catch(() => false);
+          if (hasError) {
+            failures.push(`${url} → error boundary visible`);
+            break;
+          }
+          ok = true;
+        } catch (err) {
+          const msg = (err as Error).message.slice(0, 100);
+          if (attempt === 0 && (msg.includes("ERR_ABORTED") || msg.includes("net::"))) {
+            continue;
+          }
+          failures.push(`${url} → ${msg}`);
+          break;
         }
-        await expect(page.locator("body")).toBeVisible({ timeout: 5000 });
-
-        // Check for React error boundary
-        const errorBoundary = page.locator(
-          'text="Something went wrong"'
-        );
-        const hasError = await errorBoundary.isVisible().catch(() => false);
-        if (hasError) {
-          failures.push(`${url} → error boundary visible`);
-        }
-      } catch (err) {
-        failures.push(`${url} → ${(err as Error).message.slice(0, 100)}`);
       }
     }
 

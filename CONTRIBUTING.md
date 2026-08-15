@@ -13,7 +13,7 @@ git clone <repo>
 cd client-engine-1
 cp .env.example .env         # Edit with your values
 npm install
-npx prisma db push           # Create/sync schema (no migrations)
+npx prisma db push           # Create/sync schema (local dev; prod uses migrate deploy)
 npx prisma db seed            # Seed admin user + sample data
 npm run dev                   # http://localhost:3000
 ```
@@ -105,7 +105,7 @@ return await withSummaryCache("resource/summary", async () => { ... }, 15_000);
 
 1. Add model to `prisma/schema.prisma`
 2. Add appropriate indexes (`@@index`)
-3. Run `npx prisma db push` (we use db push, not migrations — see ADR-003)
+3. Run `npx prisma db push` (local dev) or `npx prisma migrate dev --name descriptive_name` (creates migration for prod). Production uses `prisma migrate deploy` — see ADR-003.
 4. Run `npx prisma generate` (regenerate client types)
 5. Create service functions in `src/lib/{domain}/service.ts`
 6. Create API routes

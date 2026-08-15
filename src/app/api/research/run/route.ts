@@ -11,9 +11,13 @@ import { withRouteTiming } from "@/lib/api-utils";
  */
 export async function POST(req: NextRequest) {
   return withRouteTiming("POST /api/research/run", async () => {
-    const cronSecret = process.env.RESEARCH_CRON_SECRET;
+    const cronSecret =
+      process.env.RESEARCH_CRON_SECRET ?? process.env.AGENT_CRON_SECRET;
     const authHeader = req.headers.get("authorization");
-    const bearerMatch = cronSecret && authHeader?.startsWith("Bearer ") && authHeader.slice(7) === cronSecret;
+    const bearerMatch =
+      cronSecret &&
+      authHeader?.startsWith("Bearer ") &&
+      authHeader.slice(7) === cronSecret;
 
     if (!bearerMatch) {
       const session = await auth();

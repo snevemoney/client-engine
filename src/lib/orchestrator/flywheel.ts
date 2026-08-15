@@ -313,23 +313,49 @@ export async function runFlywheel(input: FlywheelInput): Promise<FlywheelResult>
     } else {
     // Start builder block
     const preset = input.builderPreset ?? "custom";
-    const scope = input.builderScope ?? ["homepage", "about", "services", "contact"];
+    const defaultScope = ["homepage", "about", "services", "contact"];
 
-    // Build rich client context from pipeline artifacts (shared brain)
+    // Auto-enrich: run LLM to produce better scope, brandColors, contentHints
+    const { enrichSiteBrief, packContentHintsForBuilder } = await import("@/lib/builder/enrich-site-brief");
+    const { getFallbackBrandColors } = await import("@/lib/builder/fallback-colors");
+    const enrichment = await enrichSiteBrief(project.id);
+
+    const scope = input.builderScope ?? enrichment?.scope ?? defaultScope;
+    const brandColors = enrichment?.brandColors;
+    const effectiveBrandColors = brandColors?.length ? brandColors : getFallbackBrandColors(input.contactName ?? input.title, project.id, preset);
+    const contentHints = enrichment
+      ? packContentHintsForBuilder(input.contentHints ?? enrichment.contentHints, enrichment.clientInfo)
+      : input.contentHints;
+
+    // Build rich client context — same 9-phase structure as builder/create route
     const positioningData = sharedContext.positioningMeta?.positioning as Record<string, unknown> | undefined;
     const enrichmentData = sharedContext.enrichmentMeta?.leadIntelligence as Record<string, unknown> | undefined;
 
     const richClientInfo = {
       name: input.contactName ?? input.title,
-      niche: input.contentHints ?? sharedContext.positioningMeta?.positioning
-        ? `${(positioningData?.feltProblem as string) ?? ""}`
-        : undefined,
-      bio: sharedContext.enrichment?.slice(0, 1500) ?? input.contentHints,
-      services: positioningData?.packaging
-        ? [String(positioningData.packaging)]
-        : undefined,
-      tone: "professional, warm, approachable",
-      // Extended context from pipeline intelligence
+      niche: positioningData?.feltProblem ? String(positioningData.feltProblem) : input.contentHints ?? undefined,
+      bio: contentHints ?? sharedContext.enrichment?.slice(0, 1500) ?? input.contentHints,
+      services: positioningData?.packaging ? [String(positioningData.packaging)] : undefined,
+      tone: enrichment?.clientInfo?.tone ?? "professional, warm, approachable",
+      // Phase 3 Content
+      heroHeadline: enrichment?.clientInfo?.heroHeadline,
+      heroSubhead: enrichment?.clientInfo?.heroSubhead,
+      ctaPrimary: enrichment?.clientInfo?.ctaPrimary,
+      features: enrichment?.clientInfo?.features,
+      testimonials: enrichment?.clientInfo?.testimonials,
+      faq: enrichment?.clientInfo?.faq,
+      footerTagline: enrichment?.clientInfo?.footerTagline,
+      // Phase 1, 2, 4–9
+      siteMap: enrichment?.siteMap,
+      userFlows: enrichment?.userFlows,
+      designSystem: enrichment?.designSystem,
+      componentLogic: enrichment?.componentLogic,
+      figmaMakeDesignIntent: enrichment?.figmaMakePrompts?.[0],
+      animationSpecs: enrichment?.animationSpecs,
+      responsiveSpecs: enrichment?.responsiveSpecs,
+      dataIntegration: enrichment?.dataIntegration,
+      qaChecklist: enrichment?.qaChecklist,
+      // Positioning + trust
       feltProblem: positioningData?.feltProblem as string | undefined,
       reframedOffer: positioningData?.reframedOffer as string | undefined,
       blueOceanAngle: positioningData?.blueOceanAngle as string | undefined,
@@ -356,7 +382,8 @@ export async function runFlywheel(input: FlywheelInput): Promise<FlywheelResult>
         clientName: input.contactName ?? input.title,
         industry: preset,
         scope,
-        contentHints: input.contentHints,
+        brandColors: effectiveBrandColors,
+        contentHints: contentHints ?? undefined,
         deliveryProjectId: project.id,
       });
 
@@ -383,7 +410,7 @@ export async function runFlywheel(input: FlywheelInput): Promise<FlywheelResult>
       ]);
 
       // Content generation with full pipeline context (shared brain) + quality check
-      const genInput = { sections: scope, clientInfo: richClientInfo };
+      const genInput = { sections: scope, brandColors: effectiveBrandColors, clientInfo: richClientInfo };
       generateContent(site.siteId, genInput).then(async () => {
         try {
           const { checkAndReactToQuality } = await import("@/lib/builder/quality-check");

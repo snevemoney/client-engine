@@ -1,11 +1,12 @@
 /**
  * GET /api/risk — List risk flags with filters. Paginated.
+ * Phase 2: Uses risk-service.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { jsonError, requireAuth, withRouteTiming } from "@/lib/api-utils";
-import { db } from "@/lib/db";
 import { RiskSeverity, RiskStatus, RiskSourceType } from "@prisma/client";
 import { parsePaginationParams, buildPaginationMeta, paginatedResponse } from "@/lib/pagination";
+import { list } from "@/lib/services/risk-service";
 
 export const dynamic = "force-dynamic";
 
@@ -25,57 +26,16 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get("search")?.trim();
     const pagination = parsePaginationParams(searchParams);
 
-    const where: Record<string, unknown> = {};
-    if (status && VALID_STATUS.includes(status)) {
-      where.status = status as RiskStatus;
-    }
-    if (severity && VALID_SEVERITY.includes(severity)) {
-      where.severity = severity as RiskSeverity;
-    }
-    if (sourceType && VALID_SOURCE.includes(sourceType)) {
-      where.sourceType = sourceType as RiskSourceType;
-    }
-    if (search) {
-      where.OR = [
-        { title: { contains: search, mode: "insensitive" } },
-        { description: { contains: search, mode: "insensitive" } },
-        { key: { contains: search, mode: "insensitive" } },
-      ];
-    }
-
-    const [items, total] = await Promise.all([
-      db.riskFlag.findMany({
-        where,
-        orderBy: [{ severity: "desc" }, { lastSeenAt: "desc" }],
-        skip: pagination.skip,
-        take: pagination.pageSize,
-      }),
-      db.riskFlag.count({ where }),
-    ]);
+    const { items, total } = await list({
+      status: status && VALID_STATUS.includes(status) ? (status as RiskStatus) : undefined,
+      severity: severity && VALID_SEVERITY.includes(severity) ? (severity as RiskSeverity) : undefined,
+      sourceType: sourceType && VALID_SOURCE.includes(sourceType) ? (sourceType as RiskSourceType) : undefined,
+      search: search ?? undefined,
+      skip: pagination.skip,
+      take: pagination.pageSize,
+    });
 
     const meta = buildPaginationMeta(total, pagination);
-
-    return NextResponse.json(
-      paginatedResponse(
-        items.map((r) => ({
-          id: r.id,
-          key: r.key,
-          title: r.title,
-          description: r.description,
-          severity: r.severity,
-          status: r.status,
-          sourceType: r.sourceType,
-          sourceId: r.sourceId,
-          actionUrl: r.actionUrl,
-          suggestedFix: r.suggestedFix,
-          evidenceJson: r.evidenceJson,
-          createdByRule: r.createdByRule,
-          lastSeenAt: r.lastSeenAt.toISOString(),
-          createdAt: r.createdAt.toISOString(),
-          snoozedUntil: r.snoozedUntil?.toISOString() ?? null,
-        })),
-        meta
-      )
-    );
+    return NextResponse.json(paginatedResponse(items, meta));
   });
 }

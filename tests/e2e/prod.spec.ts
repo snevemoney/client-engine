@@ -32,6 +32,8 @@ const ALL_PAGES = [
   "/dashboard/build-ops",
   "/dashboard/metrics",
   "/work",
+  "/services",
+  "/contact",
   "/dashboard/chat",
   "/dashboard/learning",
   "/dashboard/settings",

@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAuth } from "@/lib/api-utils";
-import { db } from "@/lib/db";
 import { LeadStatus } from "@prisma/client";
 import { checkStateChangeRateLimit, jsonError, withRouteTiming } from "@/lib/api-utils";
+import { list, create } from "@/lib/services/lead-service";
 
 const PostLeadSchema = z.object({
   title: z.string().min(1).max(500),
@@ -31,34 +31,12 @@ export async function GET(req: NextRequest) {
     const search = url.searchParams.get("q");
     const limit = Math.min(500, Math.max(1, parseInt(url.searchParams.get("limit") ?? "500", 10) || 500));
 
-    const where: Record<string, unknown> = {};
-    if (status) where.status = status;
-    if (source) where.source = source;
-    if (verdict && ["ACCEPT", "MAYBE", "REJECT"].includes(verdict)) where.scoreVerdict = verdict;
-    if (search) {
-      where.OR = [
-        { title: { contains: search, mode: "insensitive" } },
-        { description: { contains: search, mode: "insensitive" } },
-      ];
-    }
-
-    const leads = await db.lead.findMany({
-      where,
-      orderBy: { createdAt: "desc" },
-      take: limit,
-      include: {
-        _count: { select: { artifacts: true } },
-        proposals: {
-          select: { id: true, status: true },
-          orderBy: { updatedAt: "desc" },
-          take: 1,
-        },
-        deliveryProjects: {
-          select: { id: true, status: true },
-          orderBy: { updatedAt: "desc" },
-          take: 1,
-        },
-      },
+    const leads = await list({
+      status: status ?? undefined,
+      source: source ?? undefined,
+      verdict: verdict && ["ACCEPT", "MAYBE", "REJECT"].includes(verdict) ? (verdict as "ACCEPT" | "MAYBE" | "REJECT") : undefined,
+      search: search ?? undefined,
+      limit,
     });
 
     return NextResponse.json(leads, {
@@ -85,20 +63,18 @@ export async function POST(req: NextRequest) {
 
     let lead;
     try {
-      lead = await db.lead.create({
-        data: {
-          title: body.title,
-          source: body.source,
-          sourceUrl: body.sourceUrl ?? undefined,
-          description: body.description ?? undefined,
-          budget: body.budget ?? undefined,
-          timeline: body.timeline ?? undefined,
-          platform: body.platform ?? undefined,
-          techStack: body.techStack,
-          contactName: body.contactName ?? undefined,
-          contactEmail: body.contactEmail ?? undefined,
-          tags: body.tags,
-        },
+      lead = await create({
+        title: body.title,
+        source: body.source,
+        sourceUrl: body.sourceUrl ?? undefined,
+        description: body.description ?? undefined,
+        budget: body.budget ?? undefined,
+        timeline: body.timeline ?? undefined,
+        platform: body.platform ?? undefined,
+        techStack: body.techStack,
+        contactName: body.contactName ?? undefined,
+        contactEmail: body.contactEmail ?? undefined,
+        tags: body.tags,
       });
     } catch (e) {
       console.error("[api:error] POST /api/leads create failed", e);

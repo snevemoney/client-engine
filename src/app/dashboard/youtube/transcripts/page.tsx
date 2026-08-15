@@ -1,5 +1,4 @@
 "use client";
-import { apiPath } from "@/lib/base-path";
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
@@ -13,8 +12,8 @@ type Transcript = {
   sourceUrl: string;
   language: string | null;
   durationSeconds: number | null;
-  publishedAt: string | null;
-  transcriptText: string;
+  publishedAt?: string | null;
+  transcriptText?: string;
   createdAt: string;
 };
 
@@ -29,7 +28,7 @@ export default function TranscriptsPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(apiPath("/api/youtube/transcripts"), { cache: "no-store" });
+      const res = await fetch("/api/youtube/transcripts?includeText=1&limit=100", { cache: "no-store" });
       if (!res.ok) throw new Error("Failed to load");
       const data = await res.json();
       setTranscripts(data.transcripts ?? data ?? []);
@@ -49,7 +48,7 @@ export default function TranscriptsPage() {
     const q = search.toLowerCase();
     return (
       (t.title ?? "").toLowerCase().includes(q) ||
-      t.transcriptText.toLowerCase().includes(q)
+      (t.transcriptText ?? "").toLowerCase().includes(q)
     );
   });
 
@@ -123,7 +122,7 @@ export default function TranscriptsPage() {
                     </a>
                   </div>
                   <pre className="text-xs text-neutral-300 whitespace-pre-wrap max-h-96 overflow-y-auto leading-relaxed">
-                    {t.transcriptText}
+                    {t.transcriptText ?? "(No transcript text)"}
                   </pre>
                 </div>
               )}

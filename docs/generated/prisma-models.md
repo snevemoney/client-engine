@@ -1,6 +1,6 @@
 # Prisma Models
 
-> Auto-generated on 2026-03-05. 96 models, 58 enums.
+> Auto-generated on 2026-03-10. 99 models, 59 enums.
 
 ## Models
 
@@ -8,7 +8,7 @@
 |-------|--------|
 | User | 5 |
 | Lead | 17 |
-| Artifact | 8 |
+| Artifact | 9 |
 | Project | 25 |
 | Outcome | 11 |
 | Campaign | 9 |
@@ -53,13 +53,16 @@
 | LeadActivity | 7 |
 | ProofRecord | 18 |
 | ProofCandidate | 29 |
-| Proposal | 46 |
+| Proposal | 50 |
 | ProposalVersion | 7 |
+| VoiceCallLog | 11 |
 | ProposalActivity | 7 |
-| DeliveryProject | 67 |
+| DeliveryProject | 68 |
 | DeliveryMilestone | 11 |
 | DeliveryChecklistItem | 11 |
 | DeliveryActivity | 7 |
+| SiteBuildPlan | 14 |
+| SiteBuildPhase | 19 |
 | WeeklyMetricSnapshot | 9 |
 | OperatorScoreSnapshot | 7 |
 | ForecastSnapshot | 9 |
@@ -121,6 +124,7 @@
 - `ProposalPriceType`
 - `ProposalActivityType`
 - `ProposalResponseStatus`
+- `VoiceCallOutcome`
 - `DeliveryProjectStatus`
 - `DeliveryMilestoneStatus`
 - `DeliveryChecklistCategory`

@@ -26,6 +26,8 @@ test.describe("All pages", () => {
       { url: "/dashboard/metrics", name: "Metrics" },
       { url: "/dashboard/meta-ads", name: "Meta Ads" },
       { url: "/work", name: "Work" },
+      { url: "/services", name: "Services" },
+      { url: "/contact", name: "Contact" },
       { url: "/dashboard/chat", name: "Chat" },
       { url: "/dashboard/learning", name: "Learning" },
       { url: "/dashboard/settings", name: "Settings" },

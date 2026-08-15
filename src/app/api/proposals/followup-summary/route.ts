@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { jsonError, withRouteTiming } from "@/lib/api-utils";
 import { getWeekStart } from "@/lib/ops/weekStart";
 import { getStartOfDay, getEndOfDay } from "@/lib/followup/dates";
+import { getEligibleProposals } from "@/lib/voice";
 
 export const dynamic = "force-dynamic";
 
@@ -78,7 +79,7 @@ export async function GET() {
       }
     }
 
-    const [emailsThisWeek, callsThisWeek, sentNoResponseOver7d] = await Promise.all([
+    const [emailsThisWeek, callsThisWeek, sentNoResponseOver7d, voiceEligibleProposals] = await Promise.all([
       db.proposalActivity.count({
         where: {
           type: "followup_email",
@@ -98,6 +99,7 @@ export async function GET() {
           respondedAt: null,
         },
       }),
+      getEligibleProposals(1000).then((p) => p.length),
     ]);
 
     return NextResponse.json({
@@ -110,6 +112,7 @@ export async function GET() {
       callsThisWeek: callsThisWeek ?? 0,
       meetingBookedThisWeek: meetingBookedThisWeek ?? 0,
       sentNoResponseOver7d: sentNoResponseOver7d ?? 0,
+      voiceEligible: voiceEligibleProposals ?? 0,
     });
   });
 }

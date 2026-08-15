@@ -13,7 +13,6 @@ import {
   NBA_ACTION_KEYS,
   type CoachActionKey,
 } from "@/lib/copilot/coach-actions";
-import type { CoachFetchOptions } from "@/lib/copilot/coach-tools";
 import { addActionLog, addMessage, getSession } from "@/lib/copilot/session-service";
 import { ingestFromCopilotActionLog } from "@/lib/memory/ingest";
 import {
@@ -69,10 +68,6 @@ export async function POST(request: NextRequest) {
       return jsonError("Session not found", 404);
     }
 
-    const baseUrl = request.nextUrl.origin;
-    const cookie = request.headers.get("cookie") ?? undefined;
-    const opts: CoachFetchOptions = { baseUrl, cookie };
-
     // nba_execute attribution is captured inside runDeliveryAction
     const COPILOT_ATTRIBUTION_ACTIONS = ["run_risk_rules", "run_next_actions", "recompute_score"];
     const captureAttribution =
@@ -95,7 +90,6 @@ export async function POST(request: NextRequest) {
           nextActionId: body.nextActionId,
           nbaActionKey: body.nbaActionKey,
         },
-        opts,
         userId
       );
 

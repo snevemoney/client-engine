@@ -1,6 +1,6 @@
 # Agent Registry
 
-> Auto-generated on 2026-03-05. 10 agents.
+> Auto-generated on 2026-03-10. 11 agents.
 
 | ID | Name |
 |----|------|
@@ -13,4 +13,5 @@
 | `proposal_architect` | Proposal Architect |
 | `scope_risk_ctrl` | Scope & Risk Controller |
 | `proof_producer` | Proof Producer |
+| `site_builder` | Site Builder |
 | `qa_sentinel` | QA Sentinel |

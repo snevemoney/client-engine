@@ -60,10 +60,33 @@ export const transcriptApiProvider: TranscriptProvider = {
       });
     }
 
+    // Attempt 3: youtube-transcript-plus (uses InnerTube player API instead of HTML scrape)
+    try {
+      const { YoutubeTranscript: PlusTranscript } = await import("youtube-transcript-plus");
+      const plus = new PlusTranscript();
+      const list = await plus.fetchTranscript(videoId);
+      const segments: TranscriptSegment[] = list.map(
+        (item: { text: string; offset: number; duration: number }) => ({
+          text: item.text,
+          start: item.offset / 1000,
+          duration: item.duration / 1000,
+        }),
+      );
+      if (segments.length > 0) {
+        ytLog("info", "transcript-api plus success", { videoId, segments: segments.length });
+        return { ok: true, provider: `${PROVIDER_NAME}:plus`, segments, meta };
+      }
+    } catch (err) {
+      ytLog("warn", "transcript-api plus failed", {
+        videoId,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+
     return {
       ok: false,
       provider: PROVIDER_NAME,
-      error: "Both transcript-api variants failed",
+      error: "All transcript-api variants failed",
       code: "TRANSCRIPT_UNAVAILABLE",
     };
   },

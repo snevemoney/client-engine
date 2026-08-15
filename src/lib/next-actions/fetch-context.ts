@@ -33,6 +33,16 @@ export async function fetchNextActionContext(opts?: { now?: Date; ownerUserId?: 
   growthLastActivityAt?: Date | null;
   growthFirstOverdueDealId?: string | null;
   growthFirstNoOutreachDealId?: string | null;
+  /** Sprint 6: Site Builder — active projects with no plan */
+  siteBuilderNoPlanCount?: number;
+  siteBuilderNoPlanProjectId?: string | null;
+  /** Sprint 6: Phases complete >24h awaiting approval */
+  siteBuilderPhaseAwaitingApprovalCount?: number;
+  siteBuilderPhaseAwaitingApprovalProjectId?: string | null;
+  siteBuilderPhaseAwaitingApprovalPhaseNum?: number | null;
+  /** Sprint 6: All 9 phases approved, ready to deploy */
+  siteBuilderReadyToDeployCount?: number;
+  siteBuilderReadyToDeployProjectId?: string | null;
 }> {
   const now = opts?.now ?? new Date();
   const ownerUserId = opts?.ownerUserId;
@@ -60,6 +70,12 @@ export async function fetchNextActionContext(opts?: { now?: Date; ownerUserId?: 
     proposalOverdueFollowups,
     interactionsWithoutNextAction,
     clientInteractionGaps,
+    siteBuilderNoPlanCount,
+    siteBuilderNoPlanFirst,
+    siteBuilderPhaseAwaitingCount,
+    siteBuilderPhaseAwaitingFirst,
+    siteBuilderReadyCount,
+    siteBuilderReadyFirst,
   ] = await Promise.all([
     db.scoreSnapshot.findFirst({
       where: { entityType: "command_center", entityId: "command_center" },
@@ -170,6 +186,63 @@ export async function fetchNextActionContext(opts?: { now?: Date; ownerUserId?: 
         occurredAt: { _max: { lt: sevenDaysAgo } },
       },
     }),
+    // Sprint 6: Site builder (defensive: avoid breaking NBA on schema drift)
+    db.deliveryProject
+      .count({
+        where: {
+          pipelineLeadId: { not: null },
+          status: { notIn: ["completed", "archived"] },
+          siteBuildPlan: null,
+        },
+      })
+      .catch(() => 0),
+    db.deliveryProject
+      .findFirst({
+        where: {
+          pipelineLeadId: { not: null },
+          status: { notIn: ["completed", "archived"] },
+          siteBuildPlan: null,
+        },
+        select: { id: true },
+        orderBy: { updatedAt: "desc" },
+      })
+      .catch(() => null),
+    db.siteBuildPhase
+      .count({
+        where: {
+          status: "complete",
+          updatedAt: { lt: since24h },
+        },
+      })
+      .catch(() => 0),
+    db.siteBuildPhase
+      .findFirst({
+        where: {
+          status: "complete",
+          updatedAt: { lt: since24h },
+        },
+        include: { siteBuildPlan: { select: { deliveryProjectId: true } } },
+        orderBy: { updatedAt: "asc" },
+      })
+      .catch(() => null),
+    db.siteBuildPlan
+      .count({
+        where: {
+          phasesCompleted: { hasEvery: [1, 2, 3, 4, 5, 6, 7, 8, 9] },
+          deliveryProject: { status: { notIn: ["completed", "archived"] } },
+        },
+      })
+      .catch(() => 0),
+    db.siteBuildPlan
+      .findFirst({
+        where: {
+          phasesCompleted: { hasEvery: [1, 2, 3, 4, 5, 6, 7, 8, 9] },
+          deliveryProject: { status: { notIn: ["completed", "archived"] } },
+        },
+        select: { deliveryProjectId: true },
+        orderBy: { updatedAt: "desc" },
+      })
+      .catch(() => null),
   ]);
 
   let growthOverdueCount: number | undefined;
@@ -278,6 +351,13 @@ export async function fetchNextActionContext(opts?: { now?: Date; ownerUserId?: 
     proposalOverdueFollowupCount: proposalOverdueFollowups ?? 0,
     interactionsWithoutNextActionCount: interactionsWithoutNextAction ?? 0,
     clientInteractionGapCount: clientInteractionGaps?.length ?? 0,
+    siteBuilderNoPlanCount: siteBuilderNoPlanCount ?? 0,
+    siteBuilderNoPlanProjectId: siteBuilderNoPlanFirst?.id ?? null,
+    siteBuilderPhaseAwaitingApprovalCount: siteBuilderPhaseAwaitingCount ?? 0,
+    siteBuilderPhaseAwaitingApprovalProjectId: siteBuilderPhaseAwaitingFirst?.siteBuildPlan?.deliveryProjectId ?? null,
+    siteBuilderPhaseAwaitingApprovalPhaseNum: siteBuilderPhaseAwaitingFirst?.phaseNum ?? null,
+    siteBuilderReadyToDeployCount: siteBuilderReadyCount ?? 0,
+    siteBuilderReadyToDeployProjectId: siteBuilderReadyFirst?.deliveryProjectId ?? null,
     ...(ownerUserId && {
       growthOverdueCount,
       growthNoOutreachCount,

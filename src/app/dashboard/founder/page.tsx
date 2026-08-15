@@ -7,6 +7,7 @@ import { useRetryableFetch } from "@/hooks/useRetryableFetch";
 import { useAsyncAction } from "@/hooks/useAsyncAction";
 import { fetchJsonThrow } from "@/lib/http/fetch-json";
 import { AsyncState } from "@/components/ui/AsyncState";
+import { DegradedBanner } from "@/components/ui/DegradedBanner";
 import { useBrainPanel } from "@/contexts/BrainPanelContext";
 
 type FounderMove = {
@@ -56,6 +57,8 @@ type FounderSummary = {
     }>;
   };
   todayPlan: FounderMove[];
+  degraded?: boolean;
+  degradedReason?: string;
 };
 
 type QuarterData = {
@@ -173,6 +176,9 @@ export default function FounderPage() {
       </div>
 
       <AsyncState loading={loading} error={error} onRetry={refetchAll}>
+        {summary?.degraded && (
+          <DegradedBanner reason={summary.degradedReason} onRetry={refetchAll} />
+        )}
         {/* Row 1: Health + Today's Plan */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Business Health */}

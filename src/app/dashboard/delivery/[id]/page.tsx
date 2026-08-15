@@ -501,13 +501,16 @@ function BuilderSection({
 }) {
   const [deploying, setDeploying] = useState(false);
   const [showPreview, setShowPreview] = useState(true);
-  const [showEditor, setShowEditor] = useState(false);
+  const [showEditor, setShowEditor] = useState(true);
   const [sections, setSections] = useState<SectionEntry[]>([]);
   const [feedback, setFeedback] = useState<SiteFeedback | null>(null);
   const [saving, setSaving] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
   const [loadingSections, setLoadingSections] = useState(false);
   const [supportRequests, setSupportRequests] = useState<SupportRequest[]>([]);
+  const [versions, setVersions] = useState<{ id: string; source: string; createdAt: string; sectionCount: number }[]>([]);
+  const [showVersions, setShowVersions] = useState(false);
+  const [restoring, setRestoring] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const editorRef = useRef<HTMLDivElement>(null);
 
@@ -522,6 +525,16 @@ function BuilderSection({
       .then(setSupportRequests)
       .catch(() => {}); // silent — not critical
   }, [siteId, projectId]);
+
+  // Load version history when expanded
+  useEffect(() => {
+    if (!showVersions || !siteId) return;
+    fetchJsonThrow<{ versions: { id: string; source: string; createdAt: string; sectionCount: number }[] }>(
+      `/api/delivery-projects/${projectId}/builder/versions`,
+    )
+      .then((d) => setVersions(d.versions))
+      .catch(() => setVersions([]));
+  }, [showVersions, siteId, projectId]);
 
   // Load sections + feedback when editor is opened
   useEffect(() => {
@@ -539,7 +552,10 @@ function BuilderSection({
         setSections(siteData.sections);
         setFeedback(fb);
       })
-      .catch(() => toast.error("Failed to load site data"))
+      .catch((err) => {
+        const msg = err instanceof Error ? err.message : "Failed to load site data";
+        toast.error(msg);
+      })
       .finally(() => setLoadingSections(false));
   }, [showEditor, siteId, projectId]);
 
@@ -576,9 +592,11 @@ function BuilderSection({
   const handleRegenerate = async () => {
     setRegenerating(true);
     try {
-      await fetchJsonThrow(`/api/delivery-projects/${projectId}/builder/regenerate`, { method: "POST", body: "{}" });
+      await fetchJsonThrow(`/api/delivery-projects/${projectId}/builder/regenerate`, {
+        method: "POST",
+        body: "{}",
+      });
       toast.success("Content regenerated — refreshing preview");
-      // Reload sections + preview
       if (iframeRef.current) setTimeout(() => { if (iframeRef.current) iframeRef.current.src = iframeRef.current.src; }, 1000);
       setShowEditor(false);
       setTimeout(() => setShowEditor(true), 100);
@@ -586,6 +604,25 @@ function BuilderSection({
       toast.error(err instanceof Error ? err.message : "Regeneration failed");
     } finally {
       setRegenerating(false);
+    }
+  };
+
+  const handleRestoreVersion = async (versionId: string) => {
+    setRestoring(true);
+    try {
+      await fetchJsonThrow(`/api/delivery-projects/${projectId}/builder/versions/restore`, {
+        method: "POST",
+        body: JSON.stringify({ versionId }),
+      });
+      toast.success("Version restored — refreshing preview");
+      if (iframeRef.current) iframeRef.current.src = iframeRef.current.src;
+      setShowEditor(false);
+      setTimeout(() => setShowEditor(true), 100);
+      onReload();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Restore failed");
+    } finally {
+      setRestoring(false);
     }
   };
 
@@ -637,6 +674,37 @@ function BuilderSection({
         </div>
       )}
 
+      {/* Section editor (forms before Regenerate) */}
+      {showEditor && (
+        <div ref={editorRef} className="space-y-3">
+          {loadingSections ? (
+            <p className="text-xs text-neutral-500">Loading sections…</p>
+          ) : (
+            <>
+              {sections.map((section, idx) => (
+                <div key={idx} className="border border-neutral-800 rounded-lg p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-neutral-300">{SECTION_LABELS[section.type] ?? section.type}</span>
+                    {feedback?.sectionScores.find((s) => s.type === section.type) && (
+                      <span className="text-xs text-neutral-500">
+                        {feedback.sectionScores.find((s) => s.type === section.type)!.score}%
+                      </span>
+                    )}
+                  </div>
+                  {/* Render editable fields based on section type */}
+                  {renderSectionFields(section, idx, updateSectionProp)}
+                </div>
+              ))}
+              <div className="flex gap-2">
+                <Button size="sm" onClick={handleSave} disabled={saving}>
+                  {saving ? "Saving…" : "Save changes"}
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
       {/* Action bar */}
       <div className="flex flex-wrap items-center gap-3 text-sm">
         {project.builderPreviewUrl && (
@@ -656,7 +724,42 @@ function BuilderSection({
         <Button size="sm" variant="outline" onClick={handleRegenerate} disabled={regenerating}>
           {regenerating ? "Regenerating…" : clientNotesCount > 0 ? "Regenerate from feedback" : "Regenerate content"}
         </Button>
+        <button
+          onClick={() => setShowVersions((v) => !v)}
+          className="text-xs text-neutral-500 hover:text-neutral-300"
+        >
+          {showVersions ? "Hide version history" : "Version history"}
+        </button>
       </div>
+
+      {/* Version history */}
+      {showVersions && (
+        <div className="border border-neutral-800 rounded-lg p-3 space-y-2">
+          <span className="text-xs font-medium text-neutral-400">Section version history</span>
+          {versions.length === 0 ? (
+            <p className="text-xs text-neutral-500">No previous versions. Versions are saved before each Regenerate or section edit.</p>
+          ) : (
+            <ul className="space-y-1.5">
+              {versions.map((v) => (
+                <li key={v.id} className="flex items-center justify-between text-xs">
+                  <span className="text-neutral-500">
+                    {new Date(v.createdAt).toLocaleString()} — {v.sectionCount} sections ({v.source})
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 text-amber-400 hover:text-amber-300"
+                    onClick={() => handleRestoreVersion(v.id)}
+                    disabled={restoring}
+                  >
+                    Restore
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       {/* Feedback panel */}
       {feedback && (
@@ -688,37 +791,6 @@ function BuilderSection({
                 ))}
               </div>
             </div>
-          )}
-        </div>
-      )}
-
-      {/* Section editor */}
-      {showEditor && (
-        <div ref={editorRef} className="space-y-3">
-          {loadingSections ? (
-            <p className="text-xs text-neutral-500">Loading sections…</p>
-          ) : (
-            <>
-              {sections.map((section, idx) => (
-                <div key={idx} className="border border-neutral-800 rounded-lg p-3 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium text-neutral-300">{SECTION_LABELS[section.type] ?? section.type}</span>
-                    {feedback?.sectionScores.find((s) => s.type === section.type) && (
-                      <span className="text-xs text-neutral-500">
-                        {feedback.sectionScores.find((s) => s.type === section.type)!.score}%
-                      </span>
-                    )}
-                  </div>
-                  {/* Render editable fields based on section type */}
-                  {renderSectionFields(section, idx, updateSectionProp)}
-                </div>
-              ))}
-              <div className="flex gap-2">
-                <Button size="sm" onClick={handleSave} disabled={saving}>
-                  {saving ? "Saving…" : "Save changes"}
-                </Button>
-              </div>
-            </>
           )}
         </div>
       )}

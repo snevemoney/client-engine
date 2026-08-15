@@ -33,6 +33,7 @@ import {
   Wrench,
   Shield,
   Newspaper,
+  Phone,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { Sheet } from "@/components/ui/sheet";
@@ -77,6 +78,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/dashboard/decisions", label: "Decisions",    icon: FileCheck, group: "convert", dailyMode: true },
   { href: "/dashboard/proposals",  label: "Proposals",   icon: FileText,  group: "convert", dailyMode: true },
   { href: "/dashboard/followups",  label: "Follow-ups",  icon: Calendar,  group: "convert", dailyMode: true },
+  { href: "/dashboard/voice/calls", label: "Voice calls", icon: Phone,    group: "convert" },
   { href: "/dashboard/forecast",   label: "Forecast",    icon: TrendingUp, group: "convert" },
 
   // BUILD

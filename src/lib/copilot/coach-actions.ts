@@ -2,7 +2,6 @@
  * Phase 5.2: Coach Mode action execution.
  * Preview builder, execute logic, before/after diff summarizer.
  */
-import type { CoachFetchOptions } from "./coach-tools";
 import {
   getScoreContext,
   getRiskContext,
@@ -67,13 +66,12 @@ export type ActionResponse = {
 
 async function fetchContextSnapshot(
   entityType: string,
-  entityId: string,
-  opts: CoachFetchOptions
+  entityId: string
 ): Promise<ContextSnapshot> {
   const [score, risk, nba] = await Promise.all([
-    getScoreContext(entityType, entityId, opts),
-    getRiskContext(entityType, entityId, opts),
-    getNBAContext(entityType, entityId, opts),
+    getScoreContext(entityType, entityId),
+    getRiskContext(),
+    getNBAContext(entityType, entityId),
   ]);
 
   const scoreStr = score.error
@@ -177,10 +175,9 @@ export function summarizeDiff(before: ContextSnapshot, after: ContextSnapshot): 
 
 export async function runCoachAction(
   input: CoachActionInput,
-  opts: CoachFetchOptions,
   actorUserId?: string
 ): Promise<ActionResponse> {
-  const before = await fetchContextSnapshot(input.entityType, input.entityId, opts);
+  const before = await fetchContextSnapshot(input.entityType, input.entityId);
   const preview = buildPreview(input.actionKey, input, before);
 
   if (input.mode === "preview") {
@@ -199,7 +196,7 @@ export async function runCoachAction(
 
     switch (input.actionKey) {
       case "run_risk_rules": {
-        const r = await runRiskRules(opts);
+        const r = await runRiskRules(actorUserId);
         if (!r.ok) {
           errors.push(r.error ?? "Run failed");
           resultSummary = `Risk rules failed: ${r.error}`;
@@ -211,7 +208,7 @@ export async function runCoachAction(
       }
 
       case "run_next_actions": {
-        const r = await runNextActions(input.entityType, input.entityId, opts);
+        const r = await runNextActions(input.entityType, input.entityId, actorUserId);
         if (!r.ok) {
           errors.push(r.error ?? "Run failed");
           resultSummary = `Next actions run failed: ${r.error}`;
@@ -223,7 +220,7 @@ export async function runCoachAction(
       }
 
       case "recompute_score": {
-        const r = await runRecomputeScore(input.entityType, input.entityId, opts);
+        const r = await runRecomputeScore(input.entityType, input.entityId);
         if (!r.ok) {
           errors.push(r.error ?? "Compute failed");
           resultSummary = `Score compute failed: ${r.error}`;
@@ -275,7 +272,7 @@ export async function runCoachAction(
         };
     }
 
-    const after = await fetchContextSnapshot(input.entityType, input.entityId, opts);
+    const after = await fetchContextSnapshot(input.entityType, input.entityId);
     const diffSummary = summarizeDiff(before, after);
 
     return {
@@ -293,7 +290,7 @@ export async function runCoachAction(
     const msg = err instanceof Error ? err.message : "Unknown error";
     let after: ContextSnapshot | undefined;
     try {
-      after = await fetchContextSnapshot(input.entityType, input.entityId, opts);
+      after = await fetchContextSnapshot(input.entityType, input.entityId);
     } catch {
       after = undefined;
     }

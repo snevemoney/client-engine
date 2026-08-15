@@ -1,6 +1,6 @@
 # API Routes
 
-> Auto-generated on 2026-03-05. 351 route files.
+> Auto-generated on 2026-03-10. 373 route files.
 
 | Path | Methods |
 |------|---------|
@@ -47,6 +47,8 @@
 | `/api/delivery-projects/[id]/builder/status` | GET |
 | `/api/delivery-projects/[id]/builder/support/[requestId]` | PATCH |
 | `/api/delivery-projects/[id]/builder/support` | GET |
+| `/api/delivery-projects/[id]/builder/versions/restore` | POST |
+| `/api/delivery-projects/[id]/builder/versions` | GET |
 | `/api/delivery-projects/[id]/checklist/toggle` | POST |
 | `/api/delivery-projects/[id]/client-confirm` | POST |
 | `/api/delivery-projects/[id]/complete` | POST |
@@ -134,6 +136,7 @@
 | `/api/internal/copilot/sessions/[id]/close` | POST |
 | `/api/internal/copilot/sessions/[id]` | GET |
 | `/api/internal/copilot/sessions` | GET |
+| `/api/internal/delivery-projects/[id]/enrich-context` | GET |
 | `/api/internal/delivery/context` | GET |
 | `/api/internal/execution/metrics` | GET |
 | `/api/internal/flywheel` | POST |
@@ -168,6 +171,7 @@
 | `/api/internal/scores/summary` | GET |
 | `/api/internal/sidebar-counts` | GET |
 | `/api/internal/system/check` | GET |
+| `/api/internal/test/builder-gen-input` | GET |
 | `/api/job-schedules/[id]` | GET, PATCH |
 | `/api/job-schedules/[id]/run-now` | POST |
 | `/api/job-schedules` | GET, POST |
@@ -345,7 +349,25 @@
 | `/api/signals/sources/[id]` | PATCH, DELETE |
 | `/api/signals/sources/[id]/sync` | POST |
 | `/api/signals/sources` | GET, POST |
+| `/api/site-builder/[id]/deploy` | POST |
+| `/api/site-builder/[id]/export` | POST |
+| `/api/site-builder/[id]/phase/[num]/approve` | POST |
+| `/api/site-builder/[id]/phase/[num]/output` | GET |
+| `/api/site-builder/[id]/phase/[num]/regenerate` | POST |
+| `/api/site-builder/[id]/phase/[num]/reject` | POST |
+| `/api/site-builder/[id]/phase/[num]/run` | POST |
+| `/api/site-builder/[id]/plan` | GET |
+| `/api/site-builder/[id]/start` | POST |
 | `/api/site/leads` | POST |
+| `/api/voice/calls` | GET |
+| `/api/voice/consent` | POST |
+| `/api/voice/eligible` | GET |
+| `/api/voice/metrics` | GET |
+| `/api/voice/opt-out` | POST |
+| `/api/voice/process` | POST |
+| `/api/voice/schedule-follow-up` | POST |
+| `/api/voice/webhook` | POST |
+| `/api/youtube/failures` | GET |
 | `/api/youtube/ingest/channel` | POST |
 | `/api/youtube/ingest/playlist` | POST |
 | `/api/youtube/ingest/video` | POST |

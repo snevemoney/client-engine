@@ -1,14 +1,3 @@
-<!-- HYGIENE: paste at top of README.md -->
-# Client Engine
-
-> **Status:** WIP (operator)  
-> **Lane:** Hive / money core  
-> **Role:** Private business OS: leads → builds → proofs → AI with approval.  
-> **This is NOT:** ProofCheck QC, Scorpion, or AutoFlow Finance  
-> **Canonical home:** https://evenslouis.ca/pro (operator-gated)
-
----
-
 # Client Engine
 
 Private autopilot business system running on your VPS.
@@ -31,12 +20,10 @@ bash deploy.sh
 1. **Env (VPS or `.env`):** Must include:
    - `DATABASE_URL`
    - `AUTH_SECRET`
-   - `NEXTAUTH_URL` (origin only, e.g. `https://evenslouis.ca` — **do not** append `/pro`)
-   - `AUTH_TRUST_HOST=true` (required for the `/pro` Compose service)
-   - `ANTHROPIC_API_KEY` and/or `OPENAI_API_KEY`
-2. **Database:** `deploy.sh` runs `prisma db push`. If you deploy without it, run `npx prisma db push` on the server once.
-3. **Health:** After deploy, confirm root `GET /api/health` and operator `GET /pro/api/health` both return **200** with `ok: true`.
-4. **Architecture:** Root app `:3200` (public) + isolated `pro` service `:3204` with `NEXT_PUBLIC_BASE_PATH=/pro`. See [ADR 007](docs/decisions/007-pro-base-path-deployment.md).
+   - `NEXTAUTH_URL` (e.g. `https://evenslouis.ca`)
+   - `OPENAI_API_KEY`
+2. **Database:** `deploy.sh` runs `prisma migrate deploy`. Locally use `npx prisma db push` for quick sync, or `npx prisma migrate dev` when adding schema changes.
+3. **Health:** After deploy, confirm `GET /api/health` returns **200** with `ok: true` and all checks true (db, pipelineTables, authSecret, nextAuthUrl).
 
 ## Operations
 
@@ -52,18 +39,15 @@ bash logs.sh postgres   # Tail DB logs
 
 **One-command deploy from your machine:** Use `./scripts/sync-and-deploy.sh` to keep dev and prod in sync (push, rsync, deploy). If the server has an SSH deploy key, you can use `./scripts/deploy-remote.sh` instead. See [docs/DEPLOY_SSH_SETUP.md](docs/DEPLOY_SSH_SETUP.md).
 
-**Post-deploy smoke test:** `./scripts/smoke-test.sh` — checks public site + `/pro` operator health/login/dashboard. Exit 0 = all pass.
+**Post-deploy smoke test:** `./scripts/smoke-test.sh` (or `./scripts/smoke-test.sh https://evenslouis.ca`) — checks homepage, login, dashboard, `/api/health`, `/api/ops/command`, SSL. Exit 0 = all pass.
 
 **VPS out of disk (ENOSPC / rsync or deploy fails):** Run `./scripts/run-vps-cleanup.sh` from your Mac to prune Docker and free space on the server, then run `./scripts/sync-and-deploy.sh` again. See [docs/VPS_DEPLOY_CHECKLIST.md](docs/VPS_DEPLOY_CHECKLIST.md) § Disk space maintenance.
 
 ## URLs
 
-- **https://evenslouis.ca** — Public site (root app `:3200`)
-- **https://evenslouis.ca/pro/dashboard** — Operator OS (isolated `pro` app `:3204`, `basePath=/pro`)
-- **https://evenslouis.ca/pro/login** — Operator login
-- **https://evenslouis.pro** — Legacy host; redirect to `/pro` only after operator smoke is green (see ADR 007)
-
-Public marketing/proof/campaign/portal pages stay on the root host unless product intent moves them.
+- **https://evenslouis.ca** — Public site
+- **https://evenslouis.ca/dashboard** — Private dashboard (login required)
+- **https://evenslouis.pro** — Redirects to dashboard
 
 ## Local development
 
@@ -76,6 +60,21 @@ npm run dev
 ```
 
 Use the same `.env.example` as prod; only `DATABASE_URL` and `REDIS_URL` differ (localhost vs Docker service names).
+
+**Builder (delivery sites):** For delivery projects and website builder features, run the site-builder and set env:
+
+```bash
+# Terminal 2 — run site-builder (use consistently; don't run builder/ scaffold)
+cd /Users/evenslouis/site-builder && npm run dev
+```
+
+In `.env` add:
+```
+BUILDER_API_URL=http://localhost:3001
+BUILDER_API_KEY=dev-key
+```
+
+Use the same builder consistently — scaffold (`builder/`) and site-builder use different DBs; switching causes "Failed to load site data".
 
 **Run everything without interruptions:** If you changed `.env`, restart `npm run dev` once so the app loads the new values. Then you can log in at http://localhost:3000/login and run `npm run test:e2e:dry` for the full flow (login → dashboard → metrics → new lead → metrics).
 
@@ -104,7 +103,7 @@ To run without an OpenAI key (pipeline uses placeholder artifacts):
 PIPELINE_DRY_RUN=1 npm run test:e2e
 ```
 
-**Production operator E2E:** `PLAYWRIGHT_BASE_URL=https://evenslouis.ca/pro` (set `NEXTAUTH_URL` to the origin without `/pro`, plus `AUTH_SECRET` / `AUTH_TRUST_HOST`).
+**Production:** Use `PLAYWRIGHT_BASE_URL=https://evenslouis.ca` only after fixing redirect loops (set `NEXTAUTH_URL` and `AUTH_SECRET` on the server).
 
 **Testing strategy:** [docs/TESTING_SIDE_PANEL.md](docs/TESTING_SIDE_PANEL.md) — two-tier approach (Playwright automated + manual production checks), page-by-page test matrix, and embedded browser notes.
 

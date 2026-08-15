@@ -25,6 +25,8 @@ type ProposalItem = {
   lastContactedAt: string | null;
   followUpCount: number;
   intakeLeadId: string | null;
+  voiceConsentAt?: string | null;
+  contactPhone?: string | null;
 };
 
 type ApiResponse = {
@@ -33,19 +35,21 @@ type ApiResponse = {
   upcoming: ProposalItem[];
   stale: ProposalItem[];
   noFollowup: ProposalItem[];
-  totals: { overdue: number; today: number; upcoming: number; stale: number; noFollowup: number };
+  voiceEligible?: ProposalItem[];
+  totals: { overdue: number; today: number; upcoming: number; stale: number; noFollowup: number; voiceEligible?: number };
 };
 
-const BUCKET_KEYS = ["overdue", "today", "upcoming", "stale", "noFollowup"] as const;
+const BUCKET_KEYS = ["overdue", "today", "upcoming", "stale", "noFollowup", "voiceEligible"] as const;
 
 function getBucketItems(data: ApiResponse, bucket: string): ProposalItem[] {
+  if (bucket === "voice_eligible") return Array.isArray(data.voiceEligible) ? data.voiceEligible : [];
   const key = bucket === "no_followup" ? "noFollowup" : bucket;
   if (!BUCKET_KEYS.includes(key as (typeof BUCKET_KEYS)[number])) return [];
   const val = data[key as (typeof BUCKET_KEYS)[number]];
   return Array.isArray(val) ? val : [];
 }
 
-const BUCKETS = ["overdue", "today", "upcoming", "stale", "no_followup"] as const;
+const BUCKETS = ["overdue", "today", "upcoming", "stale", "no_followup", "voice_eligible"] as const;
 
 function ProposalRow({
   item,
@@ -54,6 +58,8 @@ function ProposalRow({
   onLogEmail,
   onLogCall,
   onComplete,
+  onConsent,
+  onScheduleVoice,
   actionLoading,
   selected,
   onToggle,
@@ -64,11 +70,15 @@ function ProposalRow({
   onLogEmail: (i: ProposalItem) => void;
   onLogCall: (i: ProposalItem) => void;
   onComplete: (i: ProposalItem) => void;
+  onConsent: (i: ProposalItem) => void;
+  onScheduleVoice: (i: ProposalItem) => void;
   actionLoading: string | null;
   selected: boolean;
   onToggle: (id: string) => void;
 }) {
   const loading = actionLoading === item.id;
+  const canConsent = !item.voiceConsentAt && item.contactPhone && bucket !== "voice_eligible";
+  const showScheduleVoice = bucket === "voice_eligible";
   return (
     <tr className="border-b border-neutral-800 hover:bg-neutral-800/30">
       <td className="p-3 w-8">
@@ -92,7 +102,17 @@ function ProposalRow({
       <td className="p-3 text-neutral-400">{formatDateSafe(item.lastContactedAt)}</td>
       <td className="p-3 text-neutral-400">{item.followUpCount ?? 0}</td>
       <td className="p-3">
-        <div className="flex gap-1">
+        <div className="flex flex-wrap gap-1">
+          {showScheduleVoice && (
+            <Button variant="ghost" size="sm" onClick={() => onScheduleVoice(item)} disabled={loading}>
+              Schedule voice
+            </Button>
+          )}
+          {canConsent && (
+            <Button variant="ghost" size="sm" onClick={() => onConsent(item)} disabled={loading}>
+              Consent
+            </Button>
+          )}
           <Button variant="ghost" size="sm" onClick={() => onLogEmail(item)} disabled={loading}>Email</Button>
           <Button variant="ghost" size="sm" onClick={() => onLogCall(item)} disabled={loading}>Call</Button>
           <Button variant="ghost" size="sm" onClick={() => onSnooze(item)} disabled={loading}>Snooze</Button>
@@ -225,6 +245,26 @@ export default function ProposalFollowupsPage() {
     );
   };
 
+  const handleConsent = (item: ProposalItem) => {
+    runAction(item.id, () =>
+      fetch("/api/voice/consent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ proposalId: item.id }),
+      })
+    );
+  };
+
+  const handleScheduleVoice = (item: ProposalItem) => {
+    runAction(item.id, () =>
+      fetch("/api/voice/schedule-follow-up", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ proposalId: item.id }),
+      })
+    );
+  };
+
   const toggleSelect = useCallback((id: string) => {
     setSelected((prev) => {
       const next = new Set(prev);
@@ -307,6 +347,12 @@ export default function ProposalFollowupsPage() {
             <div className="text-2xl font-semibold text-emerald-400">{summary.meetingBookedThisWeek ?? 0}</div>
             <div className="text-xs text-neutral-500">Meetings this week</div>
           </div>
+          {typeof summary.voiceEligible === "number" && (
+            <div className="rounded-lg border border-neutral-800 p-4">
+              <div className="text-2xl font-semibold text-amber-400">{summary.voiceEligible}</div>
+              <div className="text-xs text-neutral-500">Voice eligible</div>
+            </div>
+          )}
         </div>
       )}
 
@@ -332,7 +378,7 @@ export default function ProposalFollowupsPage() {
                   : "bg-neutral-800/50 text-neutral-400 border border-neutral-700 hover:bg-neutral-700/50"
               }`}
             >
-              {b === "all" ? "All" : b}
+              {b === "all" ? "All" : b === "voice_eligible" ? "Voice eligible" : b.replace("_", " ")}
             </button>
           ))}
         </div>
@@ -388,7 +434,7 @@ export default function ProposalFollowupsPage() {
             return (
               <div key={bucket} className="rounded-lg border border-neutral-800 overflow-hidden">
                 <h3 className="text-sm font-medium text-neutral-400 px-4 py-2 bg-neutral-900/50 border-b border-neutral-800 capitalize">
-                  {bucket}
+                  {bucket === "voice_eligible" ? "Voice eligible" : bucket.replace("_", " ")}
                 </h3>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
@@ -421,6 +467,8 @@ export default function ProposalFollowupsPage() {
                           onLogEmail={handleLogEmail}
                           onLogCall={handleLogCall}
                           onComplete={handleComplete}
+                          onConsent={handleConsent}
+                          onScheduleVoice={handleScheduleVoice}
                           actionLoading={actionLoading}
                           selected={selected.has(item.id)}
                           onToggle={toggleSelect}
@@ -432,7 +480,7 @@ export default function ProposalFollowupsPage() {
               </div>
             );
           })}
-          {data.overdue?.length === 0 && data.today?.length === 0 && data.upcoming?.length === 0 && data.stale?.length === 0 && data.noFollowup?.length === 0 && (
+          {data.overdue?.length === 0 && data.today?.length === 0 && data.upcoming?.length === 0 && data.stale?.length === 0 && data.noFollowup?.length === 0 && (data.voiceEligible?.length ?? 0) === 0 && (
             <div className="py-12 text-center text-neutral-500 border border-dashed border-neutral-700 rounded-lg">
               No proposal follow-ups in queue.
             </div>

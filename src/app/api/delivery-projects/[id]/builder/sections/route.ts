@@ -36,8 +36,14 @@ export async function GET(
         return jsonError("No builder site linked to this project", 400, "NO_SITE");
       }
 
-      const site = await getSiteWithSections(project.builderSiteId);
-      return NextResponse.json({ sections: site.sections });
+      try {
+        const site = await getSiteWithSections(project.builderSiteId);
+        return NextResponse.json({ sections: site.sections });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Builder unavailable";
+        console.error("[builder/sections] Failed to fetch site:", msg);
+        return jsonError(msg, 502, "BUILDER_ERROR");
+      }
     },
   );
 }

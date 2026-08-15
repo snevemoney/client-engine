@@ -33,4 +33,8 @@ export const RULE_SCOPES: Record<string, NBAScope[]> = {
   // Phase 6.3: Growth Engine
   growth_overdue_followups: ["founder_growth"],
   growth_no_outreach_sent: ["founder_growth"],
+  // Sprint 6: Site Builder
+  site_builder_start: ["command_center", "review_stream"],
+  site_builder_phase_awaiting_approval: ["command_center", "review_stream"],
+  site_builder_ready_to_deploy: ["command_center", "review_stream"],
 };

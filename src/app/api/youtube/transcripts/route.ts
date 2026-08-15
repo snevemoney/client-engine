@@ -14,9 +14,10 @@ export async function GET(req: NextRequest) {
   const status = url.searchParams.get("status") ?? undefined;
   const channelId = url.searchParams.get("channelId") ?? undefined;
   const provider = url.searchParams.get("provider") ?? undefined;
+  const includeText = url.searchParams.get("includeText") === "1" || url.searchParams.get("includeText") === "true";
 
   try {
-    const transcripts = await getTranscripts({ limit, status, channelId, provider });
+    const transcripts = await getTranscripts({ limit, status, channelId, provider, includeText });
     return NextResponse.json({ transcripts });
   } catch (e) {
     console.error("[youtube/transcripts]", e);

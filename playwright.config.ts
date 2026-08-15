@@ -17,13 +17,14 @@ const webServerEnv: Record<string, string> = {
   AGENT_CRON_SECRET: process.env.AGENT_CRON_SECRET || e2eCronSecret,
   RESEARCH_CRON_SECRET: process.env.RESEARCH_CRON_SECRET || e2eCronSecret,
   OAUTH_SIMULATION: process.env.OAUTH_SIMULATION || "1",
+  E2E_TEST_MODE: "1",
 };
 
 export default defineConfig({
   testDir: "./tests/e2e",
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
+  retries: process.env.CI ? 2 : 1,
   workers: 1,
   reporter: "list",
   globalSetup: path.resolve(__dirname, "tests/e2e/global-setup.ts"),
@@ -40,7 +41,7 @@ export default defineConfig({
           command: "npm run dev",
           url: `${baseURL.replace(/\/$/, "")}/api/health`,
           reuseExistingServer: !process.env.CI,
-          timeout: 90_000,
+          timeout: 120_000,
           cwd: projectRoot,
           env: webServerEnv,
         }

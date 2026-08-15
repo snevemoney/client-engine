@@ -257,6 +257,52 @@ export function produceNextActions(
     });
   }
 
+  // Sprint 6: Site Builder rules
+  if ((ctx.siteBuilderNoPlanCount ?? 0) > 0) {
+    emit("site_builder_start", {
+      title: "Start site build",
+      reason: `${ctx.siteBuilderNoPlanCount} active project(s) with no site build plan`,
+      priority: NextActionPriority.medium,
+      sourceType: RiskSourceType.delivery_project,
+      sourceId: ctx.siteBuilderNoPlanProjectId ?? null,
+      actionUrl: ctx.siteBuilderNoPlanProjectId
+        ? `/dashboard/delivery/${ctx.siteBuilderNoPlanProjectId}`
+        : "/dashboard/delivery",
+      payloadJson: { gap: "no_site_build_plan" },
+      countBoost: Math.min(10, ctx.siteBuilderNoPlanCount ?? 0),
+    });
+  }
+
+  if ((ctx.siteBuilderPhaseAwaitingApprovalCount ?? 0) > 0) {
+    const pid = ctx.siteBuilderPhaseAwaitingApprovalProjectId;
+    const pnum = ctx.siteBuilderPhaseAwaitingApprovalPhaseNum;
+    emit("site_builder_phase_awaiting_approval", {
+      title: `Phase ${pnum ?? "N"} waiting for approval`,
+      reason: `${ctx.siteBuilderPhaseAwaitingApprovalCount} phase(s) complete >24h, not approved`,
+      priority: NextActionPriority.medium,
+      sourceType: RiskSourceType.delivery_project,
+      sourceId: pid ?? null,
+      actionUrl: pid ? `/dashboard/delivery/${pid}` : "/dashboard/delivery",
+      payloadJson: { phaseNum: pnum, gap: "phase_awaiting_approval" },
+      countBoost: Math.min(10, ctx.siteBuilderPhaseAwaitingApprovalCount ?? 0),
+    });
+  }
+
+  if ((ctx.siteBuilderReadyToDeployCount ?? 0) > 0) {
+    emit("site_builder_ready_to_deploy", {
+      title: "Site ready to deploy",
+      reason: `${ctx.siteBuilderReadyToDeployCount} site(s) with all 9 phases approved`,
+      priority: NextActionPriority.medium,
+      sourceType: RiskSourceType.delivery_project,
+      sourceId: ctx.siteBuilderReadyToDeployProjectId ?? null,
+      actionUrl: ctx.siteBuilderReadyToDeployProjectId
+        ? `/dashboard/delivery/${ctx.siteBuilderReadyToDeployProjectId}`
+        : "/dashboard/delivery",
+      payloadJson: { gap: "ready_to_deploy" },
+      countBoost: Math.min(10, ctx.siteBuilderReadyToDeployCount ?? 0),
+    });
+  }
+
   const ranked = rankNextActions(
     out.map((o) => ({ ...o, score: 0 })),
     ctx.now,

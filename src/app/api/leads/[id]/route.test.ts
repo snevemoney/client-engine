@@ -1,16 +1,16 @@
 /**
  * Leads [id] PATCH route contract tests — auth, 404, valid update, field allowlist.
+ * Phase 2: Uses lead-service; mocks requireAuth.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { NextRequest } from "next/server";
-import { jsonError } from "@/lib/api-utils";
 import { db } from "@/lib/db";
 
 vi.mock("@/lib/api-utils", async () => {
   const actual = await vi.importActual<typeof import("@/lib/api-utils")>("@/lib/api-utils");
   return {
     ...actual,
-    requireLeadAccess: vi.fn(),
+    requireAuth: vi.fn(),
     checkStateChangeRateLimit: vi.fn(() => null),
   };
 });
@@ -30,6 +30,8 @@ async function createTestLead() {
   });
 }
 
+const mockSession = { user: { id: "u1", email: "t@t.com" }, expires: "" };
+
 describe("PATCH /api/leads/[id]", () => {
   let leadId: string;
 
@@ -38,21 +40,8 @@ describe("PATCH /api/leads/[id]", () => {
     const lead = await createTestLead();
     leadId = lead.id;
 
-    const { requireLeadAccess } = await import("@/lib/api-utils");
-    vi.mocked(requireLeadAccess).mockImplementation(async (id: string) => {
-      if (id === "clxxxxxxxxxxxxxxxxxxxxxxxxxx") {
-        return { ok: false, response: jsonError("Lead not found", 404) };
-      }
-      const found = await db.lead.findUnique({ where: { id } });
-      if (!found) {
-        return { ok: false, response: jsonError("Lead not found", 404) };
-      }
-      return {
-        ok: true,
-        session: { user: { id: "u1", email: "t@t.com" }, expires: "" },
-        lead: found,
-      } as never;
-    });
+    const { requireAuth } = await import("@/lib/api-utils");
+    vi.mocked(requireAuth).mockResolvedValue(mockSession as never);
   });
 
   afterEach(async () => {
@@ -62,11 +51,8 @@ describe("PATCH /api/leads/[id]", () => {
   });
 
   it("returns 401 when not authenticated", async () => {
-    const { requireLeadAccess } = await import("@/lib/api-utils");
-    vi.mocked(requireLeadAccess).mockResolvedValue({
-      ok: false,
-      response: jsonError("Unauthorized", 401),
-    } as never);
+    const { requireAuth } = await import("@/lib/api-utils");
+    vi.mocked(requireAuth).mockResolvedValue(null);
 
     const { PATCH } = await import("./route");
     const req = new NextRequest("http://x/api/leads/1", {

@@ -17,6 +17,7 @@ import {
 } from "@/lib/builder/client";
 import { notifyClientPreview, getAppUrl } from "@/lib/notify";
 import { ENRICHMENT_ARTIFACT_TYPE, ENRICHMENT_ARTIFACT_TITLE } from "@/lib/pipeline/enrich";
+import { getFallbackBrandColors } from "@/lib/builder/fallback-colors";
 
 const PostSchema = z.object({
   industry: z
@@ -83,29 +84,56 @@ export async function POST(
         );
       }
 
-      const { industry, scope, brandColors, contentHints } = parsed.data;
+      const { industry, scope: requestedScope, brandColors: requestedBrandColors, contentHints: requestedContentHints } = parsed.data;
 
-      // 1. Create site in builder service
-      // NOTE: builder service may be unavailable — wrap in try/catch so the
-      // route returns a useful 503 instead of an unhandled 500.
-      let site: Awaited<ReturnType<typeof createSite>>;
-      try {
-        site = await createSite({
-          clientName: project.clientName ?? project.title,
-          industry: industry as BuilderIndustryPreset,
-          scope,
-          brandColors,
-          contentHints,
-          deliveryProjectId: id,
-        });
-      } catch (builderErr) {
-        console.error("[builder/create] Builder service unavailable:", builderErr);
-        return jsonError(
-          "Website builder service is currently unavailable. Please try again later.",
-          503,
-          "BUILDER_UNAVAILABLE",
+      let scope = requestedScope;
+      let brandColors = requestedBrandColors;
+      let contentHints = requestedContentHints;
+      let sbpGenInput: Record<string, unknown> | null = null;
+
+      const plan = await db.siteBuildPlan.findUnique({
+        where: { deliveryProjectId: id },
+        select: { id: true, phasesCompleted: true },
+      });
+
+      if (plan && plan.phasesCompleted.length === 9) {
+        const { exportSiteBuildPlan } = await import("@/lib/site-builder/export");
+        const exportResult = await exportSiteBuildPlan(plan.id);
+        if (exportResult.ok) {
+          sbpGenInput = exportResult.genInput as Record<string, unknown>;
+          scope = (sbpGenInput.sections as string[]) ?? requestedScope;
+          brandColors = requestedBrandColors?.length ? requestedBrandColors : (sbpGenInput.brandColors as string[]);
+          contentHints = (sbpGenInput.clientInfo as Record<string, unknown>)?.bio as string ?? requestedContentHints;
+        }
+      }
+
+      if (!sbpGenInput) {
+        const { enrichSiteBrief, packContentHintsForBuilder } = await import("@/lib/builder/enrich-site-brief");
+        const enrichment = await enrichSiteBrief(id);
+        scope = enrichment?.scope ?? requestedScope;
+        brandColors = requestedBrandColors?.length ? requestedBrandColors : enrichment?.brandColors;
+        contentHints = enrichment
+          ? packContentHintsForBuilder(requestedContentHints ?? enrichment.contentHints, enrichment.clientInfo)
+          : requestedContentHints;
+      }
+
+      if (!brandColors?.length) {
+        brandColors = getFallbackBrandColors(
+          project.clientName ?? project.title,
+          id,
+          industry as import("@/lib/builder/client").BuilderIndustryPreset
         );
       }
+
+      // 1. Create site in builder service
+      const site = await createSite({
+        clientName: project.clientName ?? project.title,
+        industry: industry as BuilderIndustryPreset,
+        scope,
+        brandColors,
+        contentHints: contentHints ?? undefined,
+        deliveryProjectId: id,
+      });
 
       // 2. Store builder references on the delivery project
       await db.$transaction([
@@ -169,35 +197,79 @@ export async function POST(
       const enrichData = (enrichArtifact?.meta as Record<string, unknown> | null)?.leadIntelligence as Record<string, unknown> | undefined;
       const lead = project.pipelineLead as { title?: string; contactName?: string; description?: string; scoreVerdict?: string; scoreReason?: string } | null;
 
-      const genInput = {
-        sections: scope,
-        clientInfo: {
-          name: project.clientName ?? lead?.contactName ?? project.title,
-          niche: contentHints ?? (posData?.feltProblem as string | undefined),
-          bio: enrichArtifact?.content?.slice(0, 1500) ?? lead?.description ?? contentHints,
-          services: posData?.packaging ? [String(posData.packaging)] : undefined,
-          tone: "professional, warm, approachable",
-          feltProblem: posData?.feltProblem as string | undefined,
-          reframedOffer: posData?.reframedOffer as string | undefined,
-          blueOceanAngle: posData?.blueOceanAngle as string | undefined,
-          languageMap: posData?.languageMap as string | undefined,
-          scoreVerdict: lead?.scoreVerdict ?? undefined,
-          scoreReason: lead?.scoreReason ?? undefined,
-          enrichmentSummary: enrichArtifact?.content?.slice(0, 800),
-          trustSensitivity: enrichData?.trustSensitivity as string | undefined,
-          safeStartingPoint: enrichData?.safeStartingPoint as string | undefined,
-        },
-      };
-      generateContent(site.siteId, genInput).then(async () => {
+      // Use enrich path when secret is set — site-builder fetches context and runs 9 phases internally
+      const enrichPathAvailable = !sbpGenInput && !!process.env.ENRICH_CONTEXT_SECRET;
+
+      let genInput: Record<string, unknown>;
+      if (sbpGenInput) {
+        genInput = { ...sbpGenInput, brandColors };
+      } else if (enrichPathAvailable) {
+        const appUrl = getAppUrl().replace(/\/$/, "");
+        genInput = {
+          sections: scope,
+          brandColors,
+          deliveryProjectId: id,
+          enrichContextUrl: `${appUrl}/api/internal/delivery-projects/${id}/enrich-context`,
+          clientInfo: {
+            bio: contentHints ?? enrichArtifact?.content?.slice(0, 1500) ?? lead?.description ?? requestedContentHints,
+          },
+        };
+      } else {
+        const { enrichSiteBrief } = await import("@/lib/builder/enrich-site-brief");
+        const enrichment = await enrichSiteBrief(id);
+        genInput = {
+          sections: scope,
+          brandColors,
+          clientInfo: {
+            name: project.clientName ?? lead?.contactName ?? project.title,
+            niche: (posData?.feltProblem as string | undefined) ?? requestedContentHints,
+            bio: contentHints ?? enrichArtifact?.content?.slice(0, 1500) ?? lead?.description ?? requestedContentHints,
+            heroHeadline: enrichment?.clientInfo?.heroHeadline,
+            heroSubhead: enrichment?.clientInfo?.heroSubhead,
+            ctaPrimary: enrichment?.clientInfo?.ctaPrimary,
+            features: enrichment?.clientInfo?.features,
+            testimonials: enrichment?.clientInfo?.testimonials,
+            faq: enrichment?.clientInfo?.faq,
+            footerTagline: enrichment?.clientInfo?.footerTagline,
+            designSystem: enrichment?.designSystem,
+            componentLogic: enrichment?.componentLogic,
+            figmaMakeDesignIntent: enrichment?.figmaMakePrompts?.[0],
+            animationSpecs: enrichment?.animationSpecs,
+            responsiveSpecs: enrichment?.responsiveSpecs,
+            dataIntegration: enrichment?.dataIntegration,
+            qaChecklist: enrichment?.qaChecklist,
+            siteMap: enrichment?.siteMap,
+            userFlows: enrichment?.userFlows,
+            services: posData?.packaging ? [String(posData.packaging)] : undefined,
+            tone: enrichment?.clientInfo?.tone ?? "professional, warm, approachable",
+            feltProblem: posData?.feltProblem as string | undefined,
+            reframedOffer: posData?.reframedOffer as string | undefined,
+            blueOceanAngle: posData?.blueOceanAngle as string | undefined,
+            languageMap: posData?.languageMap as string | undefined,
+            scoreVerdict: lead?.scoreVerdict ?? undefined,
+            scoreReason: lead?.scoreReason ?? undefined,
+            enrichmentSummary: enrichArtifact?.content?.slice(0, 800),
+            trustSensitivity: enrichData?.trustSensitivity as string | undefined,
+            safeStartingPoint: enrichData?.safeStartingPoint as string | undefined,
+          },
+        };
+      }
+      // Always ensure brandColors in genInput so site-builder applies client palette
+      genInput = { ...genInput, brandColors };
+
+      // Await generateContent so 9-phase spec (designSpecJson, themeColorsJson) is applied before preview loads
+      try {
+        await generateContent(site.siteId, genInput as import("@/lib/builder/client").GenerateContentInput);
         try {
           const { checkAndReactToQuality } = await import("@/lib/builder/quality-check");
-          await checkAndReactToQuality(site.siteId, id, genInput);
+          await checkAndReactToQuality(site.siteId, id, genInput as import("@/lib/builder/client").GenerateContentInput);
         } catch (qErr) {
           console.error("[builder/create] Quality check failed:", qErr);
         }
-      }).catch((err) =>
-        console.error("[builder/create] Content generation failed:", err),
-      );
+      } catch (err) {
+        console.error("[builder/create] Content generation failed:", err);
+        // Still return site; preview may show preset until regenerate is run
+      }
 
       return NextResponse.json({
         siteId: site.siteId,

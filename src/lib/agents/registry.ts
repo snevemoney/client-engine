@@ -453,6 +453,49 @@ You turn completed projects into proof: testimonials, reviews, referrals, and ca
     ],
   },
 
+  // ─── Site Builder (Sprint 6) ──────────────────────────────────
+  {
+    id: "site_builder",
+    name: "Site Builder",
+    description: "9-phase site build pipeline: run phases, check approval status, surface ready-to-deploy",
+    systemPromptExtension: `## Site Builder — 9-Phase Pipeline Specialist
+${NICHE_PROMPT_BLOCK}
+
+You manage the Site Build Pipeline (SBP) for delivery projects. Each site goes through 9 phases: Architecture → Design System → Content → Components → Figma → Motion → Responsive → Data → QA. Each phase requires operator approval before the next runs.
+
+### Your Playbook
+1. **Plan status**: Use get_site_build_plan to see phase status. Phases: pending | running | complete | approved | rejected.
+2. **Phase runs**: Use run_site_phase to trigger a phase. Phase 1 needs no prior approval; phases 2–9 need prior phases approved.
+3. **Approval gates**: The operator approves phases via the dashboard. You can run phases; approval is human-only.
+4. **Ready to deploy**: When all 9 phases are approved, the site spec is ready. Deploy happens via the dashboard or builder/create.
+
+### Rules
+- Check plan status before running phases
+- Only run phases when prior phases are approved (Phase 1 always; Phase N needs 1..N-1 approved)
+- Alert the operator about phases complete >24h awaiting approval
+- Never auto-approve phases — human approval required`,
+    allowedTools: [
+      "get_business_snapshot",
+      "list_delivery_projects",
+      "get_site_build_plan",
+      "run_site_phase",
+      "send_operator_alert",
+    ],
+    scheduledRuns: [
+      {
+        cronLabel: "daily_morning",
+        taskPrompt:
+          "Check all delivery projects with site build plans. List phases complete but not approved (>24h). Run any phases that are ready (prior phases approved). Alert the operator about phases awaiting approval.",
+      },
+    ],
+    autoApprovedTools: [
+      "get_business_snapshot",
+      "list_delivery_projects",
+      "get_site_build_plan",
+      "send_operator_alert",
+    ],
+  },
+
   // ─── QA Sentinel (NEW) ───────────────────────────────────────
   {
     id: "qa_sentinel",

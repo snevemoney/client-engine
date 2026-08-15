@@ -4,6 +4,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jsonError, requireAuth, withRouteTiming } from "@/lib/api-utils";
 import { sanitizeErrorMessage } from "@/lib/ops-events/sanitize";
+import { logOpsEventSafe } from "@/lib/ops-events/log";
 import { db } from "@/lib/db";
 import { withSummaryCache } from "@/lib/http/cached-handler";
 import { RiskStatus, NextActionStatus, LeadStatus } from "@prisma/client";
@@ -31,8 +32,15 @@ export async function GET(request: NextRequest) {
           } catch (err) {
             const msg = err instanceof Error ? err.message : String(err);
             if (msg.includes("groupBy") || msg.includes("Cannot read properties of undefined")) {
-              console.warn("[founder/summary] DB init issue, returning fallback:", msg);
-              return buildFounderSummaryFallback(entityType, entityId);
+              console.warn("[founder/summary] DB init issue, returning degraded fallback:", msg);
+              logOpsEventSafe({
+                category: "api_action",
+                eventKey: "founder.summary.degraded",
+                status: "failure",
+                errorMessage: msg.slice(0, 500),
+                level: "warn",
+              });
+              return buildFounderSummaryFallback(entityType, entityId, msg);
             }
             throw err;
           }
@@ -301,8 +309,10 @@ async function buildFounderSummary(entityType: string, entityId: string) {
           };
 }
 
-function buildFounderSummaryFallback(entityType: string, entityId: string) {
+function buildFounderSummaryFallback(entityType: string, entityId: string, reason?: string) {
   return {
+    degraded: true,
+    degradedReason: reason ?? "Data temporarily unavailable",
     score: {
       latest: null,
       previous: null,

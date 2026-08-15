@@ -1,9 +1,12 @@
 import { db } from "@/lib/db";
 import { notFound } from "next/navigation";
-import Link from "next/link";
-import Image from "next/image";
 import { ArrowLeft, ArrowRight, ExternalLink, Github } from "lucide-react";
 import { SiteFooter } from "@/components/site/SiteFooter";
+import { SiteHeader } from "@/components/site/SiteHeader";
+import { SiteLink } from "@/components/site/SiteLink";
+import { ScreenshotImg } from "@/components/site/ScreenshotImg";
+import { resolveCaseCopy } from "@/lib/site/case-copy";
+import { catalogProjectSelect } from "@/lib/site/project-select";
 
 export const revalidate = 60;
 
@@ -11,7 +14,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
   const { slug } = await params;
   let project;
   try {
-    project = await db.project.findUnique({ where: { slug } });
+    project = await db.project.findUnique({ where: { slug }, select: catalogProjectSelect });
   } catch (e) {
     console.error("[work/[slug]] DB query failed", { slug }, e);
     return (
@@ -19,35 +22,37 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
         <div className="text-center px-6">
           <h1 className="text-xl font-medium text-neutral-200 mb-2">Something went wrong</h1>
           <p className="text-neutral-400 text-sm">We couldn&apos;t load this project. Please try again later.</p>
-          <Link href="/work" className="mt-4 inline-block text-sm text-emerald-400 hover:text-emerald-300">
+          <SiteLink href="/work" className="mt-4 inline-block text-sm text-emerald-400 hover:text-emerald-300">
             Back to Work
-          </Link>
+          </SiteLink>
         </div>
       </div>
     );
   }
   if (!project) notFound();
 
+  const copy = resolveCaseCopy(project);
+
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-100">
-      <header className="border-b border-neutral-800/50 backdrop-blur-sm sticky top-0 z-50 bg-neutral-950/80">
-        <div className="mx-auto max-w-6xl flex items-center justify-between px-6 py-4">
-          <Link href="/" className="text-lg font-semibold tracking-tight">evenslouis</Link>
-          <nav className="flex items-center gap-6 text-sm text-neutral-400">
-            <Link href="/work" className="hover:text-neutral-100 transition-colors">Work</Link>
-          </nav>
-        </div>
-      </header>
+      <SiteHeader active="work" />
 
       <main className="mx-auto max-w-5xl px-6 py-12">
         <div className="flex flex-col lg:flex-row lg:gap-12">
           <div className="flex-1 min-w-0">
-        <Link href="/work" className="inline-flex items-center gap-1.5 text-sm text-neutral-400 hover:text-neutral-200 mb-8 transition-colors">
+        <SiteLink href="/work" className="inline-flex items-center gap-1.5 text-sm text-neutral-400 hover:text-neutral-200 mb-8 transition-colors">
           <ArrowLeft className="w-4 h-4" /> Back to Work
-        </Link>
+        </SiteLink>
 
         <div className="mb-8">
-          <h1 className="text-4xl font-light tracking-tight mb-3">{project.name}</h1>
+          <div className="flex items-center gap-3 flex-wrap mb-3">
+            <h1 className="text-4xl font-light tracking-tight">{project.name}</h1>
+            {copy.proofOnly && (
+              <span className="text-xs uppercase tracking-wider px-2.5 py-1 rounded-md bg-neutral-800 border border-neutral-700 text-neutral-400">
+                Proof / concept
+              </span>
+            )}
+          </div>
 
           <div className="flex items-center gap-3 flex-wrap mb-6">
             {project.repoUrl && (
@@ -83,28 +88,27 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
           )}
         </div>
 
-        {/* Structured: Problem / Build / Result / Next step */}
         <div className="mb-12 rounded-lg border border-neutral-800 bg-neutral-900/30 p-6 space-y-4">
           <h2 className="text-lg font-medium text-neutral-200">At a glance</h2>
           <dl className="grid gap-3 sm:grid-cols-2">
             <div>
               <dt className="text-xs font-medium text-neutral-500 uppercase tracking-wider">Problem</dt>
-              <dd className="text-sm text-neutral-400 mt-0.5">—</dd>
+              <dd className="text-sm text-neutral-400 mt-0.5">{copy.problem}</dd>
             </div>
             <div>
               <dt className="text-xs font-medium text-neutral-500 uppercase tracking-wider">Build</dt>
-              <dd className="text-sm text-neutral-300 mt-0.5">{project.description ?? "—"}</dd>
+              <dd className="text-sm text-neutral-300 mt-0.5">{copy.description || "—"}</dd>
             </div>
             <div>
               <dt className="text-xs font-medium text-neutral-500 uppercase tracking-wider">Result</dt>
-              <dd className="text-sm text-neutral-400 mt-0.5">—</dd>
+              <dd className="text-sm text-neutral-400 mt-0.5">{copy.result}</dd>
             </div>
             <div>
               <dt className="text-xs font-medium text-neutral-500 uppercase tracking-wider">Next step</dt>
               <dd className="mt-0.5">
-                <Link href="/#contact" className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-400 hover:text-emerald-300">
+                <SiteLink href="/contact" className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-400 hover:text-emerald-300">
                   Request audit <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
+                </SiteLink>
               </dd>
             </div>
           </dl>
@@ -116,7 +120,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
             <div className="grid gap-4">
               {project.screenshots.map((src, i) => (
                 <div key={i} className="border border-neutral-800/50 rounded-xl overflow-hidden">
-                  <Image
+                  <ScreenshotImg
                     src={src}
                     alt={`${project.name} screenshot ${i + 1}`}
                     width={1200}
@@ -132,9 +136,9 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
             <div className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-4 mb-8">
               <h3 className="text-sm font-medium text-neutral-300 mb-2">Next step</h3>
               <p className="text-neutral-400 text-sm mb-3">Want similar outcomes for your business? Request a workflow audit.</p>
-              <Link href="/#contact" className="inline-flex items-center gap-2 bg-white text-neutral-900 px-4 py-2 rounded-lg text-sm font-medium hover:bg-neutral-200 transition-colors">
+              <SiteLink href="/contact" className="inline-flex items-center gap-2 bg-white text-neutral-900 px-4 py-2 rounded-lg text-sm font-medium hover:bg-neutral-200 transition-colors">
                 Request audit <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
+              </SiteLink>
             </div>
           </div>
 
@@ -142,9 +146,9 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
             <div className="lg:sticky lg:top-24 rounded-lg border border-neutral-800 bg-neutral-900/50 p-4">
               <h3 className="text-sm font-medium text-neutral-300 mb-2">Want this for your business?</h3>
               <p className="text-neutral-400 text-xs mb-4">Request a workflow audit or book a strategy call.</p>
-              <Link href="/#contact" className="block w-full text-center bg-white text-neutral-900 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-neutral-200 transition-colors">
+              <SiteLink href="/contact" className="block w-full text-center bg-white text-neutral-900 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-neutral-200 transition-colors">
                 Request a workflow audit
-              </Link>
+              </SiteLink>
             </div>
           </aside>
         </div>

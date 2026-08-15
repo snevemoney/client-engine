@@ -21,7 +21,7 @@ Do NOT wait to be asked. Do NOT skip this. See [docs/ai-rules/session-journal.md
 |-------|------|
 | Framework | Next.js 16 (App Router, standalone) |
 | Language | TypeScript strict, `@/*` alias |
-| Database | PostgreSQL 16 + Prisma 6 (`prisma db push`, no migrations) |
+| Database | PostgreSQL 16 + Prisma 6 (`prisma migrate deploy` in prod, `db push` for local dev) |
 | Auth | NextAuth v5 (JWT, Credentials + Google OAuth) |
 | AI Brain/Agents | Claude `claude-sonnet-4-20250514` via `@anthropic-ai/sdk` |
 | AI Pipeline | OpenAI GPT-4o-mini (enrich/score/position/propose) |
@@ -125,12 +125,12 @@ Full list: `.env.example`
 ## Run
 
 ```bash
-npm install && npx prisma db push && npm run dev    # Dev
+npm install && npx prisma db push && npm run dev    # Dev (local only; prod uses migrate deploy)
 npx playwright test                                  # E2E tests
 npx tsc --noEmit                                     # Type check
 npm run docs:generate                                # Regenerate docs from code
 npm run docs:context:copy                            # Generate AI context + copy to clipboard (for ChatGPT/Gemini)
-docker compose up -d                                 # Production
+docker compose up -d                                 # Production (deploy.sh runs prisma migrate deploy)
 ```
 
 ## AI Rules (Read Before Writing Code)
@@ -155,6 +155,8 @@ Past work sessions with full thinking process: [docs/sessions/](docs/sessions/)
 
 ## Deep Dives
 
+- [docs/AI_STACK_DOCTRINE.md](docs/AI_STACK_DOCTRINE.md) — Four-layer AI leverage hierarchy (AI → Context → Intent → Prompt)
+- [docs/BOUNDED_CONTEXTS.md](docs/BOUNDED_CONTEXTS.md) — Domain ownership map (models, routes, services, invariants)
 - [ARCHITECTURE.md](ARCHITECTURE.md) — Full system design, data flows, all models and endpoints
 - [CONTRIBUTING.md](CONTRIBUTING.md) — How to add features, conventions, checklists
 - [CHANGELOG.md](CHANGELOG.md) — What changed
@@ -163,5 +165,8 @@ Past work sessions with full thinking process: [docs/sessions/](docs/sessions/)
 - [docs/generated/](docs/generated/) — Auto-generated inventories (routes, models, tools)
 - [SYSTEM_MANIFEST.md](SYSTEM_MANIFEST.md) — Core philosophy and money path
 - [docs/CLIENT_ENGINE_AXIOMS.md](docs/CLIENT_ENGINE_AXIOMS.md) — Behavioral contract
+- [docs/CLIENT_ENGINE_POWER_OF_10.md](docs/CLIENT_ENGINE_POWER_OF_10.md) — 10 reliability laws for Tier-A paths
 - [docs/RUNBOOK.md](docs/RUNBOOK.md) — E2E test guide
 - [docs/VPS_DEPLOY_CHECKLIST.md](docs/VPS_DEPLOY_CHECKLIST.md) — Production deploy
+- [docs/BUSINESS_ALIGNMENT_GATE.md](docs/BUSINESS_ALIGNMENT_GATE.md) — Idea gate (Active/Incubator/Kill)
+- [docs/IDEA_ROADMAP.md](docs/IDEA_ROADMAP.md) — Current Active/Incubator/Kill map, voice Phase 1 scope

@@ -1,5 +1,7 @@
 # Architecture — Client Engine
 
+**Bounded contexts (domain ownership map):** See [docs/BOUNDED_CONTEXTS.md](docs/BOUNDED_CONTEXTS.md) for models, routes, services, pages, and invariants per domain.
+
 ## System Overview
 
 ```
@@ -320,7 +322,7 @@ Cron endpoint: `POST /api/jobs/tick` (all-in-one: recover + enqueue due schedule
 
 ## Builder Integration
 
-The builder is a separate service on port 3001 (Docker). The main app has proxy routes:
+The builder is a separate service on port 3001 (Docker). Before each create, the app runs `enrichSiteBrief` (LLM) to produce better scope, brandColors, and contentHints from pipeline artifacts (positioning, enrichment). Fallback to defaults on error. The main app has proxy routes:
 
 | Route | Purpose |
 |-------|---------|

@@ -11,7 +11,7 @@ Complete infrastructure reference for development, production, networking, domai
 | Next.js app | `http://localhost:3000` |
 | PostgreSQL | `localhost:5432` (or Docker) |
 | Redis | `localhost:6379` (optional) |
-| Builder service | `http://localhost:3001` (optional) |
+| Builder service | `http://localhost:3001` — **site-builder only** (not builder/ scaffold) |
 
 **Start dev:**
 ```bash
@@ -19,9 +19,11 @@ npm run dev              # Next.js dev server
 npm run worker           # Background workers (separate terminal)
 ```
 
+**Builder (delivery sites):** Run site-builder at `/Users/evenslouis/site-builder` on port 3001. Set `BUILDER_API_URL=http://localhost:3001` and `BUILDER_API_KEY=dev-key`. Use the same builder consistently — scaffold and site-builder have different DBs; mixing causes "Failed to load site data".
+
 **Database:**
 ```bash
-npx prisma db push       # Sync schema
+npx prisma db push       # Sync schema (local dev only; prod uses migrate deploy)
 npx prisma studio        # GUI browser
 npm run db:seed           # Seed admin + sample data
 ```

@@ -63,7 +63,15 @@ export async function requireAuth(): Promise<Session | null> {
     const session = await auth();
     return session?.user ? (session as Session) : null;
   } catch (err) {
-    console.warn("[requireAuth] auth() threw, treating as unauthenticated:", err instanceof Error ? err.message : err);
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn("[requireAuth] auth() threw, treating as unauthenticated:", msg);
+    logOpsEventSafe({
+      category: "system",
+      eventKey: "auth.infrastructure_error",
+      status: "failure",
+      errorMessage: msg.slice(0, 500),
+      level: "error",
+    });
     return null;
   }
 }

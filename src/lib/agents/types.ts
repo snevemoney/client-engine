@@ -12,7 +12,8 @@ export type AgentId =
   | "proposal_architect"
   | "scope_risk_ctrl"
   | "proof_producer"
-  | "qa_sentinel";
+  | "qa_sentinel"
+  | "site_builder";
 
 export type ScheduledRun = {
   cronLabel: string; // "daily_morning" | "weekly_monday" | "every_6h"

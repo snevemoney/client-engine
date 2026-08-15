@@ -57,15 +57,39 @@ export type BuilderSite = {
   };
 };
 
+export type GenerateContentFeature = { title: string; body: string };
+export type GenerateContentTestimonial = { quote: string; author: string; role: string };
+export type GenerateContentFaq = { q: string; a: string };
+
 export type GenerateContentInput = {
   sections: string[];
-  clientInfo: {
+  brandColors?: string[];
+  /** When set, site-builder fetches context from enrichContextUrl and runs 9-phase enrichment internally. */
+  deliveryProjectId?: string;
+  /** Full URL to fetch enrich context (e.g. https://evenslouis.ca/api/internal/delivery-projects/[id]/enrich-context) */
+  enrichContextUrl?: string;
+  clientInfo?: {
     name: string;
     niche?: string;
     services?: string[];
     bio?: string;
     tone?: string;
-    // Extended context from pipeline intelligence (shared brain)
+    heroHeadline?: string;
+    heroSubhead?: string;
+    ctaPrimary?: string;
+    features?: GenerateContentFeature[];
+    testimonials?: GenerateContentTestimonial[];
+    faq?: GenerateContentFaq[];
+    footerTagline?: string;
+    designSystem?: { typographyScale?: string; spacingSystem?: string; layoutPatterns?: string; animationGuidelines?: string; wcagNotes?: string };
+    componentLogic?: string;
+    figmaMakeDesignIntent?: string;
+    animationSpecs?: string;
+    responsiveSpecs?: string;
+    dataIntegration?: string;
+    qaChecklist?: string;
+    siteMap?: string;
+    userFlows?: string;
     feltProblem?: string;
     reframedOffer?: string;
     blueOceanAngle?: string;
@@ -108,24 +132,34 @@ async function builderFetch<T>(
   const url = `${baseUrl}${path}`;
   const { timeoutMs, ...fetchOpts } = options;
 
-  const res = await fetch(url, {
-    ...fetchOpts,
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-      ...((fetchOpts.headers as Record<string, string>) ?? {}),
-    },
-    signal: fetchOpts.signal ?? AbortSignal.timeout(timeoutMs ?? 30_000),
-  });
+  try {
+    const res = await fetch(url, {
+      ...fetchOpts,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+        ...((fetchOpts.headers as Record<string, string>) ?? {}),
+      },
+      signal: fetchOpts.signal ?? AbortSignal.timeout(timeoutMs ?? 30_000),
+    });
 
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(
-      `Builder API ${fetchOpts.method ?? "GET"} ${path} → ${res.status}: ${text || res.statusText}`,
-    );
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(
+        `Builder API ${fetchOpts.method ?? "GET"} ${path} → ${res.status}: ${text || res.statusText}`,
+      );
+    }
+
+    return res.json() as Promise<T>;
+  } catch (e) {
+    const raw = e instanceof Error ? e.message : String(e);
+    if (/fetch failed|ECONNREFUSED|ECONNRESET|ENOTFOUND|ETIMEDOUT|network/i.test(raw)) {
+      throw new Error(
+        "Site builder not reachable. Start site-builder (port 3001) and set BUILDER_API_URL in .env.",
+      );
+    }
+    throw e;
   }
-
-  return res.json() as Promise<T>;
 }
 
 // ---------------------------------------------------------------------------
@@ -208,6 +242,34 @@ export async function updateSiteSections(
 /** Get AI feedback on site quality and missing sections. */
 export async function getSiteFeedback(siteId: string): Promise<SiteFeedback> {
   return builderFetch<SiteFeedback>(`/api/sites/${siteId}/feedback`);
+}
+
+export type SectionVersion = {
+  id: string;
+  source: string;
+  createdAt: string;
+  sectionCount: number;
+};
+
+/** List section version history. */
+export async function getSectionVersions(siteId: string): Promise<{
+  siteId: string;
+  versions: SectionVersion[];
+}> {
+  return builderFetch<{ siteId: string; versions: SectionVersion[] }>(
+    `/api/sites/${siteId}/versions`,
+  );
+}
+
+/** Restore sections from a previous version. */
+export async function restoreSectionVersion(
+  siteId: string,
+  versionId: string,
+): Promise<SiteWithSections & { restoredFrom: string; restoredAt: string }> {
+  return builderFetch(
+    `/api/sites/${siteId}/versions/${versionId}/restore`,
+    { method: "POST" },
+  );
 }
 
 // ---------------------------------------------------------------------------

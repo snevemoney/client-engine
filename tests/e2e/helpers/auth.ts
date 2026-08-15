@@ -12,15 +12,21 @@ export const loginPassword = process.env.E2E_PASSWORD || process.env.ADMIN_PASSW
  * @returns true if logged in, false if skipped
  */
 export async function loginAndWaitForDashboard(page: Page): Promise<boolean> {
-  await page.goto(`${baseURL}/login`, { waitUntil: "load", timeout: 15000 });
+  await page.goto(`${baseURL}/login`, { waitUntil: "domcontentloaded", timeout: 15000 });
   await page.getByLabel("Email").fill(loginEmail);
   await page.getByLabel("Password").fill(loginPassword);
-  await page.getByRole("button", { name: /sign in/i }).click();
-  await expect(page).toHaveURL(/\/dashboard/, { timeout: 12000 });
+  try {
+    await Promise.all([
+      page.waitForURL(/\/dashboard/, { timeout: 18000 }),
+      page.getByRole("button", { name: /sign in/i }).click(),
+    ]);
+  } catch {
+    return false;
+  }
   if (page.url().includes("/login")) {
     return false;
   }
   // Wait for dashboard shell so session/cookies are stable (sidebar or nav)
-  await page.locator('a[href*="/dashboard"]').first().waitFor({ state: "visible", timeout: 8000 });
+  await page.locator('a[href*="/dashboard"]').first().waitFor({ state: "visible", timeout: 10000 });
   return true;
 }

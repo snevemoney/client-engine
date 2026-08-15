@@ -261,6 +261,7 @@ export default function RetentionPage() {
         empty={!loading && !error && items.length === 0}
         emptyMessage="No projects in retention queue. Completed projects will appear here automatically."
         onRetry={fetchData}
+        useDegradedBanner
       >
         <div className="space-y-2">
           {items.map((p) => {

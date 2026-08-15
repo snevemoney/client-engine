@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import Link from "next/link";
 import { useAsyncAction } from "@/hooks/useAsyncAction";
 import { AsyncState } from "@/components/ui/AsyncState";
+import { DegradedBanner } from "@/components/ui/DegradedBanner";
 import { fetchJsonThrow } from "@/lib/http/fetch-json";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useBrainPanel } from "@/contexts/BrainPanelContext";
@@ -15,6 +16,8 @@ type GrowthSummary = {
   overdueFollowUps: Array<{ id: string; prospectName: string; stage: string; nextFollowUpAt: string }>;
   next7DaysFollowUps: Array<{ id: string; prospectName: string; stage: string; nextFollowUpAt: string }>;
   lastActivityAt: string | null;
+  degraded?: boolean;
+  degradedReason?: string;
 };
 
 type Deal = {
@@ -147,6 +150,10 @@ export default function GrowthPage() {
       </div>
 
       <AsyncState loading={loading} error={error} empty={!loading && !error && !summary && deals.length === 0} emptyMessage="No growth data yet. Add a prospect to get started." onRetry={fetchData}>
+
+      {summary?.degraded && (
+        <DegradedBanner reason={summary.degradedReason} onRetry={fetchData} />
+      )}
 
       {/* Pipeline Follow-ups card */}
       <div className="rounded-lg border border-neutral-800 bg-neutral-900/50 p-4" data-testid="growth-followups">

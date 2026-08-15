@@ -48,10 +48,21 @@ export async function POST(req: NextRequest) {
 
     const body = parsed.data;
 
+    // Helper: infer consulting for web refresh / Squarespace projects when preset is custom
+    function inferBuilderPreset(description: string | null | undefined, preset: string | undefined): string {
+      const rawPreset = preset || "custom";
+      const desc = (description ?? "").toLowerCase();
+      const isWebRefresh =
+        desc.includes("refresh") || desc.includes("squarespace") || desc.includes("redesign") || desc.includes("website refresh");
+      return rawPreset === "custom" && isWebRefresh ? "consulting" : rawPreset;
+    }
+
     // If leadId provided, load lead data and build flywheel input from it
     if ("leadId" in body) {
       const lead = await db.lead.findUnique({ where: { id: body.leadId } });
       if (!lead) return jsonError("Lead not found", 404);
+
+      const builderPreset = inferBuilderPreset(lead.description ?? undefined, undefined);
 
       const result = await runFlywheel({
         leadId: lead.id,
@@ -65,10 +76,13 @@ export async function POST(req: NextRequest) {
         budget: lead.budget ?? undefined,
         timeline: lead.timeline ?? undefined,
         tags: lead.tags ?? [],
+        builderPreset: builderPreset as never,
       });
 
       return NextResponse.json(result, { status: result.ok ? 200 : 207 });
     }
+
+    const builderPreset = inferBuilderPreset(body.description, body.builderPreset) as never;
 
     // New prospect — create lead + full flywheel
     const result = await runFlywheel({
@@ -82,7 +96,7 @@ export async function POST(req: NextRequest) {
       budget: body.budget,
       timeline: body.timeline,
       tags: body.tags,
-      builderPreset: body.builderPreset as never,
+      builderPreset,
       builderScope: body.builderScope,
       contentHints: body.contentHints,
       autoSendProposal: body.autoSendProposal,

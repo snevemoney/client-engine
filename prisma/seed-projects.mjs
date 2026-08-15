@@ -2,6 +2,7 @@
  * Seed portfolio projects for /work page.
  * Run: npm run db:seed-projects
  * Requires NODE_ENV=development or SEED_DEMO_DATA=1 — blocks accidental prod use.
+ * Do not set demoUrl unless a real public URL already exists.
  */
 import { PrismaClient } from "@prisma/client";
 
@@ -54,7 +55,11 @@ const projects = [
     slug: "quickmarket",
     name: "QuickMarket",
     description:
-      "A local classifieds marketplace built with React, TypeScript, and Supabase. Features user authentication, listing creation with image uploads, real-time search and filtering, category browsing, and a responsive mobile-first design. Sellers can manage their listings while buyers can browse, save favorites, and contact sellers directly.",
+      "Local classifieds: create a listing, demo $5 pay-to-publish (no live Stripe), public grid, message the seller. Client-side search and filter. No favorites.",
+    problem:
+      "Sellers need a simple local listing grid; buyers reach sellers by message, then pay offline.",
+    result:
+      "Auth, listing CRUD, image upload, client filter, seller dashboard, inbox, paid_demo RLS. The $5 gate is demo-only.",
     repoUrl: "https://github.com/snevemoney/quick-list-hub-42",
     techStack: ["React", "TypeScript", "Supabase", "Tailwind CSS", "Vite", "TanStack Query"],
     status: "live",
@@ -70,7 +75,11 @@ const projects = [
     slug: "clearfield",
     name: "Clearfield Evidence Flow",
     description:
-      "An open civic intelligence and evidence platform for managing claims, evidence objects, and investigative workflows. Features a real-time intel dashboard with stats tracking, case file management, evidence annotations, timeline visualization, graph-based relationship mapping, and a search interface. Built for credibility through structure — users submit evidence and truth emerges through open challenge.",
+      "Civic/OSINT workbench that structures claims and evidence. Contradiction scan and viz are demo-heavy. Does not adjudicate truth. Not ProofCheck.",
+    problem:
+      "Investigative work needs structured claims, evidence, and unknowns — not a truth engine.",
+    result:
+      "Dashboard, claims/evidence CRUD, contradiction scan, document search. Auth page is UI-only. Not a sold SKU this cycle.",
     repoUrl: "https://github.com/snevemoney/clearfield-evidence-flow",
     techStack: ["React", "TypeScript", "Supabase", "Tailwind CSS", "Framer Motion", "Recharts"],
     status: "live",
@@ -86,7 +95,11 @@ const projects = [
     slug: "proof-qc-assist",
     name: "ProofCheck QC",
     description:
-      "A quality control assistant application for managing and reviewing proof documents. Features a project workspace with sidebar navigation, multi-language support, authentication, and a structured QC workflow. Designed for teams that need systematic document review with error tracking, annotation capabilities, and approval pipelines.",
+      "Quebec nursing / sciences infirmières — sources in, Verify Now (claims + interventions), report, then a login-gated final draft that keeps their voice. Not team proof-docs, not Clearfield, not approval pipelines.",
+    problem:
+      "Nursing students need to check care-plan and assignment claims against sources before they file a final draft.",
+    result:
+      "Working demo: FR/EN, upload, Verify Now, readiness bar, history, login-gated final draft. No public URL and no Stripe yet.",
     repoUrl: "https://github.com/snevemoney/proof-qc-assist",
     techStack: ["React", "TypeScript", "Supabase", "Tailwind CSS", "shadcn/ui"],
     status: "live",
@@ -102,7 +115,9 @@ const projects = [
     slug: "autoflow",
     name: "Autoflow",
     description:
-      "Workflow and automation platform for building and running flows. Visual editor, triggers, steps, and run history — so teams can automate without writing code.",
+      "Proof / concept — UI screenshots of a visual-editor idea. No app, no repo, no product. Not autoflow-finance.",
+    problem: "Show the install-agency look of a workflow builder without shipping a product.",
+    result: "Proof only. Screenshots, no shipped app.",
     repoUrl: null,
     techStack: [],
     status: "live",

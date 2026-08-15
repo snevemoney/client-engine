@@ -17,7 +17,7 @@ Step-by-step guides for tasks an AI commonly helps with in this codebase.
 1. Add model to `prisma/schema.prisma`
 2. Add `@@index` for fields used in WHERE clauses
 3. Add composite indexes for multi-field queries (see existing patterns)
-4. Run `npx prisma db push` (NOT `prisma migrate`)
+4. Run `npx prisma db push` (local dev) or `npx prisma migrate dev --name descriptive_name` (to create a migration for production)
 5. Run `npx prisma generate`
 6. Create service functions in `src/lib/{domain}/`
 7. Create API routes
