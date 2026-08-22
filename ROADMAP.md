@@ -64,7 +64,7 @@ Implementation plan: [docs/decisions/009-phase-4-route-consolidation-impl.md](do
 ## Backlog
 
 - **Held-back /work proofs** — Afterlight, Grove, Meridian, Energy Orb, Inner Green held back from the 2026-08-22 cinematic proof drop pending more craft time. Do not seed until ready.
-- **/work Remotion previews** — After merge, operator runs `db:seed-portfolio-proofs` and `db:seed-work-preview-videos`, then Forge drops `public/screenshots/{slug}/preview.webm` for the eight live slugs. Do not commit huge binaries.
+- **/work Remotion previews** — After merge, operator runs `db:seed-portfolio-proofs` and `db:seed-work-preview-videos`, then Forge drops `public/screenshots/{slug}/preview.mp4` **and** `preview.webm` for the eight live slugs. `CardMedia` prefers mp4 (Safari). Do not commit huge binaries.
 - **Voice assistant** — Retell/Vapi outbound when API key set; contract tests; cron schedule.
 - **Client portal** — Visibility into delivery projects for clients.
 - **Prisma migrations** — Prod uses `migrate deploy`; local uses `db push` per dev convention.

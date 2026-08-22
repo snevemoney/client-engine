@@ -11,7 +11,8 @@
  * Usage inside the app container:
  *   docker exec -it client-engine-app npx tsx scripts/seed-portfolio-proofs.ts
  *
- * Screenshots: preview.webm first, 1-hero.jpg as poster. Forge drops the webms.
+ * Screenshots: preview.webm first, 1-hero.jpg as poster (existing rows stay valid).
+ * CardMedia resolves sibling preview.mp4 first, then webm. Forge drops both files.
  * Requires DATABASE_URL. Safe to re-run. Always writes repoUrl/repoPath/demoUrl as null.
  */
 import { db } from "../src/lib/db";
