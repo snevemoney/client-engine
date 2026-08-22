@@ -16,6 +16,7 @@
     "db:seed-projects": "node prisma/seed-projects.mjs",
     "db:apply-work-update": "node scripts/apply-work-portfolio-update.mjs",
     "db:seed-portfolio-proofs": "npx tsx scripts/seed-portfolio-proofs.ts",
+    "db:seed-work-preview-videos": "npx tsx scripts/seed-work-preview-videos.ts",
     "db:seed-intake-leads": "node prisma/seed-intake-leads.mjs",
     "db:seed-followups": "node prisma/seed-followups.mjs",
     "db:seed-proof": "node prisma/seed-proof.mjs",

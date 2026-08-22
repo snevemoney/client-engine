@@ -3,7 +3,7 @@ import { ArrowLeft, ArrowRight } from "lucide-react";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import { SiteLink } from "@/components/site/SiteLink";
-import { ScreenshotImg } from "@/components/site/ScreenshotImg";
+import { CardMedia } from "@/components/site/CardMedia";
 import { resolveCaseCopy } from "@/lib/site/case-copy";
 import { catalogProjectSelect } from "@/lib/site/project-select";
 
@@ -65,10 +65,11 @@ export default async function WorkPage() {
               >
                 {p.screenshots.length > 0 && (
                   <div className="rounded-lg overflow-hidden mb-4 border border-neutral-800/30 relative h-40">
-                    <ScreenshotImg
+                    <CardMedia
                       src={p.screenshots[0]}
                       alt={p.name}
                       fill
+                      siblings={p.screenshots}
                     />
                   </div>
                 )}
