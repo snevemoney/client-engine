@@ -6,6 +6,8 @@ import { SiteHeader } from "@/components/site/SiteHeader";
 import { SiteLink } from "@/components/site/SiteLink";
 import { CardMedia } from "@/components/site/CardMedia";
 import { resolveCaseCopy } from "@/lib/site/case-copy";
+import { galleryMediaItems } from "@/lib/site/gallery-media";
+import { isVideoPath } from "@/lib/site/media-path";
 import { catalogProjectSelect } from "@/lib/site/project-select";
 
 export const revalidate = 60;
@@ -32,6 +34,8 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
   if (!project) notFound();
 
   const copy = resolveCaseCopy(project);
+  const gallery = galleryMediaItems(project.screenshots);
+  const galleryHeading = gallery.length > 0 && gallery.every(isVideoPath) ? "Preview" : "Screenshots";
 
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-100">
@@ -91,11 +95,11 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
           </dl>
         </div>
 
-        {project.screenshots.length > 0 && (
+        {gallery.length > 0 && (
           <div className="mb-12">
-            <h2 className="text-xl font-medium mb-6">Screenshots</h2>
+            <h2 className="text-xl font-medium mb-6">{galleryHeading}</h2>
             <div className="grid gap-4">
-              {project.screenshots.map((src, i) => (
+              {gallery.map((src, i) => (
                 <div key={i} className="border border-neutral-800/50 rounded-xl overflow-hidden">
                   <CardMedia
                     src={src}
