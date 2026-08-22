@@ -5,6 +5,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+### Fixed
+- **iOS case-study duplicate stills** — Proof rows seed `[preview.webm, 1-hero.jpg]`. The case page now renders `galleryMediaItems()` so the hero still is not shown next to its own video. Product still galleries stay intact when they have independent screenshots. `CardMedia` prefers MP4 then WebM (`?v=4`), forces muted / playsInline / webkit-playsinline, retries `play()` on mount, `loadeddata`/`canplay`, and IntersectionObserver (~25% visible), and only falls back to the poster when `networkState === NETWORK_NO_SOURCE`.
+
 ### Added
 - **Muted /work preview videos** — Catalog cards and case-page gallery use `CardMedia`: `.webm`/`.mp4`/`.mov` play muted, looping, no controls; stills stay on `ScreenshotImg`. Poster is the next image sibling (or same path `.jpg`). Missing webms fall back to the still. Media stays in `screenshots[]` (no Prisma column). Proofs expect `[preview.webm, 1-hero.jpg]`. Product slugs get an additive prepend via `npm run db:seed-work-preview-videos`. Path note: `public/screenshots/README-previews.md`.
 - **Public /work cinematic proofs** — Four proof/concept cards (Working Volumes, Field Manuals, Betawise Earth, Sketchbook) with visitor-facing copy, `proofOnly`, and hero screenshots. Held back pending more craft time: Afterlight, Grove, Meridian, Energy Orb, Inner Green. Repeatable upsert: `npm run db:seed-portfolio-proofs` (does not wipe existing cards).
