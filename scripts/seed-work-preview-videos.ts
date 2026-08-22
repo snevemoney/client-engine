@@ -1,7 +1,8 @@
 /**
  * Additive prepend of /screenshots/{slug}/preview.webm on the four product
  * /work cards. Does not wipe other screenshot paths. Does not touch proofs
- * (those come from seed-portfolio-proofs).
+ * (those come from seed-portfolio-proofs). CardMedia offers sibling
+ * preview.mp4 first so existing webm-first rows keep working.
  *
  * Usage (staging/prod — operator only; this script does not deploy):
  *   DATABASE_URL="postgresql://…" npx tsx scripts/seed-work-preview-videos.ts
@@ -43,7 +44,7 @@ async function main() {
   }
 
   console.log(
-    "\nDone. Product cards now list preview.webm first when missing. Existing stills stay. Proofs use db:seed-portfolio-proofs."
+    "\nDone. Product cards now list preview.webm first when missing. CardMedia offers sibling preview.mp4 first. Existing stills stay. Proofs use db:seed-portfolio-proofs."
   );
 }
 

@@ -5,6 +5,7 @@ import {
   prependPreviewWebm,
   PRODUCT_WORK_PREVIEW_SLUGS,
   resolvePosterSrc,
+  videoSourceCandidates,
   workPreviewPath,
 } from "./media-path";
 
@@ -23,6 +24,35 @@ describe("isVideoPath", () => {
     expect(isVideoPath("/screenshots/x/1-hero.webp")).toBe(false);
     expect(isVideoPath("")).toBe(false);
     expect(isVideoPath("/screenshots/x/preview")).toBe(false);
+  });
+});
+
+describe("videoSourceCandidates", () => {
+  it("offers mp4 then webm when the stored path is webm", () => {
+    expect(videoSourceCandidates("/screenshots/betawise-earth/preview.webm")).toEqual([
+      { src: "/screenshots/betawise-earth/preview.mp4", type: "video/mp4" },
+      { src: "/screenshots/betawise-earth/preview.webm", type: "video/webm" },
+    ]);
+  });
+
+  it("offers mp4 then webm when the stored path is mp4", () => {
+    expect(videoSourceCandidates("/screenshots/sketchbook/preview.mp4")).toEqual([
+      { src: "/screenshots/sketchbook/preview.mp4", type: "video/mp4" },
+      { src: "/screenshots/sketchbook/preview.webm", type: "video/webm" },
+    ]);
+  });
+
+  it("preserves query strings when swapping the sibling extension", () => {
+    expect(videoSourceCandidates("/x/preview.webm?v=2")).toEqual([
+      { src: "/x/preview.mp4?v=2", type: "video/mp4" },
+      { src: "/x/preview.webm?v=2", type: "video/webm" },
+    ]);
+  });
+
+  it("keeps a lone mov source", () => {
+    expect(videoSourceCandidates("/screenshots/x/preview.mov")).toEqual([
+      { src: "/screenshots/x/preview.mov", type: "video/quicktime" },
+    ]);
   });
 });
 

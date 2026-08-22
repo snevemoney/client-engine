@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { rootPublicSrc } from "@/lib/base-path";
-import { isVideoPath, resolvePosterSrc } from "@/lib/site/media-path";
+import { isVideoPath, resolvePosterSrc, videoSourceCandidates } from "@/lib/site/media-path";
 import { ScreenshotImg } from "@/components/site/ScreenshotImg";
 
 type CardMediaProps = {
@@ -18,7 +18,8 @@ type CardMediaProps = {
 /**
  * Catalog media: muted looping preview when the path is a video,
  * otherwise the existing still. Poster is the next image sibling
- * (or same path with .jpg). Missing webms fall back to the still.
+ * (or same path with .jpg). Offers MP4 then WebM so Safari can play.
+ * Both sources failing falls back to the still.
  */
 export function CardMedia({
   src,
@@ -29,10 +30,20 @@ export function CardMedia({
   className = "",
   siblings = [],
 }: CardMediaProps) {
+  const videoRef = useRef<HTMLVideoElement>(null);
   const [videoFailed, setVideoFailed] = useState(false);
   const poster = resolvePosterSrc(src, siblings);
   const showVideo = isVideoPath(src) && !videoFailed;
   const stillSrc = !showVideo && isVideoPath(src) ? (poster ?? src) : src;
+  const sources = videoSourceCandidates(src);
+
+  useEffect(() => {
+    if (!showVideo) return;
+    const el = videoRef.current;
+    if (!el) return;
+    el.muted = true;
+    void el.play().catch(() => {});
+  }, [src, showVideo]);
 
   if (!showVideo) {
     return (
@@ -53,7 +64,7 @@ export function CardMedia({
 
   return (
     <video
-      src={rootPublicSrc(src)}
+      ref={videoRef}
       poster={poster ? rootPublicSrc(poster) : undefined}
       muted
       loop
@@ -63,6 +74,14 @@ export function CardMedia({
       aria-label={alt}
       className={videoClass}
       onError={() => setVideoFailed(true)}
-    />
+    >
+      {sources.map((candidate) => (
+        <source
+          key={`${candidate.type}:${candidate.src}`}
+          src={rootPublicSrc(candidate.src)}
+          type={candidate.type}
+        />
+      ))}
+    </video>
   );
 }

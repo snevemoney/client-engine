@@ -5,6 +5,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+### Fixed
+- **Public /work card videos play on Safari** — `CardMedia` no longer uses a single `<video src="…preview.webm">`. It offers sibling `preview.mp4` first (`type="video/mp4"`), then WebM, and calls muted `play()` after mount so autoplay actually starts. Existing DB rows that store `preview.webm` keep working. Poster / muted / loop / playsInline / autoPlay unchanged; both sources failing still falls back to the hero still.
+
 ### Added
 - **Muted /work preview videos** — Catalog cards and case-page gallery use `CardMedia`: `.webm`/`.mp4`/`.mov` play muted, looping, no controls; stills stay on `ScreenshotImg`. Poster is the next image sibling (or same path `.jpg`). Missing webms fall back to the still. Media stays in `screenshots[]` (no Prisma column). Proofs expect `[preview.webm, 1-hero.jpg]`. Product slugs get an additive prepend via `npm run db:seed-work-preview-videos`. Path note: `public/screenshots/README-previews.md`.
 - **Public /work cinematic proofs** — Four proof/concept cards (Working Volumes, Field Manuals, Betawise Earth, Sketchbook) with visitor-facing copy, `proofOnly`, and hero screenshots. Held back pending more craft time: Afterlight, Grove, Meridian, Energy Orb, Inner Green. Repeatable upsert: `npm run db:seed-portfolio-proofs` (does not wipe existing cards).
