@@ -9,6 +9,7 @@ import { SiteLink } from "@/components/site/SiteLink";
 import { getBasePath } from "@/lib/base-path";
 import { resolveCaseCopy } from "@/lib/site/case-copy";
 import { catalogProjectSelect } from "@/lib/site/project-select";
+import { publicDemoUrl } from "@/lib/site/public-demo-url";
 
 export const revalidate = 60;
 
@@ -119,7 +120,7 @@ export default async function HomePage() {
                     )}
                   </div>
                   <p className="text-sm text-neutral-400 line-clamp-2">{copy.description}</p>
-                  {p.demoUrl && (
+                  {publicDemoUrl(p.demoUrl) && (
                     <span className="inline-block mt-3 text-xs text-emerald-400">Live demo available</span>
                   )}
                 </SiteLink>

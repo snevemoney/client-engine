@@ -36,6 +36,34 @@ describe("resolveCaseCopy", () => {
     expect(copy.result).not.toBe("—");
   });
 
+  it("labels cinematic proofs as proof only and keeps visitor-facing copy", () => {
+    const slugs = [
+      "working-volumes",
+      "field-manuals",
+      "betawise-earth",
+      "sketchbook",
+    ] as const;
+    const forbidden = /client engine|hive|n8n|agent|vps|cursor|grok|business os/i;
+
+    for (const slug of slugs) {
+      const copy = resolveCaseCopy({ slug, description: "" });
+      expect(copy.proofOnly).toBe(true);
+      expect(copy.description).toMatch(/proof \/ concept/i);
+      expect(copy.result).toMatch(/no shipped app/i);
+      expect(copy.description).not.toMatch(forbidden);
+      expect(copy.problem).not.toMatch(forbidden);
+      expect(copy.result).not.toMatch(forbidden);
+    }
+  });
+
+  it("does not catalog held-back proofs until they have more craft time", () => {
+    const held = ["afterlight", "grove", "meridian", "energy-orb", "inner-green"] as const;
+    for (const slug of held) {
+      expect(resolveCaseCopy({ slug }).proofOnly).toBe(false);
+      expect(resolveCaseCopy({ slug }).description).toBe("");
+    }
+  });
+
   it("uses DB problem/result when present", () => {
     const copy = resolveCaseCopy({
       slug: "clearfield",

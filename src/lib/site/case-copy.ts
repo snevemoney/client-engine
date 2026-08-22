@@ -47,6 +47,34 @@ export const CASE_COPY: Record<string, CaseCopy> = {
     result: "Proof only. Screenshots, no shipped app.",
     proofOnly: true,
   },
+  "working-volumes": {
+    description:
+      "Proof / concept — a shelf of field guides. Product-shelf interaction craft. No app, no repo, no product.",
+    problem: "Show a tactile shelf of volumes without shipping a product.",
+    result: "Proof only. Screenshots of the shelf, no shipped app.",
+    proofOnly: true,
+  },
+  "field-manuals": {
+    description:
+      "Proof / concept — harbour, ravine, and studio desk manuals. Tactile UI storytelling. No app, no repo, no product.",
+    problem: "Show desk-side manuals you can take without shipping a product.",
+    result: "Proof only. Screenshots of the collection, no shipped app.",
+    proofOnly: true,
+  },
+  "betawise-earth": {
+    description:
+      "Proof / concept — a spinning earth with terminator and sun. Dynamic earth shader. No app, no repo, no product.",
+    problem: "Show a living earth shader without shipping a product.",
+    result: "Proof only. Screenshots of the earth, no shipped app.",
+    proofOnly: true,
+  },
+  sketchbook: {
+    description:
+      "Proof / concept — a desk-book site you turn. Editorial web craft. No app, no repo, no product.",
+    problem: "Show a site that feels like a book you already keep, without shipping a product.",
+    result: "Proof only. Screenshots of the pages, no shipped app.",
+    proofOnly: true,
+  },
 };
 
 export function isStaleCaseDescription(description: string | null | undefined): boolean {

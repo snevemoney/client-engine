@@ -1,6 +1,6 @@
 # Prisma Models
 
-> Auto-generated on 2026-03-10. 99 models, 59 enums.
+> Auto-generated on 2026-08-22. 99 models, 59 enums.
 
 ## Models
 
@@ -9,7 +9,7 @@
 | User | 5 |
 | Lead | 17 |
 | Artifact | 9 |
-| Project | 25 |
+| Project | 27 |
 | Outcome | 11 |
 | Campaign | 9 |
 | Cadence | 9 |
