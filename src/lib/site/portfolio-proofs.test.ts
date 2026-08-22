@@ -6,17 +6,20 @@ import {
 } from "./portfolio-proofs";
 
 describe("portfolio proofs catalog", () => {
-  it("ships seven proofs and holds Afterlight and Grove", () => {
+  it("ships four proofs and holds the unfinished cinematic cards", () => {
     expect([...PORTFOLIO_PROOF_SLUGS]).toEqual([
       "working-volumes",
       "field-manuals",
-      "meridian",
       "betawise-earth",
-      "energy-orb",
       "sketchbook",
+    ]);
+    expect([...HELD_BACK_PORTFOLIO_PROOFS]).toEqual([
+      "afterlight",
+      "grove",
+      "meridian",
+      "energy-orb",
       "inner-green",
     ]);
-    expect([...HELD_BACK_PORTFOLIO_PROOFS]).toEqual(["afterlight", "grove"]);
     expect(PORTFOLIO_PROOF_SLUGS.some((slug) => (HELD_BACK_PORTFOLIO_PROOFS as readonly string[]).includes(slug))).toBe(
       false
     );

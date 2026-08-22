@@ -6,7 +6,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
-- **Public /work cinematic proofs** — Seven proof/concept cards (Working Volumes, Field Manuals, Meridian, Betawise Earth, Energy Orb, Sketchbook, Inner Green) with visitor-facing copy, `proofOnly`, and hero screenshots. Afterlight and Grove held back pending more craft time. Repeatable upsert: `npm run db:seed-portfolio-proofs` (does not wipe existing cards).
+- **Public /work cinematic proofs** — Four proof/concept cards (Working Volumes, Field Manuals, Betawise Earth, Sketchbook) with visitor-facing copy, `proofOnly`, and hero screenshots. Held back pending more craft time: Afterlight, Grove, Meridian, Energy Orb, Inner Green. Repeatable upsert: `npm run db:seed-portfolio-proofs` (does not wipe existing cards).
 
 ### Changed
 - **Public catalog privacy** — `/work` and `/work/[slug]` no longer render GitHub Source links. `repoUrl` is not selected for the public catalog. Live Demo only renders when `demoUrl` is an allowlisted public `evenslouis.ca` marketing URL (not localhost, private IPs, `/dashboard`, `/pro`, `/login`, `/scorpion`, `/n8n`, `/builder`, `/claw`, `/api`). Same gate on the homepage, `/proof/[slug]`, and `/demos/[slug]`.

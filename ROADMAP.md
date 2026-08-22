@@ -63,7 +63,7 @@ Implementation plan: [docs/decisions/009-phase-4-route-consolidation-impl.md](do
 
 ## Backlog
 
-- **Afterlight + Grove /work cards** — Held back from the 2026-08-22 cinematic proof drop pending more craft time. Do not seed until ready.
+- **Held-back /work proofs** — Afterlight, Grove, Meridian, Energy Orb, Inner Green held back from the 2026-08-22 cinematic proof drop pending more craft time. Do not seed until ready.
 - **Voice assistant** — Retell/Vapi outbound when API key set; contract tests; cron schedule.
 - **Client portal** — Visibility into delivery projects for clients.
 - **Prisma migrations** — Prod uses `migrate deploy`; local uses `db push` per dev convention.

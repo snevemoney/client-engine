@@ -1,16 +1,19 @@
 import { CASE_COPY } from "./case-copy";
 
 /** Held back from the live /work catalog pending more craft time. Do not seed. */
-export const HELD_BACK_PORTFOLIO_PROOFS = ["afterlight", "grove"] as const;
+export const HELD_BACK_PORTFOLIO_PROOFS = [
+  "afterlight",
+  "grove",
+  "meridian",
+  "energy-orb",
+  "inner-green",
+] as const;
 
 export const PORTFOLIO_PROOF_SLUGS = [
   "working-volumes",
   "field-manuals",
-  "meridian",
   "betawise-earth",
-  "energy-orb",
   "sketchbook",
-  "inner-green",
 ] as const;
 
 export type PortfolioProofSlug = (typeof PORTFOLIO_PROOF_SLUGS)[number];
@@ -18,21 +21,15 @@ export type PortfolioProofSlug = (typeof PORTFOLIO_PROOF_SLUGS)[number];
 const NAMES: Record<PortfolioProofSlug, string> = {
   "working-volumes": "Working Volumes",
   "field-manuals": "Field Manuals",
-  meridian: "Meridian",
   "betawise-earth": "Betawise Earth",
-  "energy-orb": "Energy Orb",
   sketchbook: "Sketchbook",
-  "inner-green": "Inner Green",
 };
 
 const TECH_STACK: Record<PortfolioProofSlug, string[]> = {
   "working-volumes": ["Three.js", "WebGL", "Next.js"],
   "field-manuals": ["Next.js", "CSS", "Three.js"],
-  meridian: ["Three.js", "WebGL", "GLSL"],
   "betawise-earth": ["Three.js", "WebGL", "GLSL"],
-  "energy-orb": ["Three.js", "WebGL", "GLSL"],
   sketchbook: ["Next.js", "CSS"],
-  "inner-green": ["Three.js", "WebGL"],
 };
 
 export type PortfolioProofRow = {

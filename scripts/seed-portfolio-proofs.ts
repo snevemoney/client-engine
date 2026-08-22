@@ -2,7 +2,8 @@
  * Idempotent upsert of public /work proof/concept cards.
  * Does not wipe existing projects (autoflow, clearfield, proof-qc-assist, quickmarket, …).
  *
- * Afterlight and Grove are held back pending more craft time — do not add them here.
+ * Held back pending more craft time (do not add them here):
+ * afterlight, grove, meridian, energy-orb, inner-green.
  *
  * Usage (staging/prod — operator only; this script does not deploy):
  *   DATABASE_URL="postgresql://…" npx tsx scripts/seed-portfolio-proofs.ts
@@ -36,7 +37,7 @@ async function main() {
   }
 
   console.log(
-    "\nDone. Verify at /work — seven proof cards, no Source links, no private demos. Afterlight and Grove stay out."
+    "\nDone. Verify at /work — four new proof cards, no Source links, no private demos. Held-back slugs stay out."
   );
 }
 

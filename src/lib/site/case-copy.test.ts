@@ -40,11 +40,8 @@ describe("resolveCaseCopy", () => {
     const slugs = [
       "working-volumes",
       "field-manuals",
-      "meridian",
       "betawise-earth",
-      "energy-orb",
       "sketchbook",
-      "inner-green",
     ] as const;
     const forbidden = /client engine|hive|n8n|agent|vps|cursor|grok|business os/i;
 
@@ -59,11 +56,12 @@ describe("resolveCaseCopy", () => {
     }
   });
 
-  it("does not catalog Afterlight or Grove until they have more craft time", () => {
-    expect(resolveCaseCopy({ slug: "afterlight" }).proofOnly).toBe(false);
-    expect(resolveCaseCopy({ slug: "grove" }).proofOnly).toBe(false);
-    expect(resolveCaseCopy({ slug: "afterlight" }).description).toBe("");
-    expect(resolveCaseCopy({ slug: "grove" }).description).toBe("");
+  it("does not catalog held-back proofs until they have more craft time", () => {
+    const held = ["afterlight", "grove", "meridian", "energy-orb", "inner-green"] as const;
+    for (const slug of held) {
+      expect(resolveCaseCopy({ slug }).proofOnly).toBe(false);
+      expect(resolveCaseCopy({ slug }).description).toBe("");
+    }
   });
 
   it("uses DB problem/result when present", () => {

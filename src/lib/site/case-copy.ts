@@ -61,13 +61,6 @@ export const CASE_COPY: Record<string, CaseCopy> = {
     result: "Proof only. Screenshots of the collection, no shipped app.",
     proofOnly: true,
   },
-  meridian: {
-    description:
-      "Proof / concept — a map-meets-money globe still. Globe craft in WebGL. No app, no repo, no product.",
-    problem: "Show a cinematic globe without shipping a product.",
-    result: "Proof only. Screenshots of the globe, no shipped app.",
-    proofOnly: true,
-  },
   "betawise-earth": {
     description:
       "Proof / concept — a spinning earth with terminator and sun. Dynamic earth shader. No app, no repo, no product.",
@@ -75,25 +68,11 @@ export const CASE_COPY: Record<string, CaseCopy> = {
     result: "Proof only. Screenshots of the earth, no shipped app.",
     proofOnly: true,
   },
-  "energy-orb": {
-    description:
-      "Proof / concept — an interactive energy orb. Orb material craft. No app, no repo, no product.",
-    problem: "Show an interactive orb material without shipping a product.",
-    result: "Proof only. Screenshots of the orb, no shipped app.",
-    proofOnly: true,
-  },
   sketchbook: {
     description:
       "Proof / concept — a desk-book site you turn. Editorial web craft. No app, no repo, no product.",
     problem: "Show a site that feels like a book you already keep, without shipping a product.",
     result: "Proof only. Screenshots of the pages, no shipped app.",
-    proofOnly: true,
-  },
-  "inner-green": {
-    description:
-      "Proof / concept — a grow-room orbit scene. Intimate 3D space. No app, no repo, no product.",
-    problem: "Show a living room you can turn without shipping a product.",
-    result: "Proof only. Screenshots of the grow-room, no shipped app.",
     proofOnly: true,
   },
 };
