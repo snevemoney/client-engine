@@ -110,7 +110,7 @@ describe("CardMedia", () => {
     expect(video).toBeTruthy();
     Object.defineProperty(video!, "networkState", {
       configurable: true,
-      value: HTMLMediaElement.NETWORK_NO_SOURCE,
+      value: 3, // NETWORK_NO_SOURCE
     });
     fireEvent.error(video!);
     expect(screen.getByRole("img", { name: "Working Volumes" })).toHaveAttribute(
@@ -135,7 +135,7 @@ describe("CardMedia", () => {
     expect(video).toBeTruthy();
     Object.defineProperty(video!, "networkState", {
       configurable: true,
-      value: HTMLMediaElement.NETWORK_LOADING,
+      value: 2, // NETWORK_LOADING
     });
     fireEvent.error(video!);
     expect(container.querySelector("video")).toBeTruthy();

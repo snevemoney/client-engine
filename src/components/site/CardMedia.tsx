@@ -16,6 +16,8 @@ type CardMediaProps = {
 };
 
 const SOURCE_CACHE_BUST = "4";
+/** HTMLMediaElement.NETWORK_NO_SOURCE — numeric so happy-dom/jsdom agree. */
+const NETWORK_NO_SOURCE = 3;
 
 function pathOnly(src: string): string {
   return src.split("?")[0]?.split("#")[0] ?? src;
@@ -132,7 +134,7 @@ export function CardMedia({
       {...{ "webkit-playsinline": "true" }}
       onError={() => {
         const el = videoRef.current;
-        if (el && el.networkState === HTMLMediaElement.NETWORK_NO_SOURCE) {
+        if (el && el.networkState === NETWORK_NO_SOURCE) {
           setVideoFailed(true);
         }
       }}
