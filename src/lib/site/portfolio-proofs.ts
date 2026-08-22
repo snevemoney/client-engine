@@ -61,7 +61,7 @@ export function portfolioProofRow(slug: PortfolioProofSlug): PortfolioProofRow {
     repoUrl: null,
     repoPath: null,
     techStack: TECH_STACK[slug],
-    screenshots: [`/screenshots/${slug}/1-hero.jpg`],
+    screenshots: [`/screenshots/${slug}/preview.webm`, `/screenshots/${slug}/1-hero.jpg`],
     status: "live",
   };
 }

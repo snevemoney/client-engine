@@ -32,6 +32,6 @@ Add this morning’s cinematic/demo site builds to the public `/work` catalog as
 - When held-back proofs are ready, add CASE_COPY + seed rows + screenshots in a follow-up PR.
 
 ## Next Steps
-- [ ] Operator runs `npm run db:seed-portfolio-proofs` against staging, then prod, after merge.
+- [ ] Operator runs `npm run db:seed-portfolio-proofs` against staging, then prod, after merge. Later rows include `preview.webm` first (see 2026-08-22-work-preview-videos).
 - [ ] Replace reconstructed heroes with exact local screenshots if needed.
 - [ ] Add Afterlight, Grove, Meridian, Energy Orb, and Inner Green when craft time is done.

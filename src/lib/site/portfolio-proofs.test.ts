@@ -25,7 +25,7 @@ describe("portfolio proofs catalog", () => {
     );
   });
 
-  it("writes live cards with null repo/demo and public screenshot paths", () => {
+  it("writes live cards with null repo/demo and preview.webm plus hero still", () => {
     const forbidden = /client engine|hive|n8n|agent|vps|cursor|grok|business os|github/i;
 
     for (const row of allPortfolioProofRows()) {
@@ -33,7 +33,13 @@ describe("portfolio proofs catalog", () => {
       expect(row.demoUrl).toBeNull();
       expect(row.repoUrl).toBeNull();
       expect(row.repoPath).toBeNull();
-      expect(row.screenshots).toEqual([`/screenshots/${row.slug}/1-hero.jpg`]);
+      expect(row.screenshots).toEqual([
+        `/screenshots/${row.slug}/preview.webm`,
+        `/screenshots/${row.slug}/1-hero.jpg`,
+      ]);
+      expect(row.screenshots.every((src) => src.startsWith("/screenshots/") && !/localhost|github/i.test(src))).toBe(
+        true
+      );
       expect(row.techStack.every((t) => !forbidden.test(t))).toBe(true);
       expect(row.description).not.toMatch(forbidden);
     }

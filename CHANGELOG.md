@@ -6,9 +6,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+- **Muted /work preview videos** — Catalog cards and case-page gallery use `CardMedia`: `.webm`/`.mp4`/`.mov` play muted, looping, no controls; stills stay on `ScreenshotImg`. Poster is the next image sibling (or same path `.jpg`). Missing webms fall back to the still. Media stays in `screenshots[]` (no Prisma column). Proofs expect `[preview.webm, 1-hero.jpg]`. Product slugs get an additive prepend via `npm run db:seed-work-preview-videos`. Path note: `public/screenshots/README-previews.md`.
 - **Public /work cinematic proofs** — Four proof/concept cards (Working Volumes, Field Manuals, Betawise Earth, Sketchbook) with visitor-facing copy, `proofOnly`, and hero screenshots. Held back pending more craft time: Afterlight, Grove, Meridian, Energy Orb, Inner Green. Repeatable upsert: `npm run db:seed-portfolio-proofs` (does not wipe existing cards).
 
 ### Changed
+- **Case pages drop Live Demo buttons** — `/work/[slug]` no longer renders a Live Demo link. Visitors see the render, then Request audit. Source/GitHub stay off the public catalog. Homepage, `/proof/[slug]`, and `/demos/[slug]` still gate demo URLs through the public allowlist (no localhost / private hosts).
 - **Public catalog privacy** — `/work` and `/work/[slug]` no longer render GitHub Source links. `repoUrl` is not selected for the public catalog. Live Demo only renders when `demoUrl` is an allowlisted public `evenslouis.ca` marketing URL (not localhost, private IPs, `/dashboard`, `/pro`, `/login`, `/scorpion`, `/n8n`, `/builder`, `/claw`, `/api`). Same gate on the homepage, `/proof/[slug]`, and `/demos/[slug]`.
 
 ### Added

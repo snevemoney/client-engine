@@ -1,13 +1,12 @@
 import { db } from "@/lib/db";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ArrowRight, ExternalLink } from "lucide-react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import { SiteLink } from "@/components/site/SiteLink";
-import { ScreenshotImg } from "@/components/site/ScreenshotImg";
+import { CardMedia } from "@/components/site/CardMedia";
 import { resolveCaseCopy } from "@/lib/site/case-copy";
 import { catalogProjectSelect } from "@/lib/site/project-select";
-import { publicDemoUrl } from "@/lib/site/public-demo-url";
 
 export const revalidate = 60;
 
@@ -33,7 +32,6 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
   if (!project) notFound();
 
   const copy = resolveCaseCopy(project);
-  const demoHref = publicDemoUrl(project.demoUrl);
 
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-100">
@@ -55,19 +53,6 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
               </span>
             )}
           </div>
-
-          {demoHref && (
-            <div className="flex items-center gap-3 flex-wrap mb-6">
-              <a
-                href={demoHref}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-sm text-emerald-400 hover:text-emerald-300 transition-colors"
-              >
-                <ExternalLink className="w-3.5 h-3.5" /> Live Demo
-              </a>
-            </div>
-          )}
 
           {project.techStack.length > 0 && (
             <div className="flex gap-2 flex-wrap mb-8">
@@ -112,12 +97,13 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
             <div className="grid gap-4">
               {project.screenshots.map((src, i) => (
                 <div key={i} className="border border-neutral-800/50 rounded-xl overflow-hidden">
-                  <ScreenshotImg
+                  <CardMedia
                     src={src}
                     alt={`${project.name} screenshot ${i + 1}`}
                     width={1200}
                     height={675}
                     className="w-full h-auto"
+                    siblings={project.screenshots}
                   />
                 </div>
               ))}
