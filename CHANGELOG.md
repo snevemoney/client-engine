@@ -6,6 +6,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+- **Public /work cinematic proofs** — Seven proof/concept cards (Working Volumes, Field Manuals, Meridian, Betawise Earth, Energy Orb, Sketchbook, Inner Green) with visitor-facing copy, `proofOnly`, and hero screenshots. Afterlight and Grove held back pending more craft time. Repeatable upsert: `npm run db:seed-portfolio-proofs` (does not wipe existing cards).
+
+### Changed
+- **Public catalog privacy** — `/work` and `/work/[slug]` no longer render GitHub Source links. `repoUrl` is not selected for the public catalog. Live Demo only renders when `demoUrl` is an allowlisted public `evenslouis.ca` marketing URL (not localhost, private IPs, `/dashboard`, `/pro`, `/login`, `/scorpion`, `/n8n`, `/builder`, `/claw`, `/api`). Same gate on the homepage, `/proof/[slug]`, and `/demos/[slug]`.
+
+### Added
 - **Phase 2 service layer** — `src/lib/services/` with score-service, risk-service, nba-service, lead-service. Routes (scores, risk, next-actions, leads) now call services instead of inline logic.
 - **Brand color override in site admin** — Site-builder Settings tab now has a Brand Colors section: 4 hex inputs with color pickers, plus "Use industry default" checkbox to clear custom colors. PATCH /api/sites/[id]/settings accepts themeColorsJson (array or null).
 - **Builder create enrichment path** — When ENRICH_CONTEXT_SECRET is set, create route passes deliveryProjectId + enrichContextUrl to generateContent so site-builder fetches context and runs 9-phase enrichment internally. Falls back to local enrichSiteBrief when secret is unset. Route test verifies both paths.

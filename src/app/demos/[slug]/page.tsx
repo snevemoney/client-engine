@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { redirect, notFound } from "next/navigation";
+import { publicDemoUrl } from "@/lib/site/public-demo-url";
 
 export const revalidate = 60;
 
@@ -12,8 +13,9 @@ export default async function DemoRedirectPage({
   const project = await db.project.findUnique({ where: { slug } });
   if (!project) notFound();
 
-  if (project.demoUrl) {
-    redirect(project.demoUrl);
+  const safeDemo = publicDemoUrl(project.demoUrl);
+  if (safeDemo) {
+    redirect(safeDemo);
   }
 
   return (

@@ -1,12 +1,13 @@
 import { db } from "@/lib/db";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ArrowRight, ExternalLink, Github } from "lucide-react";
+import { ArrowLeft, ArrowRight, ExternalLink } from "lucide-react";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import { SiteLink } from "@/components/site/SiteLink";
 import { ScreenshotImg } from "@/components/site/ScreenshotImg";
 import { resolveCaseCopy } from "@/lib/site/case-copy";
 import { catalogProjectSelect } from "@/lib/site/project-select";
+import { publicDemoUrl } from "@/lib/site/public-demo-url";
 
 export const revalidate = 60;
 
@@ -32,6 +33,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
   if (!project) notFound();
 
   const copy = resolveCaseCopy(project);
+  const demoHref = publicDemoUrl(project.demoUrl);
 
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-100">
@@ -54,28 +56,18 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
             )}
           </div>
 
-          <div className="flex items-center gap-3 flex-wrap mb-6">
-            {project.repoUrl && (
+          {demoHref && (
+            <div className="flex items-center gap-3 flex-wrap mb-6">
               <a
-                href={project.repoUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-sm text-neutral-400 hover:text-neutral-200 transition-colors"
-              >
-                <Github className="w-4 h-4" /> Source
-              </a>
-            )}
-            {project.demoUrl && (
-              <a
-                href={project.demoUrl}
+                href={demoHref}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1.5 text-sm text-emerald-400 hover:text-emerald-300 transition-colors"
               >
                 <ExternalLink className="w-3.5 h-3.5" /> Live Demo
               </a>
-            )}
-          </div>
+            </div>
+          )}
 
           {project.techStack.length > 0 && (
             <div className="flex gap-2 flex-wrap mb-8">

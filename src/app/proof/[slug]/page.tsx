@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { publicDemoUrl } from "@/lib/site/public-demo-url";
 
 export const revalidate = 60;
 
@@ -38,7 +39,7 @@ export default async function ProofPage({ params }: Props) {
   const testimonial = project.proofTestimonial ?? null;
   const techStack = project.techStack ?? [];
   const screenshots = project.screenshots ?? [];
-  const demoUrl = project.demoUrl ?? null;
+  const demoUrl = publicDemoUrl(project.demoUrl);
 
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-100">

@@ -16,7 +16,6 @@ export default async function WorkPage() {
     name: string;
     description: string | null;
     demoUrl: string | null;
-    repoUrl: string | null;
     techStack: string[];
     screenshots: string[];
     status: string;

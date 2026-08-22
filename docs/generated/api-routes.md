@@ -1,6 +1,6 @@
 # API Routes
 
-> Auto-generated on 2026-03-10. 373 route files.
+> Auto-generated on 2026-08-22. 383 route files.
 
 | Path | Methods |
 |------|---------|
@@ -11,12 +11,21 @@
 | `/api/artifacts/[id]` | GET, PATCH |
 | `/api/audit-actions` | GET |
 | `/api/audit-actions/summary` | GET |
-| `/api/auth/[...nextauth]` |  |
+| `/api/auth/[...nextauth]` | GET, POST |
 | `/api/automation-suggestions/[id]/apply` | POST |
 | `/api/automation-suggestions/[id]` | PATCH |
 | `/api/automation-suggestions/generate` | POST |
 | `/api/automation-suggestions` | GET |
 | `/api/automation-suggestions/summary` | GET |
+| `/api/automation/rule-1-1-auto-lead-route` | POST |
+| `/api/automation/rule-1-2-cost-guardian` | GET |
+| `/api/automation/rule-1-3-github-webhook` | POST |
+| `/api/automation/rule-1-4-knowledge-broadcast` | POST |
+| `/api/automation/rule-1-5-queue-monitor` | GET |
+| `/api/automation/rule-2-2-lead-segmentation` | POST |
+| `/api/automation/rule-2-3-sla-assignment` | POST |
+| `/api/automation/rule-2-4-knowledge-indexing` | POST |
+| `/api/automation/rule-2-5-degradation-detection` | GET |
 | `/api/brain/chat` | POST |
 | `/api/brief` | GET |
 | `/api/build-tasks/[id]` | GET, PATCH |
@@ -359,6 +368,7 @@
 | `/api/site-builder/[id]/plan` | GET |
 | `/api/site-builder/[id]/start` | POST |
 | `/api/site/leads` | POST |
+| `/api/test` | GET |
 | `/api/voice/calls` | GET |
 | `/api/voice/consent` | POST |
 | `/api/voice/eligible` | GET |

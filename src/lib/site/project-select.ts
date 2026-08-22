@@ -9,7 +9,6 @@ export const catalogProjectSelect = {
   name: true,
   description: true,
   demoUrl: true,
-  repoUrl: true,
   techStack: true,
   screenshots: true,
   status: true,

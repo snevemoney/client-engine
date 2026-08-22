@@ -1,6 +1,6 @@
 # Environment Variables
 
-> Auto-generated from .env.example on 2026-03-10. 20 variables.
+> Auto-generated from .env.example on 2026-08-22. 21 variables.
 
 | Variable | Description |
 |----------|-------------|
@@ -8,9 +8,10 @@
 | `DB_PASSWORD` | — |
 | `ADMIN_EMAIL` | Admin sign-in (used by prisma/seed.mjs — set these then run seed) |
 | `ADMIN_PASSWORD` | — |
-| `ANTHROPIC_API_KEY` | - OPENAI_API_KEY (fallback; uses gpt-4o-mini) |
-| `AUTH_SECRET` | Auth (required for login/session; NextAuth) |
-| `NEXTAUTH_URL` | Production: must match your public URL (stops redirect loops) |
+| `ANTHROPIC_API_KEY` | - OPENAI_API_KEY (fallback when Anthropic fails; uses OPENAI_MODEL, default gpt-4.1) |
+| `AUTH_SECRET` | Auth (required for login/session; NextAuth / Auth.js) |
+| `NEXTAUTH_URL` | /api/auth/* actions (UnknownAction) if AUTH_URL/NEXTAUTH_URL includes a path. |
+| `AUTH_TRUST_HOST` | Required for Compose `pro` service (NEXT_PUBLIC_BASE_PATH=/pro on :3204) |
 | `PIPELINE_DRY_RUN` | For real lead scores, set to 0 and ensure ANTHROPIC_API_KEY or OPENAI_API_KEY is set. |
 | `AGENT_CRON_SECRET` | E2E + local: use e2e-cron-secret-for-playwright so health and Bearer tests run. Prod: set strong random secrets. |
 | `RESEARCH_CRON_SECRET` | E2E + local: use this so Bearer auth tests run. Prod: set a strong random secret. |
