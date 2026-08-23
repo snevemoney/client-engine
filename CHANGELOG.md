@@ -5,6 +5,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+### Fixed
+- **/work fill video crop on iOS** — `CardMedia` fill cards use `object-center` (keeps Betawise's globe in frame) and omit `poster` so iOS Safari does not leave a frozen still. Sources stay MP4-first then WebM with `?v=6`, muted / `playsInline` / `webkit-playsinline`, forced play, and IntersectionObserver.
+
 ### Added
 - **Muted /work preview videos** — Catalog cards and case-page gallery use `CardMedia`: `.webm`/`.mp4`/`.mov` play muted, looping, no controls; stills stay on `ScreenshotImg`. Poster is the next image sibling (or same path `.jpg`). Missing webms fall back to the still. Media stays in `screenshots[]` (no Prisma column). Proofs expect `[preview.webm, 1-hero.jpg]`. Product slugs get an additive prepend via `npm run db:seed-work-preview-videos`. Path note: `public/screenshots/README-previews.md`.
 - **Public /work cinematic proofs** — Four proof/concept cards (Working Volumes, Field Manuals, Betawise Earth, Sketchbook) with visitor-facing copy, `proofOnly`, and hero screenshots. Held back pending more craft time: Afterlight, Grove, Meridian, Energy Orb, Inner Green. Repeatable upsert: `npm run db:seed-portfolio-proofs` (does not wipe existing cards).
