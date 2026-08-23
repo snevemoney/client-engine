@@ -91,7 +91,6 @@ export function CardMedia({
       ref={videoRef}
       src={videoSrc}
       muted
-      defaultMuted
       loop
       playsInline
       autoPlay
