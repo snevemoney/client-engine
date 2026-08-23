@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { rootPublicSrc } from "@/lib/base-path";
-import { isVideoPath, resolveCardStillSrc, withVideoCacheBust } from "@/lib/site/media-path";
+import { isVideoPath, previewVideoSources, resolveCardStillSrc } from "@/lib/site/media-path";
 import { ScreenshotImg } from "@/components/site/ScreenshotImg";
 
 type CardMediaProps = {
@@ -16,7 +16,8 @@ type CardMediaProps = {
 };
 
 /** Visible from first paint — never opacity-0 (iOS will not decode a hidden video). */
-const VIDEO_LAYER_CLASS = "absolute inset-0 h-full w-full object-cover object-top opacity-100";
+const VIDEO_LAYER_CLASS =
+  "absolute inset-0 z-[1] h-full w-full object-cover object-center opacity-100";
 
 /**
  * Catalog media: muted looping preview when the path is a video,
@@ -25,6 +26,7 @@ const VIDEO_LAYER_CLASS = "absolute inset-0 h-full w-full object-cover object-to
  * Fill cards (public /work grid) layer a still under a fully visible
  * <video>. HTML poster and opacity-0 both break iOS Safari: poster
  * sticks on the first frame, and a hidden video never paints or plays.
+ * Sources are H.264 MP4 first, then WebM — Safari cannot decode WebM.
  */
 export function CardMedia({
   src,
@@ -85,11 +87,10 @@ export function CardMedia({
     );
   }
 
-  const videoSrc = rootPublicSrc(withVideoCacheBust(src));
+  const sources = previewVideoSources(src);
   const videoEl = (
     <video
       ref={videoRef}
-      src={videoSrc}
       muted
       loop
       playsInline
@@ -98,7 +99,11 @@ export function CardMedia({
       aria-label={alt}
       className={VIDEO_LAYER_CLASS}
       onError={() => setVideoFailed(true)}
-    />
+    >
+      {sources.map((source) => (
+        <source key={source.type} src={rootPublicSrc(source.src)} type={source.type} />
+      ))}
+    </video>
   );
 
   if (fill) {

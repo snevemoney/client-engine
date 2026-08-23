@@ -7,6 +7,8 @@ import {
   PRODUCT_WORK_PREVIEW_SLUGS,
   resolveCardStillSrc,
   resolvePosterSrc,
+  previewVideoSources,
+  replaceVideoExt,
   withVideoCacheBust,
   workPreviewPath,
 } from "./media-path";
@@ -82,6 +84,18 @@ describe("withVideoCacheBust", () => {
     expect(PREVIEW_VIDEO_CACHE_BUST).toBe("12");
     expect(withVideoCacheBust("/x/preview.webm")).toBe("/x/preview.webm?v=12");
     expect(withVideoCacheBust("/x/preview.webm?v=2")).toBe("/x/preview.webm?v=2");
+  });
+});
+
+describe("previewVideoSources", () => {
+  it("derives mp4 from the video extension and lists it before webm", () => {
+    expect(replaceVideoExt("/screenshots/x/preview.webm", ".mp4")).toBe(
+      "/screenshots/x/preview.mp4"
+    );
+    expect(previewVideoSources("/screenshots/x/preview.webm")).toEqual([
+      { src: "/screenshots/x/preview.mp4?v=12", type: "video/mp4" },
+      { src: "/screenshots/x/preview.webm?v=12", type: "video/webm" },
+    ]);
   });
 });
 

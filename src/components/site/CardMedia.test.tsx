@@ -63,8 +63,12 @@ describe("CardMedia", () => {
     expect(video?.hasAttribute("controls")).toBe(false);
     expect(video?.getAttribute("aria-label")).toBe("Sketchbook");
     expect(video?.hasAttribute("poster")).toBe(false);
+    expect(video?.hasAttribute("src")).toBe(false);
     expect(video?.className).not.toMatch(/opacity-0/);
-    expect(video?.getAttribute("src")).toBe("/screenshots/sketchbook/preview.webm?v=12");
+    const sources = [...(video?.querySelectorAll("source") ?? [])];
+    expect(sources.map((el) => el.getAttribute("type"))).toEqual(["video/mp4", "video/webm"]);
+    expect(sources[0]?.getAttribute("src")).toBe("/screenshots/sketchbook/preview.mp4?v=12");
+    expect(sources[1]?.getAttribute("src")).toBe("/screenshots/sketchbook/preview.webm?v=12");
     expect(screen.getByRole("img", { name: "Sketchbook" })).toHaveAttribute(
       "src",
       "/screenshots/sketchbook/1-hero.jpg"
@@ -88,10 +92,19 @@ describe("CardMedia", () => {
     const video = container.querySelector("video");
     expect(video).toBeTruthy();
     expect(video?.hasAttribute("poster")).toBe(false);
+    expect(video?.hasAttribute("src")).toBe(false);
     expect(video?.className).not.toMatch(/opacity-0/);
     expect(video?.className).toMatch(/opacity-100/);
     expect(video?.className).toMatch(/absolute inset-0/);
-    expect(video?.getAttribute("src")).toBe("/screenshots/betawise-earth/preview.webm?v=12");
+    expect(video?.className).toMatch(/z-\[1\]/);
+    expect(video?.className).toMatch(/object-center/);
+    expect(video?.className).not.toMatch(/object-top/);
+    const sources = [...(video?.querySelectorAll("source") ?? [])];
+    expect(sources).toHaveLength(2);
+    expect(sources[0]?.getAttribute("type")).toBe("video/mp4");
+    expect(sources[0]?.getAttribute("src")).toBe("/screenshots/betawise-earth/preview.mp4?v=12");
+    expect(sources[1]?.getAttribute("type")).toBe("video/webm");
+    expect(sources[1]?.getAttribute("src")).toBe("/screenshots/betawise-earth/preview.webm?v=12");
     expect(screen.getByRole("img", { name: "Betawise Earth" })).toHaveAttribute(
       "src",
       "/screenshots/betawise-earth/1-hero.jpg"

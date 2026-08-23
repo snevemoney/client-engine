@@ -8,7 +8,9 @@ Fix public `/work` card fill media in `CardMedia.tsx` so preview videos actually
 - Never set HTML `poster` on fill/gallery videos. Safari treats poster as the painted frame and often never swaps to decoded video (Betawise looks frozen).
 - Never start the video at `opacity-0` waiting for `onPlaying`. iOS will not decode, paint, or play a hidden video, so the card stays a still or goes black.
 - Force `play()` when the video intersects the viewport (`IntersectionObserver`), with muted `playsInline` loop.
-- Cache-bust preview `src` with `?v=12` (`withVideoCacheBust`) so replacement webms are not served from a stale cache. Leave an existing `v=` query alone.
+- Cache-bust preview sources with `?v=12` (`withVideoCacheBust`) so replacement files are not served from a stale cache. Leave an existing `v=` query alone.
+- Live DB still stores `preview.webm`. Offer dual `<source>` tags: derived `preview.mp4` (`video/mp4`) first, then `preview.webm`. Safari/iOS cannot decode WebM.
+- Fill video class uses `z-[1] object-center` (not `object-top`) so the video covers the still.
 - On `onError`, hide the video and keep the still only.
 - Do not change public portfolio rules (no Source/GitHub, no localhost demos).
 
@@ -20,6 +22,7 @@ Fix public `/work` card fill media in `CardMedia.tsx` so preview videos actually
 
 ## Key Insights
 - Two prior attempts failed for orthogonal Safari reasons: `poster` pins the still; `opacity-0` until `onPlaying` prevents playback from starting.
+- A third failure mode: Safari/iOS cannot decode WebM. A `<video src="preview.webm">` errors and falls back to the still even when the layered play path is correct. MP4 must be listed first.
 - Hotpatching `.next` HTML in the container cannot be the fix path — the next deploy overwrites it.
 
 ## Trade-offs Accepted

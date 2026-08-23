@@ -71,6 +71,30 @@ export function withVideoCacheBust(src: string): string {
   return src.includes("?") ? `${src}&v=${PREVIEW_VIDEO_CACHE_BUST}` : `${src}?v=${PREVIEW_VIDEO_CACHE_BUST}`;
 }
 
+/** preview.webm → preview.mp4 (query/hash stripped). */
+export function replaceVideoExt(src: string, ext: ".mp4" | ".webm"): string {
+  const path = pathOnly(src);
+  const i = path.lastIndexOf(".");
+  if (i < 0) return `${path}${ext}`;
+  return `${path.slice(0, i)}${ext}`;
+}
+
+export type PreviewVideoSource = {
+  src: string;
+  type: "video/mp4" | "video/webm";
+};
+
+/**
+ * Safari/iOS cannot decode WebM. Offer H.264 MP4 first, then WebM.
+ * Both paths are cache-busted. Live DB still stores preview.webm.
+ */
+export function previewVideoSources(src: string): PreviewVideoSource[] {
+  return [
+    { src: withVideoCacheBust(replaceVideoExt(src, ".mp4")), type: "video/mp4" },
+    { src: withVideoCacheBust(replaceVideoExt(src, ".webm")), type: "video/webm" },
+  ];
+}
+
 /** Prepend preview.webm when missing. Does not drop or rewrite other paths. */
 export function prependPreviewWebm(screenshots: string[], slug: string): string[] {
   const preview = workPreviewPath(slug);

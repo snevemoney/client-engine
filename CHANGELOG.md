@@ -6,7 +6,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Fixed
-- **/work fill-card videos on iOS Safari** — `CardMedia` fill (and gallery) now layers a still `<img>` under a fully visible `<video>`. Fill videos no longer use the HTML `poster` attribute (Safari sticks on the still) and never start at `opacity-0` (Safari will not paint or play a hidden video). In-view `play()` via IntersectionObserver, muted `playsInline` loop, `?v=12` cache-bust, and still-only fallback on error. Source fix only — no container HTML hotpatch.
+- **/work fill-card videos on iOS Safari** — `CardMedia` fill (and gallery) now layers a still `<img>` under a fully visible `<video>`. Fill videos no longer use the HTML `poster` attribute (Safari sticks on the still) and never start at `opacity-0` (Safari will not paint or play a hidden video). Dual `<source>` tags offer H.264 MP4 first (`preview.webm` → `preview.mp4`), then WebM — Safari cannot decode WebM. In-view `play()` via IntersectionObserver, muted `playsInline` loop, `?v=12` cache-bust, fill class `z-[1] object-center`, and still-only fallback on error. Source fix only — no container HTML hotpatch.
 
 ### Added
 - **Muted /work preview videos** — Catalog cards and case-page gallery use `CardMedia`: `.webm`/`.mp4`/`.mov` play muted, looping, no controls; stills stay on `ScreenshotImg`. Video sits on a still layer (next image sibling, first still, or same path `.jpg`). Missing webms fall back to the still. Media stays in `screenshots[]` (no Prisma column). Proofs expect `[preview.webm, 1-hero.jpg]`. Product slugs get an additive prepend via `npm run db:seed-work-preview-videos`. Path note: `public/screenshots/README-previews.md`.
