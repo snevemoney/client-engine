@@ -5,8 +5,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+### Fixed
+- **/work fill-card videos on iOS Safari** — `CardMedia` fill (and gallery) now layers a still `<img>` under a fully visible `<video>`. Fill videos no longer use the HTML `poster` attribute (Safari sticks on the still) and never start at `opacity-0` (Safari will not paint or play a hidden video). In-view `play()` via IntersectionObserver, muted `playsInline` loop, `?v=12` cache-bust, and still-only fallback on error. Source fix only — no container HTML hotpatch.
+
 ### Added
-- **Muted /work preview videos** — Catalog cards and case-page gallery use `CardMedia`: `.webm`/`.mp4`/`.mov` play muted, looping, no controls; stills stay on `ScreenshotImg`. Poster is the next image sibling (or same path `.jpg`). Missing webms fall back to the still. Media stays in `screenshots[]` (no Prisma column). Proofs expect `[preview.webm, 1-hero.jpg]`. Product slugs get an additive prepend via `npm run db:seed-work-preview-videos`. Path note: `public/screenshots/README-previews.md`.
+- **Muted /work preview videos** — Catalog cards and case-page gallery use `CardMedia`: `.webm`/`.mp4`/`.mov` play muted, looping, no controls; stills stay on `ScreenshotImg`. Video sits on a still layer (next image sibling, first still, or same path `.jpg`). Missing webms fall back to the still. Media stays in `screenshots[]` (no Prisma column). Proofs expect `[preview.webm, 1-hero.jpg]`. Product slugs get an additive prepend via `npm run db:seed-work-preview-videos`. Path note: `public/screenshots/README-previews.md`.
 - **Public /work cinematic proofs** — Four proof/concept cards (Working Volumes, Field Manuals, Betawise Earth, Sketchbook) with visitor-facing copy, `proofOnly`, and hero screenshots. Held back pending more craft time: Afterlight, Grove, Meridian, Energy Orb, Inner Green. Repeatable upsert: `npm run db:seed-portfolio-proofs` (does not wipe existing cards).
 
 ### Changed

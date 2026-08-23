@@ -3,8 +3,11 @@ import {
   isImagePath,
   isVideoPath,
   prependPreviewWebm,
+  PREVIEW_VIDEO_CACHE_BUST,
   PRODUCT_WORK_PREVIEW_SLUGS,
+  resolveCardStillSrc,
   resolvePosterSrc,
+  withVideoCacheBust,
   workPreviewPath,
 } from "./media-path";
 
@@ -54,6 +57,31 @@ describe("resolvePosterSrc", () => {
     expect(
       resolvePosterSrc("/a/preview.webm", ["/a/preview.webm", "/a/other.mp4", "/a/1-hero.png"])
     ).toBe("/a/1-hero.png");
+  });
+});
+
+describe("resolveCardStillSrc", () => {
+  it("prefers the next image sibling, else the first non-video screenshot", () => {
+    expect(
+      resolveCardStillSrc("/screenshots/sketchbook/preview.webm", [
+        "/screenshots/sketchbook/preview.webm",
+        "/screenshots/sketchbook/1-hero.jpg",
+      ])
+    ).toBe("/screenshots/sketchbook/1-hero.jpg");
+    expect(
+      resolveCardStillSrc("/screenshots/x/preview.webm", [
+        "/screenshots/x/1-hero.png",
+        "/screenshots/x/preview.webm",
+      ])
+    ).toBe("/screenshots/x/1-hero.png");
+  });
+});
+
+describe("withVideoCacheBust", () => {
+  it("appends ?v= when missing and leaves an existing v= alone", () => {
+    expect(PREVIEW_VIDEO_CACHE_BUST).toBe("12");
+    expect(withVideoCacheBust("/x/preview.webm")).toBe("/x/preview.webm?v=12");
+    expect(withVideoCacheBust("/x/preview.webm?v=2")).toBe("/x/preview.webm?v=2");
   });
 });
 

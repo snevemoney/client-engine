@@ -1,11 +1,48 @@
-import { describe, expect, it, beforeEach } from "vitest";
+import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { CardMedia } from "./CardMedia";
 
-describe("CardMedia", () => {
-  beforeEach(() => cleanup());
+const playMock = vi.fn().mockResolvedValue(undefined);
 
-  it("renders a muted looping preview for video paths", () => {
+class ImmediateIntersectObserver {
+  callback: IntersectionObserverCallback;
+
+  constructor(callback: IntersectionObserverCallback) {
+    this.callback = callback;
+  }
+
+  observe(target: Element) {
+    this.callback(
+      [{ isIntersecting: true, target } as IntersectionObserverEntry],
+      this as unknown as IntersectionObserver
+    );
+  }
+
+  unobserve() {}
+  disconnect() {}
+  takeRecords(): IntersectionObserverEntry[] {
+    return [];
+  }
+
+  readonly root = null;
+  readonly rootMargin = "";
+  readonly thresholds = [0];
+}
+
+describe("CardMedia", () => {
+  beforeEach(() => {
+    cleanup();
+    playMock.mockClear();
+    vi.stubGlobal("IntersectionObserver", ImmediateIntersectObserver);
+    vi.spyOn(HTMLMediaElement.prototype, "play").mockImplementation(playMock);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it("layers a still under a visible muted looping preview", () => {
     const { container } = render(
       <CardMedia
         src="/screenshots/sketchbook/preview.webm"
@@ -25,21 +62,56 @@ describe("CardMedia", () => {
     expect(video?.preload).toBe("metadata");
     expect(video?.hasAttribute("controls")).toBe(false);
     expect(video?.getAttribute("aria-label")).toBe("Sketchbook");
-    expect(video?.getAttribute("poster")).toBe("/screenshots/sketchbook/1-hero.jpg");
-    expect(container.querySelector("img")).toBeNull();
+    expect(video?.hasAttribute("poster")).toBe(false);
+    expect(video?.className).not.toMatch(/opacity-0/);
+    expect(video?.getAttribute("src")).toBe("/screenshots/sketchbook/preview.webm?v=12");
+    expect(screen.getByRole("img", { name: "Sketchbook" })).toHaveAttribute(
+      "src",
+      "/screenshots/sketchbook/1-hero.jpg"
+    );
+    expect(playMock).toHaveBeenCalled();
+  });
+
+  it("fill cards keep the video fully visible and never use HTML poster", () => {
+    const { container } = render(
+      <CardMedia
+        src="/screenshots/betawise-earth/preview.webm"
+        alt="Betawise Earth"
+        fill
+        siblings={[
+          "/screenshots/betawise-earth/preview.webm",
+          "/screenshots/betawise-earth/1-hero.jpg",
+        ]}
+      />
+    );
+
+    const video = container.querySelector("video");
+    expect(video).toBeTruthy();
+    expect(video?.hasAttribute("poster")).toBe(false);
+    expect(video?.className).not.toMatch(/opacity-0/);
+    expect(video?.className).toMatch(/opacity-100/);
+    expect(video?.className).toMatch(/absolute inset-0/);
+    expect(video?.getAttribute("src")).toBe("/screenshots/betawise-earth/preview.webm?v=12");
+    expect(screen.getByRole("img", { name: "Betawise Earth" })).toHaveAttribute(
+      "src",
+      "/screenshots/betawise-earth/1-hero.jpg"
+    );
+    expect(playMock).toHaveBeenCalled();
   });
 
   it("keeps ScreenshotImg for stills", () => {
     render(<CardMedia src="/screenshots/autoflow/1-dashboard.png" alt="Autoflow" fill />);
     const img = screen.getByRole("img", { name: "Autoflow" });
     expect(img).toHaveAttribute("src", "/screenshots/autoflow/1-dashboard.png");
+    expect(document.querySelector("video")).toBeNull();
   });
 
-  it("falls back to the poster still when the video errors", () => {
+  it("hides the video and keeps the still when the video errors", () => {
     const { container } = render(
       <CardMedia
         src="/screenshots/working-volumes/preview.webm"
         alt="Working Volumes"
+        fill
         siblings={[
           "/screenshots/working-volumes/preview.webm",
           "/screenshots/working-volumes/1-hero.jpg",
@@ -50,6 +122,7 @@ describe("CardMedia", () => {
     const video = container.querySelector("video");
     expect(video).toBeTruthy();
     fireEvent.error(video!);
+    expect(container.querySelector("video")).toBeNull();
     expect(screen.getByRole("img", { name: "Working Volumes" })).toHaveAttribute(
       "src",
       "/screenshots/working-volumes/1-hero.jpg"

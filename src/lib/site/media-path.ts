@@ -36,6 +36,9 @@ export function workPreviewPath(slug: string): string {
   return `/screenshots/${slug}/preview.webm`;
 }
 
+/** Bump when Forge drops replacement preview.webms so browsers refetch. */
+export const PREVIEW_VIDEO_CACHE_BUST = "12";
+
 /** Poster: next image sibling in the list, else same path with .jpg. */
 export function resolvePosterSrc(src: string, siblings: string[] = []): string | undefined {
   const idx = siblings.indexOf(src);
@@ -47,6 +50,25 @@ export function resolvePosterSrc(src: string, siblings: string[] = []): string |
   const i = path.lastIndexOf(".");
   if (i < 0) return undefined;
   return `${path.slice(0, i)}.jpg`;
+}
+
+/** Hero / still under a preview video: next sibling still, else first still, else .jpg. */
+export function resolveCardStillSrc(src: string, siblings: string[] = []): string {
+  const idx = siblings.indexOf(src);
+  const after = idx >= 0 ? siblings.slice(idx + 1) : siblings;
+  const nextImage = after.find((item) => item !== src && isImagePath(item));
+  if (nextImage) return nextImage;
+
+  const firstStill = siblings.find((item) => item !== src && isImagePath(item));
+  if (firstStill) return firstStill;
+
+  return resolvePosterSrc(src, siblings) ?? src;
+}
+
+/** Append `?v=` so updated preview files are not served from a stale cache. */
+export function withVideoCacheBust(src: string): string {
+  if (!src || /[?&]v=/.test(src)) return src;
+  return src.includes("?") ? `${src}&v=${PREVIEW_VIDEO_CACHE_BUST}` : `${src}?v=${PREVIEW_VIDEO_CACHE_BUST}`;
 }
 
 /** Prepend preview.webm when missing. Does not drop or rewrite other paths. */

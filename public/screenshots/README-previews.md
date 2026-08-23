@@ -6,7 +6,7 @@ Forge drops a muted Remotion render per live slug as:
 public/screenshots/{slug}/preview.webm
 ```
 
-Catalog rows keep media in `Project.screenshots` (no extra column). Video path first, still second so `CardMedia` can use the still as `poster` when the webm is missing or still loading.
+Catalog rows keep media in `Project.screenshots` (no extra column). Video path first, still second so `CardMedia` can layer the still under the video (and keep the still if the webm is missing). Do not put the still on the HTML `poster` attribute — iOS Safari will stick on that frame.
 
 Live slugs that expect a preview:
 
