@@ -1,7 +1,7 @@
 "use client";
 import { apiPath } from "@/lib/base-path";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Check, X, Circle, RefreshCw } from "lucide-react";
@@ -23,11 +23,14 @@ const DEFAULT_ITEMS: ChecklistItem[] = [
   { id: "critical_notify", label: "Critical risk creates in-app notification", status: "not_run" },
 ];
 
-function loadItems(): ChecklistItem[] {
-  if (typeof window === "undefined") return DEFAULT_ITEMS;
+const STORAGE_EVENT = "qa-risk-checklist-change";
+
+let cachedRaw: string | null | undefined;
+let cachedItems: ChecklistItem[] = DEFAULT_ITEMS;
+
+function parseStoredItems(raw: string | null): ChecklistItem[] {
+  if (!raw) return DEFAULT_ITEMS;
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return DEFAULT_ITEMS;
     const parsed = JSON.parse(raw) as ChecklistItem[];
     return parsed.length > 0 ? parsed : DEFAULT_ITEMS;
   } catch {
@@ -35,26 +38,38 @@ function loadItems(): ChecklistItem[] {
   }
 }
 
-function saveItems(items: ChecklistItem[]) {
-  if (typeof window === "undefined") return;
+function subscribeItems(onStoreChange: () => void) {
+  window.addEventListener("storage", onStoreChange);
+  window.addEventListener(STORAGE_EVENT, onStoreChange);
+  return () => {
+    window.removeEventListener("storage", onStoreChange);
+    window.removeEventListener(STORAGE_EVENT, onStoreChange);
+  };
+}
+
+function getItemsSnapshot(): ChecklistItem[] {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (raw === cachedRaw) return cachedItems;
+  cachedRaw = raw;
+  cachedItems = parseStoredItems(raw);
+  return cachedItems;
+}
+
+function persistItems(next: ChecklistItem[]) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    const raw = JSON.stringify(next);
+    localStorage.setItem(STORAGE_KEY, raw);
+    cachedRaw = raw;
+    cachedItems = next;
+    window.dispatchEvent(new Event(STORAGE_EVENT));
   } catch {
-    /* ignore */
+    /* ignore quota / private mode */
   }
 }
 
 export default function RiskQAPage() {
-  const [items, setItems] = useState<ChecklistItem[]>(DEFAULT_ITEMS);
+  const items = useSyncExternalStore(subscribeItems, getItemsSnapshot, () => DEFAULT_ITEMS);
   const [summary, setSummary] = useState<Record<string, unknown> | null>(null);
-
-  useEffect(() => {
-    setItems(loadItems());
-  }, []);
-
-  useEffect(() => {
-    saveItems(items);
-  }, [items]);
 
   const fetchData = useCallback(async () => {
     try {
@@ -66,11 +81,20 @@ export default function RiskQAPage() {
   }, []);
 
   useEffect(() => {
-    void fetchData();
-  }, [fetchData]);
+    const controller = new AbortController();
+    fetch(apiPath("/api/risk/summary"), { credentials: "include", cache: "no-store", signal: controller.signal })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!controller.signal.aborted) setSummary(data);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setSummary(null);
+      });
+    return () => controller.abort();
+  }, []);
 
   const setItemStatus = (id: string, status: CheckStatus) => {
-    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, status } : i)));
+    persistItems(items.map((i) => (i.id === id ? { ...i, status } : i)));
   };
 
   const statusIcon = (s: CheckStatus) => {

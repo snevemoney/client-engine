@@ -78,9 +78,10 @@ function describePageContext(pathname: string): string {
 }
 
 export function BrainPanelProvider({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [pageData, setPageData] = useState<string | null>(null);
-  const pathname = usePathname();
+  const [pageDataPath, setPageDataPath] = useState(pathname);
 
   const open = useCallback(() => setIsOpen(true), []);
   const close = useCallback(() => setIsOpen(false), []);
@@ -88,10 +89,10 @@ export function BrainPanelProvider({ children }: { children: ReactNode }) {
 
   const pageContext = describePageContext(pathname);
 
-  // Clear stale page data on navigation
-  useEffect(() => {
+  if (pathname !== pageDataPath) {
+    setPageDataPath(pathname);
     setPageData(null);
-  }, [pathname]);
+  }
 
   // Cmd+K / Ctrl+K shortcut
   useEffect(() => {

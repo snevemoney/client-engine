@@ -99,7 +99,7 @@ async function assignToAgent({
   email: string;
   source: string;
   task: string;
-}): Promise<any> {
+}): Promise<{ success: boolean; agentId: string; leadId: string; assigned_at: string }> {
   // TODO: Implement agent assignment via sessions_send or webhook
   // For now, return mock success
   return {

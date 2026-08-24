@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
  * Helper: Map document to agents by category/tags
  */
 function mapDocumentToAgents(
-  document: any
+  document: { category?: string; tags?: string[]; content?: string; title?: string }
 ): Array<{ agentId: string; topicId: number; summary: string }> {
   const agentMap = [
     { agentId: "sigint", topicId: 8, category: ["research", "analysis"] },
@@ -121,7 +121,7 @@ async function broadcastToAgent({
   documentId: string;
   title: string;
   summary: string;
-}): Promise<any> {
+}): Promise<{ success: boolean; agentId: string; topicId: number; documentId: string; sent_at: string }> {
   // TODO: Send message to Telegram topic
   // message({ action: "send", channel: "telegram", target: "-1003718712318", threadId: topicId, message: summary })
   

@@ -90,12 +90,12 @@ export default async function CampaignPage({ params }: Props) {
         )}
 
         <footer className="mt-12 pt-8 border-t border-neutral-800">
-          <a
+          <SiteLink
             href="/work"
             className="text-sm text-neutral-500 hover:text-neutral-300"
           >
             View portfolio
-          </a>
+          </SiteLink>
         </footer>
       </div>
     </div>

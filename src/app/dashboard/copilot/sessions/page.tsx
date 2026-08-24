@@ -41,7 +41,8 @@ type SessionDetail = SessionSummary & {
 export default function SessionsPage() {
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [selected, setSelected] = useState<SessionDetail | null>(null);
+  const [selectedDetail, setSelectedDetail] = useState<SessionDetail | null>(null);
+  const selected = selectedId && selectedDetail?.id === selectedId ? selectedDetail : null;
   const [loading, setLoading] = useState(true);
   const [exported, setExported] = useState<string | null>(null);
   const listAbortRef = useRef<AbortController | null>(null);
@@ -66,21 +67,18 @@ export default function SessionsPage() {
   }, []);
 
   useEffect(() => {
-    if (!selectedId) {
-      setSelected(null);
-      return;
-    }
+    if (!selectedId) return;
     if (detailAbortRef.current) detailAbortRef.current.abort();
     const controller = new AbortController();
     detailAbortRef.current = controller;
     fetch(apiPath(`/api/internal/copilot/sessions/${selectedId}`), { credentials: "include", signal: controller.signal })
       .then((r) => r.json())
       .then((d) => {
-        if (!controller.signal.aborted) setSelected(d);
+        if (!controller.signal.aborted) setSelectedDetail(d);
       })
       .catch((e) => {
         if (e instanceof Error && (e.name === "AbortError" || e.message?.includes("aborted"))) return;
-        if (!controller.signal.aborted) setSelected(null);
+        if (!controller.signal.aborted) setSelectedDetail(null);
       });
     return () => controller.abort();
   }, [selectedId]);

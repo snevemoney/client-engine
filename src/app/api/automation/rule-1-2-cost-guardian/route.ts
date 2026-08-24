@@ -94,7 +94,13 @@ async function getCostBreakdown(): Promise<Record<string, number>> {
 /**
  * Helper: Send alert to operator
  */
-async function sendAlert(alert: any): Promise<any> {
+async function sendAlert(_alert: {
+  level: string;
+  title: string;
+  message: string;
+  breakdown: Record<string, number>;
+  suggestions: string[];
+}): Promise<{ success: boolean; sent_at: string; channel: string; topic: number }> {
   // TODO: Send to Telegram topic 13 (#alerts)
   // For now, return mock success
   return {

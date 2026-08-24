@@ -89,7 +89,13 @@ export async function POST(req: NextRequest) {
 /**
  * Helper: Update lead segment in database
  */
-async function updateLeadSegment(segment: any): Promise<any> {
+async function updateLeadSegment(segment: {
+  leadId: string;
+  tier: "MQL" | "SQL" | "SAL";
+  score: number;
+  nextAgent: string;
+  followUpDate: Date;
+}): Promise<{ success: boolean; leadId: string; tier: string; updated_at: string }> {
   // TODO: Update leads table with segment tier
   return {
     success: true,

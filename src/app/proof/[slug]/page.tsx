@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { SiteLink } from "@/components/site/SiteLink";
 import { publicDemoUrl } from "@/lib/site/public-demo-url";
 
 export const revalidate = 60;
@@ -103,12 +104,12 @@ export default async function ProofPage({ params }: Props) {
               View live demo
             </a>
           ) : (
-            <a
+            <SiteLink
               href="/work"
               className="inline-flex items-center gap-2 rounded-md bg-neutral-800 px-4 py-2 text-sm font-medium text-neutral-200 hover:bg-neutral-700"
             >
               View portfolio
-            </a>
+            </SiteLink>
           )}
         </footer>
       </div>

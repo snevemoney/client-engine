@@ -13,8 +13,8 @@ vi.mock("@/lib/api-utils", async () => {
   };
 });
 
-vi.mock("@/lib/http/cached-handler", () => {
-  const { NextResponse } = require("next/server");
+vi.mock("@/lib/http/cached-handler", async () => {
+  const { NextResponse } = await import("next/server");
   return {
     withSummaryCache: async (_key: string, fn: () => Promise<unknown>) => {
       const data = await fn();

@@ -100,7 +100,12 @@ function verifyGitHubSignature(body: string, signature: string): boolean {
 /**
  * Helper: Trigger Forge agent
  */
-async function triggerForge(task: any): Promise<any> {
+async function triggerForge(task: {
+  action: string;
+  commitSha: string;
+  commitMessage: string;
+  repoName: string;
+}): Promise<{ success: boolean; jobId: string; action: string }> {
   // TODO: Use sessions_send to invoke Forge agent
   // For now, return mock success
   return {

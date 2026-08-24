@@ -68,7 +68,17 @@ export async function GET(req: NextRequest) {
 /**
  * Helper: Collect system metrics
  */
-async function collectMetrics(): Promise<any> {
+type LatencyStats = { p50?: number; p95: number; p99: number };
+
+type SystemMetrics = {
+  apiLatency: LatencyStats;
+  errorRate: number;
+  dbQueryTime: LatencyStats;
+  queueDepth: number;
+  timestamp?: string;
+};
+
+async function collectMetrics(): Promise<SystemMetrics> {
   // TODO: Collect metrics from:
   // - API response times (from logs)
   // - Error rates (from logs)
@@ -94,7 +104,7 @@ async function collectMetrics(): Promise<any> {
 /**
  * Helper: Get baseline metrics (24h moving average)
  */
-async function getBaselines(): Promise<any> {
+async function getBaselines(): Promise<SystemMetrics> {
   // TODO: Query metrics table for 24h average
   return {
     apiLatency: {
@@ -114,8 +124,8 @@ async function getBaselines(): Promise<any> {
  * Helper: Detect degradation
  */
 function detectDegradation(
-  current: any,
-  baseline: any
+  current: SystemMetrics,
+  baseline: SystemMetrics
 ): { detected: boolean; issues: string[] } {
   const issues: string[] = [];
   const DEGRADATION_THRESHOLD = 1.5; // 50% worse than baseline
@@ -153,7 +163,11 @@ function detectDegradation(
 /**
  * Helper: Escalate to SolidSnake for analysis
  */
-async function escalateToSolidSnake(alert: any): Promise<void> {
+async function escalateToSolidSnake(alert: {
+  metrics: SystemMetrics;
+  degradation: { detected: boolean; issues: string[] };
+  timestamp: string;
+}): Promise<void> {
   // TODO: Send message to SolidSnake for root cause analysis
   // sessions_send to SolidSnake session with alert details
   console.log("[Rule 2.5] Escalating to SolidSnake:", alert);

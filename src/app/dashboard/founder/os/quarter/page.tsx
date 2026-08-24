@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { useRetryableFetch } from "@/hooks/useRetryableFetch";
@@ -27,9 +27,11 @@ type QuarterData = {
 const toastFn = (m: string, t?: "success" | "error") => t === "error" ? toast.error(m) : toast.success(m);
 
 export default function FounderOSQuarterPage() {
+  const emptyKpi = { key: "", label: "", targetValue: 0, currentValue: null, unit: "count" };
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
   const [kpis, setKpis] = useState<Array<{ id?: string; key: string; label: string; targetValue: number; currentValue: number | null; unit: string }>>([]);
+  const [hydratedQuarterKey, setHydratedQuarterKey] = useState<string | null>(null);
 
   const {
     data: quarter,
@@ -38,17 +40,13 @@ export default function FounderOSQuarterPage() {
     refetch,
   } = useRetryableFetch<QuarterData>("/api/internal/founder/os/quarter");
 
-  useEffect(() => {
-    if (quarter) {
-      setTitle(quarter.title ?? "");
-      setNotes(quarter.notes ?? "");
-      setKpis(
-        quarter.kpis?.length
-          ? quarter.kpis
-          : [{ key: "", label: "", targetValue: 0, currentValue: null, unit: "count" }]
-      );
-    }
-  }, [quarter]);
+  const quarterKey = quarter ? `${quarter.id ?? "new"}:${quarter.startsAt}` : null;
+  if (quarter && quarterKey !== hydratedQuarterKey) {
+    setHydratedQuarterKey(quarterKey);
+    setTitle(quarter.title ?? "");
+    setNotes(quarter.notes ?? "");
+    setKpis(quarter.kpis?.length ? quarter.kpis : [emptyKpi]);
+  }
 
   const { execute: executeSaveQuarter, pending: savingQuarter } = useAsyncAction(
     async () => {

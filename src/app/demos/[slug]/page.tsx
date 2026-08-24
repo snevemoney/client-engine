@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { redirect, notFound } from "next/navigation";
+import { SiteLink } from "@/components/site/SiteLink";
 import { publicDemoUrl } from "@/lib/site/public-demo-url";
 
 export const revalidate = 60;
@@ -25,12 +26,12 @@ export default async function DemoRedirectPage({
         <p className="text-neutral-400">
           This demo is not deployed yet. When it is, this page will redirect to the live app.
         </p>
-        <a
+        <SiteLink
           href="/work"
           className="inline-block text-sm text-emerald-400 hover:text-emerald-300 transition-colors"
         >
           View portfolio →
-        </a>
+        </SiteLink>
       </div>
     </div>
   );
