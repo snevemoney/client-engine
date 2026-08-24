@@ -3,8 +3,12 @@ import {
   isImagePath,
   isVideoPath,
   prependPreviewWebm,
+  PREVIEW_VIDEO_CACHE_BUST,
   PRODUCT_WORK_PREVIEW_SLUGS,
+  previewVideoSources,
+  replaceVideoExt,
   resolvePosterSrc,
+  withVideoCacheBust,
   workPreviewPath,
 } from "./media-path";
 
@@ -54,6 +58,27 @@ describe("resolvePosterSrc", () => {
     expect(
       resolvePosterSrc("/a/preview.webm", ["/a/preview.webm", "/a/other.mp4", "/a/1-hero.png"])
     ).toBe("/a/1-hero.png");
+  });
+});
+
+describe("withVideoCacheBust", () => {
+  it("appends ?v=17 when missing and leaves an existing v= alone", () => {
+    expect(PREVIEW_VIDEO_CACHE_BUST).toBe("17");
+    expect(withVideoCacheBust("/x/preview.webm")).toBe("/x/preview.webm?v=17");
+    expect(withVideoCacheBust("/x/1-hero.jpg")).toBe("/x/1-hero.jpg?v=17");
+    expect(withVideoCacheBust("/x/preview.webm?v=2")).toBe("/x/preview.webm?v=2");
+  });
+});
+
+describe("previewVideoSources", () => {
+  it("derives mp4 from the video extension and lists it before webm", () => {
+    expect(replaceVideoExt("/screenshots/x/preview.webm", ".mp4")).toBe(
+      "/screenshots/x/preview.mp4"
+    );
+    expect(previewVideoSources("/screenshots/x/preview.webm")).toEqual([
+      { src: "/screenshots/x/preview.mp4?v=17", type: "video/mp4" },
+      { src: "/screenshots/x/preview.webm?v=17", type: "video/webm" },
+    ]);
   });
 });
 

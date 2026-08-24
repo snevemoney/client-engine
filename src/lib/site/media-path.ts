@@ -36,6 +36,39 @@ export function workPreviewPath(slug: string): string {
   return `/screenshots/${slug}/preview.webm`;
 }
 
+/** Bump when Forge drops replacement preview files so browsers refetch. */
+export const PREVIEW_VIDEO_CACHE_BUST = "17";
+
+/** Append `?v=` so updated preview / hero files are not served from a stale cache. */
+export function withVideoCacheBust(src: string): string {
+  if (!src || /[?&]v=/.test(src)) return src;
+  return src.includes("?") ? `${src}&v=${PREVIEW_VIDEO_CACHE_BUST}` : `${src}?v=${PREVIEW_VIDEO_CACHE_BUST}`;
+}
+
+/** preview.webm → preview.mp4 (query/hash stripped). */
+export function replaceVideoExt(src: string, ext: ".mp4" | ".webm"): string {
+  const path = pathOnly(src);
+  const i = path.lastIndexOf(".");
+  if (i < 0) return `${path}${ext}`;
+  return `${path.slice(0, i)}${ext}`;
+}
+
+export type PreviewVideoSource = {
+  src: string;
+  type: "video/mp4" | "video/webm";
+};
+
+/**
+ * Safari/iOS cannot decode WebM. Offer H.264 MP4 first, then WebM.
+ * Both paths are cache-busted. Live DB still stores preview.webm.
+ */
+export function previewVideoSources(src: string): PreviewVideoSource[] {
+  return [
+    { src: withVideoCacheBust(replaceVideoExt(src, ".mp4")), type: "video/mp4" },
+    { src: withVideoCacheBust(replaceVideoExt(src, ".webm")), type: "video/webm" },
+  ];
+}
+
 /** Poster: next image sibling in the list, else same path with .jpg. */
 export function resolvePosterSrc(src: string, siblings: string[] = []): string | undefined {
   const idx = siblings.indexOf(src);
