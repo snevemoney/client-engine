@@ -25,5 +25,6 @@ Unblock PR #23 `CI / e2e` after env/DB/seed already worked. `full-flow.spec.ts` 
 - Whether Scorecard / `enrich` assertions stay stable if metrics copy changes.
 
 ## Next Steps
-- [ ] Confirm `CI / e2e` is green on this commit.
-- [ ] Do not merge. `claude-review` is a separate check.
+- [x] Confirm `CI / e2e` is green on `01b6aa5` — 7 passed (full-flow, proof-api, smoke). Workflow [32692447598](https://github.com/snevemoney/client-engine/actions/runs/32692447598).
+- [ ] Do not merge. `claude-review` fails because the actor is `cursor[bot]` (`allowed_bots`), not because of CardMedia or test code.
+- [ ] Safari playback on device remains an operator check.
