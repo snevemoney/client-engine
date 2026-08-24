@@ -5,6 +5,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
 ## [Unreleased]
 
+### Fixed
+- **Case-page Screenshots never paint black on iOS Safari** — Non-fill `CardMedia` (width/height, used on `/work/[slug]`) now wraps a still `ScreenshotImg` under an absolutely positioned `<video>`. Never returns video-only. Fill cards keep still `z-0` + video `z-[1] opacity-100`. No HTML `poster`. Preview sources and video-underlay stills cache-bust at `?v=17`.
+
 ### Added
 - **Website-assets landing proofs on /work** — Eight proof/concept cards (Outer Heaven, Northline Clinic, Harbor & Co., Ledgerline, Atelier Cohort, Quay Team, Ashford & Vale, Ironlane Studio). Same seed path as cinematic proofs: `proofOnly`, null demo/repo, `[preview.webm, 1-hero.jpg]`. Static HTML/CSS/JS landings, not Three.js. Forge drops media after merge. Held-back cinematic slugs unchanged.
 - **Muted /work preview videos** — Catalog cards and case-page gallery use `CardMedia`: `.webm`/`.mp4`/`.mov` play muted, looping, no controls; stills stay on `ScreenshotImg`. Poster is the next image sibling (or same path `.jpg`). Missing webms fall back to the still. Media stays in `screenshots[]` (no Prisma column). Proofs expect `[preview.webm, 1-hero.jpg]`. Product slugs get an additive prepend via `npm run db:seed-work-preview-videos`. Path note: `public/screenshots/README-previews.md`.
