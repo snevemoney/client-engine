@@ -67,8 +67,8 @@ describe("CardMedia", () => {
     expect(video?.className).not.toMatch(/opacity-0/);
     const sources = [...(video?.querySelectorAll("source") ?? [])];
     expect(sources.map((el) => el.getAttribute("type"))).toEqual(["video/mp4", "video/webm"]);
-    expect(sources[0]?.getAttribute("src")).toBe("/screenshots/sketchbook/preview.mp4?v=12");
-    expect(sources[1]?.getAttribute("src")).toBe("/screenshots/sketchbook/preview.webm?v=12");
+    expect(sources[0]?.getAttribute("src")).toBe("/screenshots/sketchbook/preview.mp4?v=14");
+    expect(sources[1]?.getAttribute("src")).toBe("/screenshots/sketchbook/preview.webm?v=14");
     expect(screen.getByRole("img", { name: "Sketchbook" })).toHaveAttribute(
       "src",
       "/screenshots/sketchbook/1-hero.jpg"
@@ -102,9 +102,9 @@ describe("CardMedia", () => {
     const sources = [...(video?.querySelectorAll("source") ?? [])];
     expect(sources).toHaveLength(2);
     expect(sources[0]?.getAttribute("type")).toBe("video/mp4");
-    expect(sources[0]?.getAttribute("src")).toBe("/screenshots/betawise-earth/preview.mp4?v=12");
+    expect(sources[0]?.getAttribute("src")).toBe("/screenshots/betawise-earth/preview.mp4?v=14");
     expect(sources[1]?.getAttribute("type")).toBe("video/webm");
-    expect(sources[1]?.getAttribute("src")).toBe("/screenshots/betawise-earth/preview.webm?v=12");
+    expect(sources[1]?.getAttribute("src")).toBe("/screenshots/betawise-earth/preview.webm?v=14");
     expect(screen.getByRole("img", { name: "Betawise Earth" })).toHaveAttribute(
       "src",
       "/screenshots/betawise-earth/1-hero.jpg"
