@@ -42,6 +42,14 @@ describe("resolveCaseCopy", () => {
       "field-manuals",
       "betawise-earth",
       "sketchbook",
+      "outer-heaven-landing",
+      "northline-clinic",
+      "harbor-and-co",
+      "ledgerline",
+      "atelier-cohort",
+      "quay-team",
+      "ashford-and-vale",
+      "ironlane-studio",
     ] as const;
     const forbidden = /client engine|hive|n8n|agent|vps|cursor|grok|business os/i;
 

@@ -14,6 +14,14 @@ export const PORTFOLIO_PROOF_SLUGS = [
   "field-manuals",
   "betawise-earth",
   "sketchbook",
+  "outer-heaven-landing",
+  "northline-clinic",
+  "harbor-and-co",
+  "ledgerline",
+  "atelier-cohort",
+  "quay-team",
+  "ashford-and-vale",
+  "ironlane-studio",
 ] as const;
 
 export type PortfolioProofSlug = (typeof PORTFOLIO_PROOF_SLUGS)[number];
@@ -23,6 +31,14 @@ const NAMES: Record<PortfolioProofSlug, string> = {
   "field-manuals": "Field Manuals",
   "betawise-earth": "Betawise Earth",
   sketchbook: "Sketchbook",
+  "outer-heaven-landing": "Outer Heaven",
+  "northline-clinic": "Northline Clinic",
+  "harbor-and-co": "Harbor & Co.",
+  ledgerline: "Ledgerline",
+  "atelier-cohort": "Atelier Cohort",
+  "quay-team": "Quay Team",
+  "ashford-and-vale": "Ashford & Vale",
+  "ironlane-studio": "Ironlane Studio",
 };
 
 const TECH_STACK: Record<PortfolioProofSlug, string[]> = {
@@ -30,6 +46,14 @@ const TECH_STACK: Record<PortfolioProofSlug, string[]> = {
   "field-manuals": ["Next.js", "CSS", "Three.js"],
   "betawise-earth": ["Three.js", "WebGL", "GLSL"],
   sketchbook: ["Next.js", "CSS"],
+  "outer-heaven-landing": ["HTML", "CSS", "JS"],
+  "northline-clinic": ["HTML", "CSS", "JS"],
+  "harbor-and-co": ["HTML", "CSS", "JS"],
+  ledgerline: ["HTML", "CSS", "JS"],
+  "atelier-cohort": ["HTML", "CSS", "JS"],
+  "quay-team": ["HTML", "CSS", "JS"],
+  "ashford-and-vale": ["HTML", "CSS", "JS"],
+  "ironlane-studio": ["HTML", "CSS", "JS"],
 };
 
 export type PortfolioProofRow = {

@@ -6,12 +6,20 @@ import {
 } from "./portfolio-proofs";
 
 describe("portfolio proofs catalog", () => {
-  it("ships four proofs and holds the unfinished cinematic cards", () => {
+  it("ships cinematic and landing proofs and holds the unfinished cinematic cards", () => {
     expect([...PORTFOLIO_PROOF_SLUGS]).toEqual([
       "working-volumes",
       "field-manuals",
       "betawise-earth",
       "sketchbook",
+      "outer-heaven-landing",
+      "northline-clinic",
+      "harbor-and-co",
+      "ledgerline",
+      "atelier-cohort",
+      "quay-team",
+      "ashford-and-vale",
+      "ironlane-studio",
     ]);
     expect([...HELD_BACK_PORTFOLIO_PROOFS]).toEqual([
       "afterlight",
