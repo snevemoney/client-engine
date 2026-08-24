@@ -26,5 +26,6 @@ Unblock PR #23 `CI / lint-and-test` after lint went green. `npm run test` failed
 - Whether e2e needs the same Postgres service next.
 
 ## Next Steps
-- [ ] Confirm `lint-and-test` is green on PR #23.
+- [x] Confirm `prisma db push` works in CI (1063 tests passed).
+- [ ] Confirm `lint-and-test` is green after `registry.test.ts` expects 11 workers (`site_builder`).
 - [ ] Do not merge.

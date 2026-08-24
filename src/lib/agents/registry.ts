@@ -1,5 +1,5 @@
 /**
- * Multi-Agent Business Automation — 10 specialized worker configs.
+ * Multi-Agent Business Automation — 11 specialized worker configs.
  * Each worker is a configuration (specialized prompt + tool allowlist),
  * not a separate service. They reuse the Brain's Claude tool loop.
  */
