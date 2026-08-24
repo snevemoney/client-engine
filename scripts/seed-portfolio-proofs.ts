@@ -38,7 +38,7 @@ async function main() {
   }
 
   console.log(
-    "\nDone. Verify at /work — four new proof cards, no Source links, no private demos. Held-back slugs stay out."
+    "\nDone. Verify at /work — proof cards from allPortfolioProofRows(), no Source links, no private demos. Held-back slugs stay out."
   );
 }
 

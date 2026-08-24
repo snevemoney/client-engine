@@ -75,6 +75,62 @@ export const CASE_COPY: Record<string, CaseCopy> = {
     result: "Proof only. Screenshots of the pages, no shipped app.",
     proofOnly: true,
   },
+  "outer-heaven-landing": {
+    description:
+      "Proof / concept — a landing with blue orbs. Static landing craft. No app, no repo, no product.",
+    problem: "Show a blue-orb landing without shipping a product.",
+    result: "Proof only. Screenshots of the landing, no shipped app.",
+    proofOnly: true,
+  },
+  "northline-clinic": {
+    description:
+      "Proof / concept — a clinic landing with a teal ribbon. Static landing craft. No app, no repo, no product.",
+    problem: "Show a med-spa/dental landing with a teal ribbon without shipping a product.",
+    result: "Proof only. Screenshots of the landing, no shipped app.",
+    proofOnly: true,
+  },
+  "harbor-and-co": {
+    description:
+      "Proof / concept — a trades landing with an amber grid-drift. Static landing craft. No app, no repo, no product.",
+    problem: "Show a trades landing with an amber grid without shipping a product.",
+    result: "Proof only. Screenshots of the landing, no shipped app.",
+    proofOnly: true,
+  },
+  ledgerline: {
+    description:
+      "Proof / concept — a B2B SaaS landing with blue orbs. Static landing craft. No app, no repo, no product.",
+    problem: "Show a B2B SaaS landing with blue orbs without shipping a product.",
+    result: "Proof only. Screenshots of the landing, no shipped app.",
+    proofOnly: true,
+  },
+  "atelier-cohort": {
+    description:
+      "Proof / concept — a coaching landing with a rose ribbon. Static landing craft. No app, no repo, no product.",
+    problem: "Show a coaching landing with a rose ribbon without shipping a product.",
+    result: "Proof only. Screenshots of the landing, no shipped app.",
+    proofOnly: true,
+  },
+  "quay-team": {
+    description:
+      "Proof / concept — a real-estate landing with a teal grid-drift. Static landing craft. No app, no repo, no product.",
+    problem: "Show a real-estate landing with a teal grid without shipping a product.",
+    result: "Proof only. Screenshots of the landing, no shipped app.",
+    proofOnly: true,
+  },
+  "ashford-and-vale": {
+    description:
+      "Proof / concept — a law landing with blue particles. Static landing craft. No app, no repo, no product.",
+    problem: "Show a law landing with blue particles without shipping a product.",
+    result: "Proof only. Screenshots of the landing, no shipped app.",
+    proofOnly: true,
+  },
+  "ironlane-studio": {
+    description:
+      "Proof / concept — a fitness landing with amber particles. Static landing craft. No app, no repo, no product.",
+    problem: "Show a fitness landing with amber particles without shipping a product.",
+    result: "Proof only. Screenshots of the landing, no shipped app.",
+    proofOnly: true,
+  },
 };
 
 export function isStaleCaseDescription(description: string | null | undefined): boolean {

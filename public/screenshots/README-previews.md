@@ -14,6 +14,14 @@ Live slugs that expect a preview:
 - field-manuals
 - betawise-earth
 - sketchbook
+- outer-heaven-landing
+- northline-clinic
+- harbor-and-co
+- ledgerline
+- atelier-cohort
+- quay-team
+- ashford-and-vale
+- ironlane-studio
 - autoflow
 - proof-qc-assist
 - clearfield

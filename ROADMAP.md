@@ -64,7 +64,8 @@ Implementation plan: [docs/decisions/009-phase-4-route-consolidation-impl.md](do
 ## Backlog
 
 - **Held-back /work proofs** — Afterlight, Grove, Meridian, Energy Orb, Inner Green held back from the 2026-08-22 cinematic proof drop pending more craft time. Do not seed until ready.
-- **/work Remotion previews** — After merge, operator runs `db:seed-portfolio-proofs` and `db:seed-work-preview-videos`, then Forge drops `public/screenshots/{slug}/preview.webm` for the eight live slugs. Do not commit huge binaries.
+- **Website-assets landing proofs** — Eight landing verticals catalogued (outer-heaven-landing, northline-clinic, harbor-and-co, ledgerline, atelier-cohort, quay-team, ashford-and-vale, ironlane-studio). After merge, operator runs `db:seed-portfolio-proofs`; Forge drops `1-hero.jpg` + `preview.webm`/`preview.mp4` per slug. Do not commit huge binaries. Do not put localhost or demo URLs on the public cards.
+- **/work Remotion previews** — After merge, operator runs `db:seed-portfolio-proofs` and `db:seed-work-preview-videos`, then Forge drops `public/screenshots/{slug}/preview.webm` for live slugs. Do not commit huge binaries.
 - **Voice assistant** — Retell/Vapi outbound when API key set; contract tests; cron schedule.
 - **Client portal** — Visibility into delivery projects for clients.
 - **Prisma migrations** — Prod uses `migrate deploy`; local uses `db push` per dev convention.
