@@ -69,6 +69,7 @@ jobs:
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/client_engine_test
       AUTH_SECRET: e2e-ci-auth-secret-not-for-prod
+      AUTH_URL: http://localhost:3000
       NEXTAUTH_URL: http://localhost:3000
       AUTH_TRUST_HOST: "true"
       ADMIN_EMAIL: admin@evenslouis.ca

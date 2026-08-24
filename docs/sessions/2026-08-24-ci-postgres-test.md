@@ -28,5 +28,6 @@ Unblock PR #23 `CI / lint-and-test` after lint went green. `npm run test` failed
 ## Next Steps
 - [x] Confirm `prisma db push` works in CI (1063 tests passed).
 - [x] Confirm `lint-and-test` is green after `registry.test.ts` expects 11 workers (`site_builder`).
-- [ ] Confirm `e2e` is green after Postgres + AUTH_SECRET + NEXTAUTH_URL.
+- [x] Confirm e2e env/DB/seed works (`Created admin user`; smoke + proof-api passed).
+- [ ] Confirm full-flow after navigation hardening (see `2026-08-24-ci-e2e-full-flow-nav.md`).
 - [ ] Do not merge.

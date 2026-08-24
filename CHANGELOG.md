@@ -6,6 +6,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Fixed
+- **CI e2e full-flow navigation** — `full-flow.spec.ts` no longer `goto("/dashboard")` (that page redirects to founder and aborts the next navigation). Metrics/new-lead use `domcontentloaded` and tolerate Playwright `ERR_ABORTED` from Next.js redirects.
 - **CI e2e env** — `e2e` job now starts `postgres:16`, runs `prisma db push`, and sets `DATABASE_URL`, `AUTH_SECRET`, and `NEXTAUTH_URL` so the Playwright webServer can boot. `lint-and-test` already green on this branch.
 - **CI agent registry count** — `registry.test.ts` now expects 11 workers (`site_builder` was already in the registry). Unblocks `lint-and-test` after Postgres/`DATABASE_URL` let the suite run.
 - **CI unit tests DATABASE_URL** — `lint-and-test` now starts a `postgres:16` service (`client_engine_test`) and sets `DATABASE_URL` on the Unit tests step so `test-prepare` / `prisma db push` can run. `test-prepare.mjs` falls back to that same URL only when `.env.test` and `DATABASE_URL` are both missing (local `.env.test` still wins). CardMedia fill/Safari behavior unchanged.
