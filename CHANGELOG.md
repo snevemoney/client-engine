@@ -6,6 +6,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Fixed
+- **CI e2e env** — `e2e` job now starts `postgres:16`, runs `prisma db push`, and sets `DATABASE_URL`, `AUTH_SECRET`, and `NEXTAUTH_URL` so the Playwright webServer can boot. `lint-and-test` already green on this branch.
 - **CI agent registry count** — `registry.test.ts` now expects 11 workers (`site_builder` was already in the registry). Unblocks `lint-and-test` after Postgres/`DATABASE_URL` let the suite run.
 - **CI unit tests DATABASE_URL** — `lint-and-test` now starts a `postgres:16` service (`client_engine_test`) and sets `DATABASE_URL` on the Unit tests step so `test-prepare` / `prisma db push` can run. `test-prepare.mjs` falls back to that same URL only when `.env.test` and `DATABASE_URL` are both missing (local `.env.test` still wins). CardMedia fill/Safari behavior unchanged.
 - **CI lint on PR #23** — Pre-existing ESLint errors (43) that failed `CI / lint-and-test`: typed automation stubs, `SiteLink` instead of raw `<a href="/work">`, hooks-of-hooks in delivery flywheel log, no-require in Next config / growth summary test, and React 19 `set-state-in-effect` / refs issues in dashboard hooks. CardMedia fill/Safari behavior unchanged.
