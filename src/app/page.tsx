@@ -60,12 +60,12 @@ export default async function HomePage() {
             Full-stack development, automation, and AI — shipped fast on infrastructure you own.
           </p>
           <div className="flex items-center justify-center gap-4 flex-wrap">
-            <a
+            <SiteLink
               href="/work"
               className="inline-flex items-center gap-2 bg-white text-neutral-900 px-7 py-3 rounded-lg text-sm font-medium hover:bg-neutral-200 transition-colors"
             >
               View my work <ArrowRight className="w-4 h-4" />
-            </a>
+            </SiteLink>
             <SiteLink
               href="/contact"
               className="inline-flex items-center gap-2 border border-neutral-700 px-7 py-3 rounded-lg text-sm text-neutral-300 hover:bg-neutral-800 transition-colors"

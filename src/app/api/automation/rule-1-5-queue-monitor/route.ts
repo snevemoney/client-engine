@@ -85,12 +85,21 @@ async function getQueueMetrics(): Promise<{
 /**
  * Helper: Check if metrics exceed thresholds
  */
-function checkThresholds(metrics: any): Array<{
+type QueueMetrics = {
+  queueDepth: number;
+  latency: { p50: number; p95: number; p99: number };
+  throughput: number;
+  timestamp: string;
+};
+
+type QueueAlert = {
   severity: "info" | "warning" | "critical";
   metric: string;
   value: number;
   threshold: number;
-}> {
+};
+
+function checkThresholds(metrics: QueueMetrics): QueueAlert[] {
   const alerts: Array<{ severity: "info" | "warning" | "critical"; metric: string; value: number; threshold: number }> = [];
 
   // Queue depth threshold
@@ -129,7 +138,7 @@ function checkThresholds(metrics: any): Array<{
 /**
  * Helper: Send alerts to appropriate channels
  */
-async function sendAlerts(alerts: any[]): Promise<void> {
+async function sendAlerts(alerts: QueueAlert[]): Promise<void> {
   // Separate by severity
   const critical = alerts.filter((a) => a.severity === "critical");
   const warnings = alerts.filter((a) => a.severity === "warning");

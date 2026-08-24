@@ -9,6 +9,20 @@ on:
 jobs:
   lint-and-test:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: client_engine_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d client_engine_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
 
@@ -32,10 +46,36 @@ jobs:
 
       - name: Unit tests
         run: npm run test
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/client_engine_test
 
   e2e:
     runs-on: ubuntu-latest
     needs: lint-and-test
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: client_engine_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d client_engine_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/client_engine_test
+      AUTH_SECRET: e2e-ci-auth-secret-not-for-prod
+      AUTH_URL: http://localhost:3000
+      NEXTAUTH_URL: http://localhost:3000
+      AUTH_TRUST_HOST: "true"
+      ADMIN_EMAIL: admin@evenslouis.ca
+      ADMIN_PASSWORD: changeme
+      AUTH_DEV_PASSWORD: changeme
+      PIPELINE_DRY_RUN: "1"
     steps:
       - uses: actions/checkout@v4
 
@@ -51,10 +91,11 @@ jobs:
       - name: Prisma generate
         run: npx prisma generate
 
+      - name: Prepare test database
+        run: npx prisma db push --accept-data-loss --skip-generate
+
       - name: Install Playwright
         run: npx playwright install --with-deps
 
       - name: Run E2E (smoke)
         run: npm run smoke
-        env:
-          PIPELINE_DRY_RUN: "1"

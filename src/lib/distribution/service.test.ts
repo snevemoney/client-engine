@@ -92,7 +92,7 @@ describe("distribution service", () => {
       vi.mocked(db.contentPost.create).mockImplementation((async () => {
         callCount++;
         return { id: `cp${callCount}`, platform: callCount === 1 ? "linkedin" : "twitter", status: "draft" };
-      }) as any);
+      }) as never);
 
       const result = await generateContentPostDrafts("proof1", ["linkedin", "twitter"]);
 
@@ -119,10 +119,9 @@ describe("distribution service", () => {
       const { db } = await import("@/lib/db");
       vi.mocked(db.proofRecord.findUnique).mockResolvedValue(MOCK_PROOF as never);
       vi.mocked(db.contentPost.findFirst).mockResolvedValue(null);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      vi.mocked(db.contentPost.create).mockImplementation((async (args: any) => {
+      vi.mocked(db.contentPost.create).mockImplementation((async (args: { data?: Record<string, unknown> }) => {
         return { id: "cp1", platform: "linkedin", status: "draft", ...args.data };
-      }) as any);
+      }) as never);
 
       await generateContentPostDrafts("proof1", ["linkedin"]);
 

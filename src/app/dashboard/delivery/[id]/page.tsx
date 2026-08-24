@@ -390,6 +390,7 @@ const STEP_ICONS: Record<string, string> = {
 };
 
 function FlywheelLog({ activities }: { activities: { id: string; type: string; message: string | null; metaJson: Record<string, unknown> | null; createdAt: string }[] }) {
+  const [expanded, setExpanded] = useState<string | null>(null);
   const logActivity = activities.find(
     (a) => a.metaJson && (a.metaJson as Record<string, unknown>).action === "flywheel_log",
   );
@@ -402,7 +403,6 @@ function FlywheelLog({ activities }: { activities: { id: string; type: string; m
     input: { title: string; source?: string; preset?: string; contactName?: string; company?: string };
   };
   const steps = meta.steps ?? [];
-  const [expanded, setExpanded] = useState<string | null>(null);
 
   if (steps.length === 0) return null;
 

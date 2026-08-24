@@ -116,7 +116,16 @@ async function createEmbedding(content: string): Promise<number[]> {
 /**
  * Helper: Index in Qdrant vector DB
  */
-async function indexInQdrant(doc: any): Promise<string> {
+type IndexDocument = {
+  documentId: string;
+  title: string;
+  content: string;
+  tags: string[];
+  metadata?: Record<string, unknown>;
+  embedding?: number[];
+};
+
+async function indexInQdrant(_doc: IndexDocument): Promise<string> {
   // TODO: POST to Qdrant API
   // CREATE OR UPDATE collection point with embedding
   return `qdrant-${Date.now()}`;
@@ -125,7 +134,7 @@ async function indexInQdrant(doc: any): Promise<string> {
 /**
  * Helper: Index for full-text search
  */
-async function indexFullText(doc: any): Promise<void> {
+async function indexFullText(doc: IndexDocument): Promise<void> {
   // TODO: Insert into PostgreSQL full-text search table
   console.log("[Rule 2.4] Indexed for full-text search:", doc.documentId);
 }

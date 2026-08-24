@@ -19,7 +19,7 @@ describe("agent registry", () => {
       const ids = [
         "commander", "signal_scout", "outreach_writer", "distribution_ops",
         "conversion_analyst", "followup_enforcer", "proposal_architect",
-        "scope_risk_ctrl", "proof_producer", "qa_sentinel",
+        "scope_risk_ctrl", "proof_producer", "site_builder", "qa_sentinel",
       ] as const;
       for (const id of ids) {
         expect(getAgentConfig(id)).toBeDefined();
@@ -34,9 +34,9 @@ describe("agent registry", () => {
   });
 
   describe("getAgentIds", () => {
-    it("returns all 10 worker IDs", () => {
+    it("returns all 11 worker IDs", () => {
       const ids = getAgentIds();
-      expect(ids).toHaveLength(10);
+      expect(ids).toHaveLength(11);
       expect(ids).toContain("commander");
       expect(ids).toContain("signal_scout");
       expect(ids).toContain("outreach_writer");
@@ -46,6 +46,7 @@ describe("agent registry", () => {
       expect(ids).toContain("proposal_architect");
       expect(ids).toContain("scope_risk_ctrl");
       expect(ids).toContain("proof_producer");
+      expect(ids).toContain("site_builder");
       expect(ids).toContain("qa_sentinel");
     });
 
@@ -61,9 +62,9 @@ describe("agent registry", () => {
   });
 
   describe("getAllAgentConfigs", () => {
-    it("returns 10 configs", () => {
+    it("returns 11 configs", () => {
       const configs = getAllAgentConfigs();
-      expect(configs).toHaveLength(10);
+      expect(configs).toHaveLength(11);
     });
 
     it("each config has required fields", () => {

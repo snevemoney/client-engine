@@ -278,6 +278,8 @@ export default function ScoreboardView() {
   }, []);
 
   useEffect(() => {
+    // Mount fetch: setState lives in promise callbacks, not a props-to-state sync.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- scoreboard hydrate from APIs
     refresh();
     return () => { abortRef.current?.abort(); };
   }, [refresh]);

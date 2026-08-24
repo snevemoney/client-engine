@@ -13,6 +13,10 @@ const root = path.resolve(__dirname, "..");
 
 config({ path: path.join(root, ".env.test"), override: true });
 
+if (!process.env.DATABASE_URL) {
+  process.env.DATABASE_URL = "postgresql://postgres:postgres@localhost:5432/client_engine_test";
+}
+
 execFileSync("npx", ["prisma", "db", "push", "--accept-data-loss", "--skip-generate"], {
   cwd: root,
   stdio: "inherit",

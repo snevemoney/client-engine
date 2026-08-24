@@ -53,17 +53,31 @@ function toStr(v: unknown): string {
   return String(v ?? "");
 }
 
+function parsePreviewParam(raw?: string): Suggestions | null {
+  if (!raw) return null;
+  try {
+    return JSON.parse(decodeURIComponent(raw)) as Suggestions;
+  } catch {
+    return null;
+  }
+}
+
 const toastFn = (m: string, t?: "success" | "error") => t === "error" ? toast.error(m) : toast.success(m);
 
 export default function FounderOSWeekPage({ searchParams }: { searchParams: Promise<{ weekStart?: string; preview?: string; generate?: string }> }) {
   const params = use(searchParams);
+  const initialPreview = parsePreviewParam(params.preview);
   const [data, setData] = useState<WeekData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [preview, setPreview] = useState<Suggestions | null>(null);
-  const [focusConstraint, setFocusConstraint] = useState("");
-  const [topOutcomes, setTopOutcomes] = useState<string[]>([]);
-  const [milestones, setMilestones] = useState<string[]>([]);
+  const [preview, setPreview] = useState<Suggestions | null>(initialPreview);
+  const [focusConstraint, setFocusConstraint] = useState(initialPreview?.focusConstraint ?? "");
+  const [topOutcomes, setTopOutcomes] = useState<string[]>(
+    initialPreview?.topOutcomes?.length ? initialPreview.topOutcomes.map((o) => o.title) : []
+  );
+  const [milestones, setMilestones] = useState<string[]>(
+    initialPreview?.milestones?.length ? initialPreview.milestones.map((m) => m.title) : []
+  );
   const [commitments, setCommitments] = useState<string[]>([]);
   const [wins, setWins] = useState<string[]>([]);
   const [misses, setMisses] = useState<string[]>([]);
@@ -164,17 +178,7 @@ export default function FounderOSWeekPage({ searchParams }: { searchParams: Prom
   useEffect(() => {
     const controller = new AbortController();
     abortRef.current = controller;
-    if (params.preview) {
-      try {
-        const p = JSON.parse(decodeURIComponent(params.preview)) as Suggestions;
-        setPreview(p);
-        if (p.topOutcomes?.length) setTopOutcomes(p.topOutcomes.map((o) => o.title));
-        if (p.milestones?.length) setMilestones(p.milestones.map((m) => m.title));
-        if (p.focusConstraint) setFocusConstraint(p.focusConstraint);
-      } catch {
-        setPreview(null);
-      }
-    }
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrate week plan from API
     fetchWeek(controller.signal).finally(() => setLoading(false));
     void fetchMemorySummary(controller.signal);
     return () => { controller.abort(); };

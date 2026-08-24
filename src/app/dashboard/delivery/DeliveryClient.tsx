@@ -46,8 +46,8 @@ export type DeliveryInitialData = {
     hasPrev: boolean;
   };
   summary: Summary | null;
-  risk: any;
-  nba: any;
+  risk: IntelligenceContext["risk"] | null;
+  nba: IntelligenceContext["nba"] | null;
 };
 
 function HealthBadge({ health }: { health: string }) {

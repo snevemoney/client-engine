@@ -82,7 +82,13 @@ export async function POST(req: NextRequest) {
 /**
  * Helper: Create SLA record
  */
-async function createSLA(sla: any): Promise<any> {
+async function createSLA(sla: {
+  leadId: string;
+  tier: string;
+  priority: string;
+  dueAt: Date;
+  alertAt: Date;
+}): Promise<{ success: boolean; leadId: string; tier: string; priority: string; created_at: string }> {
   // TODO: Create SLA record in database
   // TODO: Schedule alert reminder via cron
   return {

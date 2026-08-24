@@ -15,6 +15,8 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
       capture_pageview: true,
       capture_pageleave: true,
     });
+    // Client-only SDK init; ready must flip after init, not during render.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- PostHog cannot init on the server
     setReady(true);
   }, []);
 
