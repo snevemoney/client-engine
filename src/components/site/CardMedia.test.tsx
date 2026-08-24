@@ -63,7 +63,8 @@ describe("CardMedia", () => {
     const img = wrap?.querySelector("img");
     expect(video).toBeTruthy();
     expect(img).toBeTruthy();
-    expect(video?.compareDocumentPosition(img!) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
+    expect(wrap?.firstElementChild).toBe(img);
+    expect(img?.nextElementSibling).toBe(video);
     expect(video?.muted).toBe(true);
     expect(video?.loop).toBe(true);
     expect(video?.autoplay).toBe(true);
