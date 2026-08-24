@@ -67,8 +67,8 @@ describe("CardMedia", () => {
     expect(video?.className).not.toMatch(/opacity-0/);
     const sources = [...(video?.querySelectorAll("source") ?? [])];
     expect(sources.map((el) => el.getAttribute("type"))).toEqual(["video/mp4", "video/webm"]);
-    expect(sources[0]?.getAttribute("src")).toBe("/screenshots/sketchbook/preview.mp4?v=14");
-    expect(sources[1]?.getAttribute("src")).toBe("/screenshots/sketchbook/preview.webm?v=14");
+    expect(sources[0]?.getAttribute("src")).toBe("/screenshots/sketchbook/preview.mp4?v=16");
+    expect(sources[1]?.getAttribute("src")).toBe("/screenshots/sketchbook/preview.webm?v=16");
     expect(screen.getByRole("img", { name: "Sketchbook" })).toHaveAttribute(
       "src",
       "/screenshots/sketchbook/1-hero.jpg"
@@ -102,9 +102,9 @@ describe("CardMedia", () => {
     const sources = [...(video?.querySelectorAll("source") ?? [])];
     expect(sources).toHaveLength(2);
     expect(sources[0]?.getAttribute("type")).toBe("video/mp4");
-    expect(sources[0]?.getAttribute("src")).toBe("/screenshots/betawise-earth/preview.mp4?v=14");
+    expect(sources[0]?.getAttribute("src")).toBe("/screenshots/betawise-earth/preview.mp4?v=16");
     expect(sources[1]?.getAttribute("type")).toBe("video/webm");
-    expect(sources[1]?.getAttribute("src")).toBe("/screenshots/betawise-earth/preview.webm?v=14");
+    expect(sources[1]?.getAttribute("src")).toBe("/screenshots/betawise-earth/preview.webm?v=16");
     expect(screen.getByRole("img", { name: "Betawise Earth" })).toHaveAttribute(
       "src",
       "/screenshots/betawise-earth/1-hero.jpg"
@@ -119,7 +119,47 @@ describe("CardMedia", () => {
     expect(document.querySelector("video")).toBeNull();
   });
 
-  it("hides the video and keeps the still when the video errors", () => {
+  it("renders a gallery still as that exact src, not the next sibling", () => {
+    const siblings = [
+      "/screenshots/autoflow/preview.webm",
+      "/screenshots/autoflow/1-dashboard.png",
+      "/screenshots/autoflow/2-workflows.png",
+      "/screenshots/autoflow/5-settings.png",
+    ];
+    render(
+      <CardMedia
+        src="/screenshots/autoflow/1-dashboard.png"
+        alt="Autoflow dashboard"
+        siblings={siblings}
+      />
+    );
+    expect(screen.getByRole("img", { name: "Autoflow dashboard" })).toHaveAttribute(
+      "src",
+      "/screenshots/autoflow/1-dashboard.png"
+    );
+    expect(document.querySelector("video")).toBeNull();
+  });
+
+  it("does not rewrite the last gallery still to .jpg", () => {
+    const siblings = [
+      "/screenshots/autoflow/preview.webm",
+      "/screenshots/autoflow/1-dashboard.png",
+      "/screenshots/autoflow/5-settings.png",
+    ];
+    render(
+      <CardMedia
+        src="/screenshots/autoflow/5-settings.png"
+        alt="Autoflow settings"
+        siblings={siblings}
+      />
+    );
+    const img = screen.getByRole("img", { name: "Autoflow settings" });
+    expect(img).toHaveAttribute("src", "/screenshots/autoflow/5-settings.png");
+    expect(img.getAttribute("src")).not.toMatch(/\.jpg$/);
+    expect(document.querySelector("video")).toBeNull();
+  });
+
+  it("hides the video and keeps the still only when networkState is NETWORK_NO_SOURCE", () => {
     const { container } = render(
       <CardMedia
         src="/screenshots/working-volumes/preview.webm"
@@ -134,6 +174,13 @@ describe("CardMedia", () => {
 
     const video = container.querySelector("video");
     expect(video).toBeTruthy();
+    fireEvent.error(video!);
+    expect(container.querySelector("video")).toBeTruthy();
+
+    Object.defineProperty(video!, "networkState", {
+      configurable: true,
+      value: HTMLMediaElement.NETWORK_NO_SOURCE,
+    });
     fireEvent.error(video!);
     expect(container.querySelector("video")).toBeNull();
     expect(screen.getByRole("img", { name: "Working Volumes" })).toHaveAttribute(

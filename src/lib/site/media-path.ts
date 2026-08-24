@@ -37,7 +37,7 @@ export function workPreviewPath(slug: string): string {
 }
 
 /** Bump when Forge drops replacement preview.webms so browsers refetch. */
-export const PREVIEW_VIDEO_CACHE_BUST = "14";
+export const PREVIEW_VIDEO_CACHE_BUST = "16";
 
 /** Poster: next image sibling in the list, else same path with .jpg. */
 export function resolvePosterSrc(src: string, siblings: string[] = []): string | undefined {

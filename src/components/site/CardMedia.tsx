@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { rootPublicSrc } from "@/lib/base-path";
-import { isVideoPath, previewVideoSources, resolveCardStillSrc } from "@/lib/site/media-path";
+import { isVideoPath, previewVideoSources, resolvePosterSrc } from "@/lib/site/media-path";
 import { ScreenshotImg } from "@/components/site/ScreenshotImg";
 
 type CardMediaProps = {
@@ -21,12 +21,13 @@ const VIDEO_LAYER_CLASS =
 
 /**
  * Catalog media: muted looping preview when the path is a video,
- * otherwise the existing still.
+ * otherwise the existing still (`src` unchanged — never the next sibling).
  *
  * Fill cards (public /work grid) layer a still under a fully visible
  * <video>. HTML poster and opacity-0 both break iOS Safari: poster
  * sticks on the first frame, and a hidden video never paints or plays.
  * Sources are H.264 MP4 first, then WebM — Safari cannot decode WebM.
+ * Video fallback is NETWORK_NO_SOURCE only so a missing MP4 can still try WebM.
  */
 export function CardMedia({
   src,
@@ -39,8 +40,11 @@ export function CardMedia({
 }: CardMediaProps) {
   const [videoFailed, setVideoFailed] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const stillSrc = resolveCardStillSrc(src, siblings);
-  const showVideo = isVideoPath(src) && !videoFailed;
+  const video = isVideoPath(src);
+  const poster = video ? resolvePosterSrc(src, siblings) : undefined;
+  const heroFromSrc = src.replace(/preview\.(webm|mp4|mov)$/i, "1-hero.jpg");
+  const stillSrc = video ? poster || heroFromSrc : src;
+  const showVideo = video && !videoFailed;
 
   useEffect(() => {
     if (!showVideo) return;
@@ -77,7 +81,7 @@ export function CardMedia({
   if (!showVideo) {
     return (
       <ScreenshotImg
-        src={isVideoPath(src) ? stillSrc : src}
+        src={stillSrc}
         alt={alt}
         fill={fill}
         width={width}
@@ -98,7 +102,11 @@ export function CardMedia({
       preload="metadata"
       aria-label={alt}
       className={VIDEO_LAYER_CLASS}
-      onError={() => setVideoFailed(true)}
+      onError={(event) => {
+        if (event.currentTarget.networkState === HTMLMediaElement.NETWORK_NO_SOURCE) {
+          setVideoFailed(true);
+        }
+      }}
     >
       {sources.map((source) => (
         <source key={source.type} src={rootPublicSrc(source.src)} type={source.type} />

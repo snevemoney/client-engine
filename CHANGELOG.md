@@ -6,6 +6,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Fixed
+- **Case-page gallery stills** — `CardMedia` only resolves a poster still for video paths. Non-video gallery `src` renders unchanged, so each screenshot shows itself (not the next sibling) and the last still no longer becomes `5-settings.jpg` (404). Video/Safari behavior unchanged: no HTML `poster`, no `opacity-0`, MP4-first sources, `?v=16` cache-bust, still-only fallback on `NETWORK_NO_SOURCE` only.
 - **CI e2e full-flow navigation** — `full-flow.spec.ts` no longer `goto("/dashboard")` (that page redirects to founder and aborts the next navigation). Metrics/new-lead use `domcontentloaded` and tolerate Playwright `ERR_ABORTED` from Next.js redirects.
 - **CI e2e env** — `e2e` job now starts `postgres:16`, runs `prisma db push`, and sets `DATABASE_URL`, `AUTH_SECRET`, and `NEXTAUTH_URL` so the Playwright webServer can boot. `lint-and-test` already green on this branch.
 - **CI agent registry count** — `registry.test.ts` now expects 11 workers (`site_builder` was already in the registry). Unblocks `lint-and-test` after Postgres/`DATABASE_URL` let the suite run.

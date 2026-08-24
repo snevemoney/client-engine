@@ -81,8 +81,8 @@ describe("resolveCardStillSrc", () => {
 
 describe("withVideoCacheBust", () => {
   it("appends ?v= when missing and leaves an existing v= alone", () => {
-    expect(PREVIEW_VIDEO_CACHE_BUST).toBe("14");
-    expect(withVideoCacheBust("/x/preview.webm")).toBe("/x/preview.webm?v=14");
+    expect(PREVIEW_VIDEO_CACHE_BUST).toBe("16");
+    expect(withVideoCacheBust("/x/preview.webm")).toBe("/x/preview.webm?v=16");
     expect(withVideoCacheBust("/x/preview.webm?v=2")).toBe("/x/preview.webm?v=2");
   });
 });
@@ -93,8 +93,8 @@ describe("previewVideoSources", () => {
       "/screenshots/x/preview.mp4"
     );
     expect(previewVideoSources("/screenshots/x/preview.webm")).toEqual([
-      { src: "/screenshots/x/preview.mp4?v=14", type: "video/mp4" },
-      { src: "/screenshots/x/preview.webm?v=14", type: "video/webm" },
+      { src: "/screenshots/x/preview.mp4?v=16", type: "video/mp4" },
+      { src: "/screenshots/x/preview.webm?v=16", type: "video/webm" },
     ]);
   });
 });
