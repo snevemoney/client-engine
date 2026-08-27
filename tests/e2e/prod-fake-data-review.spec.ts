@@ -6,7 +6,7 @@ import { test } from "@playwright/test";
 
 const baseURL = (process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3000").replace(/\/$/, "");
 const loginEmail = process.env.E2E_EMAIL || process.env.ADMIN_EMAIL || "admin@evenslouis.ca";
-const loginPassword = process.env.E2E_PASSWORD || process.env.ADMIN_PASSWORD || "changeme";
+const loginPassword = process.env.E2E_PASSWORD || process.env.ADMIN_PASSWORD || "";
 
 const FAKE_PATTERNS = [
   /E2E test lead/i,

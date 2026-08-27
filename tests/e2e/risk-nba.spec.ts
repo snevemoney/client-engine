@@ -8,7 +8,7 @@ import { requireSafeE2EBaseUrl } from "./helpers/safety";
 
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3000";
 const loginEmail = process.env.E2E_EMAIL || process.env.ADMIN_EMAIL || "admin@evenslouis.ca";
-const loginPassword = process.env.E2E_PASSWORD || process.env.ADMIN_PASSWORD || "changeme";
+const loginPassword = process.env.E2E_PASSWORD || process.env.ADMIN_PASSWORD || "";
 
 function skipIfProd(): boolean {
   const isProd = baseURL.includes("evenslouis.ca");

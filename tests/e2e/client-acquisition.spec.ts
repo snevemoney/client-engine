@@ -15,7 +15,7 @@ import { requireSafeE2EBaseUrl } from "./helpers/safety";
 import { baseURL } from "./helpers/auth";
 
 const email = process.env.ADMIN_EMAIL || process.env.E2E_EMAIL || "admin@evenslouis.ca";
-const password = process.env.ADMIN_PASSWORD || process.env.E2E_PASSWORD || "changeme";
+const password = process.env.ADMIN_PASSWORD || process.env.E2E_PASSWORD || "";
 const apiBase = baseURL.replace(/\/$/, "");
 
 test.describe("Client-acquisition E2E", () => {

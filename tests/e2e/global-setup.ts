@@ -25,7 +25,8 @@ export default async function globalSetup() {
     env: {
       ...process.env,
       ADMIN_EMAIL: process.env.ADMIN_EMAIL || "admin@evenslouis.ca",
-      ADMIN_PASSWORD: process.env.ADMIN_PASSWORD || "changeme",
+      ADMIN_PASSWORD:
+        process.env.ADMIN_PASSWORD || process.env.AUTH_DEV_PASSWORD || process.env.E2E_PASSWORD || "",
     },
   });
 

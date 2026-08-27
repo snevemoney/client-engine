@@ -13,7 +13,7 @@ const loginPassword =
   process.env.E2E_PASSWORD ||
   process.env.ADMIN_PASSWORD ||
   process.env.AUTH_DEV_PASSWORD ||
-  "changeme";
+  "";
 
 async function login(page: Page) {
   await page.goto(`${baseURL}/login`);

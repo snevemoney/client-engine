@@ -71,7 +71,7 @@ cd /Users/evenslouis/site-builder && npm run dev
 In `.env` add:
 ```
 BUILDER_API_URL=http://localhost:3001
-BUILDER_API_KEY=dev-key
+BUILDER_API_KEY=your-builder-api-key
 ```
 
 Use the same builder consistently — scaffold (`builder/`) and site-builder use different DBs; switching causes "Failed to load site data".
