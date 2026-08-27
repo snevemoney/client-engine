@@ -6,12 +6,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { prisma } from "@/lib/db";
+import { requireBuilderApiKey } from "@/lib/require-api-key";
 import { getTheme } from "@/lib/themes";
 
 function requireAuth(req: NextRequest): boolean {
-  const auth = req.headers.get("authorization");
-  const key = process.env.BUILDER_API_KEY ?? "dev-key";
-  return auth === `Bearer ${key}`;
+  return requireBuilderApiKey(req);
 }
 
 type SectionProps = Record<string, unknown>;

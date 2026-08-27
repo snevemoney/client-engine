@@ -186,8 +186,7 @@ test.describe("API auth (401 without session)", () => {
 
 /**
  * API Bearer auth (prod cron): endpoints that accept Bearer RESEARCH_CRON_SECRET.
- * Playwright config sets fallback e2e-cron-secret-for-playwright when unset.
- * For existing dev server: add RESEARCH_CRON_SECRET to .env (see .env.example).
+ * Requires RESEARCH_CRON_SECRET in the environment (see .env.example).
  */
 test.describe("API Bearer auth (cron simulation)", () => {
   const cronSecret = process.env.RESEARCH_CRON_SECRET;
@@ -219,9 +218,9 @@ test.describe("API Bearer auth (cron simulation)", () => {
   test("POST /api/ops/workday-run with Bearer RESEARCH_CRON_SECRET returns 200 or 500 (not 401)", async ({
     request,
   }) => {
-    const secret = cronSecret ?? "e2e-cron-secret-for-playwright";
+    test.skip(!cronSecret, "RESEARCH_CRON_SECRET must be set (no hardcoded fallback)");
     const res = await request.post(`${url}/api/ops/workday-run`, {
-      headers: { Authorization: `Bearer ${secret}` },
+      headers: { Authorization: `Bearer ${cronSecret}` },
     });
     expect(res.status(), "Add RESEARCH_CRON_SECRET to .env and restart server").not.toBe(401);
   });
@@ -229,9 +228,9 @@ test.describe("API Bearer auth (cron simulation)", () => {
   test("POST /api/research/run with Bearer RESEARCH_CRON_SECRET returns 200 or 500 (not 401)", async ({
     request,
   }) => {
-    const secret = cronSecret ?? "e2e-cron-secret-for-playwright";
+    test.skip(!cronSecret, "RESEARCH_CRON_SECRET must be set (no hardcoded fallback)");
     const res = await request.post(`${url}/api/research/run?limit=1`, {
-      headers: { Authorization: `Bearer ${secret}` },
+      headers: { Authorization: `Bearer ${cronSecret}` },
     });
     expect(res.status(), "Add RESEARCH_CRON_SECRET to .env and restart server").not.toBe(401);
   });

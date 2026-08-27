@@ -3,6 +3,7 @@
  */
 
 import { db } from "@/lib/db";
+import { centsToDollars } from "@/lib/money/cents";
 
 export type NetworkingEventWithScore = {
   id: string;
@@ -50,7 +51,7 @@ export async function getNetworkingEventsWithScores(limit = 10): Promise<Network
     contactsMade: e.contactsMade,
     followUpsSent: e.followUpsSent,
     opportunitiesCreated: e.opportunitiesCreated,
-    revenue: e.revenue,
+    revenue: centsToDollars(e.revenue),
     notes: e.notes,
     qualityScore: computeQualityScore(e),
     createdAt: e.createdAt.toISOString(),

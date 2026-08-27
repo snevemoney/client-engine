@@ -5,7 +5,8 @@ import { Page, expect } from "@playwright/test";
 
 export const baseURL = process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3000";
 export const loginEmail = process.env.E2E_EMAIL || process.env.ADMIN_EMAIL || "admin@evenslouis.ca";
-export const loginPassword = process.env.E2E_PASSWORD || process.env.ADMIN_PASSWORD || "changeme";
+export const loginPassword =
+  process.env.E2E_PASSWORD || process.env.ADMIN_PASSWORD || process.env.AUTH_DEV_PASSWORD || "";
 
 /**
  * Log in and wait for dashboard. Skips if login fails.

@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { jsonError, requireAuth, withRouteTiming } from "@/lib/api-utils";
 import { db } from "@/lib/db";
+import { parsePaginationParams, PAGINATION_DEFAULTS } from "@/lib/pagination";
 
 export const dynamic = "force-dynamic";
 
@@ -33,12 +34,20 @@ const createSchema = z.object({
   ctaUrl: z.string().url().max(500).optional().or(z.literal("")),
 });
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   return withRouteTiming("GET /api/campaigns", async () => {
     const session = await requireAuth();
     if (!session) return jsonError("Unauthorized", 401);
 
-    const campaigns = await db.campaign.findMany({ orderBy: { createdAt: "desc" } });
+    const { searchParams } = new URL(req.url);
+    const parsed = parsePaginationParams(searchParams);
+    const pageSize = searchParams.has("pageSize") ? parsed.pageSize : PAGINATION_DEFAULTS.maxPageSize;
+    const skip = searchParams.has("page") ? parsed.skip : 0;
+    const campaigns = await db.campaign.findMany({
+      orderBy: { createdAt: "desc" },
+      skip,
+      take: pageSize,
+    });
     return NextResponse.json(
       campaigns.map((c) => ({
         id: c.id,

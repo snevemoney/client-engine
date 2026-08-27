@@ -4,18 +4,19 @@ import { config } from "dotenv";
 
 config({ path: path.resolve(__dirname, ".env") });
 
-const e2eCronSecret = "e2e-cron-secret-for-playwright";
-if (!process.env.RESEARCH_CRON_SECRET) process.env.RESEARCH_CRON_SECRET = e2eCronSecret;
-if (!process.env.AGENT_CRON_SECRET) process.env.AGENT_CRON_SECRET = e2eCronSecret;
+if (process.env.CI) {
+  for (const name of ["AGENT_CRON_SECRET", "RESEARCH_CRON_SECRET"] as const) {
+    if (!process.env[name]?.trim()) {
+      throw new Error(`${name} must be set in CI (no hardcoded Playwright fallback)`);
+    }
+  }
+}
 
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3000";
 const projectRoot = path.resolve(__dirname);
 
 const webServerEnv: Record<string, string> = {
   ...Object.fromEntries(Object.entries(process.env).filter(([, v]) => v !== undefined)) as Record<string, string>,
-  AUTH_DEV_PASSWORD: process.env.AUTH_DEV_PASSWORD || "changeme",
-  AGENT_CRON_SECRET: process.env.AGENT_CRON_SECRET || e2eCronSecret,
-  RESEARCH_CRON_SECRET: process.env.RESEARCH_CRON_SECRET || e2eCronSecret,
   OAUTH_SIMULATION: process.env.OAUTH_SIMULATION || "1",
   E2E_TEST_MODE: "1",
 };

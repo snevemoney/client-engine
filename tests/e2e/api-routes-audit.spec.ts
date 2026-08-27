@@ -122,7 +122,7 @@ test.describe("API routes audit (with auth)", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto(`${baseURL}/login`, { waitUntil: "load", timeout: 15000 });
     const email = process.env.E2E_EMAIL || process.env.ADMIN_EMAIL || "admin@evenslouis.ca";
-    const password = process.env.E2E_PASSWORD || process.env.ADMIN_PASSWORD || "changeme";
+    const password = process.env.E2E_PASSWORD || process.env.ADMIN_PASSWORD || "";
     await page.getByLabel("Email").fill(email);
     await page.getByLabel("Password").fill(password);
     await page.getByRole("button", { name: /sign in/i }).click();

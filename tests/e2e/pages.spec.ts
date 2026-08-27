@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3000";
 const loginEmail = process.env.E2E_EMAIL || process.env.ADMIN_EMAIL || (process.env.AUTH_DEV_PASSWORD ? "test@test.com" : "admin@evenslouis.ca");
-const loginPassword = process.env.E2E_PASSWORD || process.env.ADMIN_PASSWORD || process.env.AUTH_DEV_PASSWORD || "changeme";
+const loginPassword = process.env.E2E_PASSWORD || process.env.ADMIN_PASSWORD || process.env.AUTH_DEV_PASSWORD || "";
 
 test.describe("All pages", () => {
   test("login then visit every page", async ({ page }) => {

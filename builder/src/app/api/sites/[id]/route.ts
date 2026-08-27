@@ -4,11 +4,10 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { requireBuilderApiKey } from "@/lib/require-api-key";
 
 function requireAuth(req: NextRequest): boolean {
-  const auth = req.headers.get("authorization");
-  const key = process.env.BUILDER_API_KEY ?? "dev-key";
-  return auth === `Bearer ${key}`;
+  return requireBuilderApiKey(req);
 }
 
 export async function GET(

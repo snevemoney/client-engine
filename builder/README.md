@@ -11,7 +11,7 @@ cd /Users/evenslouis/site-builder && npm run dev
 Then in Client Engine `.env`:
 ```
 BUILDER_API_URL=http://localhost:3001
-BUILDER_API_KEY=dev-key
+BUILDER_API_KEY=your-builder-api-key
 ```
 
 This `builder/` directory is used by Docker Compose for production. For local delivery/builder features, use site-builder only.

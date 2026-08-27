@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3000";
-const password = process.env.E2E_PASSWORD || process.env.AUTH_DEV_PASSWORD || "changeme";
+const password = process.env.E2E_PASSWORD || process.env.AUTH_DEV_PASSWORD || "";
 const email = process.env.E2E_EMAIL || "test@test.com";
 
 test("debug login", async ({ page }) => {

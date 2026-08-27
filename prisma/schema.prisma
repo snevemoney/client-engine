@@ -88,6 +88,7 @@ model Lead {
   @@index([source])
   @@index([nextActionDueAt])
   @@index([driverType])
+  @@index([dealOutcome])
   pipelineRuns          PipelineRun[]
   touches               LeadTouch[]
   referralsReceived     LeadReferral[] @relation("ReferralsForLead")
@@ -167,6 +168,8 @@ model Artifact {
 
   @@index([leadId])
   @@index([leadId, createdAt])
+  @@index([leadId, type])
+  @@index([type])
 }
 
 model Project {
@@ -322,7 +325,7 @@ model ContentAsset {
   inboundLeads    Int       @default(0)
   qualifiedLeads  Int       @default(0)
   wonDeals        Int       @default(0)
-  cashCollected   Float     @default(0)
+  cashCollected   Int       @default(0) // cents
   notes           String?   @db.Text
   createdAt       DateTime  @default(now())
 }
@@ -367,9 +370,11 @@ model NetworkingEvent {
   contactsMade         Int      @default(0)
   followUpsSent        Int      @default(0)
   opportunitiesCreated Int     @default(0)
-  revenue             Float?
+  revenue             Int?     // cents
   notes               String?  @db.Text
   createdAt            DateTime @default(now())
+
+  @@index([eventDate])
 }
 
 /** NDA-safe proof assets: anonymized patterns, lessons, outcomes. No client names. */
@@ -1765,7 +1770,7 @@ model AuditAction {
   @@index([actionKey, createdAt])
 }
 
-// ----- Phase 2.8.4: Job Queue (Postgres-backed, no Redis) -----
+// ----- Phase 2.8.4: Job Queue (Postgres-backed JobRun; Redis/BullMQ used for some queues) -----
 
 enum JobRunStatus {
   queued
@@ -1817,6 +1822,7 @@ model JobRun {
 
   @@index([status, runAfter, priority])
   @@index([lockOwner])
+  @@index([lockedAt])
   @@index([dedupeKey])
   @@index([idempotencyKey])
   @@index([jobType])

@@ -1,6 +1,6 @@
 # Brain Tools
 
-> Auto-generated on 2026-08-22. 27 tools (13 write).
+> Auto-generated on 2026-08-27. 27 tools (13 write).
 
 ## All Tools
 

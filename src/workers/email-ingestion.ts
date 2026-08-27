@@ -1,10 +1,8 @@
 import { ImapFlow } from "imapflow";
 import { simpleParser } from "mailparser";
-import { PrismaClient } from "@prisma/client";
 import crypto from "crypto";
 import { notifyNewLead } from "@/lib/notify";
-
-const db = new PrismaClient();
+import { db } from "@/lib/db";
 
 interface ParsedLead {
   title: string;
@@ -192,7 +190,5 @@ export async function runEmailIngestion() {
     await client.logout();
   } catch (err) {
     console.error("[email] Error:", err);
-  } finally {
-    await db.$disconnect();
   }
 }
