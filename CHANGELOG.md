@@ -6,7 +6,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Fixed
+- **Webhook and ping auth fail closed** — `POST /api/voice/webhook` verifies HMAC-SHA256 of the raw body (`VOICE_WEBHOOK_SECRET`; headers `x-voice-signature` / `x-webhook-signature` / `x-retell-signature` / `x-vapi-signature`). GitHub `POST /api/automation/rule-1-3-github-webhook` verifies `x-hub-signature-256` and rejects when `GITHUB_WEBHOOK_SECRET` is unset (no more always-true HMAC). `GET /api/test` requires a session.
+- **Secret fallbacks removed** — Playwright no longer invents cron secrets or `changeme`. Delivery UI no longer interpolates `BUILDER_API_KEY` / `dev-key`; admin panel goes through authenticated `GET /api/delivery-projects/[id]/builder/admin`. Builder scaffold auth fails closed if `BUILDER_API_KEY` is unset.
 - **Case-page Screenshots never paint black on iOS Safari** — Non-fill `CardMedia` (width/height, used on `/work/[slug]`) now wraps a still `ScreenshotImg` under an absolutely positioned `<video>`. Never returns video-only. Fill cards keep still `z-0` + video `z-[1] opacity-100`. No HTML `poster`. Preview sources and video-underlay stills cache-bust at `?v=17`.
+
+### Changed
+- **Hardening slice (audit 2026-08-27)** — Zod on capture, public site leads, networking events, and leads PATCH types. Campaigns/cadence list queries paginated. Resend sends use `fetchWithRetry`. `ContentAsset.cashCollected` and `NetworkingEvent.revenue` stored as integer cents (API still dollars). Indexes on Artifact type, Lead.dealOutcome, JobRun.lockedAt. Escalation dedupe batched. Email worker uses the Prisma singleton. 259 Prisma-in-handler routes are **not** rewritten into a service layer. See `docs/audits/hardening-20-20260827.md` Fixed vs Deferred.
 
 ### Added
 - **Website-assets landing proofs on /work** — Eight proof/concept cards (Outer Heaven, Northline Clinic, Harbor & Co., Ledgerline, Atelier Cohort, Quay Team, Ashford & Vale, Ironlane Studio). Same seed path as cinematic proofs: `proofOnly`, null demo/repo, `[preview.webm, 1-hero.jpg]`. Static HTML/CSS/JS landings, not Three.js. Forge drops media after merge. Held-back cinematic slugs unchanged.

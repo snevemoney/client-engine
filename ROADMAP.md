@@ -25,6 +25,15 @@ Phase 9+ complete. Full business OS operational with AI Brain, 11 agents (includ
 - [x] Set ENRICH_CONTEXT_SECRET in both apps for local dev
 - [x] Update builder/create to use enrichment path (deliveryProjectId + enrichContextUrl)
 
+## Hardening (2026-08-27)
+
+Implemented from `docs/audits/hardening-20-20260827.md`: webhook HMAC fail-closed, `/api/test` auth, secret fallbacks removed, local Zod/pagination/retry/cents/indexes/N+1. See that file’s Fixed vs Deferred table.
+
+- [x] Auth check 17 (voice HMAC, GitHub HMAC, lock `/api/test`)
+- [x] Secrets check 2 (Playwright + delivery `dev-key` + builder fail-closed)
+- [ ] Rewrite remaining Prisma-in-handler routes into services (259 files — **do not one-shot**)
+- [ ] Remaining Zod mutations, unpaginated summary lists, Float money (`Project.paymentAmount`, pipeline cost)
+
 ## Phase 2 — Architecture Refactor
 
 Implementation plan: [docs/decisions/007-phase-2-architecture-refactor-impl.md](docs/decisions/007-phase-2-architecture-refactor-impl.md)
