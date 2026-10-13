@@ -1,40 +1,39 @@
 import { NextRequest, NextResponse } from "next/server";
+import { jsonError, withRouteTiming } from "@/lib/api-utils";
+import { verifyGitHubWebhookSignature } from "@/lib/crypto/hmac";
 
 /**
- * RULE 1.3: GitHub→Forge Webhook Trigger
- * 
- * Automatically runs tests and deploys code when PR is merged to main.
- * 
- * Trigger: GitHub push webhook (on main branch)
- * 
- * Actions:
- *   1. Receive webhook from GitHub
- *   2. Verify webhook signature (GitHub security)
- *   3. Invoke Forge agent: run npm test + npm build
- *   4. If tests pass: auto-deploy to staging
- *   5. Post status back to GitHub (✅ or ❌)
- * 
- * Success metric: Code deployed <10 minutes after merge
+ * RULE 1.3: GitHub webhook receiver.
+ *
+ * Verifies `x-hub-signature-256` (HMAC-SHA256 of the raw body) and fails closed
+ * when GITHUB_WEBHOOK_SECRET is unset. Forge invoke and GitHub commit status
+ * remain stubs — this route does not deploy.
  */
 
-const GITHUB_WEBHOOK_SECRET = process.env.GITHUB_WEBHOOK_SECRET || "";
-
 export async function POST(req: NextRequest) {
-  try {
-    // Verify GitHub webhook signature
+  return withRouteTiming("POST /api/automation/rule-1-3-github-webhook", async () => {
     const signature = req.headers.get("x-hub-signature-256");
     const body = await req.text();
 
-    if (!verifyGitHubSignature(body, signature || "")) {
-      return NextResponse.json(
-        { error: "Invalid webhook signature" },
-        { status: 401 }
-      );
+    if (!verifyGitHubWebhookSignature({
+      secret: process.env.GITHUB_WEBHOOK_SECRET,
+      signatureHeader: signature,
+      rawBody: body,
+    })) {
+      return jsonError("Invalid webhook signature", 401);
     }
 
-    const payload = JSON.parse(body);
+    let payload: {
+      ref?: string;
+      head_commit?: { message?: string; id?: string };
+      repository?: { name?: string };
+    };
+    try {
+      payload = JSON.parse(body) as typeof payload;
+    } catch {
+      return jsonError("Invalid JSON", 400);
+    }
 
-    // Only process push events to main branch
     if (payload.ref !== "refs/heads/main") {
       return NextResponse.json({ message: "Skipped (not main branch)" });
     }
@@ -43,7 +42,6 @@ export async function POST(req: NextRequest) {
     const commitSha = payload.head_commit?.id || "";
     const repoName = payload.repository?.name || "";
 
-    // Trigger Forge: run tests + build
     const forgeTask = await triggerForge({
       action: "test_and_build",
       commitSha,
@@ -52,20 +50,14 @@ export async function POST(req: NextRequest) {
     });
 
     if (!forgeTask.success) {
-      // Post failure to GitHub
       await postGitHubStatus({
         sha: commitSha,
         state: "failure",
         description: "Build/test job failed",
       });
-
-      return NextResponse.json(
-        { error: "Forge task failed", details: forgeTask },
-        { status: 500 }
-      );
+      return jsonError("Forge task failed", 500);
     }
 
-    // Post success to GitHub
     await postGitHubStatus({
       sha: commitSha,
       state: "success",
@@ -79,30 +71,16 @@ export async function POST(req: NextRequest) {
       action: "test_and_build",
       forgeJobId: forgeTask.jobId,
     });
-  } catch (error) {
-    console.error("[Rule 1.3] Error:", error);
-    return NextResponse.json(
-      { error: "Internal server error", details: String(error) },
-      { status: 500 }
-    );
-  }
+  });
 }
 
-/**
- * Helper: Verify GitHub webhook signature
- */
-function verifyGitHubSignature(body: string, signature: string): boolean {
-  // TODO: Implement HMAC-SHA256 verification
-  // For now, return true for testing
-  return true;
-}
-
-/**
- * Helper: Trigger Forge agent
- */
-async function triggerForge(task: any): Promise<any> {
-  // TODO: Use sessions_send to invoke Forge agent
-  // For now, return mock success
+/** Stub: does not invoke a real agent or deploy. */
+async function triggerForge(task: {
+  action: string;
+  commitSha: string;
+  commitMessage: string;
+  repoName: string;
+}): Promise<{ success: boolean; jobId: string; action: string }> {
   return {
     success: true,
     jobId: `forge-${Date.now()}`,
@@ -110,15 +88,11 @@ async function triggerForge(task: any): Promise<any> {
   };
 }
 
-/**
- * Helper: Post status to GitHub commit
- */
+/** Stub: logs only. Does not call the GitHub Statuses API. */
 async function postGitHubStatus(status: {
   sha: string;
   state: "pending" | "success" | "failure";
   description: string;
 }): Promise<void> {
-  // TODO: Use GitHub API to post commit status
-  // POST /repos/{owner}/{repo}/statuses/{sha}
-  console.log("[Rule 1.3] GitHub status:", status);
+  console.log("[Rule 1.3] GitHub status (stub):", status);
 }

@@ -4,6 +4,7 @@
  */
 
 import type { ChannelAdapterResult, SendPayload } from "../types";
+import { fetchWithRetry } from "@/lib/http/fetch-with-retry";
 
 export async function sendEmail(
   payload: SendPayload,
@@ -22,7 +23,7 @@ export async function sendEmail(
   const from = process.env.SITE_FROM_EMAIL ?? "Client Engine <onboarding@resend.dev>";
 
   try {
-    const res = await fetch("https://api.resend.com/emails", {
+    const res = await fetchWithRetry("https://api.resend.com/emails", {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({

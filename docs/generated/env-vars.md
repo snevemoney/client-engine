@@ -1,6 +1,6 @@
 # Environment Variables
 
-> Auto-generated from .env.example on 2026-08-22. 21 variables.
+> Auto-generated from .env.example on 2026-08-27. 21 variables.
 
 | Variable | Description |
 |----------|-------------|
@@ -13,8 +13,8 @@
 | `NEXTAUTH_URL` | /api/auth/* actions (UnknownAction) if AUTH_URL/NEXTAUTH_URL includes a path. |
 | `AUTH_TRUST_HOST` | Required for Compose `pro` service (NEXT_PUBLIC_BASE_PATH=/pro on :3204) |
 | `PIPELINE_DRY_RUN` | For real lead scores, set to 0 and ensure ANTHROPIC_API_KEY or OPENAI_API_KEY is set. |
-| `AGENT_CRON_SECRET` | E2E + local: use e2e-cron-secret-for-playwright so health and Bearer tests run. Prod: set strong random secrets. |
-| `RESEARCH_CRON_SECRET` | E2E + local: use this so Bearer auth tests run. Prod: set a strong random secret. |
+| `AGENT_CRON_SECRET` | Set a long random value locally and in prod. Do not commit the real secret. |
+| `RESEARCH_CRON_SECRET` | Set a long random value locally and in prod. Do not commit the real secret. |
 | `IMAP_HOST` | Email ingestion (worker) — Hostinger IMAP; set IMAP_USER and IMAP_PASS to connect inbox |
 | `IMAP_PORT` | — |
 | `IMAP_USER` | — |

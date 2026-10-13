@@ -11,6 +11,7 @@ import { useConfirmDialog } from "@/hooks/useConfirmDialog";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useAsyncAction } from "@/hooks/useAsyncAction";
 import { fetchJsonThrow } from "@/lib/http/fetch-json";
+import { apiPath } from "@/lib/base-path";
 import { Loader2, Sparkles, Share2, MessageSquare } from "lucide-react";
 import { useBrainPanel } from "@/contexts/BrainPanelContext";
 
@@ -711,7 +712,7 @@ function BuilderSection({
           <a href={project.builderPreviewUrl} target="_blank" rel="noreferrer" className="text-emerald-400 hover:underline">Open preview</a>
         )}
         {project.builderSiteId && project.builderPreviewUrl && (
-          <a href={project.builderPreviewUrl.replace(/\/preview\//, "/sites/") + "/admin?token=" + encodeURIComponent(process.env.BUILDER_API_KEY || "dev-key")} target="_blank" rel="noreferrer" className="text-amber-400 hover:underline">Admin panel</a>
+          <a href={apiPath(`/api/delivery-projects/${project.id}/builder/admin`)} target="_blank" rel="noreferrer" className="text-amber-400 hover:underline">Admin panel</a>
         )}
         {project.builderLiveUrl && (
           <a href={project.builderLiveUrl} target="_blank" rel="noreferrer" className="text-emerald-400 hover:underline">Live site</a>

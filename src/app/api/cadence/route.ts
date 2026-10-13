@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jsonError, requireAuth, withRouteTiming } from "@/lib/api-utils";
 import { db } from "@/lib/db";
+import { parsePaginationParams } from "@/lib/pagination";
 
 export const dynamic = "force-dynamic";
 
@@ -26,9 +27,12 @@ export async function GET(req: NextRequest) {
       return jsonError("Invalid sourceType", 400);
     }
 
+    const { skip, pageSize } = parsePaginationParams(searchParams);
     const cadences = await db.cadence.findMany({
       where: { sourceType, sourceId },
       orderBy: { dueAt: "asc" },
+      skip,
+      take: pageSize,
     });
 
     return NextResponse.json(

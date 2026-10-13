@@ -38,8 +38,8 @@ export async function POST(request: NextRequest) {
       try {
         const body = await request.json().catch(() => ({}));
         asyncMode = body?.async === true;
-      } catch {
-        /* ignore */
+      } catch (err) {
+        console.warn("[reminders/run-rules] ignored invalid JSON body", err);
       }
     }
 

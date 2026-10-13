@@ -4,6 +4,7 @@
  */
 
 import nodemailer from "nodemailer";
+import { fetchWithRetry } from "@/lib/http/fetch-with-retry";
 
 const NOTIFY_EMAIL = process.env.NOTIFY_EMAIL ?? "contact@evenslouis.ca";
 
@@ -23,7 +24,7 @@ async function sendResendTo(
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) return false;
   const from = process.env.SITE_FROM_EMAIL ?? "Client Engine <onboarding@resend.dev>";
-  const res = await fetch("https://api.resend.com/emails", {
+  const res = await fetchWithRetry("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({

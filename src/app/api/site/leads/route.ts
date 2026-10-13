@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import nodemailer from "nodemailer";
+import { z } from "zod";
 import { db } from "@/lib/db";
 import { sendLeadEvent } from "@/lib/meta-capi";
 import { rateLimit } from "@/lib/rate-limit";
+import { fetchWithRetry } from "@/lib/http/fetch-with-retry";
 
 const SITE_LEADS_LIMIT = 10;
 const SITE_LEADS_WINDOW_MS = 60_000; // 10 per minute per IP
@@ -45,7 +47,7 @@ async function sendLeadNotificationResend(opts: { to: string; replyTo: string; s
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) return false;
   const from = process.env.SITE_FROM_EMAIL ?? "Website <onboarding@resend.dev>";
-  const res = await fetch("https://api.resend.com/emails", {
+  const res = await fetchWithRetry("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -116,6 +118,14 @@ const MAX_COMPANY = 255;
 const MAX_WEBSITE = 500;
 const MAX_MESSAGE = 2000;
 
+const siteLeadSchema = z.object({
+  name: z.string().max(MAX_NAME).optional(),
+  email: z.string().email().max(MAX_EMAIL),
+  company: z.string().max(MAX_COMPANY).optional(),
+  website: z.string().max(MAX_WEBSITE).optional(),
+  message: z.string().max(MAX_MESSAGE).optional(),
+});
+
 function truncate(s: string, max: number): string {
   return s.length > max ? s.slice(0, max) : s;
 }
@@ -131,18 +141,25 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  let body: { name?: string; email?: string; company?: string; website?: string; message?: string };
+  let json: unknown;
   try {
-    body = await req.json();
+    json = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
-  const name = truncate((typeof body.name === "string" ? body.name.trim() : ""), MAX_NAME);
-  const email = truncate((typeof body.email === "string" ? body.email.trim() : ""), MAX_EMAIL);
-  const company = typeof body.company === "string" ? truncate(body.company.trim(), MAX_COMPANY) || undefined : undefined;
-  const website = typeof body.website === "string" ? truncate(body.website.trim(), MAX_WEBSITE) || undefined : undefined;
-  const message = truncate((typeof body.message === "string" ? body.message.trim() : ""), MAX_MESSAGE);
-  if (!email) return NextResponse.json({ error: "Email is required" }, { status: 400 });
+  const parsed = siteLeadSchema.safeParse(json);
+  if (!parsed.success) {
+    const emailIssue = parsed.error.issues.find((i) => i.path[0] === "email");
+    if (emailIssue) {
+      return NextResponse.json({ error: "Email is required" }, { status: 400 });
+    }
+    return NextResponse.json({ error: "Invalid input" }, { status: 400 });
+  }
+  const name = truncate(parsed.data.name?.trim() ?? "", MAX_NAME);
+  const email = truncate(parsed.data.email.trim(), MAX_EMAIL);
+  const company = parsed.data.company ? truncate(parsed.data.company.trim(), MAX_COMPANY) || undefined : undefined;
+  const website = parsed.data.website ? truncate(parsed.data.website.trim(), MAX_WEBSITE) || undefined : undefined;
+  const message = truncate((parsed.data.message ?? "").trim(), MAX_MESSAGE);
   const title = company ? `${company} (website)` : name ? `${name} (website)` : "Website inquiry";
   const description = [message, company ? `Company: ${company}` : "", website ? `Website: ${website}` : ""].filter(Boolean).join("\n");
   try {

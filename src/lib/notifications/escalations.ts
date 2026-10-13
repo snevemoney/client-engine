@@ -19,6 +19,22 @@ function startOfWeek(d: Date): Date {
   return copy;
 }
 
+async function recentDedupeKeys(
+  keys: string[],
+  now: Date,
+  windowMs: number
+): Promise<Set<string>> {
+  if (keys.length === 0) return new Set();
+  const rows = await db.notificationEvent.findMany({
+    where: {
+      dedupeKey: { in: keys },
+      createdAt: { gte: new Date(now.getTime() - windowMs) },
+    },
+    select: { dedupeKey: true },
+  });
+  return new Set(rows.map((r) => r.dedupeKey).filter((k): k is string => Boolean(k)));
+}
+
 export type EvaluateResult = {
   created: number;
   queued: number;
@@ -52,13 +68,14 @@ export async function evaluateEscalationRules(opts: {
         orderBy: { deadLetteredAt: "desc" },
         take: 20,
       });
+      const recent = await recentDedupeKeys(
+        jobs.map((job) => `job:dead_letter:${job.id}`),
+        now,
+        windowMs
+      );
       for (const job of jobs) {
         const dedupeKey = `job:dead_letter:${job.id}`;
-        const existing = await db.notificationEvent.findFirst({
-          where: { dedupeKey },
-          orderBy: { createdAt: "desc" },
-        });
-        if (existing && now.getTime() - existing.createdAt.getTime() < windowMs) continue;
+        if (recent.has(dedupeKey)) continue;
 
         const meta = {
           jobType: job.jobType,
@@ -109,13 +126,14 @@ export async function evaluateEscalationRules(opts: {
         },
         take: 20,
       });
+      const recent = await recentDedupeKeys(
+        jobs.map((job) => `job:stale_running:${job.id}`),
+        now,
+        windowMs
+      );
       for (const job of jobs) {
         const dedupeKey = `job:stale_running:${job.id}`;
-        const existing = await db.notificationEvent.findFirst({
-          where: { dedupeKey },
-          orderBy: { createdAt: "desc" },
-        });
-        if (existing && now.getTime() - existing.createdAt.getTime() < windowMs) continue;
+        if (recent.has(dedupeKey)) continue;
 
         const meta = { jobType: job.jobType };
         const title = formatNotificationTitle({
@@ -160,14 +178,18 @@ export async function evaluateEscalationRules(opts: {
         },
         take: 30,
       });
+      const recent = await recentDedupeKeys(
+        reminders.map((r) => {
+          const dateBucket = r.dueAt ? new Date(r.dueAt).toISOString().slice(0, 10) : "none";
+          return `reminder:${triggerType}:${r.id}:${dateBucket}`;
+        }),
+        now,
+        windowMs
+      );
       for (const r of reminders) {
         const dateBucket = r.dueAt ? new Date(r.dueAt).toISOString().slice(0, 10) : "none";
         const dedupeKey = `reminder:${triggerType}:${r.id}:${dateBucket}`;
-        const existing = await db.notificationEvent.findFirst({
-          where: { dedupeKey },
-          orderBy: { createdAt: "desc" },
-        });
-        if (existing && now.getTime() - existing.createdAt.getTime() < windowMs) continue;
+        if (recent.has(dedupeKey)) continue;
 
         const eventKey = isCritical ? "reminder.critical_overdue" : "reminder.overdue";
         const meta = { title: r.title, dueAt: r.dueAt?.toISOString() };
@@ -314,13 +336,14 @@ export async function evaluateEscalationRules(opts: {
         },
         take: 20,
       });
+      const recent = await recentDedupeKeys(
+        deliveries.map((d) => `delivery:retention_overdue:${d.id}:${now.toISOString().slice(0, 10)}`),
+        now,
+        windowMs
+      );
       for (const d of deliveries) {
         const dedupeKey = `delivery:retention_overdue:${d.id}:${now.toISOString().slice(0, 10)}`;
-        const existing = await db.notificationEvent.findFirst({
-          where: { dedupeKey },
-          orderBy: { createdAt: "desc" },
-        });
-        if (existing && now.getTime() - existing.createdAt.getTime() < windowMs) continue;
+        if (recent.has(dedupeKey)) continue;
 
         const title = formatNotificationTitle({
           eventKey: "delivery.retention_overdue",

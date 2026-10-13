@@ -27,12 +27,14 @@ export async function generateContentPostDrafts(
 
   const results: GenerateResult[] = [];
 
+  const existing = await db.contentPost.findMany({
+    where: { proofRecordId, platform: { in: platforms } },
+    select: { platform: true },
+  });
+  const have = new Set(existing.map((p) => p.platform));
+
   for (const platform of platforms) {
-    // Skip if a post for this platform already exists
-    const existing = await db.contentPost.findFirst({
-      where: { proofRecordId, platform },
-    });
-    if (existing) continue;
+    if (have.has(platform)) continue;
 
     const content = renderPostContent(proof, platform);
 

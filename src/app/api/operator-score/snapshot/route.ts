@@ -40,8 +40,8 @@ export async function POST(request: NextRequest) {
       try {
         const body = await request.json().catch(() => ({}));
         asyncMode = body?.async === true;
-      } catch {
-        /* ignore */
+      } catch (err) {
+        console.warn("[operator-score/snapshot] ignored invalid JSON body", err);
       }
     }
 

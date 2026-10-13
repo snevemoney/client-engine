@@ -1,11 +1,12 @@
 /**
  * POST /api/voice/webhook — Receives outcome from Retell/Vapi.
- * Idempotent by externalCallId. Parses proposalId, outcome, externalCallId, durationSeconds.
+ * Fail-closed HMAC on the raw body. Idempotent by externalCallId.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { VoiceCallOutcome } from "@prisma/client";
 import { jsonError, withRouteTiming } from "@/lib/api-utils";
+import { firstHeader, verifyHmacSha256Signature } from "@/lib/crypto/hmac";
 import { logCallOutcome, recordOptOut } from "@/lib/voice";
 import { db } from "@/lib/db";
 
@@ -34,10 +35,32 @@ const bodySchema = z.object({
   durationSeconds: d.durationSeconds ?? d.duration_seconds,
 }));
 
+const VOICE_SIGNATURE_HEADERS = [
+  "x-voice-signature",
+  "x-webhook-signature",
+  "x-retell-signature",
+  "x-vapi-signature",
+];
+
 export async function POST(req: NextRequest) {
   return withRouteTiming("POST /api/voice/webhook", async () => {
-    const body = await req.json().catch(() => null);
-    const parsed = bodySchema.safeParse(body);
+    const rawBody = await req.text();
+    const signature = firstHeader(req.headers, VOICE_SIGNATURE_HEADERS);
+    const verified = verifyHmacSha256Signature({
+      secret: process.env.VOICE_WEBHOOK_SECRET,
+      signatureHeader: signature,
+      rawBody,
+    });
+    if (!verified) return jsonError("Unauthorized", 401);
+
+    let json: unknown;
+    try {
+      json = JSON.parse(rawBody);
+    } catch {
+      return jsonError("Invalid webhook body", 400);
+    }
+
+    const parsed = bodySchema.safeParse(json);
     if (!parsed.success) {
       return jsonError("Invalid webhook body", 400);
     }

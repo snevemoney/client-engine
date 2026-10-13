@@ -11,7 +11,7 @@ import { test, expect } from "@playwright/test";
 import { requireSafeE2EBaseUrl } from "./helpers/safety";
 
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3000";
-const devPassword = process.env.AUTH_DEV_PASSWORD || "changeme";
+const devPassword = process.env.AUTH_DEV_PASSWORD || "";
 const email = process.env.E2E_EMAIL || process.env.ADMIN_EMAIL || (process.env.AUTH_DEV_PASSWORD ? "test@test.com" : "admin@evenslouis.ca");
 const password = process.env.E2E_PASSWORD || process.env.ADMIN_PASSWORD || devPassword;
 

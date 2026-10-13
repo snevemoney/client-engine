@@ -1,6 +1,6 @@
 # Agent Registry
 
-> Auto-generated on 2026-08-22. 11 agents.
+> Auto-generated on 2026-08-27. 11 agents.
 
 | ID | Name |
 |----|------|

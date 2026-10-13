@@ -15,7 +15,7 @@ import { requireSafeE2EBaseUrl } from "./helpers/safety";
 
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3000";
 const email = (process.env.E2E_EMAIL || "test@test.com").trim().toLowerCase();
-const password = (process.env.E2E_PASSWORD || process.env.AUTH_DEV_PASSWORD || "changeme").trim();
+const password = (process.env.E2E_PASSWORD || process.env.AUTH_DEV_PASSWORD || "").trim();
 
 test.describe("Learning ingest", () => {
   test.beforeEach(() => {

@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { z } from "zod";
+import { centsToDollars } from "@/lib/money/cents";
 
 const createSchema = z.object({
   platform: z.string().min(1).max(100),
@@ -25,7 +26,9 @@ export async function GET() {
     orderBy: { createdAt: "desc" },
     take: 100,
   });
-  return NextResponse.json(assets);
+  return NextResponse.json(
+    assets.map((a) => ({ ...a, cashCollected: centsToDollars(a.cashCollected) ?? 0 }))
+  );
 }
 
 export async function POST(req: NextRequest) {
@@ -58,5 +61,8 @@ export async function POST(req: NextRequest) {
       notes: parsed.data.notes ?? null,
     },
   });
-  return NextResponse.json(asset);
+  return NextResponse.json({
+    ...asset,
+    cashCollected: centsToDollars(asset.cashCollected) ?? 0,
+  });
 }

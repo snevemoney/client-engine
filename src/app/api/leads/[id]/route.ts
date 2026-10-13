@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { checkStateChangeRateLimit, jsonError, requireAuth, withRouteTiming } from "@/lib/api-utils";
 import { getById, update, deleteLead } from "@/lib/services/lead-service";
 
@@ -55,6 +56,42 @@ const ALLOWED_PATCH_FIELDS = new Set([
 ]);
 
 const VALID_TOUCH_TYPES = new Set(["EMAIL", "CALL", "LINKEDIN_DM", "MEETING", "FOLLOW_UP", "REFERRAL_ASK", "CHECK_IN"]);
+
+const leadPatchSchema = z.object({
+  title: z.string().min(1).max(500).optional(),
+  source: z.string().max(200).optional(),
+  sourceUrl: z.string().max(2000).nullable().optional(),
+  description: z.string().max(8000).nullable().optional(),
+  budget: z.string().max(200).nullable().optional(),
+  timeline: z.string().max(200).nullable().optional(),
+  platform: z.string().max(200).nullable().optional(),
+  techStack: z.array(z.string().max(100)).max(50).optional(),
+  contactName: z.string().max(200).nullable().optional(),
+  contactEmail: z.string().max(255).nullable().optional(),
+  tags: z.array(z.string().max(100)).max(50).optional(),
+  salesStage: z.string().max(80).nullable().optional(),
+  nextContactAt: z.string().nullable().optional(),
+  lastContactAt: z.string().nullable().optional(),
+  followUpCount: z.number().int().min(0).optional(),
+  followUpCadenceDays: z.number().int().min(0).nullable().optional(),
+  permissionToFollowUp: z.boolean().nullable().optional(),
+  personalDetails: z.string().max(4000).nullable().optional(),
+  leadSourceType: z.string().max(80).nullable().optional(),
+  leadSourceChannel: z.string().max(80).nullable().optional(),
+  introducedBy: z.string().max(200).nullable().optional(),
+  referralAskStatus: z.string().max(40).nullable().optional(),
+  referralAskAt: z.string().nullable().optional(),
+  referralCount: z.number().int().min(0).optional(),
+  referralNames: z.string().max(2000).nullable().optional(),
+  sourceDetail: z.string().max(2000).nullable().optional(),
+  lastTouchType: z.enum(["EMAIL", "CALL", "LINKEDIN_DM", "MEETING", "FOLLOW_UP", "REFERRAL_ASK", "CHECK_IN"]).nullable().optional(),
+  followUpStage: z.number().int().min(0).nullable().optional(),
+  detailScore: z.number().int().min(0).max(100).nullable().optional(),
+  relationshipStatus: z.string().max(40).nullable().optional(),
+  relationshipLastCheck: z.string().nullable().optional(),
+  nextAction: z.string().max(2000).nullable().optional(),
+  nextActionDueAt: z.string().nullable().optional(),
+});
 
 function pickAllowedLeadPatch(body: Record<string, unknown>): Record<string, unknown> {
   const updates: Record<string, unknown> = {};
@@ -119,6 +156,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (!body || typeof body !== "object") {
       return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
     }
+
+    const typed = leadPatchSchema.safeParse(body);
+    if (!typed.success) return jsonError("Invalid input", 400);
 
     try {
       const data = pickAllowedLeadPatch(body) as Record<string, unknown> & {

@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { z } from "zod";
+import { centsToDollars, dollarsToCents } from "@/lib/money/cents";
 
 const patchSchema = z.object({
   title: z.string().optional(),
@@ -64,9 +65,12 @@ export async function PATCH(
       ...(d.inboundLeads !== undefined && { inboundLeads: d.inboundLeads }),
       ...(d.qualifiedLeads !== undefined && { qualifiedLeads: d.qualifiedLeads }),
       ...(d.wonDeals !== undefined && { wonDeals: d.wonDeals }),
-      ...(d.cashCollected !== undefined && { cashCollected: d.cashCollected }),
+      ...(d.cashCollected !== undefined && { cashCollected: dollarsToCents(d.cashCollected) }),
       ...(d.notes !== undefined && { notes: d.notes }),
     },
   });
-  return NextResponse.json(asset);
+  return NextResponse.json({
+    ...asset,
+    cashCollected: centsToDollars(asset.cashCollected) ?? 0,
+  });
 }

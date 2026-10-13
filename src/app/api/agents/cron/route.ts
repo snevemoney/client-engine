@@ -3,8 +3,8 @@
  * Runs scheduled agent tasks. Protected by AGENT_CRON_SECRET (Bearer token)
  * or session auth for manual triggers from the dashboard.
  *
- * Intended to be called by Vercel Cron (3x daily: 8am, 12pm, 6pm ET)
- * or manually by the operator.
+ * Hosted cron (Docker Compose / Hostinger) or a manual operator trigger from the dashboard.
+ * Not Vercel Cron.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";

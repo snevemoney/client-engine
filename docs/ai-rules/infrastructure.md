@@ -19,7 +19,7 @@ npm run dev              # Next.js dev server
 npm run worker           # Background workers (separate terminal)
 ```
 
-**Builder (delivery sites):** Run site-builder at `/Users/evenslouis/site-builder` on port 3001. Set `BUILDER_API_URL=http://localhost:3001` and `BUILDER_API_KEY=dev-key`. Use the same builder consistently — scaffold and site-builder have different DBs; mixing causes "Failed to load site data".
+**Builder (delivery sites):** Run site-builder at `/Users/evenslouis/site-builder` on port 3001. Set `BUILDER_API_URL=http://localhost:3001` and `BUILDER_API_KEY` from env (required; no `dev-key` fallback). Use the same builder consistently — scaffold and site-builder have different DBs; mixing causes "Failed to load site data".
 
 **Database:**
 ```bash
