@@ -1,0 +1,17 @@
+# Evens Louis
+
+> Evens Louis is a full-stack developer in Canada building web apps, automation systems and AI integrations on infrastructure he owns (Next.js, React, Node.js, PostgreSQL, n8n, Docker/VPS). This file is a plain index for AI agents.
+
+Contact: contact@evenslouis.ca
+
+## Site
+- [Home](https://evenslouis.ca): what Evens builds, process, about
+- [Ironlane Studio (concept)](https://evenslouis.ca/work/ironlane-studio): static landing craft study, not a product
+- [Ashford & Vale (concept)](https://evenslouis.ca/work/ashford-and-vale): static landing craft study, not a product
+- [Quay Team (concept)](https://evenslouis.ca/work/quay-team): static landing craft study, not a product
+
+## Tools (draft page, 404 today)
+- [Tools](https://evenslouis.ca/tools): free, self-hostable helpers Evens uses to run AI agents (see tools.md draft)
+
+## Optional
+- [llms-full.txt](https://evenslouis.ca/llms-full.txt): same content, expanded (draft, 404 today)
