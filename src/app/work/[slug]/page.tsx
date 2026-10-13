@@ -5,6 +5,7 @@ import { SiteFooter } from "@/components/site/SiteFooter";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import { SiteLink } from "@/components/site/SiteLink";
 import { CardMedia } from "@/components/site/CardMedia";
+import { galleryMediaItems } from "@/lib/site/gallery-media";
 import { resolveCaseCopy } from "@/lib/site/case-copy";
 import { catalogProjectSelect } from "@/lib/site/project-select";
 
@@ -91,11 +92,11 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
           </dl>
         </div>
 
-        {project.screenshots.length > 0 && (
+        {galleryMediaItems(project.screenshots).length > 0 && (
           <div className="mb-12">
             <h2 className="text-xl font-medium mb-6">Screenshots</h2>
             <div className="grid gap-4">
-              {project.screenshots.map((src, i) => (
+              {galleryMediaItems(project.screenshots).map((src, i) => (
                 <div key={i} className="border border-neutral-800/50 rounded-xl overflow-hidden">
                   <CardMedia
                     src={src}

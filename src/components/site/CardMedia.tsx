@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { rootPublicSrc } from "@/lib/base-path";
 import { isVideoPath, resolvePosterSrc } from "@/lib/site/media-path";
 import { ScreenshotImg } from "@/components/site/ScreenshotImg";
@@ -15,10 +15,21 @@ type CardMediaProps = {
   siblings?: string[];
 };
 
+function siblingWithExt(path: string, ext: string): string {
+  return path.replace(/\.(webm|mp4|mov)$/i, ext);
+}
+
+function withCacheBust(src: string, version = "18"): string {
+  return src.includes("?") ? `${src}&v=${version}` : `${src}?v=${version}`;
+}
+
 /**
- * Catalog media: muted looping preview when the path is a video,
- * otherwise the existing still. Poster is the next image sibling
- * (or same path with .jpg). Missing webms fall back to the still.
+ * Work-card media.
+ * Fill: still underneath (z-0) + video on top (z-1, always opacity-100).
+ * Never HTML poster. Never start at opacity-0.
+ * Prefer H.264 MP4 as video.src for Safari; WebM as secondary <source>.
+ * Only fall back to still when there is truly no playable source.
+ * Still images always use their own src (never resolvePosterSrc).
  */
 export function CardMedia({
   src,
@@ -29,10 +40,62 @@ export function CardMedia({
   className = "",
   siblings = [],
 }: CardMediaProps) {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
   const [videoFailed, setVideoFailed] = useState(false);
-  const poster = resolvePosterSrc(src, siblings);
-  const showVideo = isVideoPath(src) && !videoFailed;
-  const stillSrc = !showVideo && isVideoPath(src) ? (poster ?? src) : src;
+
+  const video = isVideoPath(src);
+  const poster = video ? resolvePosterSrc(src, siblings) : undefined;
+  const heroFromSrc = src.replace(/preview\.(webm|mp4|mov)$/i, "1-hero.jpg");
+  // Images must keep their own path. resolvePosterSrc is only for video posters.
+  const stillSrc = video ? poster || heroFromSrc : src;
+  const showVideo = video && !videoFailed;
+
+  const mp4Src = siblingWithExt(src, ".mp4");
+  const webmSrc = siblingWithExt(src, ".webm");
+  const mp4Url = rootPublicSrc(`${mp4Src}?v=18`);
+  const webmUrl = rootPublicSrc(`${webmSrc}?v=18`);
+  const stillBusted = withCacheBust(stillSrc, "18");
+
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!el || !showVideo) return;
+
+    el.muted = true;
+    el.defaultMuted = true;
+    el.playsInline = true;
+    el.setAttribute("muted", "");
+    el.setAttribute("playsinline", "");
+    el.setAttribute("webkit-playsinline", "true");
+    el.removeAttribute("poster");
+
+    const tryPlay = () => {
+      const p = el.play();
+      if (p && typeof p.catch === "function") p.catch(() => {});
+    };
+
+    tryPlay();
+    el.addEventListener("loadeddata", tryPlay);
+    el.addEventListener("canplay", tryPlay);
+
+    const io =
+      typeof IntersectionObserver !== "undefined"
+        ? new IntersectionObserver(
+            (entries) => {
+              for (const entry of entries) {
+                if (entry.isIntersecting) tryPlay();
+              }
+            },
+            { threshold: 0.1 }
+          )
+        : null;
+    if (io) io.observe(el);
+
+    return () => {
+      el.removeEventListener("loadeddata", tryPlay);
+      el.removeEventListener("canplay", tryPlay);
+      if (io) io.disconnect();
+    };
+  }, [showVideo, src]);
 
   if (!showVideo) {
     return (
@@ -48,21 +111,56 @@ export function CardMedia({
   }
 
   const videoClass = fill
-    ? `absolute inset-0 h-full w-full object-cover object-top ${className}`.trim()
-    : className;
+    ? `absolute inset-0 z-[1] h-full w-full object-cover object-center opacity-100 ${className}`.trim()
+    : `absolute inset-0 z-[1] h-full w-full object-cover object-center opacity-100`;
 
-  return (
+  const videoEl = (
     <video
-      src={rootPublicSrc(src)}
-      poster={poster ? rootPublicSrc(poster) : undefined}
+      ref={videoRef}
+      src={mp4Url}
       muted
       loop
       playsInline
       autoPlay
-      preload="metadata"
+      preload="auto"
       aria-label={alt}
       className={videoClass}
-      onError={() => setVideoFailed(true)}
-    />
+      onError={() => {
+        const el = videoRef.current;
+        if (el && el.networkState === HTMLMediaElement.NETWORK_NO_SOURCE) {
+          setVideoFailed(true);
+        }
+      }}
+    >
+      <source src={mp4Url} type="video/mp4" />
+      <source src={webmUrl} type="video/webm" />
+    </video>
+  );
+
+  if (fill) {
+    return (
+      <>
+        <ScreenshotImg
+          src={stillBusted}
+          alt={alt}
+          fill
+          className={`pointer-events-none z-0 object-center ${className}`.trim()}
+        />
+        {videoEl}
+      </>
+    );
+  }
+
+  return (
+    <div className="relative w-full">
+      <ScreenshotImg
+        src={stillBusted}
+        alt={alt}
+        width={width}
+        height={height}
+        className={`w-full h-auto ${className}`.trim()}
+      />
+      {videoEl}
+    </div>
   );
 }
